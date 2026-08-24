@@ -1,0 +1,225 @@
+:root {
+  color: #17332e;
+  background: #f2f5ef;
+  font-family: "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+}
+
+button,
+a {
+  font: inherit;
+}
+
+.app-shell {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 15% 0%, rgb(162 220 194 / 48%), transparent 32rem),
+    linear-gradient(140deg, #f8fbf6 0%, #eef2e8 62%, #e8f1ec 100%);
+}
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1100px;
+  min-height: 74px;
+  padding: 0 28px;
+  margin: 0 auto;
+}
+
+.brand {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  color: inherit;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+}
+
+.brand-mark {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  color: #fff;
+  background: #0f766e;
+  border-radius: 9px 9px 9px 2px;
+}
+
+.stage-label,
+.eyebrow,
+.card-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.stage-label {
+  color: #57716a;
+}
+
+.page-content {
+  max-width: 1100px;
+  padding: 80px 28px 96px;
+  margin: 0 auto;
+}
+
+.status-page {
+  max-width: 900px;
+}
+
+.eyebrow {
+  margin: 0 0 14px;
+  color: #0f766e;
+}
+
+h1,
+h2,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  max-width: 660px;
+  margin-bottom: 18px;
+  font-size: clamp(38px, 6vw, 64px);
+  line-height: 1.08;
+  letter-spacing: -0.06em;
+}
+
+h2 {
+  margin-bottom: 10px;
+  font-size: 18px;
+}
+
+.lead {
+  max-width: 620px;
+  margin-bottom: 42px;
+  color: #49635c;
+  font-size: 18px;
+  line-height: 1.8;
+}
+
+.health-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 18px;
+  align-items: center;
+  padding: 28px;
+  margin-bottom: 24px;
+  background: rgb(255 255 255 / 78%);
+  border: 1px solid rgb(20 68 57 / 12%);
+  border-radius: 20px;
+  box-shadow: 0 22px 60px rgb(44 78 64 / 10%);
+}
+
+.health-indicator {
+  width: 14px;
+  height: 14px;
+  background: #c56a55;
+  border-radius: 50%;
+  box-shadow: 0 0 0 7px rgb(197 106 85 / 12%);
+}
+
+.health-indicator.healthy {
+  background: #17946d;
+  box-shadow: 0 0 0 7px rgb(23 148 109 / 12%);
+}
+
+.health-indicator.loading {
+  background: #d39e42;
+  animation: pulse 1.4s infinite ease-in-out;
+}
+
+.card-label {
+  margin-bottom: 6px;
+  color: #6b817a;
+}
+
+.muted {
+  margin: 6px 0 0;
+  color: #71847e;
+  font-size: 14px;
+}
+
+.secondary-button,
+.primary-link {
+  padding: 10px 15px;
+  color: #0d5e57;
+  font-weight: 700;
+  background: #e4f0e9;
+  border: 1px solid #b9d5c5;
+  border-radius: 10px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.secondary-button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.boundary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.boundary-grid article {
+  min-height: 180px;
+  padding: 24px;
+  background: rgb(249 252 247 / 62%);
+  border-top: 3px solid #98c6ad;
+}
+
+.boundary-grid p {
+  margin-bottom: 0;
+  color: #597069;
+  line-height: 1.7;
+}
+
+.step-number {
+  display: block;
+  margin-bottom: 30px;
+  color: #0f766e;
+  font-family: Georgia, serif;
+  font-size: 18px;
+  font-style: italic;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.38;
+  }
+}
+
+@media (max-width: 680px) {
+  .top-bar,
+  .page-content {
+    padding-right: 20px;
+    padding-left: 20px;
+  }
+
+  .page-content {
+    padding-top: 52px;
+  }
+
+  .health-card,
+  .boundary-grid {
+    grid-template-columns: 1fr;
+  }
+}
