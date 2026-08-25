@@ -1,4 +1,5 @@
 <template>
+  <!-- 未匹配任何已注册路由时展示的兜底页面。 -->
   <section
     class="status-page"
     aria-labelledby="not-found-title"

@@ -1,3 +1,4 @@
+/* 全局视觉基础：定义字体、背景、布局重置及页面组件的共享样式。 */
 :root {
   color: #17332e;
   background: #f2f5ef;
@@ -72,6 +73,13 @@ a {
   color: #57716a;
 }
 
+nav a,
+.back-link {
+  color: #0d5e57;
+  font-weight: 700;
+  text-decoration: none;
+}
+
 .page-content {
   max-width: 1100px;
   padding: 80px 28px 96px;
@@ -79,6 +87,10 @@ a {
 }
 
 .status-page {
+  max-width: 900px;
+}
+
+.market-page {
   max-width: 900px;
 }
 
@@ -168,6 +180,244 @@ h2 {
   text-decoration: none;
 }
 
+.primary-button {
+  padding: 10px 15px;
+  color: #fff;
+  font-weight: 700;
+  background: #0f766e;
+  border: 1px solid #0f766e;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.primary-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.search-panel {
+  display: grid;
+  gap: 10px;
+  padding: 22px;
+  margin-bottom: 26px;
+  background: rgb(255 255 255 / 70%);
+  border: 1px solid rgb(20 68 57 / 12%);
+  border-radius: 16px;
+}
+
+.search-panel label {
+  font-weight: 700;
+}
+
+.search-row {
+  display: flex;
+  gap: 12px;
+}
+
+.search-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  font: inherit;
+  border: 1px solid #b9d5c5;
+  border-radius: 10px;
+}
+
+.fund-list {
+  display: grid;
+  gap: 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.pagination button {
+  min-width: 88px;
+  padding: 8px 12px;
+  color: #17332e;
+  background: rgb(255 255 255 / 72%);
+  border: 1px solid rgb(20 68 57 / 12%);
+  border-radius: 8px;
+}
+
+.pagination button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.fund-card {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr) auto auto;
+  gap: 14px;
+  align-items: center;
+  padding: 18px;
+  color: inherit;
+  background: rgb(255 255 255 / 72%);
+  border: 1px solid rgb(20 68 57 / 12%);
+  border-radius: 14px;
+  text-decoration: none;
+}
+
+.fund-card:hover,
+.fund-card:focus-visible {
+  border-color: #0f766e;
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(15 118 110 / 18%);
+}
+
+.fund-card > span:last-child,
+.fund-card > span:nth-child(3) {
+  color: #597069;
+  font-size: 14px;
+}
+
+.fund-code {
+  color: #0f766e;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-weight: 800;
+}
+
+.state-message {
+  margin: 20px 0;
+  color: #597069;
+  line-height: 1.7;
+}
+
+.error-message {
+  color: #a34232;
+}
+
+.notice-banner {
+  padding: 14px 16px;
+  margin-bottom: 20px;
+  color: #694f19;
+  background: #fff4d8;
+  border-left: 4px solid #d39e42;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 28px 0;
+}
+
+.detail-grid div {
+  padding: 16px;
+  background: rgb(255 255 255 / 72%);
+  border: 1px solid rgb(20 68 57 / 12%);
+  border-radius: 12px;
+}
+
+.detail-grid dt {
+  margin-bottom: 8px;
+  color: #597069;
+  font-size: 13px;
+}
+
+.detail-grid dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+.risk-disclaimer {
+  max-width: 620px;
+  margin-top: 28px;
+  color: #597069;
+  line-height: 1.7;
+}
+
+.analysis-section {
+  margin-top: 42px;
+}
+
+.section-heading {
+  display: flex;
+  gap: 18px;
+  align-items: end;
+  justify-content: space-between;
+}
+
+.section-note {
+  padding-bottom: 12px;
+  color: #71847e;
+  font-size: 13px;
+}
+
+.event-list,
+.signal-list {
+  display: grid;
+  gap: 12px;
+  padding: 0;
+  margin: 18px 0 0;
+  list-style: none;
+}
+
+.event-list li,
+.signal-list li {
+  padding: 16px;
+  background: rgb(255 255 255 / 72%);
+  border: 1px solid rgb(20 68 57 / 12%);
+  border-radius: 12px;
+}
+
+.event-list a {
+  color: #0d5e57;
+  font-weight: 700;
+}
+
+.event-list p,
+.signal-list p,
+.empty-analysis {
+  margin: 8px 0 0;
+  color: #597069;
+  line-height: 1.65;
+}
+
+.alert-rule-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: end;
+  padding: 18px;
+  margin-top: 18px;
+  background: rgb(255 255 255 / 72%);
+  border: 1px solid rgb(20 68 57 / 12%);
+  border-radius: 12px;
+}
+
+.alert-rule-form label {
+  display: grid;
+  gap: 6px;
+  color: #49635c;
+  font-weight: 700;
+}
+
+.alert-rule-form select,
+.alert-rule-form input[type="number"] {
+  min-width: 160px;
+  padding: 9px 10px;
+  color: #17332e;
+  font: inherit;
+  background: #fff;
+  border: 1px solid #b9d5c5;
+  border-radius: 8px;
+}
+
+.alert-rule-form .toggle-label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 40px;
+}
+
 .secondary-button:disabled {
   cursor: wait;
   opacity: 0.6;
@@ -219,7 +469,18 @@ h2 {
   }
 
   .health-card,
-  .boundary-grid {
+  .boundary-grid,
+  .detail-grid {
     grid-template-columns: 1fr;
+  }
+
+  .search-row,
+  .fund-card,
+  .alert-rule-form {
+    grid-template-columns: 1fr;
+  }
+
+  .search-row {
+    display: grid;
   }
 }

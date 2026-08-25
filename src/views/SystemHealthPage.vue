@@ -3,9 +3,15 @@ import { computed, onMounted } from 'vue'
 
 import { useSystemStore } from '@/stores/system'
 
+/**
+ * 系统状态页面。
+ *
+ * 用于确认浏览器到 Java 核心服务的连通性，并展示内部 AI 服务的聚合状态。
+ */
 const systemStore = useSystemStore()
 const isHealthy = computed(() => systemStore.health?.status === 'UP')
 
+/** 页面首次渲染后主动执行一次健康检查。 */
 onMounted(() => {
   void systemStore.refreshHealth()
 })

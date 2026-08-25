@@ -2,7 +2,7 @@ name: fund-radar
 
 services:
   postgres:
-    image: postgres:16.11-bookworm
+    image: postgres:16.14-alpine
     restart: unless-stopped
     ports:
       - "${POSTGRES_PORT}:5432"
@@ -27,7 +27,7 @@ services:
       start_period: 10s
 
   redis:
-    image: redis:7.4-alpine
+    image: redis:7.4.7
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
     ports:
