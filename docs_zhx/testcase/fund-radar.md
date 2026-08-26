@@ -31,8 +31,6 @@
 - [ ] 未通过
 - 未通过原因：
 
----
-
 ## TC-02｜份额类别与日净值幂等同步
 
 前置条件：FastAPI AI 服务已配置测试数据源；存在同一基金主实体的两个份额类别和同日期净值数据。
@@ -457,5 +455,87 @@ ORDER BY user_id, fund_code;
 测试结果：
 
 - [x] 通过（2026-08-26：实际导入 1 份/6 条，重复键由唯一约束保护；Java 返回 `available=true`、`UNKNOWN`、6 条，前端四个宽度无横向溢出）
+- [ ] 未通过
+- 未通过原因：
+
+---
+
+## TC-16｜Tushare 目录完整性保护与日净值幂等同步
+
+前置条件：用户已取得 Tushare 公募基金接口授权；本机 `.env` 已配置 Token；`fund_ai` 已应用 Alembic `20260826_03`；不在命令行、日志或截图中展示 Token。
+
+场景：执行目录同步，再对一个明确净值日期连续执行两次日净值同步。
+
+操作步骤：
+
+1. 执行 `python -m app.commands.sync_tushare_funds catalog`。
+2. 若任一目录分片返回数达到配置上限，确认命令失败且不产生该次目录写入；若所有分片低于上限，确认结果可安全全量写入。
+3. 执行 `python -m app.commands.sync_tushare_funds nav --nav-date 2026-08-25` 两次。
+4. 查询 `source_sync_run`、`source_registry` 与目标样本的 `nav_daily`。
+
+数据库验证：
+
+```sql
+SELECT sync_type, status, requested_nav_date, fetched_count, created_count, updated_count, skipped_count, error_summary
+FROM source_sync_run
+ORDER BY started_at DESC;
+
+SELECT fund_code, nav_date, source_id, COUNT(*) AS row_count
+FROM nav_daily
+WHERE nav_date = DATE '2026-08-25'
+GROUP BY fund_code, nav_date, source_id
+HAVING COUNT(*) > 1;
+```
+
+| 项目 | 预期值 |
+| --- | --- |
+| 目录达到上限 | `CATALOG` 运行状态为 `FAILED`，无部分目录写入；错误摘要不含 Token |
+| 首次净值同步 | 只写入已有目录份额，`created_count` 为实际新增数，未知代码只计入 `skipped_count` |
+| 第二次净值同步 | `created_count=0`、`updated_count=0`，不产生重复主键行 |
+| 来源展示 | 存在净值时详情的 `data_source` 为最新净值来源；无净值时保留目录来源 |
+| 安全边界 | 表、日志、命令输出不含 Token、Cookie、支付宝认证信息或完整原始响应 |
+
+测试结果：
+
+- [x] 通过（2026-08-26：2000 积分下场外上市目录分片命中 15000 条并失败关闭；2026-08-25 净值返回 10,500 条，本机 6 条目录样本首次写入 5 条、重复执行新增/更新均为 0）
+- [ ] 未通过
+- 未通过原因：
+
+---
+
+## TC-17｜基金详情展示同源最新净值快照
+
+前置条件：`fund_ai.nav_daily` 已有基金 `002112` 在 `2026-08-25` 的已授权净值记录；Java、FastAPI 和 Vue 均为本次版本，且 Java 可访问 FastAPI。
+
+场景：用户从基金详情页查看已同步净值，并验证累计净值缺失时不伪造数值。
+
+操作步骤：
+
+1. 请求 `GET /api/v1/funds/002112`，记录 `unitNav`、`accumulatedNav`、`asOfDate`、`dataSource`。
+2. 打开 `/funds/002112`，检查详情首屏的五项数据卡片。
+3. 对一只累计净值为 `NULL` 的测试份额重复第 1、2 步。
+4. 临时使 FastAPI 不可达且保留 Java 详情缓存，重新请求详情。
+
+数据库验证：
+
+```sql
+SELECT n.fund_code, n.nav_date, n.unit_nav, n.accumulated_nav, s.source_code
+FROM nav_daily n
+JOIN source_registry s ON s.source_id = n.source_id
+WHERE n.fund_code = '002112'
+ORDER BY n.nav_date DESC, s.source_code ASC
+LIMIT 1;
+```
+
+| 项目 | 预期值 |
+| --- | --- |
+| Java 详情 | `unitNav`、`accumulatedNav`、`asOfDate`、`dataSource` 与验证 SQL 的同一行一致 |
+| Vue 详情 | 显示单位净值、累计净值、净值日期、净值状态、数据来源；`TUSHARE_PRO_FUND` 显示为“Tushare 数据接口” |
+| 累计净值为空 | Java 返回 `null`，页面显示“暂缺”，不显示 `0.0000` 或单位净值替代值 |
+| 缓存降级 | `stale=true` 时仍展示缓存中的净值快照和缓存时间，不伪造新日期 |
+
+测试结果：
+
+- [ ] 通过
 - [ ] 未通过
 - 未通过原因：

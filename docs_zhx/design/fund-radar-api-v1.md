@@ -53,7 +53,7 @@
 
 ### `GET /api/v1/funds/{fundCode}`
 
-`fundCode` 必须是 6 位数字。成功时 `data` 比列表项多出 `navStatus`、`dataSource`、`stale`、`cachedAt`。当前样本目录使用 `dataSource=MANUAL_PUBLISHER_VERIFIED_SAMPLE`；`navStatus=NOT_SYNCED` 与 `asOfDate=null` 表示尚未获得合规日净值，不能被解释为实时行情。
+`fundCode` 必须是 6 位数字。成功时 `data` 比列表项多出 `unitNav`、`accumulatedNav`、`navStatus`、`dataSource`、`stale`、`cachedAt`。`unitNav`、`accumulatedNav`、`asOfDate` 和 `dataSource` 必须来自同一条最新已落库 `nav_daily` 记录；同一日期有多个来源时按来源代码升序选择，避免把不同来源的数值和来源拼接。累计净值源端未提供时为 `null`；`navStatus=NOT_SYNCED` 时两个净值字段与 `asOfDate` 均为 `null`，不能被解释为实时行情。
 
 | HTTP | 业务码 | 条件 |
 | --- | --- | --- |

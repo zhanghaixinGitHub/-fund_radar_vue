@@ -9,6 +9,10 @@ export interface FundSummary {
 
 /** 基金公开详情；`M0_MOCK` 仅用于演示，界面不得将其描述为真实行情。 */
 export interface FundDetail extends FundSummary {
+  /** 最新已落库的单位净值；缺失不补零，也不代表实时行情。 */
+  unitNav: number | string | null
+  /** 最新已落库的累计净值；数据源未提供时明确为空。 */
+  accumulatedNav: number | string | null
   navStatus: string
   dataSource: string
   stale: boolean

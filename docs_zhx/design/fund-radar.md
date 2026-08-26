@@ -184,3 +184,39 @@ M0 的字段名、分页、错误码与已实现状态见 `docs_zhx/design/fund-
 | P1 | 模型有效性 | 未完成防泄漏滚动回测和基线比较，不展示方向性信号 |
 | P1 | 单用户/多用户范围 | 默认单用户；多用户时再设计注册、RBAC、数据隔离与账号注销 |
 | P2 | 前端技术栈 | 方案默认 Vue 3；实施前锁定 Node、包管理器和组件库版本 |
+
+## 8. v0.2｜Tushare 同步设计与字段映射
+
+### 8.1 同步链路
+
+```text
+Celery / 受控本机命令
+  → Tushare HTTPS（连接、读取、连接池超时；有限重试）
+  → Python 规范化和批量幂等写入 fund_ai
+  → FastAPI 内部只读接口
+  → Java 缓存降级与业务 API
+  → Vue 展示单位净值、累计净值（可为空）、净值日期与来源
+```
+
+浏览器不直接调用 Tushare；同步命令和任务不接收浏览器参数，不写入交易、持仓、支付宝认证信息或外部原始响应。
+
+### 8.2 字段映射
+
+| Tushare 接口/字段 | 规范化规则 | 目标 | 说明 |
+| --- | --- | --- | --- |
+| `fund_company.shortname`、`name` | 仅在简称唯一时映射为公司全称 | 同步内存中的 `manager_name` | 不额外建公司表；简称歧义时回退 `fund_basic.management` |
+| `fund_basic.ts_code` | 去除 `.OF`、`.SH`、`.SZ` 后作为现有项目基金代码；冲突则本次失败 | `fund_share_class.fund_code` | 不以页面名称作为业务键 |
+| `fund_basic.name` | 新建记录时作为无法可靠拆分主产品时的保守回退 | `fund_master.fund_name`、`fund_share_class.fund_name` | 已存在的人工核验主实体不覆盖 |
+| `fund_basic.management` | 简称映射后写入 | `fund_master.manager_name` | 缺失管理人则跳过并计数 |
+| `fund_basic.fund_type`、`status` | 映射到 `STOCK`、`MIXED`、`BOND`、`INDEX`、`MONEY`、`QDII`、`FOF`、`OTHER` 和 `ACTIVE`、`DELISTED`、`ISSUING` | 主实体/份额类别类型与状态 | 不使用不可靠的名称猜测基金类型 |
+| `fund_basic.name` 末尾常见 A/C/E/H/R/Y | 保守识别，否则 `UNSPECIFIED` | `fund_share_class.share_class` | 不把 ETF 名称末尾的 F 当份额类别 |
+| `fund_nav.ts_code`、`nav_date`、`unit_nav`、`accum_nav` | 仅接受指定日期、非负有限数值；业务字段计算 SHA-256 | `nav_daily` | 主键为 `(fund_code, nav_date, source_id)`，相同哈希跳过、不同哈希更新 |
+
+### 8.3 完整性、运行记录与失败处理
+
+- `fund_basic` 按 `market(E/O) × status(L/D/I)` 请求。任何分片返回数达到本机配置的行数上限时，目录任务失败关闭，不清表、不写入部分目录。
+- `fund_nav` 必须显式传入日期并按该日期一次批量请求；只为已存在的目录份额落库，未知代码只计数跳过。全市场目录未完成时，它不能被表述为全市场净值覆盖。
+- `source_registry` 保存授权范围、限频、最近成功/错误摘要；`source_sync_run` 保存每一次目录或净值同步的状态、请求日期和新增/更新/跳过统计。两者均不得保存 Token、Cookie 或原始响应。
+- 目录按 500 条一批事务提交；失败后允许新建运行重试，依赖业务键与内容哈希防重。目录同步不做“本次未出现即删除”。
+- `fund_share_class.source_code` 表示目录来源；详情存在净值时优先显示最新净值来源，否则显示目录来源，避免把手工目录误标为 Tushare 净值。
+- 详情页的 `unitNav`、`accumulatedNav`、`asOfDate` 和 `dataSource` 必须取自同一条按“净值日期倒序、来源代码正序”选出的 `nav_daily` 记录；累计净值为 `NULL` 时对外保持 `null`，页面显示“暂缺”，不得以单位净值替代。

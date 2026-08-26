@@ -51,6 +51,21 @@ function formatPercent(value: number | string | null): string {
   return Number.isFinite(numericValue) ? `${(numericValue * 100).toFixed(1)}%` : '—'
 }
 
+/** 将已落库日净值格式化为四位小数；缺失和异常值不得伪造为零。 */
+function formatNetValue(value: number | string | null | undefined): string {
+  if (value === null || value === undefined || value === '') {
+    return '暂缺'
+  }
+  const numericValue = Number(value)
+  if (!Number.isFinite(numericValue)) {
+    return '暂缺'
+  }
+  return numericValue.toLocaleString('zh-CN', {
+    minimumFractionDigits: 4,
+    maximumFractionDigits: 4,
+  })
+}
+
 /** 将后端评分状态转换为用户可理解的中文说明，不推断任何缺失的方向结论。 */
 function signalStatusLabel(signal: FundSignal): string {
   if (signal.scoreStatus === 'DATA_INSUFFICIENT') {
@@ -243,7 +258,9 @@ watch(fundCode, () => {
         分析服务暂不可用，当前展示缓存读模型（缓存时间：{{ fund.cachedAt || '未知' }}）。
       </p>
       <dl class="detail-grid">
-        <div><dt>数据截至</dt><dd>{{ fund.asOfDate || '暂无有效净值' }}</dd></div>
+        <div><dt>单位净值</dt><dd>{{ formatNetValue(fund.unitNav) }}</dd></div>
+        <div><dt>累计净值</dt><dd>{{ formatNetValue(fund.accumulatedNav) }}</dd></div>
+        <div><dt>净值日期</dt><dd>{{ fund.asOfDate || '暂无有效净值' }}</dd></div>
         <div><dt>净值状态</dt><dd>{{ netValueStatusLabel(fund.navStatus) }}</dd></div>
         <div><dt>数据来源</dt><dd>{{ dataSourceLabel(fund.dataSource) }}</dd></div>
       </dl>
