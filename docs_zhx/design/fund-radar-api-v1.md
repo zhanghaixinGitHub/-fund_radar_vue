@@ -3,7 +3,7 @@
 > 关联需求：`docs_zhx/requirements/fund-radar.md`
 > 总体设计：`docs_zhx/design/fund-radar.md`
 > 实施进度：`docs_zhx/implementation/fund-radar.md`
-> 版本：v0.5 / M1-M3（来源诊断、事件/信号读模型与本机提醒规则）
+> 版本：v0.6 / M1-M4（手工核验目录样本与本机确认快照）
 
 本文件是 M0 的可版本化契约来源。Java 暂未引入 OpenAPI UI，FastAPI 明确关闭 OpenAPI/UI；接口发生不兼容变更时必须先提升本文件版本，再实现代码。
 
@@ -53,11 +53,11 @@
 
 ### `GET /api/v1/funds/{fundCode}`
 
-`fundCode` 必须是 6 位数字。成功时 `data` 比列表项多出 `navStatus`、`dataSource`、`stale`、`cachedAt`；M0 固定为 `MOCK`、`M0_MOCK`，不能被解释为真实净值或真实数据源。
+`fundCode` 必须是 6 位数字。成功时 `data` 比列表项多出 `navStatus`、`dataSource`、`stale`、`cachedAt`。当前样本目录使用 `dataSource=MANUAL_PUBLISHER_VERIFIED_SAMPLE`；`navStatus=NOT_SYNCED` 与 `asOfDate=null` 表示尚未获得合规日净值，不能被解释为实时行情。
 
 | HTTP | 业务码 | 条件 |
 | --- | --- | --- |
-| 200 | `OK` | 返回 Mock 详情 |
+| 200 | `OK` | 返回持久化目录详情；无净值时显式返回 `NOT_SYNCED` |
 | 404 | `FUND_NOT_FOUND` | 基金代码不存在 |
 | 503 | `AI_SERVICE_UNAVAILABLE` | Java 无法访问 FastAPI；M0 无缓存，因此不伪造历史数据 |
 
@@ -80,6 +80,38 @@
 ### `DELETE /api/v1/watchlist/{fundCode}`（M1 本机单用户）
 
 只删除当前本机用户的对应关注项。重复删除同样返回成功并写入审计日志。请求体或路径参数不合法时返回 HTTP 400 和 `VALIDATION_ERROR`。
+
+### `GET /api/v1/portfolio/current`（M4 本机确认快照）
+
+返回当前本机用户最新的确认快照。该接口只读，不提供截图上传、支付宝登录、份额交易或买卖操作。无快照时返回 `available=false` 与空 `holdings`；有快照时，`dataAsOfStatus=UNKNOWN` 必须同时满足 `dataAsOfDate=null`。
+
+```json
+{
+  "success": true,
+  "code": "OK",
+  "data": {
+    "available": true,
+    "sourceKind": "USER_CONFIRMED_SCREENSHOT",
+    "dataAsOfStatus": "UNKNOWN",
+    "dataAsOfDate": null,
+    "importedAt": "2026-08-26T10:01:13Z",
+    "holdings": [
+      {
+        "fundCode": "010710",
+        "fundName": "安信医药健康主题股票C",
+        "reportedAmount": 100.00,
+        "reportedWeightPct": 1.00,
+        "reportedDailyGainAmount": 1.00,
+        "reportedHoldingGainAmount": 2.00,
+        "reportedHoldingGainPct": 2.00,
+        "reportedCumulativeGainAmount": 10.00
+      }
+    ]
+  }
+}
+```
+
+这些字段是用户确认的截图展示值，不是基金份额、成本、累计净值或实时行情；页面必须同时展示日期状态和非实时说明。
 
 ### `GET /api/v1/funds/{fundCode}/events`（M2 部分）
 
@@ -111,8 +143,8 @@
 | 方法 | 路径 | 状态 | 说明 |
 | --- | --- | --- | --- |
 | GET | `/internal/v1/health` | 已实现 | 返回受保护的服务存活状态 |
-| GET | `/internal/v1/funds` | 已实现 | `keyword`、`pageSize`、`cursor` 的 Mock 基金列表 |
-| GET | `/internal/v1/funds/{fund_code}` | 已实现 | 单只 Mock 基金详情 |
+| GET | `/internal/v1/funds` | 已实现 | `keyword`、`pageSize`、`cursor` 的已持久化目录样本列表；未同步净值时 `as_of_date=null` |
+| GET | `/internal/v1/funds/{fund_code}` | 已实现 | 单只已持久化目录详情；`NOT_SYNCED` 不得视为实时净值 |
 | GET | `/internal/v1/sources` | M1（部分） | 仅服务身份可读的来源开关、限频、保留期与最近状态；不返回凭证、原始内容或任务触发能力 |
 | GET | `/internal/v1/signals` | M3（部分） | 本地已持久化评分结果的游标读取；不在读取时运行模型 |
 | GET | `/internal/v1/events` | M2（部分） | 已审核、未过保留期且按基金关联的只读读取 |
@@ -145,6 +177,6 @@
 | --- | --- | --- |
 | 来源同步、资讯采集和事件审核 | 每个来源已确认书面授权范围、访问方式、限频和保留期限 | 未确认不得登记、探测或访问第三方 |
 | 特征构建、评分、滚动回测和提醒生成 | 有合规的类别化历史数据、模型准入标准和基线 | 不足数据不产生方向性信号；提醒不含交易指令 |
-| M4 个人持仓录入 | 用户明确选择手工、文件或 OCR，并确认隐私方案 | 禁止支付宝登录、凭证采集或未确认 OCR 入库 |
+| M4 完整持仓分析与多人数据隔离 | 已有登录认证、本人授权、删除/导出策略，以及用户确认的日期/份额/成本 | 当前仅支持本机确认快照；禁止支付宝登录、凭证采集或未确认 OCR 入库 |
 
 禁止出现支付宝登录、持仓抓取、申购、赎回、买入、卖出或自动交易接口。

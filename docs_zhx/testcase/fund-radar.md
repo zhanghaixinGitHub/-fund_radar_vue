@@ -429,3 +429,33 @@ ORDER BY user_id, fund_code;
 - [ ] 通过
 - [ ] 未通过
 - 未通过原因：
+
+---
+
+## TC-15｜M4 用户确认快照的本机导入、幂等与未知日期边界
+
+前置条件：`fund_ai` 已有经核验的基金份额目录；Java 已迁移至包含 `portfolio_snapshot` 和 `portfolio_holding_snapshot` 的 `fund_core`；导入文件仅保存在 Git 忽略的本机路径。
+
+场景：导入一份用户确认的截图字段，截图中没有数据日期、份额、成本和交易流水。
+
+操作步骤：
+
+1. 以显式启动参数运行本机导入器，导入包含 6 条完整可见基金行的 JSON 文件。
+2. 再次执行相同导入命令。
+3. 请求 `GET /api/v1/portfolio/current`，并打开前端 `/portfolio`。
+4. 检查 `portfolio_snapshot`、`portfolio_holding_snapshot`、`audit_log`，以及 `fund_ai` 中的 `nav_daily` 行数。
+
+| 项目 | 预期值 |
+| --- | --- |
+| 个人数据边界 | 原始截图、路径、支付宝凭证、Cookie 和验证码均不进入数据库、日志或响应 |
+| 日期边界 | `dataAsOfStatus=UNKNOWN` 且 `dataAsOfDate=null`；页面明确提示日期未知，不显示实时净值或成本推算 |
+| 幂等 | 重复导入按 `(user_id, source_content_hash)` 命中同一快照，不新增第二份持仓业务数据 |
+| 数据一致性 | 快照只包含用户确认的 6 行；代码、名称和份额类别可与 `fund_share_class` 对照；无日净值时不填充 `nav_daily` |
+| 查询边界 | Vue 只请求 Java `/api/v1/portfolio/current`；接口只读，不存在持仓写入、支付宝登录或交易路由 |
+| 视觉与响应式 | 375、768、812 横屏和 1024 宽度下无横向溢出；收益同时展示符号和颜色 |
+
+测试结果：
+
+- [x] 通过（2026-08-26：实际导入 1 份/6 条，重复键由唯一约束保护；Java 返回 `available=true`、`UNKNOWN`、6 条，前端四个宽度无横向溢出）
+- [ ] 未通过
+- 未通过原因：

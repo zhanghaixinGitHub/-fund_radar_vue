@@ -4,6 +4,7 @@ import NotFoundPage from '@/views/NotFoundPage.vue'
 import FundDetailPage from '@/views/FundDetailPage.vue'
 import FundMarketPage from '@/views/FundMarketPage.vue'
 import SystemHealthPage from '@/views/SystemHealthPage.vue'
+import PortfolioSnapshotPage from '@/views/PortfolioSnapshotPage.vue'
 
 /**
  * 前端路由表。
@@ -30,6 +31,12 @@ export const router = createRouter({
       name: 'fund-detail',
       component: FundDetailPage,
       meta: { title: '基金详情' },
+    },
+    {
+      path: '/portfolio',
+      name: 'portfolio-snapshot',
+      component: PortfolioSnapshotPage,
+      meta: { title: '持仓快照' },
     },
     {
       path: '/:pathMatch(.*)*',

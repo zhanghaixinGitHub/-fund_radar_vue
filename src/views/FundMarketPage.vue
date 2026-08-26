@@ -2,6 +2,7 @@
 import { onMounted } from 'vue'
 
 import { useFundMarket } from '@/composables/useFundMarket'
+import { fundStatusLabel, fundTypeLabel } from '@/utils/fundPresentation'
 
 /**
  * 基金市场页面。
@@ -35,7 +36,7 @@ onMounted(() => {
     aria-labelledby="market-title"
   >
     <p class="eyebrow">
-      FUND MARKET
+      基金市场
     </p>
     <h1 id="market-title">
       基金市场
@@ -102,8 +103,8 @@ onMounted(() => {
         >
           <span class="fund-code">{{ fund.fundCode }}</span>
           <strong>{{ fund.fundName }}</strong>
-          <span>{{ fund.fundType }} · {{ fund.status }}</span>
-          <span>数据截至：{{ fund.asOfDate || '暂无净值数据' }}</span>
+          <span>{{ fundTypeLabel(fund.fundType) }} · {{ fundStatusLabel(fund.status) }}</span>
+          <span>数据截至：{{ fund.asOfDate || '尚无合规净值同步' }}</span>
         </RouterLink>
       </li>
     </ul>

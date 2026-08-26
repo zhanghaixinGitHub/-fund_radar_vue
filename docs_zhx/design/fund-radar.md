@@ -83,6 +83,8 @@ MVP 可使用同一 PostgreSQL 实例但分为两个独立数据库：`fund_core
 | `alert_rule` | `rule_id`、`user_id`、`fund_code`、`rule_type`、`threshold` | 风险、事件和信号变化提醒 |
 | `signal_snapshot` | `signal_id`、`fund_code`、`as_of_date`、`model_version`、`payload_hash` | AI 结果的不可变业务快照 |
 | `notification` | `notification_id`、`rule_id`、`status`、`created_at` | 站内提醒与送达记录 |
+| `portfolio_snapshot` | `snapshot_id`、`user_id`、`source_kind`、`data_as_of_status`、`source_content_hash` | 用户确认的本机持仓快照主记录；数据日期未知时日期必须为 `NULL` |
+| `portfolio_holding_snapshot` | `snapshot_id`、`fund_code`、`fund_name`、`reported_amount`、`reported_*_gain_*` | 截图中确认的展示字段；不存原图、不将其误作份额/成本/净值 |
 | `audit_log` | `trace_id`、`actor`、`action`、`target_id`、`occurred_at` | 关键访问、配置和信号接收审计 |
 
 `signal_snapshot` 唯一约束：`(fund_code, as_of_date, model_version)`；重复接收必须幂等。
@@ -114,6 +116,7 @@ MVP 可使用同一 PostgreSQL 实例但分为两个独立数据库：`fund_core
 | `GET /api/v1/funds/{fundCode}` | 基金详情 | 返回数据截至时间与产品类型 |
 | `GET /api/v1/funds/{fundCode}/signals` | 信号历史 | 默认按日期倒序，携带模型版本和解释 |
 | `GET /api/v1/funds/{fundCode}/events` | 关联资讯与事件 | 返回来源链接、可信度、相关性，不宣称因果 |
+| `GET /api/v1/portfolio/current` | 读取本机当前持仓快照 | 只读；返回日期状态与确认字段，不读支付宝、不计算实时净值 |
 | `POST /api/v1/watchlist` | 添加关注 | 幂等；仅允许有效基金代码 |
 | `DELETE /api/v1/watchlist/{fundCode}` | 取消关注 | 仅能操作本人数据 |
 | `GET/PUT /api/v1/alert-rules` | 管理提醒 | 阈值校验、频率限制、审计 |
@@ -132,7 +135,7 @@ MVP 可使用同一 PostgreSQL 实例但分为两个独立数据库：`fund_core
 
 Java 调用 FastAPI 失败时必须降级为缓存数据，并显示最后成功更新时间；不得同步等待长时间模型训练或爬虫任务。
 
-M0 的字段名、分页、错误码与已实现状态见 `docs_zhx/design/fund-radar-api-v1.md`；M0 仅返回标注为 `M0_MOCK` 的临时数据，M1 才可接入已确认授权的数据源。
+M0 的字段名、分页、错误码与已实现状态见 `docs_zhx/design/fund-radar-api-v1.md`；当前 M1 已有 6 条一次性手工核验目录样本，但自动目录/净值同步仍必须等到已确认授权的数据源。
 
 ## 5. 数据任务与模型设计
 

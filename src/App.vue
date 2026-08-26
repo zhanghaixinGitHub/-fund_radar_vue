@@ -24,8 +24,11 @@ import { RouterLink, RouterView } from 'vue-router'
         <RouterLink to="/funds">
           基金市场
         </RouterLink>
+        <RouterLink to="/portfolio">
+          持仓快照
+        </RouterLink>
       </nav>
-      <span class="stage-label">M1 · 基础看板</span>
+      <span class="stage-label">本机数据链路</span>
     </header>
 
     <main class="page-content">

@@ -7,6 +7,14 @@ import { getFundDetail, getFundEvents, getFundSignals } from '@/api/funds'
 import { addWatchlistItem, getWatchlist, removeWatchlistItem } from '@/api/watchlist'
 import type { AlertRule, UpsertAlertRuleRequest } from '@/types/alert'
 import type { FundDetail, FundEventPage, FundSignal, FundSignalPage } from '@/types/fund'
+import {
+  dataSourceLabel,
+  fundStatusLabel,
+  fundTypeLabel,
+  netValueStatusLabel,
+  riskLevelLabel,
+  signalDirectionLabel,
+} from '@/utils/fundPresentation'
 
 /**
  * 基金详情页面的状态与交互逻辑。
@@ -213,13 +221,13 @@ watch(fundCode, () => {
     </p>
     <template v-else-if="fund">
       <p class="eyebrow">
-        FUND DETAIL
+        基金详情
       </p>
       <h1 id="fund-detail-title">
         {{ fund.fundName }}
       </h1>
       <p class="lead">
-        {{ fund.fundCode }} · {{ fund.fundType }} · {{ fund.status }}
+        {{ fund.fundCode }} · {{ fundTypeLabel(fund.fundType) }} · {{ fundStatusLabel(fund.status) }}
       </p>
       <p
         v-if="isMock"
@@ -236,8 +244,8 @@ watch(fundCode, () => {
       </p>
       <dl class="detail-grid">
         <div><dt>数据截至</dt><dd>{{ fund.asOfDate || '暂无有效净值' }}</dd></div>
-        <div><dt>净值状态</dt><dd>{{ fund.navStatus }}</dd></div>
-        <div><dt>数据来源</dt><dd>{{ fund.dataSource }}</dd></div>
+        <div><dt>净值状态</dt><dd>{{ netValueStatusLabel(fund.navStatus) }}</dd></div>
+        <div><dt>数据来源</dt><dd>{{ dataSourceLabel(fund.dataSource) }}</dd></div>
       </dl>
       <button
         class="primary-button"
@@ -264,7 +272,7 @@ watch(fundCode, () => {
         <div class="section-heading">
           <div>
             <p class="eyebrow">
-              EVENTS
+              事件追踪
             </p>
             <h2 id="event-title">
               关联事件
@@ -318,7 +326,7 @@ watch(fundCode, () => {
         <div class="section-heading">
           <div>
             <p class="eyebrow">
-              SIGNALS
+              评分与分析
             </p>
             <h2 id="signal-title">
               风险与分析状态
@@ -344,7 +352,7 @@ watch(fundCode, () => {
             <strong>{{ signalStatusLabel(signal) }}</strong>
             <p>数据截至 {{ signal.asOfDate }} · 模型 {{ signal.modelVersion }} · 特征 {{ signal.featureVersion }}</p>
             <p v-if="signal.scoreStatus === 'SCORED'">
-              方向 {{ signal.direction }} · 概率 {{ formatPercent(signal.directionalProbability) }} · 置信度 {{ formatPercent(signal.confidence) }} · 风险 {{ signal.riskLevel || '—' }}
+              方向 {{ signalDirectionLabel(signal.direction) }} · 概率 {{ formatPercent(signal.directionalProbability) }} · 置信度 {{ formatPercent(signal.confidence) }} · 风险 {{ riskLevelLabel(signal.riskLevel) }}
             </p>
             <p>依据：{{ signal.explanation }}</p>
           </li>
@@ -363,7 +371,7 @@ watch(fundCode, () => {
         <div class="section-heading">
           <div>
             <p class="eyebrow">
-              ALERTS
+              提醒设置
             </p>
             <h2 id="alert-rule-title">
               信息提醒规则

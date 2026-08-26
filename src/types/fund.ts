@@ -4,7 +4,7 @@ export interface FundSummary {
   fundName: string
   fundType: string
   status: string
-  asOfDate: string
+  asOfDate: string | null
 }
 
 /** 基金公开详情；`M0_MOCK` 仅用于演示，界面不得将其描述为真实行情。 */
