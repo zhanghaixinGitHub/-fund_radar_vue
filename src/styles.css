@@ -345,6 +345,40 @@ h2 {
   font-weight: 700;
 }
 
+.manual-sync-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px 24px;
+  align-items: center;
+  padding: 20px;
+  margin: 28px 0 36px;
+  background: rgb(228 240 233 / 72%);
+  border: 1px solid #b9d5c5;
+  border-radius: 14px;
+}
+
+.manual-sync-panel h2 {
+  margin: 0;
+  color: #17332e;
+  font-size: 20px;
+}
+
+.manual-sync-panel p:not(.eyebrow) {
+  max-width: 620px;
+  margin: 8px 0 0;
+  color: #597069;
+  line-height: 1.65;
+}
+
+.manual-sync-panel .secondary-button {
+  min-height: 44px;
+}
+
+.manual-sync-message {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
 .risk-disclaimer {
   max-width: 620px;
   margin-top: 28px;
@@ -875,7 +909,8 @@ h2 {
 
   .health-card,
   .boundary-grid,
-  .detail-grid {
+  .detail-grid,
+  .manual-sync-panel {
     grid-template-columns: 1fr;
   }
 

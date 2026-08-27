@@ -263,3 +263,20 @@ Java 以基金代码和日期范围作为 Redis 缓存键。FastAPI 失败时可
 ### 10.2 运行与降级边界
 
 Celery Worker 仅消费任务，Beat 仅投递任务；Windows 本机 Worker 必须使用 `--pool=solo`。外部可恢复异常最多按既有策略重试两次；缺少历史基线属于本地前置条件错误，不重试。同步失败不覆盖已有净值，Java/Vue 仍读取最后已落库数据并按既有缓存契约显示陈旧状态。
+
+### 10.3 本地页面手动同步链路
+
+```text
+Vue FundDetailPage「同步六只重点基金净值」
+  -> Java POST /api/v1/funds/sync/focused-nav-incremental
+  -> Java 服务令牌 + 独立 5 分钟读取超时
+  -> Python POST /internal/v1/funds/sync/focused-nav-incremental
+  -> PostgreSQL pg_try_advisory_lock（与 Celery 共用）
+  -> TushareFundSyncService.sync_focused_nav_incremental
+  -> source_sync_run + nav_daily
+  -> 返回 runId、截至日和读取/新增/更新/跳过统计
+```
+
+Python 内部接口拒绝浏览器 `Origin` 和缺失/错误服务令牌；不接收基金代码、日期或 Token 参数，只从本机受校验配置取得六只重点基金和当前日期。锁竞争返回 `409`，缺少历史基线返回 `422`，Tushare 已确认失败返回 `502`，其余 Python 不可达/超时由 Java 转为 `503`；任一失败不覆盖既有净值。Java 对外结果使用 camelCase，Python 内部结果保持 snake_case；Vue 同步期间禁用按钮、读屏播报状态，成功后只刷新当前基金详情与曲线。
+
+本链路不经过 Celery 队列，因此本地错过 20:00 时仅启动 Python、Java、Vue 后即可手动执行；Celery 定时任务仍保留，且与手动请求共享同一锁。人工同步专用读取超时默认 5 分钟，普通基金读模型仍为 3 秒，避免慢速批处理拖慢页面查询。

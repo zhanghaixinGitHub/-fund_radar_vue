@@ -31,6 +31,8 @@
 - [ ] 未通过
 - 未通过原因：
 
+---
+
 ## TC-02｜份额类别与日净值幂等同步
 
 前置条件：FastAPI AI 服务已配置测试数据源；存在同一基金主实体的两个份额类别和同日期净值数据。
@@ -568,7 +570,50 @@ LIMIT 1;
 
 ---
 
-## TC-19｜六只重点基金工作日增量同步
+## TC-19｜详情页手动补齐六只重点基金净值
+
+前置条件：Python、Java、Vue、PostgreSQL 已启动；Tushare Token 与 Java → Python 服务令牌已在本机忽略的 `.env` 中正确配置；六只重点基金均已有 Tushare 同源历史基线。Celery Beat 与 Worker 可以不启动。
+
+场景：本机错过工作日 20:00 后，用户在任意一只重点基金详情页手动补齐六只重点基金净值。
+
+操作步骤：
+
+1. 打开任一重点基金详情页，例如 `/funds/002112`。
+2. 在“手动同步最新净值”区域点击“同步六只重点基金净值”。
+3. 确认按钮在请求期间显示“正在同步，请稍候…”且不可重复点击。
+4. 等待页面显示新增、更新、跳过统计或明确的零变更说明；成功后确认当前基金详情和曲线刷新。
+5. 在同步尚未完成时，从另一页面或终端再次发起同一路径请求，确认第二次请求得到 `409/FOCUSED_SYNC_IN_PROGRESS`，不产生第二次外部调用。
+6. 在缺少任一重点基金历史基线的测试数据中发起请求，确认页面得到 `422/FOCUSED_SYNC_BASELINE_MISSING`，并提示先完成历史回填。
+
+数据库验证：
+
+```sql
+SELECT sync_type, status, requested_nav_date, fetched_count, created_count, updated_count, skipped_count, error_summary
+FROM source_sync_run
+WHERE sync_type = 'FOCUSED_NAV_INCREMENTAL'
+ORDER BY started_at DESC
+LIMIT 1;
+```
+
+| 验收点 | 预期结果 |
+| --- | --- |
+| 服务边界 | 浏览器仅请求 Java；Python 内部接口拒绝带 `Origin` 的直接浏览器请求 |
+| 同步范围 | 始终为配置的六只重点基金，不允许页面传入任意代码或全市场范围 |
+| 无 Worker 场景 | Python、Java、Vue 已启动时可直接完成，不依赖 Beat 或 Worker |
+| 防重复 | 同步中的第二次请求返回冲突，不增加额外 `source_sync_run` 或外部调用 |
+| 缺少基线 | 返回 `422/FOCUSED_SYNC_BASELINE_MISSING`，提示先完成历史回填 |
+| 成功反馈 | 页面显示安全统计；零变更明确为“暂无可写入的新净值” |
+| 失败保护 | Tushare 或数据校验失败时保留历史净值，不显示 Token、原始响应或买卖建议 |
+
+测试结果：
+
+- [x] 通过（2026-08-27：Python 受服务令牌/Origin 保护的接口契约测试通过；Java 映射测试、Vue lint/类型检查/构建通过。真实手动调用待用户在本机页面执行，不在自动化验证中触发外部数据写入。）
+- [ ] 未通过
+- 未通过原因：
+
+---
+
+## TC-20｜六只重点基金工作日增量同步
 
 前置条件：`fund_ai` 已完成六只基金的完整历史回填；Tushare 来源已登记；只启动一个 Celery Beat 和一个 Windows `solo` Worker；本机 `.env` 不包含在日志、截图或命令输出中。
 

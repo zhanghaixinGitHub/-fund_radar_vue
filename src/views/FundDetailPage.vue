@@ -4,10 +4,23 @@ import { useRoute } from 'vue-router'
 
 import { getAlertRules, upsertAlertRule } from '@/api/alerts'
 import FundNavHistoryChart from '@/components/FundNavHistoryChart.vue'
-import { getFundDetail, getFundEvents, getFundNavHistory, getFundSignals } from '@/api/funds'
+import {
+  getFundDetail,
+  getFundEvents,
+  getFundNavHistory,
+  getFundSignals,
+  syncFocusedNavIncremental,
+} from '@/api/funds'
 import { addWatchlistItem, getWatchlist, removeWatchlistItem } from '@/api/watchlist'
 import type { AlertRule, UpsertAlertRuleRequest } from '@/types/alert'
-import type { FundDetail, FundEventPage, FundNavHistory, FundSignal, FundSignalPage } from '@/types/fund'
+import type {
+  FocusedNavSyncResult,
+  FundDetail,
+  FundEventPage,
+  FundNavHistory,
+  FundSignal,
+  FundSignalPage,
+} from '@/types/fund'
 import {
   dataSourceLabel,
   fundStatusLabel,
@@ -26,8 +39,10 @@ const route = useRoute()
 const fund = ref<FundDetail | null>(null)
 const loading = ref(false)
 const changingWatchlist = ref(false)
+const syncingFocusedNav = ref(false)
 const errorMessage = ref('')
 const actionMessage = ref('')
+const syncMessage = ref('')
 const analysisMessage = ref('')
 const alertMessage = ref('')
 const watchedCodes = ref(new Set<string>())
@@ -226,6 +241,35 @@ async function toggleWatchlist(): Promise<void> {
   }
 }
 
+/** 将手动同步结果转换为明确的中文统计，不把零变更伪造成已获得当日净值。 */
+function focusedNavSyncMessage(result: FocusedNavSyncResult): string {
+  const changedCount = result.createdCount + result.updatedCount
+  if (changedCount === 0) {
+    return `同步完成：截至 ${result.requestedNavDate} 暂无可写入的新净值，现有数据未变更。`
+  }
+  return `同步完成：读取 ${result.fetchedCount} 条，新增 ${result.createdCount} 条，更新 ${result.updatedCount} 条，跳过 ${result.skippedCount} 条。`
+}
+
+/** 手动同步六只重点基金，并在完成后刷新当前详情和净值曲线。 */
+async function syncFocusedNav(): Promise<void> {
+  syncingFocusedNav.value = true
+  syncMessage.value = ''
+  try {
+    const result = await syncFocusedNavIncremental()
+    syncMessage.value = focusedNavSyncMessage(result)
+    try {
+      fund.value = await getFundDetail(fundCode.value)
+      await loadNavHistory()
+    } catch {
+      syncMessage.value = `${syncMessage.value} 同步已成功，但页面刷新失败，请手动刷新页面。`
+    }
+  } catch (error) {
+    syncMessage.value = error instanceof Error ? error.message : '净值同步未完成，请稍后重试。'
+  } finally {
+    syncingFocusedNav.value = false
+  }
+}
+
 /** 根据当前表单组装合法的提醒规则请求并保存到 Java 核心服务。 */
 async function saveAlertRule(): Promise<void> {
   savingAlert.value = true
@@ -322,6 +366,38 @@ watch(selectedNavRange, () => {
         <div><dt>净值状态</dt><dd>{{ netValueStatusLabel(fund.navStatus) }}</dd></div>
         <div><dt>数据来源</dt><dd>{{ dataSourceLabel(fund.dataSource) }}</dd></div>
       </dl>
+      <section
+        class="manual-sync-panel"
+        aria-labelledby="manual-sync-title"
+      >
+        <div>
+          <p class="eyebrow">
+            数据同步
+          </p>
+          <h2 id="manual-sync-title">
+            手动同步最新净值
+          </h2>
+          <p>
+            当本机未在工作日 20:00 运行时，可在此补齐六只重点基金的已披露净值；不涉及买卖或交易。
+          </p>
+        </div>
+        <button
+          class="secondary-button"
+          :aria-busy="syncingFocusedNav"
+          :disabled="syncingFocusedNav"
+          type="button"
+          @click="syncFocusedNav"
+        >
+          {{ syncingFocusedNav ? '正在同步，请稍候…' : '同步六只重点基金净值' }}
+        </button>
+        <p
+          v-if="syncMessage"
+          class="state-message manual-sync-message"
+          aria-live="polite"
+        >
+          {{ syncMessage }}
+        </p>
+      </section>
       <section
         class="analysis-section"
         aria-labelledby="nav-history-title"
