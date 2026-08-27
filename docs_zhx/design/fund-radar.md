@@ -249,7 +249,7 @@ Java 以基金代码和日期范围作为 Redis 缓存键。FastAPI 失败时可
 ### 10.1 水位与任务链路
 
 ```text
-唯一 Celery Beat（工作日 20:30，Asia/Shanghai）
+唯一 Celery Beat（工作日 20:00，Asia/Shanghai）
   -> fund_ai.tushare.sync_focused_nav_incremental
   -> 每只基金查询 TUSHARE_PRO_FUND 的 max(nav_date)
   -> fund_nav(ts_code, start_date=水位+1, end_date=本轮日期)
@@ -258,7 +258,7 @@ Java 以基金代码和日期范围作为 Redis 缓存键。FastAPI 失败时可
 
 `FOCUSED_NAV_INCREMENTAL` 不新增表：水位按 `source_id + fund_code` 读取 `nav_daily`，仍以 `(fund_code, nav_date, source_id)` 幂等写入。所有六只基金必须已有 Tushare 历史基线；任一基线缺失时任务创建失败运行记录并停止，要求先执行 `focused` 完整回填。若水位已达到本轮日期，不发起外部调用、以 0 条变更成功结束。
 
-每只外部响应只接受自身窗口内的 `ts_code` 和 `nav_date`；窗口外、非目标基金或同一基金日期存在矛盾净值都会失败关闭。任务默认配置为开关开启、20:30；可用 `TUSHARE_FOCUSED_INCREMENTAL_ENABLED`、`TUSHARE_FOCUSED_INCREMENTAL_HOUR`、`TUSHARE_FOCUSED_INCREMENTAL_MINUTE` 覆盖。由于未接入中国交易日历，节假日会获得安全的零变更结果；同一环境不得启动多个 Beat，避免重复外部调用。
+每只外部响应只接受自身窗口内的 `ts_code` 和 `nav_date`；窗口外、非目标基金或同一基金日期存在矛盾净值都会失败关闭。任务默认配置为开关开启、20:00；可用 `TUSHARE_FOCUSED_INCREMENTAL_ENABLED`、`TUSHARE_FOCUSED_INCREMENTAL_HOUR`、`TUSHARE_FOCUSED_INCREMENTAL_MINUTE` 覆盖。由于未接入中国交易日历，节假日会获得安全的零变更结果；同一环境不得启动多个 Beat，避免重复外部调用。
 
 ### 10.2 运行与降级边界
 
