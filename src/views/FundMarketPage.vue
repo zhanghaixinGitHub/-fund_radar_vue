@@ -5,7 +5,7 @@ import { useFundMarket } from '@/composables/useFundMarket'
 import { fundStatusLabel, fundTypeLabel } from '@/utils/fundPresentation'
 
 /**
- * 基金市场页面。
+ * 重点基金清单页面。
  *
  * 首次进入时加载基金列表，并将搜索、分页和请求状态委托给 useFundMarket 统一管理。
  */
@@ -36,13 +36,13 @@ onMounted(() => {
     aria-labelledby="market-title"
   >
     <p class="eyebrow">
-      基金市场
+      重点基金
     </p>
     <h1 id="market-title">
-      基金市场
+      重点基金清单
     </h1>
     <p class="lead">
-      仅展示经 Java 核心服务返回的基金读模型；接入授权数据源前，结果会明确标注为 Mock。
+      当前仅展示你确认的六只重点基金；不会把它们描述为全市场目录。真实历史净值来自已授权的 Tushare 同步结果。
     </p>
     <p
       v-if="stale"
@@ -86,7 +86,7 @@ onMounted(() => {
       v-else-if="!loading && funds.length === 0"
       class="state-message"
     >
-      暂无可展示基金。请在来源授权完成并同步成功后重新查询。
+      暂无可展示重点基金。请先执行受控重点清单同步后重新查询。
     </p>
     <ul
       v-else

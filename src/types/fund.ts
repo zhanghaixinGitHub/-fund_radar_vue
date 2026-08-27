@@ -19,6 +19,20 @@ export interface FundDetail extends FundSummary {
   cachedAt: string | null
 }
 
+/** 一条已同步的历史日净值；不等同于盘中估值或未来收益。 */
+export interface FundNavPoint {
+  navDate: string
+  unitNav: number | string
+  accumulatedNav: number | string | null
+}
+
+/** Java 对外返回的指定日期窗口历史净值。 */
+export interface FundNavHistory {
+  items: FundNavPoint[]
+  stale: boolean
+  cachedAt: string | null
+}
+
 /** 支持游标翻页的基金列表响应。 */
 export interface FundPage {
   items: FundSummary[]

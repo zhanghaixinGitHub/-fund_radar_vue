@@ -115,6 +115,7 @@ MVP 可使用同一 PostgreSQL 实例但分为两个独立数据库：`fund_core
 | `GET /api/v1/funds` | 分页筛选基金 | 强制分页、类型/状态/关键词白名单过滤 |
 | `GET /api/v1/funds/{fundCode}` | 基金详情 | 返回数据截至时间与产品类型 |
 | `GET /api/v1/funds/{fundCode}/signals` | 信号历史 | 默认按日期倒序，携带模型版本和解释 |
+| `GET /api/v1/funds/{fundCode}/nav-history` | 已落库历史单位净值 | `startDate`、`endDate` 可选；最多 5,000 天；不触发外部请求 |
 | `GET /api/v1/funds/{fundCode}/events` | 关联资讯与事件 | 返回来源链接、可信度、相关性，不宣称因果 |
 | `GET /api/v1/portfolio/current` | 读取本机当前持仓快照 | 只读；返回日期状态与确认字段，不读支付宝、不计算实时净值 |
 | `POST /api/v1/watchlist` | 添加关注 | 幂等；仅允许有效基金代码 |
@@ -130,6 +131,7 @@ MVP 可使用同一 PostgreSQL 实例但分为两个独立数据库：`fund_core
 | --- | --- | --- |
 | `GET /internal/v1/funds/{fundCode}` | 获取 AI 数据读模型 | 服务身份认证、短超时、只读 |
 | `GET /internal/v1/signals` | 分页拉取已完成信号 | 游标、模型版本、结果哈希 |
+| `GET /internal/v1/funds/{fundCode}/nav-history` | 查询已落库历史单位净值 | 受 `X-Service-Token` 保护；日期区间最多 5,000 天 |
 | `GET /internal/v1/events` | 拉取已审核事件 | 只返回授权范围内摘要和链接 |
 | `POST /internal/v1/tasks/rebuild` | 受控触发补数/重算 | 管理权限、幂等键、审计、队列异步执行 |
 
@@ -220,3 +222,24 @@ Celery / 受控本机命令
 - 目录按 500 条一批事务提交；失败后允许新建运行重试，依赖业务键与内容哈希防重。目录同步不做“本次未出现即删除”。
 - `fund_share_class.source_code` 表示目录来源；详情存在净值时优先显示最新净值来源，否则显示目录来源，避免把手工目录误标为 Tushare 净值。
 - 详情页的 `unitNav`、`accumulatedNav`、`asOfDate` 和 `dataSource` 必须取自同一条按“净值日期倒序、来源代码正序”选出的 `nav_daily` 记录；累计净值为 `NULL` 时对外保持 `null`，页面显示“暂缺”，不得以单位净值替代。
+
+## 9. v0.3｜重点基金历史净值闭环设计
+
+### 9.1 受控范围与同步
+
+全市场 `fund_basic` 分片在当前权限下命中 15,000 条上限时，完整性无法证明，因此独立的 `focused` 同步只能处理配置中的六个精确 Tushare 代码：`010710.OF`、`160323.SZ`、`013275.OF`、`007832.OF`、`002112.OF`、`005312.OF`。配置项 `TUSHARE_FOCUSED_FUND_TS_CODES` 只能填写带市场后缀的代码；空值、重复值或格式错误均拒绝启动。
+
+同步先完整拉取六条目录，再完整拉取每一只基金指定日期范围的历史净值，之后才分批落库。任一目录未精确命中、历史返回空、混入非目标代码或返回行数达到 `TUSHARE_FOCUSED_NAV_MAX_ROWS_PER_QUERY`（默认 10,000）时，运行失败关闭，避免部分范围被误认为完整。运行类型分别为 `FOCUSED_CATALOG` 与 `FOCUSED_NAV_HISTORY`，保留新增、更新、跳过统计和脱敏错误，不记录凭证或原始响应。
+
+`nav_daily` 继续以 `(fund_code, nav_date, source_id)` 为业务去重键，并按月分区。迁移 `20260827_04` 为 2015-01 至 2026-07 补齐历史分区（当月分区沿用既有分区）；同一日期多来源读取时，按来源代码正序选择稳定的一条，避免前端曲线出现重复日期。
+
+### 9.2 读取与展示
+
+```
+Vue FundDetailPage
+  -> Java GET /api/v1/funds/{fundCode}/nav-history
+  -> FastAPI GET /internal/v1/funds/{fundCode}/nav-history
+  -> fund_ai.nav_daily（仅持久化查询）
+```
+
+Java 以基金代码和日期范围作为 Redis 缓存键。FastAPI 失败时可返回最后一次成功的完整缓存响应，并携带 `stale=true` 与 `cachedAt`；缓存不存在则按既有错误契约失败。Vue 使用实际单位净值绘制无动画折线，并提供可访问的最近 12 个数据点表格，不能用颜色单独表达涨跌或缓存状态。

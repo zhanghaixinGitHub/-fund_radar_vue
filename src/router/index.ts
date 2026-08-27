@@ -24,7 +24,7 @@ export const router = createRouter({
       path: '/funds',
       name: 'fund-market',
       component: FundMarketPage,
-      meta: { title: '基金市场' },
+      meta: { title: '重点基金清单' },
     },
     {
       path: '/funds/:fundCode',
@@ -49,5 +49,5 @@ export const router = createRouter({
 
 /** 根据当前页面的路由元数据更新浏览器标题。 */
 router.afterEach((to) => {
-  document.title = `${String(to.meta.title ?? '全市场基金雷达')} · 全市场基金雷达`
+  document.title = `${String(to.meta.title ?? '重点基金雷达')} · 重点基金雷达`
 })

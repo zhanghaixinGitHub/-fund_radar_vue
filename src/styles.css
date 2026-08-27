@@ -369,6 +369,33 @@ h2 {
   font-size: 13px;
 }
 
+.nav-range-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.nav-range-controls button {
+  min-height: 44px;
+  padding: 9px 13px;
+  color: #49635c;
+  font-weight: 700;
+  background: rgb(255 255 255 / 72%);
+  border: 1px solid #b9d5c5;
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.nav-range-controls button:hover,
+.nav-range-controls button:focus-visible,
+.nav-range-controls button.is-active {
+  color: #fff;
+  background: #0f766e;
+  border-color: #0f766e;
+  outline: none;
+}
+
 .event-list,
 .signal-list {
   display: grid;

@@ -3,10 +3,11 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import { getAlertRules, upsertAlertRule } from '@/api/alerts'
-import { getFundDetail, getFundEvents, getFundSignals } from '@/api/funds'
+import FundNavHistoryChart from '@/components/FundNavHistoryChart.vue'
+import { getFundDetail, getFundEvents, getFundNavHistory, getFundSignals } from '@/api/funds'
 import { addWatchlistItem, getWatchlist, removeWatchlistItem } from '@/api/watchlist'
 import type { AlertRule, UpsertAlertRuleRequest } from '@/types/alert'
-import type { FundDetail, FundEventPage, FundSignal, FundSignalPage } from '@/types/fund'
+import type { FundDetail, FundEventPage, FundNavHistory, FundSignal, FundSignalPage } from '@/types/fund'
 import {
   dataSourceLabel,
   fundStatusLabel,
@@ -32,6 +33,10 @@ const alertMessage = ref('')
 const watchedCodes = ref(new Set<string>())
 const events = ref<FundEventPage | null>(null)
 const signals = ref<FundSignalPage | null>(null)
+const navHistory = ref<FundNavHistory | null>(null)
+const navHistoryLoading = ref(false)
+const navHistoryError = ref('')
+const selectedNavRange = ref<'THREE_MONTHS' | 'ONE_YEAR' | 'THREE_YEARS' | 'ALL'>('ONE_YEAR')
 const alertRules = ref<AlertRule[]>([])
 const selectedAlertType = ref<AlertRule['ruleType']>('RISK_LEVEL')
 const riskThreshold = ref(0.5)
@@ -41,6 +46,12 @@ const fundCode = computed(() => String(route.params.fundCode ?? ''))
 const isMock = computed(() => fund.value?.dataSource === 'M0_MOCK')
 const isStale = computed(() => fund.value?.stale === true)
 const isWatched = computed(() => watchedCodes.value.has(fundCode.value))
+const navRangeOptions = [
+  { value: 'THREE_MONTHS', label: '近三月' },
+  { value: 'ONE_YEAR', label: '近一年' },
+  { value: 'THREE_YEARS', label: '近三年' },
+  { value: 'ALL', label: '成立以来' },
+] as const
 
 /** 将 0 到 1 范围的数值格式化为界面展示的百分比；缺失或非法值显示占位符。 */
 function formatPercent(value: number | string | null): string {
@@ -64,6 +75,42 @@ function formatNetValue(value: number | string | null | undefined): string {
     minimumFractionDigits: 4,
     maximumFractionDigits: 4,
   })
+}
+
+/** 以基金最新已同步日期为锚点计算查询窗口，避免浏览器时钟把未来日期带入接口。 */
+function navHistoryStartDate(endDate: string): string {
+  if (selectedNavRange.value === 'ALL') {
+    return '2015-01-01'
+  }
+  const [year, month, day] = endDate.split('-').map(Number)
+  const anchor = new Date(Date.UTC(year, month - 1, day))
+  anchor.setUTCDate(anchor.getUTCDate() - {
+    THREE_MONTHS: 92,
+    ONE_YEAR: 366,
+    THREE_YEARS: 1_096,
+  }[selectedNavRange.value])
+  return anchor.toISOString().slice(0, 10)
+}
+
+/** 独立加载历史净值；失败不影响目录、关注或提醒规则的展示。 */
+async function loadNavHistory(): Promise<void> {
+  navHistory.value = null
+  navHistoryError.value = ''
+  if (!fund.value?.asOfDate) {
+    return
+  }
+  navHistoryLoading.value = true
+  try {
+    navHistory.value = await getFundNavHistory(
+      fundCode.value,
+      navHistoryStartDate(fund.value.asOfDate),
+      fund.value.asOfDate,
+    )
+  } catch (error) {
+    navHistoryError.value = error instanceof Error ? error.message : '历史净值暂时不可用。'
+  } finally {
+    navHistoryLoading.value = false
+  }
 }
 
 /** 将后端评分状态转换为用户可理解的中文说明，不推断任何缺失的方向结论。 */
@@ -110,6 +157,8 @@ async function load(): Promise<void> {
   alertMessage.value = ''
   events.value = null
   signals.value = null
+  navHistory.value = null
+  navHistoryError.value = ''
   try {
     fund.value = await getFundDetail(fundCode.value)
   } catch (error) {
@@ -119,11 +168,15 @@ async function load(): Promise<void> {
     return
   }
 
-  const [eventsResult, signalsResult, alertRulesResult] = await Promise.allSettled([
+  const [historyResult, eventsResult, signalsResult, alertRulesResult] = await Promise.allSettled([
+    loadNavHistory(),
     getFundEvents(fundCode.value),
     getFundSignals(fundCode.value),
     getAlertRules(),
   ])
+  if (historyResult.status === 'rejected') {
+    navHistoryError.value = '历史净值暂时不可用。'
+  }
   if (eventsResult.status === 'fulfilled') {
     events.value = eventsResult.value
   }
@@ -208,6 +261,11 @@ onMounted(() => {
 watch(fundCode, () => {
   void load()
 })
+
+/** 切换时间范围时仅重新加载历史曲线，不重新请求事件、评分或关注数据。 */
+watch(selectedNavRange, () => {
+  void loadNavHistory()
+})
 </script>
 
 <template>
@@ -219,7 +277,7 @@ watch(fundCode, () => {
       class="back-link"
       to="/funds"
     >
-      ← 返回基金市场
+      ← 返回重点基金清单
     </RouterLink>
     <p
       v-if="loading"
@@ -264,6 +322,47 @@ watch(fundCode, () => {
         <div><dt>净值状态</dt><dd>{{ netValueStatusLabel(fund.navStatus) }}</dd></div>
         <div><dt>数据来源</dt><dd>{{ dataSourceLabel(fund.dataSource) }}</dd></div>
       </dl>
+      <section
+        class="analysis-section"
+        aria-labelledby="nav-history-title"
+      >
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">
+              净值走势
+            </p>
+            <h2 id="nav-history-title">
+              历史单位净值
+            </h2>
+          </div>
+          <span class="section-note">仅展示已同步历史数据</span>
+        </div>
+        <div
+          class="nav-range-controls"
+          aria-label="历史净值时间范围"
+        >
+          <button
+            v-for="option in navRangeOptions"
+            :key="option.value"
+            :aria-pressed="selectedNavRange === option.value"
+            :class="{ 'is-active': selectedNavRange === option.value }"
+            type="button"
+            @click="selectedNavRange = option.value"
+          >
+            {{ option.label }}
+          </button>
+        </div>
+        <FundNavHistoryChart
+          :cached-at="navHistory?.cachedAt ?? null"
+          :error-message="navHistoryError"
+          :loading="navHistoryLoading"
+          :points="navHistory?.items ?? []"
+          :stale="navHistory?.stale ?? false"
+        />
+        <p class="risk-disclaimer">
+          净值曲线用于回顾已披露的历史变化，不代表实时估值、未来收益或买卖建议。
+        </p>
+      </section>
       <button
         class="primary-button"
         :disabled="changingWatchlist"

@@ -1,5 +1,5 @@
 import { get } from '@/api/http'
-import type { FundDetail, FundEventPage, FundListQuery, FundPage, FundSignalPage } from '@/types/fund'
+import type { FundDetail, FundEventPage, FundListQuery, FundNavHistory, FundPage, FundSignalPage } from '@/types/fund'
 
 /**
  * 查询 Java 对外发布的基金分页数据。
@@ -23,6 +23,16 @@ export function getFunds(query: FundListQuery = {}): Promise<FundPage> {
 /** 通过 Java 核心服务查询单只基金的公开详情。 */
 export function getFundDetail(fundCode: string): Promise<FundDetail> {
   return get<FundDetail>(`/api/v1/funds/${encodeURIComponent(fundCode)}`)
+}
+
+/** 查询已落库的历史净值窗口，不在浏览器直接访问 Tushare 或 Python 服务。 */
+export function getFundNavHistory(
+  fundCode: string,
+  startDate: string,
+  endDate: string,
+): Promise<FundNavHistory> {
+  const query = new URLSearchParams({ startDate, endDate })
+  return get<FundNavHistory>(`/api/v1/funds/${encodeURIComponent(fundCode)}/nav-history?${query.toString()}`)
 }
 
 /** 通过 Java 核心服务查询可追溯来源的关联事件摘要。 */
