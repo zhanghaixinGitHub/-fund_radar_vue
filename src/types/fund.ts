@@ -33,17 +33,6 @@ export interface FundNavHistory {
   cachedAt: string | null
 }
 
-/** 手动同步六只重点基金后返回的受控统计摘要，不含外部原始响应。 */
-export interface FocusedNavSyncResult {
-  syncRunId: string
-  requestedNavDate: string
-  fundCodes: string[]
-  fetchedCount: number
-  createdCount: number
-  updatedCount: number
-  skippedCount: number
-}
-
 /** 支持游标翻页的基金列表响应。 */
 export interface FundPage {
   items: FundSummary[]

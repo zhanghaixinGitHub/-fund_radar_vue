@@ -5,6 +5,7 @@ import FundDetailPage from '@/views/FundDetailPage.vue'
 import FundMarketPage from '@/views/FundMarketPage.vue'
 import SystemHealthPage from '@/views/SystemHealthPage.vue'
 import PortfolioSnapshotPage from '@/views/PortfolioSnapshotPage.vue'
+import SyncCenterPage from '@/views/SyncCenterPage.vue'
 
 /**
  * 前端路由表。
@@ -37,6 +38,12 @@ export const router = createRouter({
       name: 'portfolio-snapshot',
       component: PortfolioSnapshotPage,
       meta: { title: '持仓快照' },
+    },
+    {
+      path: '/sync-center',
+      name: 'sync-center',
+      component: SyncCenterPage,
+      meta: { title: '数据同步中心' },
     },
     {
       path: '/:pathMatch(.*)*',

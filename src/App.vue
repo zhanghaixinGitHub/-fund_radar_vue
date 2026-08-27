@@ -27,6 +27,9 @@ import { RouterLink, RouterView } from 'vue-router'
         <RouterLink to="/portfolio">
           持仓快照
         </RouterLink>
+        <RouterLink to="/sync-center">
+          数据同步
+        </RouterLink>
       </nav>
       <span class="stage-label">本机数据链路</span>
     </header>

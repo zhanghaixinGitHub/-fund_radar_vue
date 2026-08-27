@@ -345,38 +345,178 @@ h2 {
   font-weight: 700;
 }
 
-.manual-sync-panel {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 14px 24px;
-  align-items: center;
+.sync-center-page {
+  max-width: 980px;
+}
+
+.sync-task-card {
+  padding: 26px;
+  margin-top: 30px;
+  background: rgb(255 255 255 / 74%);
+  border: 1px solid rgb(20 68 57 / 16%);
+  border-radius: 18px;
+  box-shadow: 0 16px 32px rgb(20 68 57 / 7%);
+}
+
+.sync-task-heading {
+  display: flex;
+  gap: 20px;
+  align-items: start;
+  justify-content: space-between;
+}
+
+.sync-task-heading h2,
+.sync-center-notes h2 {
+  margin: 0;
+  color: #17332e;
+  font-size: 22px;
+}
+
+.sync-task-heading p:not(.eyebrow) {
+  max-width: 640px;
+  margin: 8px 0 0;
+  color: #597069;
+  line-height: 1.7;
+}
+
+.sync-status {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  color: #597069;
+  font-size: 14px;
+  font-weight: 700;
+  background: #edf2ef;
+  border-radius: 999px;
+}
+
+.sync-status.is-queued,
+.sync-status.is-running {
+  color: #765614;
+  background: #fff1cc;
+}
+
+.sync-status.is-succeeded {
+  color: #0d5e57;
+  background: #dcefe3;
+}
+
+.sync-status.is-failed {
+  color: #a34232;
+  background: #fde8e3;
+}
+
+.sync-progress-section {
   padding: 20px;
-  margin: 28px 0 36px;
-  background: rgb(228 240 233 / 72%);
-  border: 1px solid #b9d5c5;
+  margin-top: 24px;
+  background: #f2f7f3;
+  border: 1px solid #d8e6dc;
   border-radius: 14px;
 }
 
-.manual-sync-panel h2 {
+.sync-progress-meta,
+.sync-task-actions {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sync-progress-meta strong {
+  color: #17332e;
+}
+
+.sync-progress-meta span,
+.sync-progress-note {
+  color: #597069;
+  font-size: 14px;
+}
+
+.sync-progress-track {
+  height: 10px;
+  margin-top: 12px;
+  overflow: hidden;
+  background: #dbe7df;
+  border-radius: 999px;
+}
+
+.sync-progress-track span {
+  display: block;
+  height: 100%;
+  background: #0f766e;
+  border-radius: inherit;
+  transition: width 200ms ease-out;
+}
+
+.sync-progress-note {
+  margin: 12px 0 0;
+}
+
+.sync-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 20px 0 0;
+}
+
+.sync-summary-grid div {
+  padding: 14px;
+  background: rgb(255 255 255 / 76%);
+  border: 1px solid rgb(20 68 57 / 12%);
+  border-radius: 12px;
+}
+
+.sync-summary-grid dt {
+  margin-bottom: 8px;
+  color: #597069;
+  font-size: 13px;
+}
+
+.sync-summary-grid dd {
   margin: 0;
   color: #17332e;
-  font-size: 20px;
+  font-weight: 700;
 }
 
-.manual-sync-panel p:not(.eyebrow) {
-  max-width: 620px;
-  margin: 8px 0 0;
-  color: #597069;
-  line-height: 1.65;
+.sync-job-message {
+  margin-bottom: 0;
 }
 
-.manual-sync-panel .secondary-button {
+.sync-task-actions {
+  justify-content: start;
+  margin-top: 22px;
+}
+
+.sync-task-actions .secondary-button {
   min-height: 44px;
 }
 
-.manual-sync-message {
-  grid-column: 1 / -1;
-  margin: 0;
+.inline-link {
+  min-height: 44px;
+  color: #0d5e57;
+  font-weight: 700;
+  line-height: 44px;
+}
+
+.inline-link:focus-visible,
+.secondary-button:focus-visible {
+  outline: 3px solid rgb(15 118 110 / 30%);
+  outline-offset: 3px;
+}
+
+.sync-center-notes {
+  padding: 24px;
+  margin-top: 26px;
+  background: rgb(255 255 255 / 60%);
+  border-left: 4px solid #0f766e;
+}
+
+.sync-center-notes ul {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0 0;
+  padding-left: 20px;
+  color: #597069;
+  line-height: 1.7;
 }
 
 .risk-disclaimer {
@@ -910,8 +1050,15 @@ h2 {
   .health-card,
   .boundary-grid,
   .detail-grid,
-  .manual-sync-panel {
+  .sync-summary-grid {
     grid-template-columns: 1fr;
+  }
+
+  .sync-task-heading,
+  .sync-progress-meta,
+  .sync-task-actions {
+    align-items: start;
+    flex-direction: column;
   }
 
   .search-row,

@@ -1,6 +1,5 @@
-import { get, post } from '@/api/http'
+import { get } from '@/api/http'
 import type {
-  FocusedNavSyncResult,
   FundDetail,
   FundEventPage,
   FundListQuery,
@@ -41,11 +40,6 @@ export function getFundNavHistory(
 ): Promise<FundNavHistory> {
   const query = new URLSearchParams({ startDate, endDate })
   return get<FundNavHistory>(`/api/v1/funds/${encodeURIComponent(fundCode)}/nav-history?${query.toString()}`)
-}
-
-/** 手动补齐已配置的六只重点基金净值；浏览器不会直接访问 Python 或 Tushare。 */
-export function syncFocusedNavIncremental(): Promise<FocusedNavSyncResult> {
-  return post<FocusedNavSyncResult>('/api/v1/funds/sync/focused-nav-incremental')
 }
 
 /** 通过 Java 核心服务查询可追溯来源的关联事件摘要。 */
