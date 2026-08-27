@@ -11,13 +11,13 @@
       页面不存在
     </h1>
     <p class="lead">
-      当前仅开放 M0 系统状态页。
+      请从基金市场或已获授权的后台功能继续操作。
     </p>
     <RouterLink
       class="primary-link"
       to="/"
     >
-      返回系统状态
+      返回基金市场
     </RouterLink>
   </section>
 </template>

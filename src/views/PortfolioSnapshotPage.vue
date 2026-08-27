@@ -4,7 +4,7 @@ import { computed, onMounted } from 'vue'
 import { usePortfolioSnapshot } from '@/composables/usePortfolioSnapshot'
 import type { PortfolioHoldingSnapshot } from '@/types/portfolio'
 
-/** 本机单用户持仓快照页面；只展示 Java 已保存且用户确认的字段。 */
+/** 当前登录用户持仓快照页面；只展示 Java 已保存且用户确认的字段。 */
 const { errorMessage, load, loading, snapshot } = usePortfolioSnapshot()
 
 const holdings = computed(() => snapshot.value?.holdings ?? [])
@@ -110,7 +110,7 @@ function formatImportedAt(value: string | null): string {
           <span>不把未知说成实时。</span>
         </h1>
         <p class="portfolio-lead">
-          展示当前本机用户确认入库的基金截图字段。基金目录已核验；截图未显示日期、份额与成本，
+          展示当前登录用户确认入库的基金截图字段。基金目录已核验；截图未显示日期、份额与成本，
           所以页面不会推算实时总资产、持仓成本或投资建议。
         </p>
       </div>
@@ -119,7 +119,7 @@ function formatImportedAt(value: string | null): string {
         aria-label="数据边界"
       >
         <span class="source-card-kicker">DATA BOUNDARY</span>
-        <strong>本机确认快照</strong>
+        <strong>个人确认快照</strong>
         <p>不上传原图，不读取支付宝账户，不提供买卖操作。</p>
       </aside>
     </div>
@@ -149,7 +149,7 @@ function formatImportedAt(value: string | null): string {
       v-else-if="!snapshot?.available"
       class="portfolio-state"
     >
-      当前本机用户尚未导入确认快照，因此没有可展示的持仓数据。
+      当前账号尚未导入确认快照，因此没有可展示的持仓数据。
     </div>
     <template v-else>
       <div

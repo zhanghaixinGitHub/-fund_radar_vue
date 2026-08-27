@@ -190,3 +190,20 @@
 | M4 完整持仓分析与多人数据隔离 | 已有登录认证、本人授权、删除/导出策略，以及用户确认的日期/份额/成本 | 当前仅支持本机确认快照；禁止支付宝登录、凭证采集或未确认 OCR 入库 |
 
 禁止出现支付宝登录、持仓抓取、申购、赎回、买入、卖出或自动交易接口。
+
+## 5. v1.0 认证与后台账户管理接口
+
+| 接口 | 身份/权限 | 请求或响应约束 |
+| --- | --- | --- |
+| `POST /api/v1/auth/register` | 匿名 | `{mobile,password}`；显式创建默认基金用户并建立会话；重复手机号返回 `409/ACCOUNT_ALREADY_EXISTS` |
+| `POST /api/v1/auth/login` | 匿名 | `{mobile,password}`；仅校验既有账户，未知手机号统一返回 `401/INVALID_CREDENTIALS` |
+| `GET /api/v1/auth/me` | 已登录 | 返回角色和权限集合，不含 Cookie、密码或完整手机号 |
+| `POST /api/v1/auth/logout` | 已登录 + CSRF | 撤销当前会话并清理 Cookie |
+| `GET /api/v1/admin/users` | `USER_ACCOUNT_READ` | 脱敏账户分页、关注数和历史标识 |
+| `PUT /api/v1/admin/users/{id}/role` | `USER_ACCOUNT_MANAGE` | 调整角色并撤销目标会话 |
+| `PUT /api/v1/admin/users/{id}/status` | `USER_ACCOUNT_MANAGE` | 启停账户；不得移除最后一个启用系统管理员 |
+| `POST /api/v1/admin/users/{id}/reset-password` | `USER_ACCOUNT_MANAGE` | 人工重置密码并撤销目标会话 |
+| `GET /api/v1/admin/users/{id}/portfolio/current` | `PORTFOLIO_USER_READ` | 仅系统管理员受控读取指定用户确认快照 |
+| `POST /api/v1/admin/legacy-watchlist/transfer` | `LEGACY_WATCHLIST_TRANSFER` | 必须 `confirmed=true`；不迁移提醒/持仓 |
+
+除注册、登录和 CORS 预检外，所有 `/api/v1/**` 都必须有有效会话；写请求还必须带正确的 CSRF Header。未登录返回 `401/AUTHENTICATION_REQUIRED`，权限不足返回 `403/ACCESS_DENIED`。

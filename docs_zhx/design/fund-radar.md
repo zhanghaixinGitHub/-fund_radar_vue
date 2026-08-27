@@ -299,3 +299,18 @@ Vue FundMarketPage（关键字、pageSize、page）
 不携带 `page` 时保留原有游标读取及 `next_cursor`，以兼容已发布调用方；`page` 与非空 `cursor` 互斥。Java 将 Python snake_case 元数据转换为 camelCase，正常结果与陈旧缓存结果都完整保留 `page`、`pageSize`、`totalCount`、`totalPages`，缓存命中不得跨页。
 
 Vue 默认请求 `page=1&pageSize=20`，显示总条数、每页 10/20/50 条、当前页/总页数、上一页/下一页及跳页输入；关键字或页大小改变时重置第 1 页。控件使用可见标签、键盘 Enter 跳转、禁用加载中的重复请求，并在小屏自动换行，不依赖颜色表达可用状态。
+
+## 12. 用户会话、前后台路由与数据范围
+
+Vue 新增 Pinia 会话状态，只保存服务端返回的掩码手机号、显示名、角色和权限集合；密码、完整手机号、会话 Cookie 均不保存。浏览器经 `credentials: include` 访问 Java，写请求从非 HttpOnly CSRF Cookie 读取令牌。Java 保存 HttpOnly 会话 Cookie 摘要并校验 Origin、CSRF、资源权限和当前 `userId` 数据范围。
+
+```text
+登录页或注册页（仅有的匿名账户页）
+  -> POST /api/v1/auth/login 或 /api/v1/auth/register
+  -> HttpOnly 会话 Cookie + CSRF Cookie
+  -> 路由守卫恢复 GET /api/v1/auth/me
+  -> 用户端 /funds、/watchlist、/portfolio
+  -> 后台 /admin、/admin/sync、/admin/users、/admin/system-health
+```
+
+路由守卫按 Java 返回的权限决定菜单和页面访问体验；所有业务 API 仍由 Java 重新认证和授权。用户端个人接口不允许浏览器传入 `userId`。管理员查看指定用户持仓使用独立后台端点；历史关注迁移显式提交 `confirmed=true`，只迁移关注记录。

@@ -9,7 +9,7 @@ export function usePortfolioSnapshot() {
   const loading = ref(false)
   const errorMessage = ref('')
 
-  /** 从 Java 核心服务加载当前本机快照；失败时不保留可能过期的旧结果。 */
+  /** 从 Java 核心服务加载当前登录用户快照；失败时不保留可能过期的旧结果。 */
   async function load(): Promise<void> {
     loading.value = true
     errorMessage.value = ''

@@ -5,7 +5,7 @@ import { getWatchlist } from '@/api/watchlist'
 import type { WatchlistItem } from '@/types/watchlist'
 
 /**
- * 当前本机用户的关注列表页面。
+ * 当前登录用户的关注列表页面。
  *
  * 关注接口仅返回基金代码和关注时间；页面直接展示这两个已确认字段并链接详情，
  * 不为每一行额外查询基金详情，避免关注项增多时形成 N+1 请求。
@@ -26,7 +26,7 @@ function formatCreatedAt(value: string): string {
   }).format(parsed)
 }
 
-/** 加载当前本机用户的关注项；失败时保留空列表并展示可操作错误信息。 */
+/** 加载当前登录用户的关注项；失败时保留空列表并展示可操作错误信息。 */
 async function loadWatchlist(): Promise<void> {
   loading.value = true
   errorMessage.value = ''
@@ -60,7 +60,7 @@ onMounted(() => {
       从基金市场或基金详情中加入关注的基金会集中显示在这里，方便后续查看净值、事件和提醒。
     </p>
     <p class="notice-banner">
-      当前为本机单用户模式。登录、多人数据隔离与跨设备同步将在账号能力启用后由服务端统一提供。
+      每个登录账号仅能查看和维护自己名下的关注基金；账户、角色与数据范围由服务端统一控制。
     </p>
 
     <p

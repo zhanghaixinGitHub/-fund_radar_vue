@@ -10,7 +10,7 @@ export interface PortfolioHoldingSnapshot {
   reportedCumulativeGainAmount: number | string
 }
 
-/** 当前本机用户的最新确认持仓快照。 */
+/** 当前登录用户的最新确认持仓快照。 */
 export interface PortfolioSnapshot {
   available: boolean
   sourceKind: 'USER_CONFIRMED_SCREENSHOT' | null
