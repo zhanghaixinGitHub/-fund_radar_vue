@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth'
@@ -10,14 +10,57 @@ const router = useRouter()
 const authStore = useAuthStore()
 const showAppShell = computed(() => route.meta.requiresAuth !== false)
 const isAdminArea = computed(() => route.meta.appArea === 'admin')
+const accountMenuOpen = ref(false)
+const accountMenuElement = ref<globalThis.HTMLElement | null>(null)
+const adminEntryPermissions: PermissionCode[] = [
+  'ADMIN_DASHBOARD_VIEW',
+  'SYSTEM_HEALTH_READ',
+  'SYNC_JOB_READ',
+  'USER_ACCOUNT_READ',
+]
+const hasAdminAccess = computed(() => adminEntryPermissions.some((permission) => can(permission)))
+const brandTarget = computed(() => (isAdminArea.value ? '/admin' : '/funds'))
 
 /** 菜单只反映已授予权限，接口本身仍由 Java 服务端校验。 */
 function can(permission: PermissionCode): boolean {
   return authStore.hasPermission(permission)
 }
 
+/** 展开或收起账户操作菜单；管理员入口仅由服务端返回的权限决定。 */
+function toggleAccountMenu(): void {
+  accountMenuOpen.value = !accountMenuOpen.value
+}
+
+/** 在跳转、退出、点击菜单外部或按 Esc 时收起账户菜单。 */
+function closeAccountMenu(): void {
+  accountMenuOpen.value = false
+}
+
+function onDocumentPointerDown(event: globalThis.PointerEvent): void {
+  if (accountMenuElement.value && !accountMenuElement.value.contains(event.target as globalThis.Node)) {
+    closeAccountMenu()
+  }
+}
+
+function onDocumentKeyDown(event: globalThis.KeyboardEvent): void {
+  if (event.key === 'Escape') {
+    closeAccountMenu()
+  }
+}
+
+onMounted(() => {
+  globalThis.document.addEventListener('pointerdown', onDocumentPointerDown)
+  globalThis.document.addEventListener('keydown', onDocumentKeyDown)
+})
+
+onBeforeUnmount(() => {
+  globalThis.document.removeEventListener('pointerdown', onDocumentPointerDown)
+  globalThis.document.removeEventListener('keydown', onDocumentKeyDown)
+})
+
 /** 退出后清理浏览器内存身份并返回登录页。 */
 async function signOut(): Promise<void> {
+  closeAccountMenu()
   await authStore.signOut()
   await router.replace({ name: 'login' })
 }
@@ -37,7 +80,7 @@ async function signOut(): Promise<void> {
     <header class="top-bar">
       <RouterLink
         class="brand"
-        to="/funds"
+        :to="brandTarget"
       >
         <span
           class="brand-mark"
@@ -46,10 +89,10 @@ async function signOut(): Promise<void> {
         <span>基金雷达</span>
       </RouterLink>
       <nav
+        v-if="!isAdminArea"
         class="top-nav"
-        aria-label="主导航"
+        aria-label="用户端导航"
       >
-        <span class="nav-section-label">用户端</span>
         <RouterLink
           v-if="can('FUND_READ')"
           to="/funds"
@@ -68,37 +111,82 @@ async function signOut(): Promise<void> {
         >
           我的持仓
         </RouterLink>
-        <template v-if="can('ADMIN_DASHBOARD_VIEW')">
-          <span class="nav-section-label">后台</span>
-          <RouterLink to="/admin">
-            工作台
-          </RouterLink>
-          <RouterLink
-            v-if="can('SYNC_JOB_READ')"
-            to="/admin/sync"
-          >
-            数据同步
-          </RouterLink>
-          <RouterLink
-            v-if="can('USER_ACCOUNT_READ')"
-            to="/admin/users"
-          >
-            用户管理
-          </RouterLink>
-        </template>
       </nav>
-      <div class="account-menu">
-        <span>
-          <strong>{{ authStore.user?.displayName }}</strong>
-          <small>{{ authStore.user?.mobileMasked }}</small>
-        </span>
-        <button
-          class="text-button"
-          type="button"
-          @click="signOut"
+      <nav
+        v-else
+        class="top-nav"
+        aria-label="后台管理导航"
+      >
+        <RouterLink
+          v-if="can('ADMIN_DASHBOARD_VIEW')"
+          to="/admin"
         >
-          退出
+          工作台
+        </RouterLink>
+        <RouterLink
+          v-if="can('SYNC_JOB_READ')"
+          to="/admin/sync"
+        >
+          数据同步
+        </RouterLink>
+        <RouterLink
+          v-if="can('USER_ACCOUNT_READ')"
+          to="/admin/users"
+        >
+          用户管理
+        </RouterLink>
+        <RouterLink
+          v-if="can('SYSTEM_HEALTH_READ')"
+          to="/admin/system-health"
+        >
+          运行状态
+        </RouterLink>
+      </nav>
+      <div
+        ref="accountMenuElement"
+        class="account-menu"
+      >
+        <button
+          class="account-trigger"
+          :aria-expanded="accountMenuOpen"
+          aria-controls="account-actions"
+          aria-haspopup="menu"
+          type="button"
+          @click="toggleAccountMenu"
+        >
+          <span class="account-identity">
+            <strong>{{ authStore.user?.displayName }}</strong>
+            <small>{{ authStore.user?.mobileMasked }}</small>
+          </span>
+          <span
+            aria-hidden="true"
+            class="account-chevron"
+          >⌄</span>
         </button>
+        <div
+          v-if="accountMenuOpen"
+          id="account-actions"
+          class="account-dropdown"
+          role="menu"
+        >
+          <a
+            v-if="hasAdminAccess && !isAdminArea"
+            href="/admin"
+            rel="noopener"
+            role="menuitem"
+            target="_blank"
+            @click="closeAccountMenu"
+          >
+            后台管理
+          </a>
+          <button
+            role="menuitem"
+            type="button"
+            @click="signOut"
+          >
+            退出登录
+          </button>
+        </div>
       </div>
     </header>
 

@@ -1340,33 +1340,101 @@ h2 {
   justify-content: center;
 }
 
-.nav-section-label {
-  color: #71847e;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-}
-
 .account-menu {
-  display: flex;
-  gap: 10px;
-  align-items: center;
+  position: relative;
   min-width: max-content;
 }
 
-.account-menu > span {
-  display: grid;
-  gap: 2px;
+.account-trigger {
+  display: inline-flex;
+  min-height: 44px;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 8px 6px 10px;
+  color: #17332e;
+  font: inherit;
   text-align: right;
+  cursor: pointer;
+  background: rgb(255 255 255 / 62%);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  transition: background 180ms ease, border-color 180ms ease;
 }
 
-.account-menu strong {
+.account-trigger:hover,
+.account-trigger:focus-visible,
+.account-trigger[aria-expanded="true"] {
+  background: #fff;
+  border-color: rgb(15 118 110 / 28%);
+  outline: 3px solid rgb(15 118 110 / 20%);
+  outline-offset: 2px;
+}
+
+.account-identity {
+  display: grid;
+  gap: 2px;
+}
+
+.account-identity strong {
   font-size: 13px;
 }
 
-.account-menu small {
+.account-identity small {
   color: #71847e;
   font-size: 12px;
+}
+
+.account-chevron {
+  color: #0d5e57;
+  font-size: 18px;
+  line-height: 1;
+  transition: transform 180ms ease;
+}
+
+.account-trigger[aria-expanded="true"] .account-chevron {
+  transform: rotate(180deg);
+}
+
+.account-dropdown {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 8px);
+  right: 0;
+  display: grid;
+  min-width: 144px;
+  padding: 6px;
+  background: #fff;
+  border: 1px solid rgb(20 68 57 / 16%);
+  border-radius: 12px;
+  box-shadow: 0 16px 32px rgb(44 78 64 / 18%);
+}
+
+.account-dropdown a,
+.account-dropdown button {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  padding: 8px 10px;
+  color: #17332e;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+}
+
+.account-dropdown a:hover,
+.account-dropdown a:focus-visible,
+.account-dropdown button:hover,
+.account-dropdown button:focus-visible {
+  color: #073f3a;
+  background: rgb(15 118 110 / 10%);
+  outline: 3px solid rgb(15 118 110 / 22%);
+  outline-offset: 1px;
 }
 
 .text-button {
@@ -1777,15 +1845,14 @@ h2 {
     padding: 42px 16px 72px;
   }
 
-  .account-menu strong {
+  .account-identity strong {
     max-width: 92px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .account-menu small,
-  .nav-section-label {
+  .account-identity small {
     display: none;
   }
 

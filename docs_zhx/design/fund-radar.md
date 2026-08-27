@@ -309,8 +309,9 @@ Vue 新增 Pinia 会话状态，只保存服务端返回的掩码手机号、显
   -> POST /api/v1/auth/login 或 /api/v1/auth/register
   -> HttpOnly 会话 Cookie + CSRF Cookie
   -> 路由守卫恢复 GET /api/v1/auth/me
-  -> 用户端 /funds、/watchlist、/portfolio
-  -> 后台 /admin、/admin/sync、/admin/users、/admin/system-health
+  -> 用户端壳层：/funds、/watchlist、/portfolio
+      -> 账户下拉“后台管理”（仅有后台权限，新标签页打开 /admin）
+  -> 后台壳层：/admin、/admin/sync、/admin/users、/admin/system-health
 ```
 
-路由守卫按 Java 返回的权限决定菜单和页面访问体验；所有业务 API 仍由 Java 重新认证和授权。用户端个人接口不允许浏览器传入 `userId`。管理员查看指定用户持仓使用独立后台端点；历史关注迁移显式提交 `confirmed=true`，只迁移关注记录。
+路由守卫按 Java 返回的权限决定菜单和页面访问体验；前台与后台壳层不混排导航，后台入口用 `target="_blank"` 和 `rel="noopener"` 在新标签页打开，后台账户菜单不提供返回前台入口；账户下拉使用动态 `aria-expanded`、Esc 和点击外部收起，确保键盘访问。所有业务 API 仍由 Java 重新认证和授权。用户端个人接口不允许浏览器传入 `userId`。管理员查看指定用户持仓使用独立后台端点；历史关注迁移显式提交 `confirmed=true`，只迁移关注记录。
