@@ -1,7 +1,7 @@
 import { get, post, remove } from '@/api/http'
 import type { WatchlistItem } from '@/types/watchlist'
 
-/** 查询当前本地用户已关注的基金列表。 */
+/** 查询当前本机用户已关注的基金列表；多人登录启用前不代表账户隔离。 */
 export function getWatchlist(): Promise<WatchlistItem[]> {
   return get<WatchlistItem[]>('/api/v1/watchlist')
 }

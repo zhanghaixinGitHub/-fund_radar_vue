@@ -23,6 +23,9 @@ export function getFunds(query: FundListQuery = {}): Promise<FundPage> {
   if (query.cursor) {
     search.set('cursor', query.cursor)
   }
+  if (query.page) {
+    search.set('page', String(query.page))
+  }
   const queryString = search.toString()
   return get<FundPage>(`/api/v1/funds${queryString ? `?${queryString}` : ''}`)
 }

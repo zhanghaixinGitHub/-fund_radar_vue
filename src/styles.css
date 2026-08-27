@@ -30,6 +30,23 @@ a {
     linear-gradient(140deg, #f8fbf6 0%, #eef2e8 62%, #e8f1ec 100%);
 }
 
+.skip-link {
+  position: fixed;
+  z-index: 10;
+  top: 12px;
+  left: 12px;
+  padding: 10px 14px;
+  color: #fff;
+  background: #0f766e;
+  border-radius: 8px;
+  transform: translateY(-160%);
+  transition: transform 180ms ease;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
 .top-bar {
   display: flex;
   align-items: center;
@@ -63,6 +80,7 @@ a {
 }
 
 .stage-label,
+.stage-link,
 .eyebrow,
 .card-label {
   font-size: 12px;
@@ -73,6 +91,19 @@ a {
 
 .stage-label {
   color: #57716a;
+}
+
+.stage-link {
+  min-height: 44px;
+  color: #57716a;
+  line-height: 44px;
+  text-decoration: none;
+}
+
+.stage-link:hover,
+.stage-link:focus-visible {
+  color: #0d5e57;
+  text-decoration: underline;
 }
 
 nav a,
@@ -110,6 +141,10 @@ nav a,
 
 .market-page {
   max-width: 900px;
+}
+
+.watchlist-page {
+  max-width: 760px;
 }
 
 .eyebrow {
@@ -248,16 +283,73 @@ h2 {
   list-style: none;
 }
 
+.watchlist-items {
+  display: grid;
+  gap: 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.watchlist-card {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 18px;
+  color: inherit;
+  background: rgb(255 255 255 / 72%);
+  border: 1px solid rgb(20 68 57 / 12%);
+  border-radius: 14px;
+  text-decoration: none;
+}
+
+.watchlist-card:hover,
+.watchlist-card:focus-visible {
+  border-color: #0f766e;
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(15 118 110 / 18%);
+}
+
+.watchlist-card time {
+  color: #597069;
+  font-size: 14px;
+}
+
+.watchlist-state {
+  display: grid;
+  justify-items: start;
+  gap: 14px;
+  padding: 26px;
+  background: rgb(255 255 255 / 70%);
+  border: 1px solid rgb(20 68 57 / 12%);
+  border-radius: 16px;
+}
+
+.watchlist-state h2,
+.watchlist-state p {
+  margin: 0;
+}
+
+.watchlist-state p {
+  color: #597069;
+  line-height: 1.7;
+}
+
 .pagination {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
   margin-top: 20px;
+  padding: 14px 16px;
+  background: rgb(255 255 255 / 48%);
+  border: 1px solid rgb(20 68 57 / 12%);
+  border-radius: 12px;
 }
 
 .pagination button {
-  min-width: 88px;
+  min-width: 72px;
   padding: 8px 12px;
   color: #17332e;
   background: rgb(255 255 255 / 72%);
@@ -268,6 +360,51 @@ h2 {
 .pagination button:disabled {
   cursor: not-allowed;
   opacity: 0.5;
+}
+
+.pagination-summary,
+.page-position {
+  margin: 0;
+  color: #48645c;
+  white-space: nowrap;
+}
+
+.pagination-controls,
+.page-size-control,
+.page-jump-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pagination-controls {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.page-size-control,
+.page-jump-control {
+  color: #48645c;
+  white-space: nowrap;
+}
+
+.page-size-control select,
+.page-jump-control input {
+  min-height: 36px;
+  color: #17332e;
+  background: rgb(255 255 255 / 78%);
+  border: 1px solid rgb(20 68 57 / 18%);
+  border-radius: 8px;
+}
+
+.page-size-control select {
+  padding: 0 8px;
+}
+
+.page-jump-control input {
+  width: 58px;
+  padding: 0 8px;
+  text-align: center;
 }
 
 .fund-card {
@@ -1063,12 +1200,23 @@ h2 {
 
   .search-row,
   .fund-card,
+  .watchlist-card,
   .alert-rule-form {
     grid-template-columns: 1fr;
   }
 
   .search-row {
     display: grid;
+  }
+
+  .pagination,
+  .pagination-controls {
+    align-items: stretch;
+    justify-content: flex-start;
+  }
+
+  .pagination-controls {
+    width: 100%;
   }
 
   .top-bar {

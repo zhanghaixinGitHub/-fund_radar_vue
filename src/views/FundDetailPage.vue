@@ -288,7 +288,7 @@ watch(selectedNavRange, () => {
       class="back-link"
       to="/funds"
     >
-      ← 返回重点基金清单
+      ← 返回基金市场
     </RouterLink>
     <p
       v-if="loading"

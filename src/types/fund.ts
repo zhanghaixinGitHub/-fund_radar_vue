@@ -33,19 +33,24 @@ export interface FundNavHistory {
   cachedAt: string | null
 }
 
-/** 支持游标翻页的基金列表响应。 */
+/** 基金列表响应；页码模式返回总数，游标模式仅为兼容已发布调用方保留。 */
 export interface FundPage {
   items: FundSummary[]
   nextCursor: string | null
+  page: number | null
+  pageSize: number
+  totalCount: number
+  totalPages: number
   stale: boolean
   cachedAt: string | null
 }
 
-/** 基金列表查询参数；游标由上一页响应提供。 */
+/** 基金列表查询参数；`page` 与 `cursor` 不能同时传入。 */
 export interface FundListQuery {
   keyword?: string
   pageSize?: number
   cursor?: string
+  page?: number
 }
 
 /** Java 对外接口返回的 M2 可追溯来源关联事件。 */

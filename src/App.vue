@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * 重点基金雷达的根布局组件。
+ * 基金雷达的根布局组件。
  *
  * 负责提供全局顶部导航和页面内容容器，具体页面由 RouterView 根据路由渲染。
  */
@@ -9,6 +9,10 @@ import { RouterLink, RouterView } from 'vue-router'
 
 <template>
   <div class="app-shell">
+    <a
+      class="skip-link"
+      href="#main-content"
+    >跳至正文</a>
     <header class="top-bar">
       <RouterLink
         class="brand"
@@ -18,11 +22,14 @@ import { RouterLink, RouterView } from 'vue-router'
           class="brand-mark"
           aria-hidden="true"
         >◒</span>
-        <span>重点基金雷达</span>
+        <span>基金雷达</span>
       </RouterLink>
       <nav aria-label="主导航">
         <RouterLink to="/funds">
-          重点基金
+          基金市场
+        </RouterLink>
+        <RouterLink to="/watchlist">
+          我的关注
         </RouterLink>
         <RouterLink to="/portfolio">
           持仓快照
@@ -31,10 +38,19 @@ import { RouterLink, RouterView } from 'vue-router'
           数据同步
         </RouterLink>
       </nav>
-      <span class="stage-label">本机数据链路</span>
+      <RouterLink
+        class="stage-link"
+        to="/system-health"
+      >
+        运行状态
+      </RouterLink>
     </header>
 
-    <main class="page-content">
+    <main
+      id="main-content"
+      class="page-content"
+      tabindex="-1"
+    >
       <RouterView />
     </main>
   </div>

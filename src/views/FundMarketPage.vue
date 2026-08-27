@@ -5,23 +5,30 @@ import { useFundMarket } from '@/composables/useFundMarket'
 import { fundStatusLabel, fundTypeLabel } from '@/utils/fundPresentation'
 
 /**
- * 重点基金清单页面。
+ * 基金市场页面。
  *
  * 首次进入时加载基金列表，并将搜索、分页和请求状态委托给 useFundMarket 统一管理。
  */
 const {
   cachedAt,
-  currentPageIndex,
+  changePageSize,
+  currentPage,
   errorMessage,
   funds,
+  goToPage,
   hasNextPage,
   hasPreviousPage,
   keyword,
   loading,
   nextPage,
+  pageInput,
+  pageSize,
+  pageSizeOptions,
   previousPage,
   search,
   stale,
+  totalCount,
+  totalPages,
 } = useFundMarket()
 
 /** 页面挂载后加载默认首页。 */
@@ -36,13 +43,13 @@ onMounted(() => {
     aria-labelledby="market-title"
   >
     <p class="eyebrow">
-      重点基金
+      基金市场 · 试运行
     </p>
     <h1 id="market-title">
-      重点基金清单
+      基金市场
     </h1>
     <p class="lead">
-      当前仅展示你确认的六只重点基金；不会把它们描述为全市场目录。真实历史净值来自已授权的 Tushare 同步结果。
+      当前展示已完成同步与校验的重点基金，不将其描述为全市场目录；净值以已授权数据源的最近同步结果为准。
     </p>
     <p
       v-if="stale"
@@ -86,7 +93,7 @@ onMounted(() => {
       v-else-if="!loading && funds.length === 0"
       class="state-message"
     >
-      暂无可展示重点基金。请先执行受控重点清单同步后重新查询。
+      暂无可展示基金（共 {{ totalCount }} 条）。请先完成受控基金同步后重新查询。
     </p>
     <ul
       v-else
@@ -113,21 +120,75 @@ onMounted(() => {
       class="pagination"
       aria-label="基金列表分页"
     >
-      <button
-        :disabled="!hasPreviousPage"
-        type="button"
-        @click="previousPage"
+      <p
+        class="pagination-summary"
+        aria-live="polite"
       >
-        上一页
-      </button>
-      <span>第 {{ currentPageIndex + 1 }} 页</span>
-      <button
-        :disabled="!hasNextPage"
-        type="button"
-        @click="nextPage"
-      >
-        下一页
-      </button>
+        共 {{ totalCount }} 条
+      </p>
+      <div class="pagination-controls">
+        <label
+          class="page-size-control"
+          for="fund-page-size"
+        >
+          每页
+          <select
+            id="fund-page-size"
+            v-model.number="pageSize"
+            :disabled="loading"
+            @change="changePageSize"
+          >
+            <option
+              v-for="option in pageSizeOptions"
+              :key="option"
+              :value="option"
+            >
+              {{ option }}
+            </option>
+          </select>
+          条
+        </label>
+        <button
+          :disabled="loading || !hasPreviousPage"
+          type="button"
+          @click="previousPage"
+        >
+          上一页
+        </button>
+        <span class="page-position">第 {{ currentPage }} / {{ totalPages }} 页</span>
+        <button
+          :disabled="loading || !hasNextPage"
+          type="button"
+          @click="nextPage"
+        >
+          下一页
+        </button>
+        <label
+          class="page-jump-control"
+          for="fund-page-jump"
+        >
+          跳至
+          <input
+            id="fund-page-jump"
+            v-model="pageInput"
+            :disabled="loading"
+            inputmode="numeric"
+            min="1"
+            :max="totalPages"
+            step="1"
+            type="number"
+            @keyup.enter="goToPage"
+          >
+          页
+        </label>
+        <button
+          :disabled="loading"
+          type="button"
+          @click="goToPage"
+        >
+          跳转
+        </button>
+      </div>
     </nav>
   </section>
 </template>

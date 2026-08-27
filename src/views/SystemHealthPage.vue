@@ -4,7 +4,7 @@ import { computed, onMounted } from 'vue'
 import { useSystemStore } from '@/stores/system'
 
 /**
- * 系统状态页面。
+ * 运行状态页面。
  *
  * 用于确认浏览器到 Java 核心服务的连通性，并展示内部 AI 服务的聚合状态。
  */
@@ -23,13 +23,13 @@ onMounted(() => {
     aria-labelledby="page-title"
   >
     <p class="eyebrow">
-      FOUNDATION CHECK
+      SYSTEM STATUS
     </p>
     <h1 id="page-title">
-      工程基线正在建立
+      运行状态
     </h1>
     <p class="lead">
-      前端只会经由 Java 核心服务读取数据。FastAPI、行情与资讯采集尚未对浏览器开放。
+      用于确认浏览器与 Java 核心服务的连通状态。基金市场和我的关注始终经由该服务访问，FastAPI 与数据来源不直接向浏览器开放。
     </p>
 
     <article class="health-card">

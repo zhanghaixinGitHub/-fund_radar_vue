@@ -281,3 +281,21 @@ Vue SyncCenterPage「开始同步」
 Python 内部接口拒绝浏览器 `Origin` 和缺失/错误服务令牌；不接收基金代码、日期或 Token 参数，只从本机受校验配置取得六只重点基金和当前日期。创建时已有本机任务返回 `409/FOCUSED_SYNC_IN_PROGRESS`；历史基线缺失、Tushare 失败或配置异常在任务状态中以 `FAILED` 和安全错误码/说明返回，任一失败不覆盖既有净值。Java 对外结果使用 camelCase，Python 内部结果保持 snake_case；Vue 同步期间禁用重复按钮、使用 `aria-live` 和 `progressbar` 展示状态，不从基金详情页触发同步。
 
 本链路不经过 Celery 队列，因此本地错过 20:00 时仅启动 Python、Java、Vue 后即可手动执行；Celery 定时任务仍保留，且与手动请求共享同一锁。同步中心当前进度是进程内安全摘要：页面刷新可继续读取同一 Python 进程的最近任务；若 Python 重启，任务状态不再可查询，Java 返回稳定的“任务状态已失效”提示，用户可重新发起同步。普通 Java → Python 请求仍使用 3 秒读取超时，后台同步不占用浏览器连接。
+
+## 11. v0.5｜重点基金列表页码分页设计
+
+本变更不新增表或同步任务，仅扩展既有只读目录链路：
+
+```text
+Vue FundMarketPage（关键字、pageSize、page）
+  -> Java GET /api/v1/funds
+  -> Redis（key 包含 keyword、pageSize、cursor、page）
+  -> FastAPI GET /internal/v1/funds
+  -> fund_share_class + latest nav_daily 子查询
+```
+
+当请求携带 `page` 时，FastAPI 以 1 为起点对相同筛选条件执行两条受限 SQL：`COUNT(*)` 得到 `total_count`，按 `fund_code ASC` 查询 `OFFSET (page - 1) * page_size LIMIT page_size` 得到当前页及最新净值日期。总页数统一按 `ceil(total_count / page_size)` 计算；页码超出总页数时安全返回空 `items` 与真实总数。`pageSize` 为 1–100，`page` 为 1–10,000，避免无界扫描和过大偏移请求。
+
+不携带 `page` 时保留原有游标读取及 `next_cursor`，以兼容已发布调用方；`page` 与非空 `cursor` 互斥。Java 将 Python snake_case 元数据转换为 camelCase，正常结果与陈旧缓存结果都完整保留 `page`、`pageSize`、`totalCount`、`totalPages`，缓存命中不得跨页。
+
+Vue 默认请求 `page=1&pageSize=20`，显示总条数、每页 10/20/50 条、当前页/总页数、上一页/下一页及跳页输入；关键字或页大小改变时重置第 1 页。控件使用可见标签、键盘 Enter 跳转、禁用加载中的重复请求，并在小屏自动换行，不依赖颜色表达可用状态。

@@ -6,7 +6,7 @@ import type { FundSummary } from '@/types/fund'
 /**
  * 基金市场列表的页面状态与分页逻辑。
  *
- * 对外提供搜索关键字、列表数据、游标历史和翻页操作；请求失败时清空当前列表并保留用户可见的错误信息。
+ * 对外提供搜索关键字、页大小、页码跳转和翻页操作；请求失败时清空当前列表并保留用户可见的错误信息。
  */
 export function useFundMarket() {
   const funds = ref<FundSummary[]>([])
@@ -15,76 +15,113 @@ export function useFundMarket() {
   const errorMessage = ref('')
   const stale = ref(false)
   const cachedAt = ref<string | null>(null)
-  const cursorHistory = ref<(string | undefined)[]>([undefined])
-  const currentPageIndex = ref(0)
-  const nextCursor = ref<string | null>(null)
-  const hasPreviousPage = computed(() => currentPageIndex.value > 0)
-  const hasNextPage = computed(() => nextCursor.value !== null)
+  const pageSizeOptions = [10, 20, 50] as const
+  const pageSize = ref<number>(20)
+  const currentPage = ref(1)
+  const pageInput = ref('1')
+  const totalCount = ref(0)
+  const totalPages = ref(0)
+  const hasPreviousPage = computed(() => currentPage.value > 1)
+  const hasNextPage = computed(() => currentPage.value < totalPages.value)
 
   /**
-   * 按游标加载一页基金数据，并同步缓存降级标识。
+   * 按页码加载一页基金数据，并同步总数及缓存降级标识。
    *
-   * @param cursor 当前页请求使用的游标；首屏传入 undefined。
+   * @param targetPage 以 1 为起点的目标页码。
    */
-  async function loadPage(cursor: string | undefined): Promise<void> {
+  async function loadPage(targetPage: number): Promise<void> {
     loading.value = true
     errorMessage.value = ''
     try {
-      const page = await getFunds({ keyword: keyword.value.trim() || undefined, pageSize: 20, cursor })
-      funds.value = page.items
-      stale.value = page.stale
-      cachedAt.value = page.cachedAt
-      nextCursor.value = page.nextCursor
+      const response = await getFunds({
+        keyword: keyword.value.trim() || undefined,
+        pageSize: pageSize.value,
+        page: targetPage,
+      })
+      funds.value = response.items
+      stale.value = response.stale
+      cachedAt.value = response.cachedAt
+      currentPage.value = response.page ?? targetPage
+      pageSize.value = response.pageSize
+      totalCount.value = response.totalCount
+      totalPages.value = response.totalPages
+      pageInput.value = String(currentPage.value)
     } catch (error) {
       funds.value = []
       stale.value = false
       cachedAt.value = null
-      nextCursor.value = null
+      totalCount.value = 0
+      totalPages.value = 0
       errorMessage.value = error instanceof Error ? error.message : '基金列表暂时不可用。'
     } finally {
       loading.value = false
     }
   }
 
-  /** 重置游标历史后，以当前关键字从第一页重新检索。 */
+  /** 以当前关键字从第一页重新检索。 */
   async function search(): Promise<void> {
-    cursorHistory.value = [undefined]
-    currentPageIndex.value = 0
-    await loadPage(undefined)
+    currentPage.value = 1
+    pageInput.value = '1'
+    await loadPage(1)
   }
 
-  /** 在未加载且存在下一页游标时，加载下一页。 */
+  /** 用户调整每页条数后返回第一页，避免越过新总页数。 */
+  async function changePageSize(): Promise<void> {
+    if (loading.value) {
+      return
+    }
+    currentPage.value = 1
+    pageInput.value = '1'
+    await loadPage(1)
+  }
+
+  /** 将输入页码限制在有效区间后加载。 */
+  async function goToPage(): Promise<void> {
+    if (loading.value || totalPages.value === 0) {
+      return
+    }
+    const requestedPage = Number(pageInput.value)
+    const normalizedPage = Number.isInteger(requestedPage)
+      ? Math.min(Math.max(requestedPage, 1), totalPages.value)
+      : currentPage.value
+    await loadPage(normalizedPage)
+  }
+
+  /** 在未加载且存在下一页时，加载下一页。 */
   async function nextPage(): Promise<void> {
-    if (loading.value || nextCursor.value === null) {
+    if (loading.value || !hasNextPage.value) {
       return
     }
-    const cursor = nextCursor.value
-    cursorHistory.value = [...cursorHistory.value.slice(0, currentPageIndex.value + 1), cursor]
-    currentPageIndex.value += 1
-    await loadPage(cursor)
+    await loadPage(currentPage.value + 1)
   }
 
-  /** 在未加载且不是首页时，按已保存的游标返回上一页。 */
+  /** 在未加载且不是首页时，加载上一页。 */
   async function previousPage(): Promise<void> {
-    if (loading.value || currentPageIndex.value === 0) {
+    if (loading.value || !hasPreviousPage.value) {
       return
     }
-    currentPageIndex.value -= 1
-    await loadPage(cursorHistory.value[currentPageIndex.value])
+    await loadPage(currentPage.value - 1)
   }
 
   return {
     cachedAt,
-    currentPageIndex,
+    changePageSize,
+    currentPage,
     errorMessage,
     funds,
+    goToPage,
     hasNextPage,
     hasPreviousPage,
     keyword,
     loading,
     nextPage,
+    pageInput,
+    pageSize,
+    pageSizeOptions,
     previousPage,
     search,
     stale,
+    totalCount,
+    totalPages,
   }
 }

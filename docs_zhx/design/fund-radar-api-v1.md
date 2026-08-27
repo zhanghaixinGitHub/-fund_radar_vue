@@ -3,7 +3,7 @@
 > 关联需求：`docs_zhx/requirements/fund-radar.md`
 > 总体设计：`docs_zhx/design/fund-radar.md`
 > 实施进度：`docs_zhx/implementation/fund-radar.md`
-> 版本：v0.6 / M1-M4（手工核验目录样本与本机确认快照）
+> 版本：v0.9 / M1-M4（重点基金目录页码分页与本机确认快照）
 
 本文件是 M0 的可版本化契约来源。Java 暂未引入 OpenAPI UI，FastAPI 明确关闭 OpenAPI/UI；接口发生不兼容变更时必须先提升本文件版本，再实现代码。
 
@@ -17,7 +17,7 @@
 - 前端发出 `X-Request-Id`；Java 优先复用 `X-Trace-Id`，否则生成 TraceID，并在每个公开响应中返回 `traceId` 和响应头 `X-Trace-Id`。
 - Java 调用 FastAPI 时透传 `X-Trace-Id`，并使用 `X-Service-Token`。Token 只来自环境变量，不出现在前端、日志或响应中。
 - 所有时间使用 ISO 8601；日期用 `YYYY-MM-DD`。公开 API 使用 camelCase，内部 API 使用 snake_case；Java Service 层必须转换内部 DTO，不能把 FastAPI DTO 直接返回给浏览器。
-- 列表参数 `pageSize` 的范围为 1–100。`cursor` 是不透明、仅短期有效的游标，客户端不得解析或构造。
+- 列表参数 `pageSize` 的范围为 1–100。新增页码参数 `page` 的范围为 1–10,000；携带 `page` 时响应包含总数和总页数。`cursor` 是不透明、仅短期有效的游标，客户端不得解析或构造；`page` 与非空 `cursor` 不能同时传入。
 - 将来触发补数或重算任务时，必须提供 `Idempotency-Key`；任务只返回 `202 + taskId`，不得同步等待采集、训练或回测。
 - 基金列表与详情的实时读取均返回 `stale=false`、`cachedAt=null`。仅当 FastAPI 不可用且 Java Redis 中存在未过期的最后成功读模型时，Java 返回 HTTP 200、`stale=true` 与 `cachedAt`；页面必须显著显示陈旧状态，不能把缓存数据称为实时净值或当日信号。
 
@@ -25,7 +25,7 @@
 
 ### `GET /api/v1/funds`
 
-查询参数：`keyword`（可选，最多 50 字符）、`pageSize`（默认 20）、`cursor`（可选）。
+查询参数：`keyword`（可选，最多 50 字符）、`pageSize`（默认 20）、`page`（可选，1 起始）或 `cursor`（可选）。浏览器列表使用 `page`；`cursor` 仅兼容已有调用方。两者同时传入返回 `400/VALIDATION_ERROR`。
 
 ```json
 {
@@ -43,6 +43,10 @@
       }
     ],
     "nextCursor": null,
+    "page": 1,
+    "pageSize": 20,
+    "totalCount": 43,
+    "totalPages": 3,
     "stale": false,
     "cachedAt": null
   },
@@ -143,7 +147,7 @@
 | 方法 | 路径 | 状态 | 说明 |
 | --- | --- | --- | --- |
 | GET | `/internal/v1/health` | 已实现 | 返回受保护的服务存活状态 |
-| GET | `/internal/v1/funds` | 已实现 | `keyword`、`pageSize`、`cursor` 的已持久化目录样本列表；未同步净值时 `as_of_date=null` |
+| GET | `/internal/v1/funds` | 已实现 | `keyword`、`pageSize`、`page` 或 `cursor` 的已持久化目录列表；页码模式返回同筛选 `total_count`/`total_pages`；未同步净值时 `as_of_date=null` |
 | GET | `/internal/v1/funds/{fund_code}` | 已实现 | 单只已持久化目录详情；`NOT_SYNCED` 不得视为实时净值 |
 | GET | `/internal/v1/sources` | M1（部分） | 仅服务身份可读的来源开关、限频、保留期与最近状态；不返回凭证、原始内容或任务触发能力 |
 | GET | `/internal/v1/signals` | M3（部分） | 本地已持久化评分结果的游标读取；不在读取时运行模型 |
@@ -163,9 +167,15 @@
       "as_of_date": "2026-08-21"
     }
   ],
-  "next_cursor": null
+  "next_cursor": null,
+  "page": 1,
+  "page_size": 20,
+  "total_count": 43,
+  "total_pages": 3
 }
 ```
+
+`page` 与 `cursor` 同时传入时，内部接口返回 `422/PAGINATION_MODE_CONFLICT`。示例中的 43、3 仅说明字段关系，实际值由当前筛选下的持久化重点基金数量决定。
 
 `GET /internal/v1/sources` 在没有获授权来源时返回空数组；它不会据此创建来源、发起探测或绕过外部服务的访问规则。
 
