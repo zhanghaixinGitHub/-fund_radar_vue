@@ -565,3 +565,51 @@ LIMIT 1;
 - [x] 通过
 - [ ] 未通过
 - 未通过原因：
+
+---
+
+## TC-19｜六只重点基金工作日增量同步
+
+前置条件：`fund_ai` 已完成六只基金的完整历史回填；Tushare 来源已登记；只启动一个 Celery Beat 和一个 Windows `solo` Worker；本机 `.env` 不包含在日志、截图或命令输出中。
+
+场景：以指定截至日执行一次增量命令，随后验证日常计划和无数据日处理。
+
+操作步骤：
+
+1. 查询 Tushare 来源下六只基金的 `max(nav_date)`，确认均存在历史基线。
+2. 执行 `python -m app.commands.sync_tushare_funds focused-incremental --as-of-date 2026-08-27`。
+3. 查询最新 `FOCUSED_NAV_INCREMENTAL` 运行记录及每只基金的最大净值日期。
+4. 将一个测试响应改为窗口外日期或非目标代码，确认该次运行失败且不写入该不可信记录。
+5. 在单一 Beat 和 `solo` Worker 下观察工作日计划；重复启动 Beat 的测试环境不得用于验收。
+
+数据库验证：
+
+```sql
+SELECT sync_type, status, requested_nav_date, fetched_count, created_count, updated_count, skipped_count, error_summary
+FROM source_sync_run
+WHERE sync_type = 'FOCUSED_NAV_INCREMENTAL'
+ORDER BY started_at DESC
+LIMIT 1;
+
+SELECT n.fund_code, MAX(n.nav_date) AS latest_nav_date
+FROM nav_daily n
+JOIN source_registry s ON s.source_id = n.source_id
+WHERE s.source_code = 'TUSHARE_PRO_FUND'
+  AND n.fund_code IN ('010710', '160323', '013275', '007832', '002112', '005312')
+GROUP BY n.fund_code
+ORDER BY n.fund_code;
+```
+
+| 验收点 | 预期结果 |
+| --- | --- |
+| 同源水位 | 每只基金从 Tushare 来源自身的最后净值日后开始请求，不由其他来源推进 |
+| 无新数据 | 非交易日或数据未发布时 `SUCCEEDED` 且各写入计数为 0，不伪造当日净值 |
+| 异常响应 | 窗口外、非目标代码或冲突重复值失败关闭，不覆盖既有历史 |
+| 调度 | 仅一个 Beat 在工作日可配置时刻投递；Windows Worker 使用 `--pool=solo` |
+| 安全边界 | 命令、运行记录和日志不包含 Token、Cookie、原始响应、买卖建议或交易动作 |
+
+测试结果：
+
+- [x] 通过（2026-08-27：六只同源水位均为 2026-08-26；执行 `focused-incremental --as-of-date 2026-08-27`，运行 `9cd6bdcb-2738-4adc-8214-0e9345eec74c` 为 `SUCCEEDED`，读取/新增/更新/跳过均为 0，符合当晚尚无新净值的预期）
+- [ ] 未通过
+- 未通过原因：
