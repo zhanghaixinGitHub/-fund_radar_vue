@@ -1,21 +1,16 @@
 import { computed, ref } from 'vue'
 
-import { getFunds } from '@/api/funds'
-import type { FundSummary, FundType } from '@/types/fund'
+import { getWatchlist } from '@/api/watchlist'
+import type { FundType } from '@/types/fund'
+import type { WatchlistItem } from '@/types/watchlist'
 
-/**
- * 基金市场列表的页面状态与分页逻辑。
- *
- * 对外提供搜索关键字、页大小、页码跳转和翻页操作；请求失败时清空当前列表并保留用户可见的错误信息。
- */
-export function useFundMarket() {
-  const funds = ref<FundSummary[]>([])
-  const keyword = ref('')
+/** 当前登录用户关注列表的筛选、分页和降级状态。 */
+export function useWatchlist() {
+  const watchlist = ref<WatchlistItem[]>([])
   const selectedFundType = ref<FundType | ''>('')
   const loading = ref(false)
   const errorMessage = ref('')
-  const stale = ref(false)
-  const cachedAt = ref<string | null>(null)
+  const marketDataUnavailable = ref(false)
   const pageSizeOptions = [10, 20, 50] as const
   const pageSize = ref<number>(10)
   const currentPage = ref(1)
@@ -25,49 +20,42 @@ export function useFundMarket() {
   const hasPreviousPage = computed(() => currentPage.value > 1)
   const hasNextPage = computed(() => currentPage.value < totalPages.value)
 
-  /**
-   * 按页码加载一页基金数据，并同步总数及缓存降级标识。
-   *
-   * @param targetPage 以 1 为起点的目标页码。
-   */
+  /** 按目标页加载当前用户的数据范围，服务端负责用户隔离与类型排序。 */
   async function loadPage(targetPage: number): Promise<void> {
     loading.value = true
     errorMessage.value = ''
     try {
-      const response = await getFunds({
-        keyword: keyword.value.trim() || undefined,
+      const response = await getWatchlist({
         fundType: selectedFundType.value || undefined,
-        pageSize: pageSize.value,
         page: targetPage,
+        pageSize: pageSize.value,
       })
-      funds.value = response.items
-      stale.value = response.stale
-      cachedAt.value = response.cachedAt
-      currentPage.value = response.page ?? targetPage
+      watchlist.value = response.items
+      marketDataUnavailable.value = response.marketDataUnavailable
+      currentPage.value = response.page
       pageSize.value = response.pageSize
       totalCount.value = response.totalCount
       totalPages.value = response.totalPages
       pageInput.value = String(currentPage.value)
     } catch (error) {
-      funds.value = []
-      stale.value = false
-      cachedAt.value = null
+      watchlist.value = []
+      marketDataUnavailable.value = false
       totalCount.value = 0
       totalPages.value = 0
-      errorMessage.value = error instanceof Error ? error.message : '基金列表暂时不可用。'
+      errorMessage.value = error instanceof Error ? error.message : '关注列表暂时不可用。'
     } finally {
       loading.value = false
     }
   }
 
-  /** 以当前关键字从第一页重新检索。 */
+  /** 切换类型筛选或重新加载时回到第一页。 */
   async function search(): Promise<void> {
     currentPage.value = 1
     pageInput.value = '1'
     await loadPage(1)
   }
 
-  /** 用户调整每页条数后返回第一页，避免越过新总页数。 */
+  /** 调整页大小后回到第一页，避免跳过有效数据。 */
   async function changePageSize(): Promise<void> {
     if (loading.value) {
       return
@@ -77,7 +65,7 @@ export function useFundMarket() {
     await loadPage(1)
   }
 
-  /** 将输入页码限制在有效区间后加载。 */
+  /** 将用户输入的页码限制到当前有效区间。 */
   async function goToPage(): Promise<void> {
     if (loading.value || totalPages.value === 0) {
       return
@@ -89,33 +77,28 @@ export function useFundMarket() {
     await loadPage(normalizedPage)
   }
 
-  /** 在未加载且存在下一页时，加载下一页。 */
   async function nextPage(): Promise<void> {
-    if (loading.value || !hasNextPage.value) {
-      return
+    if (!loading.value && hasNextPage.value) {
+      await loadPage(currentPage.value + 1)
     }
-    await loadPage(currentPage.value + 1)
   }
 
-  /** 在未加载且不是首页时，加载上一页。 */
   async function previousPage(): Promise<void> {
-    if (loading.value || !hasPreviousPage.value) {
-      return
+    if (!loading.value && hasPreviousPage.value) {
+      await loadPage(currentPage.value - 1)
     }
-    await loadPage(currentPage.value - 1)
   }
 
   return {
-    cachedAt,
     changePageSize,
     currentPage,
     errorMessage,
-    funds,
     goToPage,
     hasNextPage,
     hasPreviousPage,
-    keyword,
+    loadPage,
     loading,
+    marketDataUnavailable,
     nextPage,
     pageInput,
     pageSize,
@@ -123,8 +106,8 @@ export function useFundMarket() {
     previousPage,
     search,
     selectedFundType,
-    stale,
     totalCount,
     totalPages,
+    watchlist,
   }
 }

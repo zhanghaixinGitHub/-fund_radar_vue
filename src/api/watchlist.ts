@@ -1,9 +1,20 @@
 import { get, post, remove } from '@/api/http'
-import type { WatchlistItem } from '@/types/watchlist'
+import type { WatchlistItem, WatchlistPage, WatchlistQuery } from '@/types/watchlist'
 
-/** 查询当前登录用户已关注的基金列表；服务端按会话用户隔离数据。 */
-export function getWatchlist(): Promise<WatchlistItem[]> {
-  return get<WatchlistItem[]>('/api/v1/watchlist')
+/** 查询当前登录用户已关注的分页基金列表；服务端按会话用户隔离数据。 */
+export function getWatchlist(query: WatchlistQuery = {}): Promise<WatchlistPage> {
+  const search = new URLSearchParams()
+  if (query.fundType) {
+    search.set('fundType', query.fundType)
+  }
+  if (query.page) {
+    search.set('page', String(query.page))
+  }
+  if (query.pageSize) {
+    search.set('pageSize', String(query.pageSize))
+  }
+  const queryString = search.toString()
+  return get<WatchlistPage>(`/api/v1/watchlist${queryString ? `?${queryString}` : ''}`)
 }
 
 /** 将指定基金加入当前登录用户的关注列表；重复调用保持幂等。 */

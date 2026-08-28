@@ -330,3 +330,86 @@ fund_share_class(source_code=TUSHARE_PRO_FUND, status=ACTIVE)
 `watchlist_item` 不参与任何同步查询；它只由 Java 按当前认证用户读写。`fund_share_class` 不新增“重点”标记或独立范围表，`source_fund_code` 仅用于将六位展示代码准确对应到来源代码。对存量空映射，服务先按每个本地最新净值日期调用一次 `fund_nav(nav_date)`；仍缺失时才依次查询 `.OF/.SH/.SZ` 候选目录，并只接受唯一完整响应。全部解析后在一个事务中补齐；有缺失、冲突或无历史基线则失败关闭。
 
 Python 内部路径为 `POST/GET /internal/v1/funds/sync-jobs/market-nav-incremental[/latest]`，Java 外部路径为 `POST/GET /api/v1/sync-jobs/market-nav-incremental[/latest]`；前端只调用 Java。任务错误码改为 `MARKET_SYNC_*`，历史 `FOCUSED_*` 审计类型在 Alembic `20260828_05` 中改写为 `MARKET_*`。默认页码链路为 Vue → Java → FastAPI 的 `pageSize=10`，显式传参仍允许 1–100。
+
+## 14. v1.4｜个人投资决策辅助设计边界
+
+本节描述后续 M2/M3/M4 完成后的目标设计，不新增表、接口、任务或外部调用，也不表示模型能力已经可用。它服务于“用户基于证据自行决策”的目标，不改变前端仅调用 Java、Java 负责认证与审计、FastAPI 仅提供内部数据/模型服务以及交易执行不存在的架构边界。
+
+### 14.1 证据优先的分析链路
+
+```text
+已授权基金/市场/政策/资讯来源
+  -> 来源治理、时间与授权校验、去重和实体关联
+  -> 净值/事件/特征完整度校验
+  -> 可解释基线或已准入模型 + 滚动回测准入检查
+  -> 大模型仅归纳证据、影响路径与不确定性
+  -> Java 认证、审计、版本校验和用户范围控制
+  -> Vue 展示“事实 / 推断 / 用户规则 / 风险与缺失项”
+```
+
+大模型不得直接访问未受治理的网页、个人账户或交易接口；不得用社交舆情或单条新闻绕过数据质量和模型准入。来源、时间、关联对象和证据强度必须先由确定性服务校验，再交由模型解释。
+
+### 14.2 决策辅助输出契约
+
+后续页面和接口使用以下逻辑字段组织分析卡片；字段命名和 API 另行经版本化契约确认，不在本次文档变更中实施：
+
+| 字段 | 语义与强制约束 |
+| --- | --- |
+| `decisionStatus` | `ACTIONABLE`、`OBSERVE` 或 `DATA_INSUFFICIENT`；不满足任一门槛时只能为后两者 |
+| `suggestion` | 仅可表达继续定投复核、暂停新增复核、观察、分批降低风险复核或达到止盈条件后复核；绝不表示自动申购或赎回 |
+| `scope` | 明确为单基金、同类基金、行业主题或用户组合；不能把单基金结论泛化为组合结论 |
+| `dataAsOf`、`generatedAt` | 分别表示输入数据截至时间和分析生成时间；陈旧数据不得伪装为实时 |
+| `evidence[]` | 每项包含来源标识/链接、发布时间、可信度、关联理由和“事实/模型推断”标签 |
+| `modelVersion`、`featureVersion`、`backtestRunId` | 使方向性结果能回溯至已准入模型、特征和回测运行；缺一项即不可操作 |
+| `riskDisclosure`、`invalidatingConditions` | 说明可能失效的条件、产品类别限制、相关性与最大回撤风险，不能只展示利好理由 |
+
+个人资金相关的阈值只能作为用户显式确认的只读输入。未确认成本、份额、交易日期或风险画像时，系统仅输出组合/市场层面的风险解释，不计算个人盈亏线，也不生成个人化买卖倾向。分析结果无论何种状态都不能触发写入持仓、修改定投、第三方支付或交易动作。
+
+### 14.3 七维治理与准入闸门
+
+| 维度 | 方案 | 风险与待确认项 |
+| --- | --- | --- |
+| 业务与功能边界 | 决策辅助与交易执行彻底分离；建议只供用户复核 | 用户可能误读为荐基；需确认最终提示文案、适用用户范围与人工确认流程 |
+| 数据架构 | 沿用 `source_registry`、`news_item`、`market_event`、`feature_snapshot`、`forecast_result` 与 `backtest_run` 的版本链路 | 每类新增来源须确认授权、更新、保留/展示期限；不保存未经确认的个人成本和交易流水 |
+| 性能与并发 | 资讯一次抽取、实体关联后复用；模型批量评分，前端分页读取 | 大模型逐基金、逐新闻实时调用会造成成本与延迟失控，须先定义异步批次、缓存和限额 |
+| 高可用与稳定性 | 来源独立超时、限流、退避和降级；数据陈旧或冲突时失败关闭 | 需明确不同基金类别的数据新鲜度阈值与恢复策略；不能用缓存补造新建议 |
+| 安全性 | 个人规则与分析结果按 Java 当前会话数据范围隔离；服务间继续使用服务令牌 | 需确认个人风险画像的保留、导出和删除规则；日志禁止记录个人金额、完整持仓或外部凭证 |
+| 可观测性与运维 | 记录来源状态、数据截至时间、模型/特征/回测版本、分析任务和 TraceID | 需定义陈旧率、数据缺失率、模型拒绝率和建议分布异常的告警阈值 |
+| 可扩展性与工程化 | 先以规则/统计基线和版本化输出契约落地，再引入大模型解释层 | 模型、提示词、来源适配器和决策口径必须独立版本化，可灰度、可回滚、可复现 |
+
+L3 准入顺序固定为：先确认来源合规与数据质量，再完成类别化特征、滚动回测和基线比较，最后才开放带方向的“建议复核”卡片。任何一个闸门未通过时，`forecast_result.score_status` 必须保持 `DATA_INSUFFICIENT`、`NOT_APPLICABLE` 或 `MODEL_REJECTED`，不得生成方向、概率或置信度。
+
+## 15. v1.5｜基金类型分组、关注分页与净值涨跌率读模型设计
+
+本次为既有目录/净值/关注链路的 L2 扩展，调用关系如下：
+
+```text
+Vue 基金市场（keyword + fundType + page）
+  -> Java /api/v1/funds（认证后补 isWatched）
+  -> FastAPI /internal/v1/funds（fundType + page）
+  -> fund_ai.fund_share_class + nav_daily（批量计算收益率）
+
+Vue 我的关注（fundType + page，默认 10）
+  -> Java /api/v1/watchlist（当前会话用户）
+  -> fund_core.watchlist_item（类型优先、关注时间次级排序）
+  -> FastAPI /internal/v1/funds/batch（每次最多 50 条摘要）
+  -> fund_ai 基金目录 + nav_daily
+```
+
+FastAPI `InternalFundSummary` 和 Java/Vue 基金摘要均增加 `dayChangeRate`、`weekChangeRate`、`monthChangeRate`；Java 对浏览器的基金摘要和详情再增加 `isWatched`。计算的输入是已持久化且按 `source_code` 稳定选取的日净值点：最近点与上一可得点计算日涨跌率，最近点与 `<= latest-7 days`、`<= latest-30 days` 的最近点分别计算周/月涨跌率。优先同时使用两端 `accumulated_nav`，两端均无累计净值才使用 `unit_nav`，基准为零或不存在时返回 `null`。读取路径不触发 Tushare、不同步、不写 `nav_daily`。
+
+Java 的 `InternalFundQueryService` 继续只缓存无用户态的 Python 原始响应；控制器取得当前页基金代码后，调用当前会话范围内的关注代码集合并重建响应写入 `isWatched`。缓存键包含 `keyword`、`fundType`、`pageSize`、`cursor` 和 `page`，避免不同筛选条件及不同用户交叉复用。详情页直接使用服务端 `isWatched`，不再先读取整份关注列表。
+
+关注页 API 契约为 `GET /api/v1/watchlist?fundType=&page=1&pageSize=10`，响应为 `items`、`page`、`pageSize`、`totalCount`、`totalPages`、`marketDataUnavailable`。行项目包含基金代码、名称、类型、截至日期、三档涨跌率与 `createdAt`。`marketDataUnavailable=true` 时 Java 仍返回当前用户的关注关系；基金名称/净值字段可缺失，Vue 只显示降级提示，不伪造行情。
+
+`fund_core` 的 Flyway V8 仅增加关注项类型快照与读取索引。DDL：
+
+```sql
+ALTER TABLE watchlist_item
+    ADD COLUMN fund_type VARCHAR(32);
+
+CREATE INDEX ix_watchlist_item_user_type_created_at
+    ON watchlist_item (user_id, fund_type, created_at DESC, fund_code ASC);
+```
+
+无独立 DML 迁移：历史 `fund_type IS NULL` 项在当前用户读取页中由 Java 调用受服务令牌保护的批量内部接口获取类型，并按单页结果回填；新增关注时从已校验基金详情写入类型。批量接口拒绝空、重复、非六位代码或超过 50 条的请求，防止 N+1 和不受限内部调用。类型排序固定为 MONEY、BOND、MIXED、STOCK、INDEX、QDII、FOF、OTHER；未知值落入 OTHER。

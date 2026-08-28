@@ -1,10 +1,21 @@
-/** Java 核心服务返回的 M0 基金列表项契约。 */
+/** Java 核心服务使用的稳定基金类型枚举。 */
+export type FundType = 'BOND' | 'STOCK' | 'MIXED' | 'INDEX' | 'MONEY' | 'QDII' | 'FOF' | 'OTHER'
+
+/** Java 核心服务返回的基金列表项契约。 */
 export interface FundSummary {
   fundCode: string
   fundName: string
-  fundType: string
+  fundType: FundType
   status: string
   asOfDate: string | null
+  /** 以最近同步净值为锚点计算的上一交易日涨跌率。 */
+  dayChangeRate: number | string | null
+  /** 以最近同步净值为锚点计算的近一周涨跌率。 */
+  weekChangeRate: number | string | null
+  /** 以最近同步净值为锚点计算的近一月涨跌率。 */
+  monthChangeRate: number | string | null
+  /** 当前登录用户是否已关注；仅由服务端按会话用户计算。 */
+  isWatched: boolean
 }
 
 /** 基金公开详情；`M0_MOCK` 仅用于演示，界面不得将其描述为真实行情。 */
@@ -48,6 +59,7 @@ export interface FundPage {
 /** 基金列表查询参数；`page` 与 `cursor` 不能同时传入。 */
 export interface FundListQuery {
   keyword?: string
+  fundType?: FundType
   pageSize?: number
   cursor?: string
   page?: number

@@ -1,8 +1,15 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 
 import { useFundMarket } from '@/composables/useFundMarket'
-import { fundStatusLabel, fundTypeLabel } from '@/utils/fundPresentation'
+import {
+  changeRateTone,
+  formatChangeRate,
+  fundStatusLabel,
+  fundTypeLabel,
+  fundTypeOptions,
+  shouldDisplayFundStatus,
+} from '@/utils/fundPresentation'
 
 /**
  * 基金市场页面。
@@ -26,10 +33,22 @@ const {
   pageSizeOptions,
   previousPage,
   search,
+  selectedFundType,
   stale,
   totalCount,
   totalPages,
 } = useFundMarket()
+
+/** 后端已按基金类型稳定排序；此处只把相邻类型组织为可读的分组。 */
+const fundGroups = computed(() => {
+  const groups = new Map<string, typeof funds.value>()
+  for (const fund of funds.value) {
+    const items = groups.get(fund.fundType) ?? []
+    items.push(fund)
+    groups.set(fund.fundType, items)
+  }
+  return [...groups.entries()].map(([fundType, items]) => ({ fundType, items }))
+})
 
 /** 页面挂载后加载默认首页。 */
 onMounted(() => {
@@ -80,6 +99,24 @@ onMounted(() => {
           {{ loading ? '查询中…' : '查询基金' }}
         </button>
       </div>
+      <label for="fund-type-filter">基金类型</label>
+      <select
+        id="fund-type-filter"
+        v-model="selectedFundType"
+        :disabled="loading"
+        @change="search"
+      >
+        <option value="">
+          全部类型
+        </option>
+        <option
+          v-for="option in fundTypeOptions"
+          :key="option.value"
+          :value="option.value"
+        >
+          {{ option.label }}
+        </option>
+      </select>
     </form>
 
     <p
@@ -95,26 +132,60 @@ onMounted(() => {
     >
       暂无可展示基金（共 {{ totalCount }} 条）。请先完成基金市场同步后重新查询。
     </p>
-    <ul
+    <div
       v-else
-      class="fund-list"
       aria-live="polite"
     >
-      <li
-        v-for="fund in funds"
-        :key="fund.fundCode"
+      <section
+        v-for="group in fundGroups"
+        :key="group.fundType"
+        class="fund-type-group"
+        :aria-labelledby="`market-type-${group.fundType}`"
       >
-        <RouterLink
-          class="fund-card"
-          :to="`/funds/${fund.fundCode}`"
-        >
-          <span class="fund-code">{{ fund.fundCode }}</span>
-          <strong>{{ fund.fundName }}</strong>
-          <span>{{ fundTypeLabel(fund.fundType) }} · {{ fundStatusLabel(fund.status) }}</span>
-          <span>数据截至：{{ fund.asOfDate || '尚无合规净值同步' }}</span>
-        </RouterLink>
-      </li>
-    </ul>
+        <h2 :id="`market-type-${group.fundType}`">
+          {{ fundTypeLabel(group.fundType) }}
+        </h2>
+        <ul class="fund-list">
+          <li
+            v-for="fund in group.items"
+            :key="fund.fundCode"
+          >
+            <RouterLink
+              class="fund-card"
+              :to="`/funds/${fund.fundCode}`"
+            >
+              <span class="fund-code">{{ fund.fundCode }}</span>
+              <span class="fund-primary">
+                <strong>{{ fund.fundName }}</strong>
+                <span class="fund-tags">
+                  <span
+                    v-if="shouldDisplayFundStatus(fund.status)"
+                    class="fund-status-tag"
+                  >
+                    {{ fundStatusLabel(fund.status) }}
+                  </span>
+                  <span
+                    v-if="fund.isWatched"
+                    class="watched-tag"
+                  >
+                    已关注
+                  </span>
+                </span>
+              </span>
+              <span
+                class="change-rate-list"
+                aria-label="净值涨跌率"
+              >
+                <span :class="['change-rate', changeRateTone(fund.dayChangeRate)]">昨日 {{ formatChangeRate(fund.dayChangeRate) }}</span>
+                <span :class="['change-rate', changeRateTone(fund.weekChangeRate)]">近一周 {{ formatChangeRate(fund.weekChangeRate) }}</span>
+                <span :class="['change-rate', changeRateTone(fund.monthChangeRate)]">近一月 {{ formatChangeRate(fund.monthChangeRate) }}</span>
+              </span>
+              <span class="as-of-date">数据截至：{{ fund.asOfDate || '尚无合规净值同步' }}</span>
+            </RouterLink>
+          </li>
+        </ul>
+      </section>
+    </div>
     <nav
       v-if="!loading && !errorMessage && funds.length > 0"
       class="pagination"

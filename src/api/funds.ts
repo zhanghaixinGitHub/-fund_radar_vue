@@ -17,6 +17,9 @@ export function getFunds(query: FundListQuery = {}): Promise<FundPage> {
   if (query.keyword) {
     search.set('keyword', query.keyword)
   }
+  if (query.fundType) {
+    search.set('fundType', query.fundType)
+  }
   if (query.pageSize) {
     search.set('pageSize', String(query.pageSize))
   }

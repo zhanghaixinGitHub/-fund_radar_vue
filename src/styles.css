@@ -144,7 +144,7 @@ nav a,
 }
 
 .watchlist-page {
-  max-width: 760px;
+  max-width: 100%;
 }
 
 .eyebrow {
@@ -276,6 +276,44 @@ h2 {
   border-radius: 10px;
 }
 
+.search-row select,
+.search-panel > select {
+  min-width: 180px;
+  padding: 10px 12px;
+  color: #17332e;
+  font: inherit;
+  background: rgb(255 255 255 / 78%);
+  border: 1px solid #b9d5c5;
+  border-radius: 10px;
+}
+
+.watchlist-filter-panel {
+  margin-top: 26px;
+}
+
+.fund-type-group {
+  margin-top: 28px;
+}
+
+.fund-type-group:first-child {
+  margin-top: 0;
+}
+
+.fund-type-group h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  color: #27554b;
+}
+
+.fund-type-group h2::after {
+  flex: 1;
+  height: 1px;
+  content: '';
+  background: rgb(20 68 57 / 16%);
+}
+
 .fund-list {
   display: grid;
   gap: 12px;
@@ -292,7 +330,7 @@ h2 {
 
 .watchlist-card {
   display: grid;
-  grid-template-columns: 120px minmax(0, 1fr) auto;
+  grid-template-columns: 90px minmax(0, 1fr) auto auto;
   gap: 14px;
   align-items: center;
   padding: 18px;
@@ -313,6 +351,77 @@ h2 {
 .watchlist-card time {
   color: #597069;
   font-size: 14px;
+  white-space: nowrap;
+}
+
+.fund-primary {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+}
+
+.fund-primary strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.watchlist-card .fund-primary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.fund-tags,
+.change-rate-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+}
+
+.fund-status-tag,
+.watched-tag {
+  padding: 2px 7px;
+  color: #48645c;
+  font-size: 12px;
+  background: #edf2ee;
+  border: 1px solid #d0dfd5;
+  border-radius: 999px;
+}
+
+.watched-tag {
+  color: #0f766e;
+  background: #e4f4ee;
+  border-color: #a9d9c5;
+}
+
+.change-rate-list {
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  color: #597069;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.change-rate.positive {
+  color: #c03c36;
+}
+
+.change-rate.negative {
+  color: #17805a;
+}
+
+.change-rate.flat,
+.change-rate.unavailable,
+.as-of-date {
+  color: #597069;
+}
+
+.as-of-date {
+  font-size: 14px;
+  white-space: nowrap;
 }
 
 .watchlist-state {
@@ -427,10 +536,16 @@ h2 {
   box-shadow: 0 0 0 3px rgb(15 118 110 / 18%);
 }
 
-.fund-card > span:last-child,
-.fund-card > span:nth-child(3) {
+.fund-card > .as-of-date {
   color: #597069;
   font-size: 14px;
+}
+
+.warning-banner {
+  margin-top: 20px;
+  color: #815512;
+  background: #fff4d8;
+  border-color: #e7c77c;
 }
 
 .fund-code {
@@ -1173,6 +1288,30 @@ h2 {
   }
 }
 
+@media (max-width: 900px) {
+  .watchlist-card {
+    grid-template-columns: 90px minmax(0, 1fr) auto;
+  }
+
+  .watchlist-card .fund-primary {
+    display: grid;
+    gap: 7px;
+  }
+
+  .watchlist-card .change-rate-list {
+    grid-column: 2 / -1;
+    grid-row: 2;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    white-space: normal;
+  }
+
+  .watchlist-card time {
+    grid-column: 2 / -1;
+    grid-row: 3;
+  }
+}
+
 @media (max-width: 680px) {
   .top-bar,
   .page-content {
@@ -1207,6 +1346,16 @@ h2 {
 
   .search-row {
     display: grid;
+  }
+
+  .search-row select,
+  .search-panel > select {
+    width: 100%;
+  }
+
+  .change-rate-list {
+    justify-content: flex-start;
+    white-space: normal;
   }
 
   .pagination,

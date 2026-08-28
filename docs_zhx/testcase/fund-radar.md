@@ -33,6 +33,78 @@
 
 ---
 
+## TC-27｜基金市场类型筛选、分组、收益率与当前用户关注态
+
+前置条件：`fund_ai` 至少存在两个基金类型，每只基金有最近净值、上一可得净值、距最近净值至少 7 天和 30 天的可用基准；两个已登录用户中仅用户 A 关注其中一只基金；Python、Java、Vue 均为本变更版本。
+
+操作步骤：
+
+1. 用户 A 请求 `GET /api/v1/funds?fundType=BOND&page=1&pageSize=10`，核对仅返回债券型、总数与页码正确；改为不传 `fundType`，核对行先按类型分组。
+2. 对任一基金，以最新、上一可得、`<= latest-7 days`、`<= latest-30 days` 的确定性净值点独立计算三个涨跌率，与 API 的 `dayChangeRate`、`weekChangeRate`、`monthChangeRate` 比较。
+3. 用户 A 和用户 B 分别请求同一市场页：仅用户 A 对已关注代码获得 `isWatched=true`；检查 Redis 原始读模型不持久化该字段的用户值。
+4. 打开 `/funds`，确认 `ACTIVE` 不显示“正常运作”，非 `ACTIVE` 显示例外状态；正收益为红色、负收益为绿色、无基准显示“—”，并显示数据截至日及“已关注”标签。
+
+`fund_ai` 数据核对 SQL：
+
+```sql
+SELECT n.fund_code, n.nav_date, n.unit_nav, n.accumulated_nav, s.source_code
+FROM nav_daily n
+JOIN source_registry s ON s.source_id = n.source_id
+WHERE n.fund_code = :fund_code
+ORDER BY n.nav_date DESC, s.source_code ASC;
+```
+
+| 验收点 | 预期结果 |
+| --- | --- |
+| 类型与分页 | 同一筛选条件下总数、总页数和本页条数一致；列表按固定类型顺序分组 |
+| 收益口径 | 优先累计净值；仅两端累计净值均缺失时回退单位净值；没有基准即 `null`/“—” |
+| 用户隔离 | `isWatched` 只反映当前会话；不能从缓存或另一用户响应泄露 |
+| 展示 | 正红负绿、零/空中性；不把历史净值表现描述为盘中估值或建议 |
+
+测试结果：
+
+- [x] 通过（2026-08-28：Python 收益率单元测试及内部列表筛选契约测试通过；Java `mvn test` 18 项通过；Vue lint、类型检查与生产构建通过。真实浏览器/候选服务联调待重启本机常驻 Java、Python 后执行。）
+- [ ] 未通过
+- 未通过原因：
+
+---
+
+## TC-28｜我的关注按类型分组、筛选与默认十条分页
+
+前置条件：用户 A 至少有 11 条关注记录，且覆盖两个以上基金类型；其中包含一条历史 `fund_type IS NULL` 记录。用户 B 存在独立关注记录。Python 内部批量摘要接口可用。
+
+操作步骤：
+
+1. 用户 A 请求 `GET /api/v1/watchlist?page=1&pageSize=10`，确认默认每页 10 条、`totalPages=ceil(totalCount/10)`；请求第二页，确认与第一页无重复。
+2. 请求 `fundType=MIXED`，确认只返回混合型，类型内再按关注时间倒序、代码升序；页面只显示该类型分组。清空筛选后恢复多组展示。
+3. 对历史空类型关注记录首次读取，确认 Java 使用一次不超过 50 代码的 `/internal/v1/funds/batch` 查询后完成快照回填，不向浏览器暴露内部接口或服务令牌。
+4. 将内部行情服务设为不可用，确认关注关系和分页仍返回 `200` 且 `marketDataUnavailable=true`；页面提示行情暂缺，不能将缺失收益显示为 `0.00%`。
+5. 使用用户 B 请求同一路径，确认只取得用户 B 的关注项与统计。
+
+`fund_core` 数据核对 SQL：
+
+```sql
+SELECT user_id, fund_code, fund_type, created_at
+FROM watchlist_item
+WHERE user_id = :current_user_id
+ORDER BY fund_type NULLS LAST, created_at DESC, fund_code ASC;
+```
+
+| 验收点 | 预期结果 |
+| --- | --- |
+| 分页 | 默认 10 条；页码、总数和边界按钮与响应一致 |
+| 分组筛选 | 类型为第一排序与页面分组维度；关注时间仅为同类型次序 |
+| 历史兼容 | 空类型关注可批量回填；不出现逐行详情请求 |
+| 降级与隔离 | 行情不可用不影响本人关注关系；其他用户记录不可见 |
+
+测试结果：
+
+- [x] 通过（2026-08-28：Java `mvn test` 18 项通过并应用 V8 类型快照/索引迁移；Python 批量摘要契约测试、Vue lint/类型检查/生产构建通过。真实浏览器/候选服务联调待重启本机常驻 Java、Python 后执行。）
+- [ ] 未通过
+- 未通过原因：
+
+---
+
 ## TC-25｜基金市场全量范围同步与默认每页 10 条
 
 前置条件：已应用 FastAPI Alembic `20260828_05`；`fund_share_class` 中存在来源为 `TUSHARE_PRO_FUND`、状态为 `ACTIVE` 的基金市场记录；Java、Python、Vue 均为本变更版本。
@@ -803,5 +875,62 @@ ORDER BY n.fund_code;
 测试结果：
 
 - [ ] 待执行
+- [ ] 未通过
+- 未通过原因：
+
+---
+
+## TC-26｜个人投资决策辅助的证据、降级与非交易边界
+
+前置条件：已完成 M2 已授权来源接入、M3 类别化特征和滚动回测；准备一条来源授权有效、数据新鲜且 `score_status='SCORED'` 的测试结果，以及一条数据陈旧或特征不完整、`score_status='DATA_INSUFFICIENT'` 的测试结果。测试用户不提供任何第三方交易账户凭证；若未确认成本、份额或交易日期，则持仓快照保持为空或未知状态。
+
+场景：用户查看一只基金或一个组合的决策辅助卡片，核验模型建议有完整证据链、数据不足时不行动，且页面不会修改个人资金行为。
+
+操作步骤：
+
+1. 以基金用户登录，打开具有 `SCORED` 结果的基金详情或组合分析页，记录建议状态、数据截至时间、生成时间、基金/组合适用范围、模型/特征/回测版本及证据列表。
+2. 逐项打开证据来源，确认每项区分已验证事实和模型推断，并展示发布时间、可信度、关联理由与风险/失效条件；单条低可信社交内容不能成为唯一方向性依据。
+3. 切换到 `DATA_INSUFFICIENT` 测试结果，或将其中一个来源设为陈旧/未授权，确认页面只显示“数据不足/暂不建议行动”和缺失原因，不显示方向、概率、置信度、继续定投或减仓倾向。
+4. 在没有已确认成本、份额或交易日期的账户下查看同一页面，确认系统不生成针对个人盈亏的止盈、止损或卖出结论。
+5. 点击任一建议卡片、证据链接或风险提示，检查浏览器网络请求、Java 审计和用户数据；确认不存在申购、赎回、买入、卖出、支付或修改外部定投的请求，也不写入 `portfolio_snapshot`、`portfolio_holding_snapshot`、关注或提醒规则。
+
+数据库验证：
+
+```sql
+SELECT
+    fund_code,
+    as_of_date,
+    score_status,
+    direction,
+    directional_probability,
+    confidence,
+    risk_level,
+    feature_version,
+    model_version,
+    scored_at
+FROM forecast_result
+WHERE fund_code = :fund_code
+ORDER BY scored_at DESC;
+
+SELECT
+    source_code,
+    license_scope,
+    enabled,
+    last_success_at
+FROM source_registry
+WHERE source_code IN (:market_source_code, :policy_or_news_source_code);
+```
+
+| 验收点 | 预期值 |
+| --- | --- |
+| 证据链 | `SCORED` 结果展示范围、数据/生成时间、来源、事实与推断标签、模型/特征/回测版本及风险说明；证据可追溯 |
+| 数据不足 | `DATA_INSUFFICIENT`、未授权、陈旧、冲突或模型未准入时，`direction`、`directional_probability`、`confidence` 均为 `NULL`，页面不显示方向性建议 |
+| 个人化边界 | 没有用户明确确认的成本、份额、日期和风险画像时，不生成个人盈亏、止盈、止损或交易结论 |
+| 非交易 | 网络、接口、审计和数据库均不存在交易执行或定投修改；分析页只读展示，不写个人持仓/规则 |
+| 社交与资讯 | 单一低可信来源只能作为补充说明，不能单独触发 `ACTIONABLE` 或方向性内容 |
+
+测试结果：
+
+- [ ] 待实施
 - [ ] 未通过
 - 未通过原因：

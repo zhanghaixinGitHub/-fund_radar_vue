@@ -1,18 +1,47 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted } from 'vue'
 
-import { getWatchlist } from '@/api/watchlist'
+import { useWatchlist } from '@/composables/useWatchlist'
 import type { WatchlistItem } from '@/types/watchlist'
+import {
+  changeRateTone,
+  formatChangeRate,
+  fundTypeLabel,
+  fundTypeOptions,
+} from '@/utils/fundPresentation'
 
-/**
- * 当前登录用户的关注列表页面。
- *
- * 关注接口仅返回基金代码和关注时间；页面直接展示这两个已确认字段并链接详情，
- * 不为每一行额外查询基金详情，避免关注项增多时形成 N+1 请求。
- */
-const watchlist = ref<WatchlistItem[]>([])
-const loading = ref(false)
-const errorMessage = ref('')
+/** 当前登录用户的关注列表页面；数据范围、类型排序与基金摘要均由服务端统一控制。 */
+const {
+  changePageSize,
+  currentPage,
+  errorMessage,
+  goToPage,
+  hasNextPage,
+  hasPreviousPage,
+  loading,
+  marketDataUnavailable,
+  nextPage,
+  pageInput,
+  pageSize,
+  pageSizeOptions,
+  previousPage,
+  search,
+  selectedFundType,
+  totalCount,
+  totalPages,
+  watchlist,
+} = useWatchlist()
+
+/** 后端先按类型、再按关注时间稳定排序；页面按同样顺序展示分组。 */
+const watchlistGroups = computed(() => {
+  const groups = new Map<string, WatchlistItem[]>()
+  for (const item of watchlist.value) {
+    const items = groups.get(item.fundType) ?? []
+    items.push(item)
+    groups.set(item.fundType, items)
+  }
+  return [...groups.entries()].map(([fundType, items]) => ({ fundType, items }))
+})
 
 /** 将服务端时间安全地格式化为本机可读文本；非法时间保留原始值以避免伪造时间。 */
 function formatCreatedAt(value: string): string {
@@ -26,22 +55,8 @@ function formatCreatedAt(value: string): string {
   }).format(parsed)
 }
 
-/** 加载当前登录用户的关注项；失败时保留空列表并展示可操作错误信息。 */
-async function loadWatchlist(): Promise<void> {
-  loading.value = true
-  errorMessage.value = ''
-  try {
-    watchlist.value = await getWatchlist()
-  } catch (error) {
-    watchlist.value = []
-    errorMessage.value = error instanceof Error ? error.message : '关注列表暂时不可用。'
-  } finally {
-    loading.value = false
-  }
-}
-
 onMounted(() => {
-  void loadWatchlist()
+  void search()
 })
 </script>
 
@@ -57,12 +72,52 @@ onMounted(() => {
       关注列表
     </h1>
     <p class="lead">
-      从基金市场或基金详情中加入关注的基金会集中显示在这里，方便后续查看净值、事件和提醒。
+      已关注基金会按类型归类显示，方便查看最近已同步净值计算的阶段涨跌率。
     </p>
     <p class="notice-banner">
       每个登录账号仅能查看和维护自己名下的关注基金；账户、角色与数据范围由服务端统一控制。
     </p>
 
+    <form
+      class="search-panel watchlist-filter-panel"
+      @submit.prevent="search"
+    >
+      <label for="watchlist-type-filter">基金类型</label>
+      <div class="search-row">
+        <select
+          id="watchlist-type-filter"
+          v-model="selectedFundType"
+          :disabled="loading"
+          @change="search"
+        >
+          <option value="">
+            全部类型
+          </option>
+          <option
+            v-for="option in fundTypeOptions"
+            :key="option.value"
+            :value="option.value"
+          >
+            {{ option.label }}
+          </option>
+        </select>
+        <button
+          class="primary-button"
+          :disabled="loading"
+          type="submit"
+        >
+          {{ loading ? '查询中…' : '筛选关注' }}
+        </button>
+      </div>
+    </form>
+
+    <p
+      v-if="marketDataUnavailable && !errorMessage"
+      class="notice-banner warning-banner"
+      role="status"
+    >
+      行情摘要暂时不可用，仍显示你的关注记录；涨跌率将在行情服务恢复后补齐。
+    </p>
     <p
       v-if="loading"
       class="state-message"
@@ -79,7 +134,7 @@ onMounted(() => {
       <button
         class="secondary-button"
         type="button"
-        @click="loadWatchlist"
+        @click="search"
       >
         重新加载
       </button>
@@ -88,8 +143,8 @@ onMounted(() => {
       v-else-if="watchlist.length === 0"
       class="watchlist-state"
     >
-      <h2>还没有关注基金</h2>
-      <p>前往基金市场，打开一只基金详情后点击“加入关注”。</p>
+      <h2>还没有符合条件的关注基金</h2>
+      <p>可以调整类型筛选，或前往基金市场后在基金详情中加入关注。</p>
       <RouterLink
         class="primary-link"
         to="/funds"
@@ -97,24 +152,121 @@ onMounted(() => {
         前往基金市场
       </RouterLink>
     </div>
-    <ul
+    <div
       v-else
-      class="watchlist-items"
       aria-live="polite"
     >
-      <li
-        v-for="item in watchlist"
-        :key="item.fundCode"
+      <section
+        v-for="group in watchlistGroups"
+        :key="group.fundType"
+        class="fund-type-group"
+        :aria-labelledby="`watchlist-type-${group.fundType}`"
       >
-        <RouterLink
-          class="watchlist-card"
-          :to="`/funds/${item.fundCode}`"
+        <h2 :id="`watchlist-type-${group.fundType}`">
+          {{ fundTypeLabel(group.fundType) }}
+        </h2>
+        <ul class="watchlist-items">
+          <li
+            v-for="item in group.items"
+            :key="item.fundCode"
+          >
+            <RouterLink
+              class="watchlist-card"
+              :to="`/funds/${item.fundCode}`"
+            >
+              <span class="fund-code">{{ item.fundCode }}</span>
+              <span class="fund-primary">
+                <strong>{{ item.fundName }}</strong>
+                <span class="as-of-date">数据截至：{{ item.asOfDate || '尚无合规净值同步' }}</span>
+              </span>
+              <span
+                class="change-rate-list"
+                aria-label="净值涨跌率"
+              >
+                <span :class="['change-rate', changeRateTone(item.dayChangeRate)]">昨日 {{ formatChangeRate(item.dayChangeRate) }}</span>
+                <span :class="['change-rate', changeRateTone(item.weekChangeRate)]">近一周 {{ formatChangeRate(item.weekChangeRate) }}</span>
+                <span :class="['change-rate', changeRateTone(item.monthChangeRate)]">近一月 {{ formatChangeRate(item.monthChangeRate) }}</span>
+              </span>
+              <time :datetime="item.createdAt">关注于 {{ formatCreatedAt(item.createdAt) }}</time>
+            </RouterLink>
+          </li>
+        </ul>
+      </section>
+    </div>
+    <nav
+      v-if="!loading && !errorMessage && watchlist.length > 0"
+      class="pagination"
+      aria-label="关注列表分页"
+    >
+      <p
+        class="pagination-summary"
+        aria-live="polite"
+      >
+        共 {{ totalCount }} 条
+      </p>
+      <div class="pagination-controls">
+        <label
+          class="page-size-control"
+          for="watchlist-page-size"
         >
-          <span class="fund-code">{{ item.fundCode }}</span>
-          <strong>查看基金详情</strong>
-          <time :datetime="item.createdAt">关注于 {{ formatCreatedAt(item.createdAt) }}</time>
-        </RouterLink>
-      </li>
-    </ul>
+          每页
+          <select
+            id="watchlist-page-size"
+            v-model.number="pageSize"
+            :disabled="loading"
+            @change="changePageSize"
+          >
+            <option
+              v-for="option in pageSizeOptions"
+              :key="option"
+              :value="option"
+            >
+              {{ option }}
+            </option>
+          </select>
+          条
+        </label>
+        <button
+          :disabled="loading || !hasPreviousPage"
+          type="button"
+          @click="previousPage"
+        >
+          上一页
+        </button>
+        <span class="page-position">第 {{ currentPage }} / {{ totalPages }} 页</span>
+        <button
+          :disabled="loading || !hasNextPage"
+          type="button"
+          @click="nextPage"
+        >
+          下一页
+        </button>
+        <label
+          class="page-jump-control"
+          for="watchlist-page-jump"
+        >
+          跳至
+          <input
+            id="watchlist-page-jump"
+            v-model="pageInput"
+            :disabled="loading"
+            inputmode="numeric"
+            min="1"
+            :max="totalPages"
+            step="1"
+            type="number"
+            @keyup.enter="goToPage"
+          >
+          页
+        </label>
+        <button
+          :disabled="loading"
+          type="button"
+          @click="goToPage"
+        >
+          跳转
+        </button>
+      </div>
+    </nav>
   </section>
 </template>

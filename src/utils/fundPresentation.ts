@@ -1,3 +1,17 @@
+import type { FundType } from '@/types/fund'
+
+/** 列表筛选与分组共用的基金类型顺序。 */
+export const fundTypeOptions: ReadonlyArray<{ value: FundType; label: string }> = [
+  { value: 'MONEY', label: '货币型' },
+  { value: 'BOND', label: '债券型' },
+  { value: 'MIXED', label: '混合型' },
+  { value: 'STOCK', label: '股票型' },
+  { value: 'INDEX', label: '指数型' },
+  { value: 'QDII', label: 'QDII' },
+  { value: 'FOF', label: '基金中基金（FOF）' },
+  { value: 'OTHER', label: '其他类型' },
+]
+
 /**
  * 将后端基金枚举转换为面向用户的中文文案。
  *
@@ -13,6 +27,7 @@ export function fundTypeLabel(value: string): string {
     QDII: 'QDII',
     FOF: '基金中基金（FOF）',
     REIT: '公募 REITs',
+    OTHER: '其他类型',
   }
   return labels[value] ?? '其他类型'
 }
@@ -21,11 +36,47 @@ export function fundTypeLabel(value: string): string {
 export function fundStatusLabel(value: string): string {
   const labels: Record<string, string> = {
     ACTIVE: '正常运作',
+    ISSUING: '发行中',
     SUSPENDED: '暂停运作',
     CLOSED: '已终止',
+    DELISTED: '已终止',
     LIQUIDATED: '已清盘',
   }
   return labels[value] ?? '状态待确认'
+}
+
+/** 市场列表隐藏常态状态，仅在存在例外状态时提示用户。 */
+export function shouldDisplayFundStatus(value: string): boolean {
+  return value !== 'ACTIVE'
+}
+
+/** 涨跌率以小数形式返回，展示时转换为带正负号的百分比。 */
+export function formatChangeRate(value: number | string | null | undefined): string {
+  if (value === null || value === undefined || value === '') {
+    return '—'
+  }
+  const numericValue = Number(value)
+  if (!Number.isFinite(numericValue)) {
+    return '—'
+  }
+  const percentage = numericValue * 100
+  const prefix = percentage > 0 ? '+' : ''
+  return `${prefix}${percentage.toFixed(2)}%`
+}
+
+/** 涨红跌绿，零涨跌与缺失均保持中性色。 */
+export function changeRateTone(value: number | string | null | undefined): string {
+  const numericValue = Number(value)
+  if (!Number.isFinite(numericValue) || value === null || value === undefined || value === '') {
+    return 'unavailable'
+  }
+  if (numericValue > 0) {
+    return 'positive'
+  }
+  if (numericValue < 0) {
+    return 'negative'
+  }
+  return 'flat'
 }
 
 /** 将净值同步状态转换为中文，并明确缺失数据不等同于零净值或实时行情。 */

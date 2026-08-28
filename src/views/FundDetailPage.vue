@@ -10,7 +10,7 @@ import {
   getFundNavHistory,
   getFundSignals,
 } from '@/api/funds'
-import { addWatchlistItem, getWatchlist, removeWatchlistItem } from '@/api/watchlist'
+import { addWatchlistItem, removeWatchlistItem } from '@/api/watchlist'
 import type { AlertRule, UpsertAlertRuleRequest } from '@/types/alert'
 import type {
   FundDetail,
@@ -41,7 +41,6 @@ const errorMessage = ref('')
 const actionMessage = ref('')
 const analysisMessage = ref('')
 const alertMessage = ref('')
-const watchedCodes = ref(new Set<string>())
 const events = ref<FundEventPage | null>(null)
 const signals = ref<FundSignalPage | null>(null)
 const navHistory = ref<FundNavHistory | null>(null)
@@ -56,7 +55,7 @@ const savingAlert = ref(false)
 const fundCode = computed(() => String(route.params.fundCode ?? ''))
 const isMock = computed(() => fund.value?.dataSource === 'M0_MOCK')
 const isStale = computed(() => fund.value?.stale === true)
-const isWatched = computed(() => watchedCodes.value.has(fundCode.value))
+const isWatched = computed(() => fund.value?.isWatched === true)
 const navRangeOptions = [
   { value: 'THREE_MONTHS', label: '近三月' },
   { value: 'ONE_YEAR', label: '近一年' },
@@ -205,14 +204,7 @@ async function load(): Promise<void> {
     alertMessage.value = '提醒规则服务暂不可用；请确认 Java 服务已重启至包含 M3 接口的版本。'
   }
 
-  try {
-    const watchlist = await getWatchlist()
-    watchedCodes.value = new Set(watchlist.map((item) => item.fundCode))
-  } catch {
-    actionMessage.value = '关注功能需要重启至包含 M1 接口的 Java 服务后使用。'
-  } finally {
-    loading.value = false
-  }
+  loading.value = false
 }
 
 /** 在“加入关注”和“取消关注”之间切换，并防止同一时刻重复提交。 */
@@ -222,14 +214,17 @@ async function toggleWatchlist(): Promise<void> {
   try {
     if (isWatched.value) {
       await removeWatchlistItem(fundCode.value)
-      watchedCodes.value.delete(fundCode.value)
+      if (fund.value) {
+        fund.value = { ...fund.value, isWatched: false }
+      }
       actionMessage.value = '已取消关注。'
     } else {
       await addWatchlistItem(fundCode.value)
-      watchedCodes.value.add(fundCode.value)
+      if (fund.value) {
+        fund.value = { ...fund.value, isWatched: true }
+      }
       actionMessage.value = '已加入关注列表。'
     }
-    watchedCodes.value = new Set(watchedCodes.value)
   } catch (error) {
     actionMessage.value = error instanceof Error ? error.message : '关注操作未完成。'
   } finally {
