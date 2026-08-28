@@ -2,31 +2,86 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
 import {
+  getLastSuccessfulSyncTimes,
+  getLatestMarketDetailSync,
   getLatestMarketNavIncrementalSync,
   getSyncJob,
+  startMarketDetailSync,
   startMarketNavIncrementalSync,
 } from '@/api/syncJobs'
 import type { SyncJobStatus } from '@/types/syncJob'
 
-/** 数据同步中心：集中展示可运行的同步任务及其服务端进度。 */
-const job = ref<SyncJobStatus | null>(null)
+type SyncTaskKey = 'marketNav' | 'marketDetail'
+
+interface SyncTaskDefinition {
+  key: SyncTaskKey
+  jobType: 'MARKET_NAV_INCREMENTAL' | 'MARKET_DETAIL'
+  title: string
+  description: string
+  scheduleNote: string
+  start: () => Promise<SyncJobStatus>
+  loadLatest: () => Promise<SyncJobStatus | null>
+}
+
+/** 同步中心任务注册表；每项计划任务都在这里声明可手动触发的入口。 */
+const tasks: readonly SyncTaskDefinition[] = [
+  {
+    key: 'marketNav',
+    jobType: 'MARKET_NAV_INCREMENTAL',
+    title: '基金市场净值增量同步',
+    description: '补齐基金市场中所有启用基金截至今日的缺失净值；已是最新或非交易日时会安全地以零变更结束。',
+    scheduleNote: '定时：工作日 20:00；也可在这里手动补齐。',
+    start: startMarketNavIncrementalSync,
+    loadLatest: getLatestMarketNavIncrementalSync,
+  },
+  {
+    key: 'marketDetail',
+    jobType: 'MARKET_DETAIL',
+    title: '基金市场完整资料同步',
+    description: '同步基础资料、扩展净值、基金经理、规模和分红记录；仅查询已登记的基金市场，不读取个人关注关系。',
+    scheduleNote: '按需手动执行；完整资料会调用多个 Tushare 接口，因此暂不自动定时运行。',
+    start: startMarketDetailSync,
+    loadLatest: getLatestMarketDetailSync,
+  },
+]
+
+const jobs = ref<Record<SyncTaskKey, SyncJobStatus | null>>({
+  marketNav: null,
+  marketDetail: null,
+})
+const starting = ref<Record<SyncTaskKey, boolean>>({
+  marketNav: false,
+  marketDetail: false,
+})
+const lastSuccessfulAt = ref<Record<string, string | null>>({
+  MARKET_NAV_INCREMENTAL: null,
+  MARKET_DETAIL: null,
+})
 const loading = ref(true)
-const starting = ref(false)
 const errorMessage = ref('')
 const actionMessage = ref('')
 let pollingTimer: ReturnType<typeof globalThis.setTimeout> | undefined
 
-const isActive = computed(() => job.value?.status === 'QUEUED' || job.value?.status === 'RUNNING')
-const isSucceeded = computed(() => job.value?.status === 'SUCCEEDED')
-const progressPercent = computed(() => {
-  if (!job.value || job.value.progressTotal <= 0) {
+/** 每项任务独立计算是否运行中，按钮与进度条不会互相串台。 */
+function isActive(task: SyncTaskDefinition): boolean {
+  const status = jobs.value[task.key]?.status
+  return status === 'QUEUED' || status === 'RUNNING'
+}
+
+function isSucceeded(task: SyncTaskDefinition): boolean {
+  return jobs.value[task.key]?.status === 'SUCCEEDED'
+}
+
+/** 进度只能使用服务端实际完成数；未知总数时保持 0，避免伪造百分比。 */
+function progressPercent(job: SyncJobStatus | null): number {
+  if (!job || job.progressTotal <= 0) {
     return 0
   }
-  if (job.value.status === 'SUCCEEDED') {
+  if (job.status === 'SUCCEEDED') {
     return 100
   }
-  return Math.min(100, Math.round((job.value.progressCurrent / job.value.progressTotal) * 100))
-})
+  return Math.min(100, Math.round((job.progressCurrent / job.progressTotal) * 100))
+}
 
 /** 将服务端任务状态映射为清晰的中文业务含义。 */
 function statusLabel(status: SyncJobStatus['status'] | undefined): string {
@@ -41,16 +96,22 @@ function statusLabel(status: SyncJobStatus['status'] | undefined): string {
 /** 格式化服务端时间；无值时不伪造成已开始或已结束。 */
 function formatTime(value: string | null): string {
   if (!value) {
-    return '—'
+    return '尚未成功同步'
   }
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) {
-    return '—'
+    return '时间暂不可用'
   }
   return new Intl.DateTimeFormat('zh-CN', {
     dateStyle: 'medium',
     timeStyle: 'medium',
   }).format(date)
+}
+
+function updateLastSuccessfulTime(job: SyncJobStatus): void {
+  if (job.status === 'SUCCEEDED' && job.finishedAt) {
+    lastSuccessfulAt.value[job.jobType] = job.finishedAt
+  }
 }
 
 /** 清除已有轮询计时器，避免重复轮询或页面离开后继续请求。 */
@@ -61,31 +122,46 @@ function stopPolling(): void {
   }
 }
 
-/** 在任务仍运行时按固定间隔读取服务端进度。 */
+/** 每秒轮询所有正在运行的任务，实时更新后端实际进度。 */
 function schedulePolling(): void {
   stopPolling()
-  if (!isActive.value || !job.value) {
+  const activeTasks = tasks.filter((task) => isActive(task))
+  if (!activeTasks.length) {
     return
   }
   pollingTimer = globalThis.setTimeout(async () => {
     try {
-      job.value = await getSyncJob(job.value!.jobId)
+      const updates = await Promise.all(
+        activeTasks.map(async (task) => ({ task, job: await getSyncJob(jobs.value[task.key]!.jobId) })),
+      )
+      for (const update of updates) {
+        jobs.value[update.task.key] = update.job
+        updateLastSuccessfulTime(update.job)
+      }
       errorMessage.value = ''
     } catch (error) {
       errorMessage.value = error instanceof Error ? error.message : '同步进度暂时不可用。'
-      job.value = null
     } finally {
       schedulePolling()
     }
-  }, 1_500)
+  }, 1_000)
 }
 
-/** 页面首次进入时读取最近任务，使刷新浏览器后仍可继续观察进行中的同步。 */
-async function loadLatestJob(): Promise<void> {
+/** 页面首次进入时读取最近任务和持久化的上次成功时间。 */
+async function loadSyncCenter(): Promise<void> {
   loading.value = true
   errorMessage.value = ''
   try {
-    job.value = await getLatestMarketNavIncrementalSync()
+    const [latestJobs, successTimes] = await Promise.all([
+      Promise.all(tasks.map((task) => task.loadLatest())),
+      getLastSuccessfulSyncTimes(),
+    ])
+    tasks.forEach((task, index) => {
+      jobs.value[task.key] = latestJobs[index]
+    })
+    for (const item of successTimes) {
+      lastSuccessfulAt.value[item.jobType] = item.lastSuccessfulAt
+    }
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '同步中心暂时不可用。'
   } finally {
@@ -94,24 +170,27 @@ async function loadLatestJob(): Promise<void> {
   }
 }
 
-/** 创建基金市场净值同步任务；按钮只负责提交一次，实际进度由轮询结果展示。 */
-async function startSync(): Promise<void> {
-  starting.value = true
+/** 创建指定任务；实际进度由下一秒开始的服务端轮询提供。 */
+async function startSync(task: SyncTaskDefinition): Promise<void> {
+  starting.value[task.key] = true
   errorMessage.value = ''
   actionMessage.value = ''
   try {
-    job.value = await startMarketNavIncrementalSync()
-    actionMessage.value = '同步任务已创建，正在读取服务端进度。'
+    const job = await task.start()
+    jobs.value[task.key] = job
+    actionMessage.value = `${task.title}任务已创建，正在读取服务端进度。`
     schedulePolling()
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '同步任务未创建，请稍后重试。'
   } finally {
-    starting.value = false
+    starting.value[task.key] = false
   }
 }
 
+const hasActiveJob = computed(() => tasks.some((task) => isActive(task)))
+
 onMounted(() => {
-  void loadLatestJob()
+  void loadSyncCenter()
 })
 
 onBeforeUnmount(() => {
@@ -131,14 +210,14 @@ onBeforeUnmount(() => {
       数据同步中心
     </h1>
     <p class="lead">
-      集中发起和跟踪本机数据同步任务；同步只补齐已披露的基金净值，不涉及买卖或交易。
+      集中发起和跟踪基金市场同步任务；所有进度均来自服务端实际执行状态，不涉及买卖或交易。
     </p>
 
     <p
       v-if="loading"
       class="state-message"
     >
-      正在读取最近同步任务…
+      正在读取同步任务…
     </p>
     <p
       v-else-if="errorMessage"
@@ -149,103 +228,102 @@ onBeforeUnmount(() => {
     </p>
 
     <section
+      v-for="task in tasks"
+      :key="task.key"
       class="sync-task-card"
-      aria-labelledby="market-nav-sync-title"
+      :aria-labelledby="`${task.key}-sync-title`"
     >
       <div class="sync-task-heading">
         <div>
           <p class="eyebrow">
             可用任务
           </p>
-          <h2 id="market-nav-sync-title">
-            基金市场净值增量同步
+          <h2 :id="`${task.key}-sync-title`">
+            {{ task.title }}
           </h2>
-          <p>
-            补齐基金市场中所有启用基金截至今日的缺失净值；已是最新或非交易日时会安全地以零变更结束。
-          </p>
+          <p>{{ task.description }}</p>
         </div>
         <span
           class="sync-status"
-          :class="job ? `is-${job.status.toLowerCase()}` : 'is-idle'"
+          :class="jobs[task.key] ? `is-${jobs[task.key]!.status.toLowerCase()}` : 'is-idle'"
         >
-          {{ job ? statusLabel(job.status) : '尚未运行' }}
+          {{ jobs[task.key] ? statusLabel(jobs[task.key]!.status) : '尚未运行' }}
         </span>
       </div>
 
+      <p class="sync-last-success">
+        {{ task.scheduleNote }} 上次成功同步：<strong>{{ formatTime(lastSuccessfulAt[task.jobType]) }}</strong>
+      </p>
+
       <div
-        v-if="job"
+        v-if="jobs[task.key]"
         class="sync-progress-section"
       >
         <div class="sync-progress-meta">
-          <strong>{{ job.progressMessage }}</strong>
-          <span>{{ job.progressCurrent }} / {{ job.progressTotal }} 步</span>
+          <strong>{{ jobs[task.key]!.progressMessage }}</strong>
+          <span>{{ jobs[task.key]!.progressCurrent }} / {{ jobs[task.key]!.progressTotal }} 步</span>
         </div>
         <div
           class="sync-progress-track"
           role="progressbar"
-          aria-label="基金市场净值同步进度"
-          :aria-valuemax="job.progressTotal"
+          :aria-label="`${task.title}进度`"
+          :aria-valuemax="jobs[task.key]!.progressTotal"
           :aria-valuemin="0"
-          :aria-valuenow="job.progressCurrent"
-          :aria-valuetext="`${progressPercent}%：${job.progressMessage}`"
+          :aria-valuenow="jobs[task.key]!.progressCurrent"
+          :aria-valuetext="`${progressPercent(jobs[task.key])}%：${jobs[task.key]!.progressMessage}`"
         >
-          <span :style="{ width: `${progressPercent}%` }" />
+          <span :style="{ width: `${progressPercent(jobs[task.key])}%` }" />
         </div>
         <p class="sync-progress-note">
-          当前基金：{{ job.currentFundCode || '正在准备或写入数据' }} · 目标日期：{{ job.requestedNavDate }}
+          当前基金：{{ jobs[task.key]!.currentFundCode || '正在准备或写入数据' }} · 目标日期：{{ jobs[task.key]!.requestedNavDate }}
         </p>
       </div>
 
       <dl
-        v-if="job"
+        v-if="jobs[task.key]"
         class="sync-summary-grid"
       >
-        <div><dt>开始时间</dt><dd>{{ formatTime(job.startedAt) }}</dd></div>
-        <div><dt>结束时间</dt><dd>{{ formatTime(job.finishedAt) }}</dd></div>
-        <div><dt>读取条数</dt><dd>{{ job.fetchedCount }}</dd></div>
-        <div><dt>新增 / 更新 / 跳过</dt><dd>{{ job.createdCount }} / {{ job.updatedCount }} / {{ job.skippedCount }}</dd></div>
+        <div><dt>开始时间</dt><dd>{{ formatTime(jobs[task.key]!.startedAt) }}</dd></div>
+        <div><dt>结束时间</dt><dd>{{ formatTime(jobs[task.key]!.finishedAt) }}</dd></div>
+        <div><dt>读取条数</dt><dd>{{ jobs[task.key]!.fetchedCount }}</dd></div>
+        <div><dt>新增 / 更新 / 跳过</dt><dd>{{ jobs[task.key]!.createdCount }} / {{ jobs[task.key]!.updatedCount }} / {{ jobs[task.key]!.skippedCount }}</dd></div>
       </dl>
 
       <p
-        v-if="job?.status === 'FAILED'"
+        v-if="jobs[task.key]?.status === 'FAILED'"
         class="state-message error-message sync-job-message"
         role="alert"
       >
-        {{ job.errorMessage || '同步未完成，请稍后重试。' }}
+        {{ jobs[task.key]?.errorMessage || '同步未完成，请稍后重试。' }}
       </p>
       <p
-        v-else-if="isSucceeded"
+        v-else-if="isSucceeded(task)"
         class="state-message sync-job-message"
         aria-live="polite"
       >
-        同步完成：读取 {{ job.fetchedCount }} 条，新增 {{ job.createdCount }} 条，更新 {{ job.updatedCount }} 条，跳过 {{ job.skippedCount }} 条。
-      </p>
-      <p
-        v-else-if="actionMessage"
-        class="state-message sync-job-message"
-        aria-live="polite"
-      >
-        {{ actionMessage }}
+        同步完成：读取 {{ jobs[task.key]!.fetchedCount }} 条，新增 {{ jobs[task.key]!.createdCount }} 条，更新 {{ jobs[task.key]!.updatedCount }} 条，跳过 {{ jobs[task.key]!.skippedCount }} 条。
       </p>
 
       <div class="sync-task-actions">
         <button
           class="secondary-button"
-          :aria-busy="starting || isActive"
-          :disabled="starting || isActive"
+          :aria-busy="starting[task.key] || isActive(task)"
+          :disabled="starting[task.key] || isActive(task) || hasActiveJob"
           type="button"
-          @click="startSync"
+          @click="startSync(task)"
         >
-          {{ starting ? '正在创建任务…' : isActive ? '同步任务进行中…' : '开始同步' }}
+          {{ starting[task.key] ? '正在创建任务…' : isActive(task) ? '同步任务进行中…' : '开始同步' }}
         </button>
-        <RouterLink
-          class="inline-link"
-          to="/funds"
-        >
-          查看基金市场
-        </RouterLink>
       </div>
     </section>
+
+    <p
+      v-if="actionMessage"
+      class="state-message sync-job-message"
+      aria-live="polite"
+    >
+      {{ actionMessage }}
+    </p>
 
     <section
       class="sync-center-notes"
@@ -255,9 +333,9 @@ onBeforeUnmount(() => {
         运行说明
       </h2>
       <ul>
-        <li>每天工作日 20:00 的定时增量同步仍然保留；这里用于本机未运行时的手动补齐。</li>
-        <li>同一时间只允许一个基金市场净值同步任务，避免重复访问数据源和重复写入。</li>
-        <li>任务进度保存在当前 Python 服务进程；若服务重启，重新进入本页后可重新发起同步。</li>
+        <li>净值增量任务保留工作日 20:00 的定时同步；本页按钮用于随时手动补齐。</li>
+        <li>完整资料任务会调用多类 Tushare 接口，当前仅支持管理员手动发起，完成真实验权后再单独确定自动刷新频率。</li>
+        <li>任意时刻只允许一个市场同步任务运行；页面每秒读取一次服务端进度，不会重复触发数据源调用。</li>
       </ul>
     </section>
   </section>

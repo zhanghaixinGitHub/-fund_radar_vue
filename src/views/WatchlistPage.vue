@@ -184,7 +184,7 @@ onMounted(() => {
           >
             <RouterLink
               class="watchlist-card"
-              :to="`/funds/${item.fundCode}`"
+              :to="{ name: 'watchlist-fund-detail', params: { fundCode: item.fundCode } }"
             >
               <span class="fund-code">{{ item.fundCode }}</span>
               <span class="fund-primary">

@@ -49,6 +49,12 @@ export const router = createRouter({
       meta: { title: '我的关注', appArea: 'user', permissions: ['WATCHLIST_SELF_READ'] },
     },
     {
+      path: '/watchlist/:fundCode',
+      name: 'watchlist-fund-detail',
+      component: () => import('@/views/WatchlistFundDetailPage.vue'),
+      meta: { title: '完整关注资料', appArea: 'user', permissions: ['FUND_READ', 'WATCHLIST_SELF_READ'] },
+    },
+    {
       path: '/portfolio',
       name: 'portfolio-snapshot',
       component: () => import('@/views/PortfolioSnapshotPage.vue'),

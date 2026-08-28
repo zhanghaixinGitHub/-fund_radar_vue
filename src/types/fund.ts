@@ -24,8 +24,87 @@ export interface FundDetail extends FundSummary {
   unitNav: number | string | null
   /** 最新已落库的累计净值；数据源未提供时明确为空。 */
   accumulatedNav: number | string | null
+  navAnnDate: string | null
+  accumulatedDividend: number | string | null
+  netAsset: number | string | null
+  totalNetAsset: number | string | null
+  adjustedNav: number | string | null
   navStatus: string
   dataSource: string
+  /** 基础资料尚未完成基线同步时为 NOT_SYNCED，前端必须显示状态而非补值。 */
+  profileStatus: string
+  profileDataSource: string | null
+  managementCompanyName: string | null
+  custodianName: string | null
+  foundDate: string | null
+  dueDate: string | null
+  listDate: string | null
+  issueDate: string | null
+  delistDate: string | null
+  issueAmount: number | string | null
+  managementFee: number | string | null
+  custodianFee: number | string | null
+  durationYear: number | string | null
+  parValue: number | string | null
+  minPurchaseAmount: number | string | null
+  expectedReturn: number | string | null
+  benchmark: string | null
+  investType: string | null
+  sourceFundType: string | null
+  trusteeName: string | null
+  purchaseStartDate: string | null
+  redemptionStartDate: string | null
+  market: string | null
+  stale: boolean
+  cachedAt: string | null
+}
+
+/** 关注后可展示的基金经理任职资料；不包含简历正文或其他非必要个人资料。 */
+export interface FundManager {
+  managerName: string
+  annDate: string | null
+  beginDate: string | null
+  endDate: string | null
+  education: string | null
+  dataSource: string
+}
+
+/** 关注后可展示的最新基金份额规模快照，单位为来源定义的万份。 */
+export interface FundShareSnapshot {
+  tradeDate: string
+  fundShare: number | string
+  dataSource: string
+}
+
+/** 关注后可展示的结构化分红事件，不包含公告或资讯原文。 */
+export interface FundDividend {
+  annDate: string | null
+  implementationAnnDate: string | null
+  baseDate: string | null
+  processStatus: string | null
+  recordDate: string | null
+  exDate: string | null
+  payDate: string | null
+  earningsPayDate: string | null
+  navExDate: string | null
+  cashDividend: number | string | null
+  baseUnit: number | string | null
+  distributableEarnings: number | string | null
+  earningsAmount: number | string | null
+  reinvestmentArrivalDate: string | null
+  baseYear: string | null
+  dataSource: string
+}
+
+/** 当前用户已关注后，由 Java 服务端授权返回的完整基金详情。 */
+export interface WatchlistFundDetail {
+  basic: FundDetail
+  managersStatus: string
+  managers: FundManager[]
+  latestShareStatus: string
+  latestShare: FundShareSnapshot | null
+  dividendsStatus: string
+  dividends: FundDividend[]
   stale: boolean
   cachedAt: string | null
 }

@@ -87,6 +87,25 @@ function formatNetValue(value: number | string | null | undefined): string {
   })
 }
 
+/** 来源数值仅作格式化展示，不擅自推断费率单位或收益含义。 */
+function formatSourceNumber(value: number | string | null | undefined): string {
+  if (value === null || value === undefined || value === '') {
+    return '暂缺'
+  }
+  const numericValue = Number(value)
+  if (!Number.isFinite(numericValue)) {
+    return '暂缺'
+  }
+  return numericValue.toLocaleString('zh-CN', {
+    maximumFractionDigits: 6,
+  })
+}
+
+/** 统一展示资料同步状态，避免未同步时被误解为字段值为零。 */
+function detailSyncStatusLabel(status: string | null | undefined): string {
+  return status === 'SYNCED' ? '已同步' : '尚未同步'
+}
+
 /** 以基金最新已同步日期为锚点计算查询窗口，避免浏览器时钟把未来日期带入接口。 */
 function navHistoryStartDate(endDate: string): string {
   if (selectedNavRange.value === 'ALL') {
@@ -330,6 +349,41 @@ watch(selectedNavRange, () => {
       </dl>
       <section
         class="analysis-section"
+        aria-labelledby="fund-profile-title"
+      >
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">
+              产品资料
+            </p>
+            <h2 id="fund-profile-title">
+              市场基础资料
+            </h2>
+          </div>
+          <span class="section-note">{{ detailSyncStatusLabel(fund.profileStatus) }}</span>
+        </div>
+        <p
+          v-if="fund.profileStatus !== 'SYNCED'"
+          class="empty-analysis"
+        >
+          基础资料尚未完成同步；基金市场仍可查看已经落库的目录与净值。
+        </p>
+        <dl
+          v-else
+          class="detail-grid"
+        >
+          <div><dt>基金管理人</dt><dd>{{ fund.managementCompanyName || '暂缺' }}</dd></div>
+          <div><dt>基金托管人</dt><dd>{{ fund.custodianName || '暂缺' }}</dd></div>
+          <div><dt>成立日期</dt><dd>{{ fund.foundDate || '暂缺' }}</dd></div>
+          <div><dt>投资类型</dt><dd>{{ fund.investType || fund.sourceFundType || '暂缺' }}</dd></div>
+          <div><dt>业绩比较基准</dt><dd>{{ fund.benchmark || '暂缺' }}</dd></div>
+          <div><dt>管理费率（来源值）</dt><dd>{{ formatSourceNumber(fund.managementFee) }}</dd></div>
+          <div><dt>托管费率（来源值）</dt><dd>{{ formatSourceNumber(fund.custodianFee) }}</dd></div>
+          <div><dt>资料来源</dt><dd>{{ fund.profileDataSource ? dataSourceLabel(fund.profileDataSource) : '暂缺' }}</dd></div>
+        </dl>
+      </section>
+      <section
+        class="analysis-section"
         aria-labelledby="nav-history-title"
       >
         <div class="section-heading">
@@ -384,6 +438,13 @@ watch(selectedNavRange, () => {
       >
         {{ actionMessage }}
       </p>
+      <RouterLink
+        v-if="isWatched"
+        class="secondary-link"
+        :to="`/watchlist/${fund.fundCode}`"
+      >
+        查看完整关注资料
+      </RouterLink>
       <p class="risk-disclaimer">
         本页面仅提供信息与关注管理，不构成投资建议，也不提供交易功能。
       </p>

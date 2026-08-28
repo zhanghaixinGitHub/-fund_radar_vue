@@ -19,3 +19,9 @@ export interface SyncJobStatus {
   startedAt: string | null
   finishedAt: string | null
 }
+
+/** 任务最近一次完整成功的持久化时间，不依赖当前 Python 进程是否重启。 */
+export interface SyncJobLastSuccess {
+  jobType: string
+  lastSuccessfulAt: string | null
+}
