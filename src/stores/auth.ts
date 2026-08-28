@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 
-import { getCurrentUser, login, logout, register } from '@/api/auth'
+import { getCurrentUser, login, logout, register, updateCurrentProfile } from '@/api/auth'
 import { ApiRequestError } from '@/api/http'
 import type { CurrentUser, PermissionCode } from '@/types/auth'
 
@@ -53,15 +53,32 @@ export const useAuthStore = defineStore('auth', {
     },
 
     /** 注册成功后替换内存中的公开账户资料；角色仅由服务端固定为基金用户。 */
-    async signUp(mobile: string, password: string): Promise<void> {
+    async signUp(mobile: string, password: string, displayName: string): Promise<void> {
       this.loading = true
       this.errorMessage = ''
       try {
-        this.user = await register(mobile, password)
+        this.user = await register(mobile, password, displayName)
         this.initialized = true
       } catch (error) {
         this.user = null
         this.errorMessage = error instanceof Error ? error.message : '注册暂时不可用。'
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    /** 仅更新当前账户公开姓名；手机号、角色和权限不允许由浏览器自行修改。 */
+    async updateProfile(displayName: string): Promise<void> {
+      if (!this.user) {
+        throw new ApiRequestError('请先登录后再修改个人信息。', 401, 'AUTHENTICATION_REQUIRED')
+      }
+      this.loading = true
+      this.errorMessage = ''
+      try {
+        this.user = await updateCurrentProfile(displayName)
+      } catch (error) {
+        this.errorMessage = error instanceof Error ? error.message : '个人信息暂时无法更新。'
         throw error
       } finally {
         this.loading = false

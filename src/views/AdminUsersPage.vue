@@ -12,6 +12,7 @@ import {
 import type { AccountRole } from '@/types/auth'
 import type { AdminUser } from '@/types/adminUser'
 import type { PortfolioSnapshot } from '@/types/portfolio'
+import { ACCOUNT_ROLE_OPTIONS, accountDisplayLabel, accountRoleLabel } from '@/utils/accountPresentation'
 
 const users = ref<AdminUser[]>([])
 const total = ref(0)
@@ -27,11 +28,7 @@ const transferTargetUserId = ref('')
 const portfolioUser = ref<AdminUser | null>(null)
 const portfolio = ref<PortfolioSnapshot | null>(null)
 
-const roleOptions: Array<{ value: AccountRole, label: string }> = [
-  { value: 'FUND_USER', label: '基金用户' },
-  { value: 'DATA_OPERATOR', label: '数据运营' },
-  { value: 'SYSTEM_ADMIN', label: '系统管理员' },
-]
+const roleOptions = ACCOUNT_ROLE_OPTIONS
 
 const activeUsers = computed(() => users.value.filter((user) => !user.legacyRecord && user.status === 'ACTIVE'))
 const hasPreviousPage = computed(() => page.value > 0)
@@ -59,7 +56,7 @@ async function changeRole(user: AdminUser, role: AccountRole): Promise<void> {
   if (role === user.role) {
     return
   }
-  if (!globalThis.confirm(`确认将“${user.displayName}”调整为“${roleLabel(role)}”吗？该用户需要重新登录。`)) {
+  if (!globalThis.confirm(`确认将“${accountDisplayLabel(user)}”调整为“${accountRoleLabel(role)}”吗？该用户需要重新登录。`)) {
     await loadUsers()
     return
   }
@@ -72,7 +69,7 @@ async function changeRole(user: AdminUser, role: AccountRole): Promise<void> {
 /** 启用或停用前二次确认，避免误操作。 */
 async function toggleStatus(user: AdminUser): Promise<void> {
   const targetStatus = user.status === 'ACTIVE' ? 'DISABLED' : 'ACTIVE'
-  if (!globalThis.confirm(`确认${targetStatus === 'ACTIVE' ? '启用' : '停用'}“${user.displayName}”吗？`)) {
+  if (!globalThis.confirm(`确认${targetStatus === 'ACTIVE' ? '启用' : '停用'}“${accountDisplayLabel(user)}”吗？`)) {
     return
   }
   await runUserAction(user.userId, async () => {
@@ -112,7 +109,7 @@ async function submitLegacyTransfer(): Promise<void> {
     return
   }
   const target = activeUsers.value.find((user) => user.userId === transferTargetUserId.value)
-  if (!target || !globalThis.confirm(`确认将历史本机关注迁移给“${target.displayName}”吗？提醒和持仓不会被迁移。`)) {
+  if (!target || !globalThis.confirm(`确认将历史本机关注迁移给“${accountDisplayLabel(target)}”吗？提醒和持仓不会被迁移。`)) {
     return
   }
   await runUserAction('legacy-watchlist', async () => {
@@ -151,10 +148,6 @@ async function runUserAction(userId: string, action: () => Promise<void>): Promi
   } finally {
     actionUserId.value = null
   }
-}
-
-function roleLabel(role: AccountRole): string {
-  return roleOptions.find((option) => option.value === role)?.label ?? role
 }
 
 /** 从 Vue 事件中安全读取下拉选项，避免组件逻辑直接依赖浏览器 DOM 类型。 */
@@ -212,7 +205,7 @@ onMounted(() => {
       用户管理
     </h1>
     <p class="lead">
-      手机号在页面中始终脱敏。重置密码、调整角色、启停账户和历史关注迁移均由系统管理员二次确认并由服务端审计。
+      手机号在页面中始终脱敏。重置密码、调整角色、启停账户和历史关注迁移均由管理员二次确认并由服务端审计。
     </p>
 
     <p
@@ -254,7 +247,7 @@ onMounted(() => {
             :key="user.userId"
             :value="user.userId"
           >
-            {{ user.displayName }}（{{ user.mobileMasked }}）
+            {{ accountDisplayLabel(user) }}（{{ user.mobileMasked }}）
           </option>
         </select>
         <button
@@ -277,7 +270,7 @@ onMounted(() => {
         <h2 id="password-reset-title">
           人工重置密码
         </h2>
-        <p>目标：{{ resetTarget.displayName }}（{{ resetTarget.mobileMasked }}）。提交后其全部既有会话会立即失效。</p>
+        <p>目标：{{ accountDisplayLabel(resetTarget) }}（{{ resetTarget.mobileMasked }}）。提交后其全部既有会话会立即失效。</p>
       </div>
       <form
         class="admin-inline-form"
@@ -359,14 +352,14 @@ onMounted(() => {
               :class="{ 'is-legacy-row': user.legacyRecord }"
             >
               <td>
-                <strong>{{ user.displayName }}</strong>
+                <strong>{{ accountDisplayLabel(user) }}</strong>
                 <span>{{ user.mobileMasked }}{{ user.legacyRecord ? ' · 待归属历史账户' : '' }}</span>
               </td>
               <td>
                 <select
                   :disabled="user.legacyRecord || actionUserId === user.userId"
                   :value="user.role"
-                  :aria-label="`${user.displayName}的角色`"
+                  :aria-label="`${accountDisplayLabel(user)}的角色`"
                   @change="changeRoleFromEvent(user, $event)"
                 >
                   <option
@@ -443,7 +436,7 @@ onMounted(() => {
       <header>
         <div>
           <h2 id="admin-portfolio-title">
-            {{ portfolioUser.displayName }} 的确认持仓
+            {{ accountDisplayLabel(portfolioUser) }} 的确认持仓
           </h2>
           <p>仅展示该用户已确认并入库的快照；不是实时资产，也不会修改原数据。</p>
         </div>

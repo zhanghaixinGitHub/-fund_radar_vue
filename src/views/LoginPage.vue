@@ -115,7 +115,7 @@ async function submit(): Promise<void> {
       </p>
 
       <p class="login-note">
-        暂未接入短信验证，因此手机号仅作为登录标识；忘记密码请联系系统管理员人工重置。
+        暂未接入短信验证，因此手机号仅作为登录标识；忘记密码请联系管理员人工重置。
       </p>
     </section>
   </main>

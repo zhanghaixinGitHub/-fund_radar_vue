@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useAuthStore } from '@/stores/auth'
+import { accountDisplayLabel, accountRoleLabel } from '@/utils/accountPresentation'
 
 const authStore = useAuthStore()
 </script>
@@ -21,8 +22,8 @@ const authStore = useAuthStore()
 
     <div class="admin-summary-card">
       <span>当前登录</span>
-      <strong>{{ authStore.user?.displayName }}</strong>
-      <p>{{ authStore.user?.mobileMasked }} · {{ authStore.user?.role === 'SYSTEM_ADMIN' ? '系统管理员' : '数据运营' }}</p>
+      <strong>{{ accountDisplayLabel(authStore.user) }}</strong>
+      <p>{{ authStore.user?.mobileMasked }} · {{ authStore.user ? accountRoleLabel(authStore.user.role) : '' }}</p>
     </div>
 
     <div class="admin-action-grid">

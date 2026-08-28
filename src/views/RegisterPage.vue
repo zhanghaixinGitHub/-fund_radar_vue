@@ -8,6 +8,7 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const mobile = ref('')
+const displayName = ref('')
 const password = ref('')
 const passwordConfirmation = ref('')
 const submitting = ref(false)
@@ -25,6 +26,10 @@ async function submit(): Promise<void> {
     localError.value = '请输入中国大陆 11 位手机号。'
     return
   }
+  if (!displayName.value || displayName.value.length > 128) {
+    localError.value = '请输入 1 至 128 个字符的姓名。'
+    return
+  }
   if (password.value.length < 6 || password.value.length > 20 || password.value.trim().length === 0) {
     localError.value = '密码需为 6 至 20 位，且不能全部为空白字符。'
     return
@@ -35,7 +40,7 @@ async function submit(): Promise<void> {
   }
   submitting.value = true
   try {
-    await authStore.signUp(mobile.value, password.value)
+    await authStore.signUp(mobile.value, password.value, displayName.value)
     await router.replace(redirectPath.value)
   } catch {
     localError.value = authStore.errorMessage || '注册暂时不可用。'
@@ -58,7 +63,7 @@ async function submit(): Promise<void> {
         注册你的基金账号
       </h1>
       <p class="login-lead">
-        请确认这是你将用于登录的中国大陆手机号。注册后默认成为“基金用户”，并自动进入基金雷达。
+        请确认这是你将用于登录的中国大陆手机号。注册后默认成为“基金用户”，账户将展示为“基金用户+姓名”。
       </p>
 
       <form
@@ -80,6 +85,21 @@ async function submit(): Promise<void> {
         >
         <p class="field-hint">
           请仔细核对，当前阶段暂未接入短信验证。
+        </p>
+
+        <label for="register-display-name">姓名</label>
+        <input
+          id="register-display-name"
+          v-model.trim="displayName"
+          autocomplete="name"
+          maxlength="128"
+          name="displayName"
+          placeholder="请输入姓名"
+          required
+          type="text"
+        >
+        <p class="field-hint">
+          用于账户展示；角色调整后会显示为对应的角色加姓名。
         </p>
 
         <label for="register-password">设置密码</label>
@@ -136,7 +156,7 @@ async function submit(): Promise<void> {
       </p>
 
       <p class="login-note">
-        暂未接入短信验证，因此手机号仅作为登录标识；忘记密码请联系系统管理员人工重置。
+        暂未接入短信验证，因此手机号仅作为登录标识；忘记密码请联系管理员人工重置。
       </p>
     </section>
   </main>

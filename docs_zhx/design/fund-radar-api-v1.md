@@ -195,9 +195,10 @@
 
 | 接口 | 身份/权限 | 请求或响应约束 |
 | --- | --- | --- |
-| `POST /api/v1/auth/register` | 匿名 | `{mobile,password}`；显式创建默认基金用户并建立会话；重复手机号返回 `409/ACCOUNT_ALREADY_EXISTS` |
+| `POST /api/v1/auth/register` | 匿名 | `{mobile,password,displayName}`；`displayName` 去首尾空白且最长 128 字符，显式创建默认基金用户并建立会话；重复手机号返回 `409/ACCOUNT_ALREADY_EXISTS` |
 | `POST /api/v1/auth/login` | 匿名 | `{mobile,password}`；仅校验既有账户，未知手机号统一返回 `401/INVALID_CREDENTIALS` |
 | `GET /api/v1/auth/me` | 已登录 | 返回角色和权限集合，不含 Cookie、密码或完整手机号 |
+| `PUT /api/v1/auth/me/profile` | 已登录 + CSRF | `{displayName}`；仅更新当前会话账户的姓名，返回更新后的公开账户资料；不接受账户 ID、手机号、角色或权限 |
 | `POST /api/v1/auth/logout` | 已登录 + CSRF | 撤销当前会话并清理 Cookie |
 | `GET /api/v1/admin/users` | `USER_ACCOUNT_READ` | 脱敏账户分页、关注数和历史标识 |
 | `PUT /api/v1/admin/users/{id}/role` | `USER_ACCOUNT_MANAGE` | 调整角色并撤销目标会话 |
@@ -207,3 +208,13 @@
 | `POST /api/v1/admin/legacy-watchlist/transfer` | `LEGACY_WATCHLIST_TRANSFER` | 必须 `confirmed=true`；不迁移提醒/持仓 |
 
 除注册、登录和 CORS 预检外，所有 `/api/v1/**` 都必须有有效会话；写请求还必须带正确的 CSRF Header。未登录返回 `401/AUTHENTICATION_REQUIRED`，权限不足返回 `403/ACCESS_DENIED`。
+
+### 5.1 v1.1｜账户姓名和角色中文展示
+
+`user_account.display_name` 继续存储账户姓名，不存储角色前缀，因此无需数据库迁移。`POST /api/v1/auth/register` 的 `displayName` 为必填公开资料，Java 复用既有 `normalizeDisplayName` 完成空值、首尾空白与 128 字符上限校验后入库；密码、原始手机号、Cookie 和 CSRF 值不进入日志或响应。
+
+Vue 以服务端返回的 `role` 和 `displayName` 组合展示：`FUND_USER → 基金用户`、`DATA_OPERATOR → 数据运营`、`SYSTEM_ADMIN → 管理员`。历史自动生成的“基金用户+脱敏手机号”没有独立姓名，展示时仅以其脱敏手机号作为兼容后缀；角色变更不重写账户姓名，仍由服务端撤销目标会话，重新登录后返回新角色。
+
+### 5.2 v1.2｜当前账户姓名维护
+
+`PUT /api/v1/auth/me/profile` 只从 `CurrentUserContext` 获取当前认证用户，并以其 `user_id` 更新 `user_account.display_name` 与 `updated_at`。请求模型只包含 `displayName`，且复用注册时的空值、首尾空白和 128 字符校验；更新成功后写入 `USER_PROFILE_UPDATED` 审计动作，审计目标仅记录用户 UUID。接口不修改手机号、角色、权限或会话，返回新的 `CurrentUserResponse` 供 Vue 覆盖 Pinia 中的当前用户资料。

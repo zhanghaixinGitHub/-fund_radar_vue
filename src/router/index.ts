@@ -55,6 +55,12 @@ export const router = createRouter({
       meta: { title: '我的持仓', appArea: 'user', permissions: ['PORTFOLIO_SELF_READ'] },
     },
     {
+      path: '/profile',
+      name: 'profile',
+      component: () => import('@/views/ProfilePage.vue'),
+      meta: { title: '个人信息', appArea: 'user' },
+    },
+    {
       path: '/admin',
       name: 'admin-dashboard',
       component: () => import('@/views/AdminDashboardPage.vue'),

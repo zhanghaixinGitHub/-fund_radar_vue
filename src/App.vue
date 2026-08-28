@@ -4,6 +4,7 @@ import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth'
 import type { PermissionCode } from '@/types/auth'
+import { accountDisplayLabel } from '@/utils/accountPresentation'
 
 const route = useRoute()
 const router = useRouter()
@@ -155,7 +156,7 @@ async function signOut(): Promise<void> {
           @click="toggleAccountMenu"
         >
           <span class="account-identity">
-            <strong>{{ authStore.user?.displayName }}</strong>
+            <strong>{{ accountDisplayLabel(authStore.user) }}</strong>
             <small>{{ authStore.user?.mobileMasked }}</small>
           </span>
           <span
@@ -169,6 +170,13 @@ async function signOut(): Promise<void> {
           class="account-dropdown"
           role="menu"
         >
+          <RouterLink
+            :to="{ name: 'profile' }"
+            role="menuitem"
+            @click="closeAccountMenu"
+          >
+            个人信息
+          </RouterLink>
           <a
             v-if="hasAdminAccess && !isAdminArea"
             href="/admin"
