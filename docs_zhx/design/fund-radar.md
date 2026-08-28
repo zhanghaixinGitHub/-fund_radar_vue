@@ -298,7 +298,7 @@ Vue FundMarketPage（关键字、pageSize、page）
 
 不携带 `page` 时保留原有游标读取及 `next_cursor`，以兼容已发布调用方；`page` 与非空 `cursor` 互斥。Java 将 Python snake_case 元数据转换为 camelCase，正常结果与陈旧缓存结果都完整保留 `page`、`pageSize`、`totalCount`、`totalPages`，缓存命中不得跨页。
 
-Vue 默认请求 `page=1&pageSize=20`，显示总条数、每页 10/20/50 条、当前页/总页数、上一页/下一页及跳页输入；关键字或页大小改变时重置第 1 页。控件使用可见标签、键盘 Enter 跳转、禁用加载中的重复请求，并在小屏自动换行，不依赖颜色表达可用状态。
+Vue 默认请求 `page=1&pageSize=10`，显示总条数、每页 10/20/50 条、当前页/总页数、上一页/下一页及跳页输入；关键字或页大小改变时重置第 1 页。控件使用可见标签、键盘 Enter 跳转、禁用加载中的重复请求，并在小屏自动换行，不依赖颜色表达可用状态。
 
 ## 12. 用户会话、前后台路由与数据范围
 
@@ -315,3 +315,18 @@ Vue 新增 Pinia 会话状态，只保存服务端返回的掩码手机号、显
 ```
 
 路由守卫按 Java 返回的权限决定菜单和页面访问体验；前台与后台壳层不混排导航，后台入口用 `target="_blank"` 和 `rel="noopener"` 在新标签页打开，后台账户菜单不提供返回前台入口；账户下拉使用动态 `aria-expanded`、Esc 和点击外部收起，确保键盘访问。所有业务 API 仍由 Java 重新认证和授权。用户端个人接口不允许浏览器传入 `userId`。管理员查看指定用户持仓使用独立后台端点；历史关注迁移显式提交 `confirmed=true`，只迁移关注记录。
+
+## 13. v1.3｜基金市场动态同步设计
+
+```text
+fund_share_class(source_code=TUSHARE_PRO_FUND, status=ACTIVE)
+  -> source_fund_code（精确 ts_code；首次迁移可由同日 fund_nav 批量反查）
+  -> sync_market_nav_incremental
+  -> 按 source_id + fund_code 读取各自 max(nav_date)
+  -> fund_nav(ts_code, watermark + 1, as_of_date)
+  -> 窗口/代码校验 -> nav_daily 幂等写入 -> source_sync_run(MARKET_NAV_INCREMENTAL)
+```
+
+`watchlist_item` 不参与任何同步查询；它只由 Java 按当前认证用户读写。`fund_share_class` 不新增“重点”标记或独立范围表，`source_fund_code` 仅用于将六位展示代码准确对应到来源代码。对存量空映射，服务先按每个本地最新净值日期调用一次 `fund_nav(nav_date)`；仍缺失时才依次查询 `.OF/.SH/.SZ` 候选目录，并只接受唯一完整响应。全部解析后在一个事务中补齐；有缺失、冲突或无历史基线则失败关闭。
+
+Python 内部路径为 `POST/GET /internal/v1/funds/sync-jobs/market-nav-incremental[/latest]`，Java 外部路径为 `POST/GET /api/v1/sync-jobs/market-nav-incremental[/latest]`；前端只调用 Java。任务错误码改为 `MARKET_SYNC_*`，历史 `FOCUSED_*` 审计类型在 Alembic `20260828_05` 中改写为 `MARKET_*`。默认页码链路为 Vue → Java → FastAPI 的 `pageSize=10`，显式传参仍允许 1–100。

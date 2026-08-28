@@ -2,9 +2,9 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
 import {
-  getLatestFocusedNavIncrementalSync,
+  getLatestMarketNavIncrementalSync,
   getSyncJob,
-  startFocusedNavIncrementalSync,
+  startMarketNavIncrementalSync,
 } from '@/api/syncJobs'
 import type { SyncJobStatus } from '@/types/syncJob'
 
@@ -85,7 +85,7 @@ async function loadLatestJob(): Promise<void> {
   loading.value = true
   errorMessage.value = ''
   try {
-    job.value = await getLatestFocusedNavIncrementalSync()
+    job.value = await getLatestMarketNavIncrementalSync()
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '同步中心暂时不可用。'
   } finally {
@@ -94,13 +94,13 @@ async function loadLatestJob(): Promise<void> {
   }
 }
 
-/** 创建重点基金净值同步任务；按钮只负责提交一次，实际进度由轮询结果展示。 */
+/** 创建基金市场净值同步任务；按钮只负责提交一次，实际进度由轮询结果展示。 */
 async function startSync(): Promise<void> {
   starting.value = true
   errorMessage.value = ''
   actionMessage.value = ''
   try {
-    job.value = await startFocusedNavIncrementalSync()
+    job.value = await startMarketNavIncrementalSync()
     actionMessage.value = '同步任务已创建，正在读取服务端进度。'
     schedulePolling()
   } catch (error) {
@@ -150,18 +150,18 @@ onBeforeUnmount(() => {
 
     <section
       class="sync-task-card"
-      aria-labelledby="focused-nav-sync-title"
+      aria-labelledby="market-nav-sync-title"
     >
       <div class="sync-task-heading">
         <div>
           <p class="eyebrow">
             可用任务
           </p>
-          <h2 id="focused-nav-sync-title">
-            重点基金净值增量同步
+          <h2 id="market-nav-sync-title">
+            基金市场净值增量同步
           </h2>
           <p>
-            补齐六只已配置重点基金截至今日的缺失净值；已是最新或非交易日时会安全地以零变更结束。
+            补齐基金市场中所有启用基金截至今日的缺失净值；已是最新或非交易日时会安全地以零变更结束。
           </p>
         </div>
         <span
@@ -183,7 +183,7 @@ onBeforeUnmount(() => {
         <div
           class="sync-progress-track"
           role="progressbar"
-          aria-label="重点基金净值同步进度"
+          aria-label="基金市场净值同步进度"
           :aria-valuemax="job.progressTotal"
           :aria-valuemin="0"
           :aria-valuenow="job.progressCurrent"
@@ -242,7 +242,7 @@ onBeforeUnmount(() => {
           class="inline-link"
           to="/funds"
         >
-          查看重点基金
+          查看基金市场
         </RouterLink>
       </div>
     </section>
@@ -256,7 +256,7 @@ onBeforeUnmount(() => {
       </h2>
       <ul>
         <li>每天工作日 20:00 的定时增量同步仍然保留；这里用于本机未运行时的手动补齐。</li>
-        <li>同一时间只允许一个重点基金净值同步任务，避免重复访问数据源和重复写入。</li>
+        <li>同一时间只允许一个基金市场净值同步任务，避免重复访问数据源和重复写入。</li>
         <li>任务进度保存在当前 Python 服务进程；若服务重启，重新进入本页后可重新发起同步。</li>
       </ul>
     </section>

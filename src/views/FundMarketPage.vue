@@ -49,7 +49,7 @@ onMounted(() => {
       基金市场
     </h1>
     <p class="lead">
-      当前展示已完成同步与校验的重点基金，不将其描述为全市场目录；净值以已授权数据源的最近同步结果为准。
+      当前展示基金市场中已完成同步与校验的基金；净值以已授权数据源的最近同步结果为准。
     </p>
     <p
       v-if="stale"
@@ -93,7 +93,7 @@ onMounted(() => {
       v-else-if="!loading && funds.length === 0"
       class="state-message"
     >
-      暂无可展示基金（共 {{ totalCount }} 条）。请先完成受控基金同步后重新查询。
+      暂无可展示基金（共 {{ totalCount }} 条）。请先完成基金市场同步后重新查询。
     </p>
     <ul
       v-else

@@ -31,6 +31,35 @@
 - [ ] 未通过
 - 未通过原因：
 
+---
+
+## TC-25｜基金市场全量范围同步与默认每页 10 条
+
+前置条件：已应用 FastAPI Alembic `20260828_05`；`fund_share_class` 中存在来源为 `TUSHARE_PRO_FUND`、状态为 `ACTIVE` 的基金市场记录；Java、Python、Vue 均为本变更版本。
+
+操作步骤：
+
+1. 查询基金市场启用记录数和 `source_fund_code` 空值数；确认不存在名称或字段包含“重点基金”的专用范围表。
+2. 打开 `/funds`，确认首次请求为 `page=1&pageSize=10`，页面默认选择 10 条；接口总数不因当前用户的关注列表变化而变化。
+3. 以有后台同步权限的会话在 `/admin/sync` 创建任务，确认 Java 和 Python 均使用 `market-nav-incremental` 路径。
+4. 对已有精确来源代码的记录，验证每支基金按自身 Tushare 同源水位补数；对迁移前空映射的存量记录，验证先通过同日批量净值反查，缺失时仅接受 `.OF/.SH/.SZ` 候选目录中的唯一来源响应，不能假定 `.OF` 后缀。
+5. 验证存在任一缺失历史基线、无法解析或冲突来源代码时，任务状态为 `FAILED/MARKET_SYNC_BASELINE_MISSING`，既有净值和来源映射不被部分写入。
+6. 成功或零变更后查询 `source_sync_run`，确认运行类型为 `MARKET_NAV_INCREMENTAL`；重复创建任务返回 `409/MARKET_SYNC_IN_PROGRESS`。
+
+| 验收点 | 预期结果 |
+| --- | --- |
+| 同步范围 | 等于基金市场所有 `ACTIVE` Tushare 份额，与“我的关注”无关 |
+| 精确代码 | 每个参与同步的份额保存唯一 `source_fund_code`；无法确认时失败关闭 |
+| 数据保护 | 不删除既有基金/净值；失败不写入部分来源映射或窗口外净值 |
+| 分页默认 | Vue、Java、FastAPI 均默认 10 条；显式 20、50 仍正确 |
+| 服务边界 | 浏览器仅调用 Java，内部 Python 接口继续拒绝浏览器 Origin 和无服务令牌请求 |
+
+测试结果：
+
+- [~] Alembic 迁移、43 支来源代码补齐与一次真实增量同步已完成；等待新 Java/Python 服务切换后的浏览器冒烟验证。
+- [ ] 未通过
+- 未通过原因：
+
 ## TC-22｜登录、前后台权限与个人数据隔离
 
 1. 无 Cookie 直接打开 `/funds`、`/watchlist`、`/portfolio` 和 `/admin`，均跳转登录；直接请求对应 Java API 返回 `401/AUTHENTICATION_REQUIRED`。

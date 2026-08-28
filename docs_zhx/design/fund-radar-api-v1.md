@@ -3,7 +3,7 @@
 > 关联需求：`docs_zhx/requirements/fund-radar.md`
 > 总体设计：`docs_zhx/design/fund-radar.md`
 > 实施进度：`docs_zhx/implementation/fund-radar.md`
-> 版本：v0.9 / M1-M4（重点基金目录页码分页与本机确认快照）
+> 版本：v1.3 / M1-M4（基金市场动态同步、页码分页与本机确认快照）
 
 本文件是 M0 的可版本化契约来源。Java 暂未引入 OpenAPI UI，FastAPI 明确关闭 OpenAPI/UI；接口发生不兼容变更时必须先提升本文件版本，再实现代码。
 
@@ -44,7 +44,7 @@
     ],
     "nextCursor": null,
     "page": 1,
-    "pageSize": 20,
+    "pageSize": 10,
     "totalCount": 43,
     "totalPages": 3,
     "stale": false,
@@ -169,13 +169,13 @@
   ],
   "next_cursor": null,
   "page": 1,
-  "page_size": 20,
+  "page_size": 10,
   "total_count": 43,
   "total_pages": 3
 }
 ```
 
-`page` 与 `cursor` 同时传入时，内部接口返回 `422/PAGINATION_MODE_CONFLICT`。示例中的 43、3 仅说明字段关系，实际值由当前筛选下的持久化重点基金数量决定。
+`page` 与 `cursor` 同时传入时，内部接口返回 `422/PAGINATION_MODE_CONFLICT`。示例中的数量仅说明字段关系，实际值由当前筛选下的持久化基金市场数量决定。
 
 `GET /internal/v1/sources` 在没有获授权来源时返回空数组；它不会据此创建来源、发起探测或绕过外部服务的访问规则。
 
@@ -218,3 +218,14 @@ Vue 以服务端返回的 `role` 和 `displayName` 组合展示：`FUND_USER →
 ### 5.2 v1.2｜当前账户姓名维护
 
 `PUT /api/v1/auth/me/profile` 只从 `CurrentUserContext` 获取当前认证用户，并以其 `user_id` 更新 `user_account.display_name` 与 `updated_at`。请求模型只包含 `displayName`，且复用注册时的空值、首尾空白和 128 字符校验；更新成功后写入 `USER_PROFILE_UPDATED` 审计动作，审计目标仅记录用户 UUID。接口不修改手机号、角色、权限或会话，返回新的 `CurrentUserResponse` 供 Vue 覆盖 Pinia 中的当前用户资料。
+
+## 6. v1.3｜基金市场同步与分页契约
+
+`GET /api/v1/funds` 与 `GET /internal/v1/funds` 未传 `pageSize` 时均默认 10；返回的 `pageSize` 必须反映实际采用值。`page` 与 `cursor` 的互斥、1–100 上限和总数计算规则保持不变。
+
+| 层级 | 创建任务 | 最近任务 |
+| --- | --- | --- |
+| Java 浏览器 API | `POST /api/v1/sync-jobs/market-nav-incremental` | `GET /api/v1/sync-jobs/market-nav-incremental/latest` |
+| Python 内部 API | `POST /internal/v1/funds/sync-jobs/market-nav-incremental` | `GET /internal/v1/funds/sync-jobs/market-nav-incremental/latest` |
+
+创建任务不接收基金代码、关注列表、日期或凭证。Python 服务端从基金市场读取全部启用 Tushare 份额；Java 继续完成会话与 `SYNC_JOB_START` / `SYNC_JOB_READ` 权限校验，浏览器不能直连内部接口。重复运行返回 `409/MARKET_SYNC_IN_PROGRESS`，任务中出现基线或精确来源代码问题时以任务状态 `FAILED/MARKET_SYNC_BASELINE_MISSING` 返回。

@@ -16,7 +16,7 @@ export function useFundMarket() {
   const stale = ref(false)
   const cachedAt = ref<string | null>(null)
   const pageSizeOptions = [10, 20, 50] as const
-  const pageSize = ref<number>(20)
+  const pageSize = ref<number>(10)
   const currentPage = ref(1)
   const pageInput = ref('1')
   const totalCount = ref(0)
