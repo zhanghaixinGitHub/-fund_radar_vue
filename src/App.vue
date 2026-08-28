@@ -15,7 +15,6 @@ const accountMenuOpen = ref(false)
 const accountMenuElement = ref<globalThis.HTMLElement | null>(null)
 const adminEntryPermissions: PermissionCode[] = [
   'ADMIN_DASHBOARD_VIEW',
-  'SYSTEM_HEALTH_READ',
   'SYNC_JOB_READ',
   'USER_ACCOUNT_READ',
 ]
@@ -135,12 +134,6 @@ async function signOut(): Promise<void> {
           to="/admin/users"
         >
           用户管理
-        </RouterLink>
-        <RouterLink
-          v-if="can('SYSTEM_HEALTH_READ')"
-          to="/admin/system-health"
-        >
-          运行状态
         </RouterLink>
       </nav>
       <div

@@ -7,10 +7,3 @@ export interface ApiResponse<T> {
   traceId: string
   timestamp: string
 }
-
-/** Java 核心服务对外暴露的聚合健康状态。 */
-export interface CoreHealth {
-  service: string
-  status: 'UP'
-  time: string
-}

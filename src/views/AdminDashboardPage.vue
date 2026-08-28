@@ -45,15 +45,6 @@ const authStore = useAuthStore()
         <h2>数据同步</h2>
         <p>查看和发起已授权的基金净值同步任务，不涉及交易操作。</p>
       </RouterLink>
-      <RouterLink
-        v-if="authStore.hasPermission('SYSTEM_HEALTH_READ')"
-        class="admin-action-card"
-        to="/admin/system-health"
-      >
-        <span>系统运维</span>
-        <h2>运行状态</h2>
-        <p>确认浏览器、Java 核心服务与内部 AI 服务的受控连通性。</p>
-      </RouterLink>
     </div>
   </section>
 </template>

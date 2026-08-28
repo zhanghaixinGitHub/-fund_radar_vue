@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 
 import {
+  grantAdminUserWatchlistCredits,
   getAdminUserPortfolio,
   getAdminUsers,
   resetAdminUserPassword,
@@ -24,6 +25,9 @@ const errorMessage = ref('')
 const successMessage = ref('')
 const resetTarget = ref<AdminUser | null>(null)
 const resetPasswordValue = ref('')
+const creditTarget = ref<AdminUser | null>(null)
+const creditAmount = ref(1)
+const creditReason = ref('')
 const transferTargetUserId = ref('')
 const portfolioUser = ref<AdminUser | null>(null)
 const portfolio = ref<PortfolioSnapshot | null>(null)
@@ -99,6 +103,41 @@ async function submitPasswordReset(): Promise<void> {
     resetPasswordValue.value = ''
     resetTarget.value = null
     successMessage.value = '密码已人工重置，目标用户的既有会话已失效。'
+  })
+}
+
+/** 打开积分发放表单；积分仅代表额外有效关注名额，发放原因必填且不写入浏览器持久化状态。 */
+function openCreditGrant(user: AdminUser): void {
+  creditTarget.value = user
+  creditAmount.value = 1
+  creditReason.value = ''
+  successMessage.value = ''
+}
+
+async function submitCreditGrant(): Promise<void> {
+  if (!creditTarget.value) {
+    return
+  }
+  const amount = Number(creditAmount.value)
+  const reason = creditReason.value.trim()
+  if (!Number.isInteger(amount) || amount < 1 || amount > 10_000) {
+    errorMessage.value = '试用关注积分数量必须在 1 至 10000 之间。'
+    return
+  }
+  if (!reason) {
+    errorMessage.value = '请填写试用关注积分发放原因。'
+    return
+  }
+  const target = creditTarget.value
+  if (!globalThis.confirm(`确认向“${accountDisplayLabel(target)}”发放 ${amount} 个试用关注积分吗？积分只能扩容有效关注名额。`)) {
+    return
+  }
+  await runUserAction(target.userId, async () => {
+    await grantAdminUserWatchlistCredits(target.userId, amount, reason)
+    creditTarget.value = null
+    creditAmount.value = 1
+    creditReason.value = ''
+    successMessage.value = '试用关注积分已发放，目标账户的有效关注额度已更新。'
   })
 }
 
@@ -205,7 +244,7 @@ onMounted(() => {
       用户管理
     </h1>
     <p class="lead">
-      手机号在页面中始终脱敏。重置密码、调整角色、启停账户和历史关注迁移均由管理员二次确认并由服务端审计。
+      手机号在页面中始终脱敏。重置密码、调整角色、启停账户、历史关注迁移和试用关注积分发放均由管理员二次确认并由服务端审计。
     </p>
 
     <p
@@ -303,6 +342,57 @@ onMounted(() => {
     </section>
 
     <section
+      v-if="creditTarget"
+      class="admin-operation-card credit-grant-card"
+      aria-labelledby="credit-grant-title"
+    >
+      <div>
+        <h2 id="credit-grant-title">
+          发放试用关注积分
+        </h2>
+        <p>目标：{{ accountDisplayLabel(creditTarget) }}（{{ creditTarget.mobileMasked }}）。积分仅增加可同时关注的基金数量，不可充值、转赠、提现或兑换交易建议。</p>
+      </div>
+      <form
+        class="admin-inline-form"
+        @submit.prevent="submitCreditGrant"
+      >
+        <label for="credit-amount">积分数量</label>
+        <input
+          id="credit-amount"
+          v-model.number="creditAmount"
+          inputmode="numeric"
+          min="1"
+          max="10000"
+          required
+          step="1"
+          type="number"
+        >
+        <label for="credit-reason">发放原因</label>
+        <input
+          id="credit-reason"
+          v-model="creditReason"
+          maxlength="256"
+          required
+          type="text"
+        >
+        <button
+          class="primary-button"
+          :disabled="actionUserId === creditTarget.userId"
+          type="submit"
+        >
+          {{ actionUserId === creditTarget.userId ? '正在发放…' : '确认发放' }}
+        </button>
+        <button
+          class="text-button"
+          type="button"
+          @click="creditTarget = null"
+        >
+          取消
+        </button>
+      </form>
+    </section>
+
+    <section
       class="admin-table-card"
       aria-labelledby="user-list-title"
     >
@@ -340,7 +430,8 @@ onMounted(() => {
               <th>账户</th>
               <th>角色</th>
               <th>状态</th>
-              <th>关注数</th>
+              <th>关注额度</th>
+              <th>试用积分</th>
               <th>创建时间</th>
               <th>管理操作</th>
             </tr>
@@ -372,7 +463,8 @@ onMounted(() => {
                 </select>
               </td>
               <td><span :class="`account-status is-${user.status.toLowerCase()}`">{{ user.status === 'ACTIVE' ? '已启用' : '已停用' }}</span></td>
-              <td>{{ user.watchlistCount }}</td>
+              <td>{{ user.watchlistCount }} / {{ 5 + user.trialCreditTotal }}</td>
+              <td>可用 {{ user.trialCreditAvailable }} · 锁定 {{ user.trialCreditLocked }}</td>
               <td>{{ formatTime(user.createdAt) }}</td>
               <td>
                 <div class="admin-row-actions">
@@ -391,6 +483,14 @@ onMounted(() => {
                     @click="openPasswordReset(user)"
                   >
                     重置密码
+                  </button>
+                  <button
+                    class="text-button"
+                    :disabled="user.legacyRecord || user.status !== 'ACTIVE' || actionUserId === user.userId"
+                    type="button"
+                    @click="openCreditGrant(user)"
+                  >
+                    发放积分
                   </button>
                   <button
                     class="text-button"

@@ -2,7 +2,7 @@ import { computed, ref } from 'vue'
 
 import { getWatchlist } from '@/api/watchlist'
 import type { FundType } from '@/types/fund'
-import type { WatchlistItem } from '@/types/watchlist'
+import type { WatchlistItem, WatchlistQuota } from '@/types/watchlist'
 
 /** 当前登录用户关注列表的筛选、分页和降级状态。 */
 export function useWatchlist() {
@@ -11,6 +11,7 @@ export function useWatchlist() {
   const loading = ref(false)
   const errorMessage = ref('')
   const marketDataUnavailable = ref(false)
+  const quota = ref<WatchlistQuota | null>(null)
   const pageSizeOptions = [10, 20, 50] as const
   const pageSize = ref<number>(10)
   const currentPage = ref(1)
@@ -32,6 +33,7 @@ export function useWatchlist() {
       })
       watchlist.value = response.items
       marketDataUnavailable.value = response.marketDataUnavailable
+      quota.value = response.quota
       currentPage.value = response.page
       pageSize.value = response.pageSize
       totalCount.value = response.totalCount
@@ -40,6 +42,7 @@ export function useWatchlist() {
     } catch (error) {
       watchlist.value = []
       marketDataUnavailable.value = false
+      quota.value = null
       totalCount.value = 0
       totalPages.value = 0
       errorMessage.value = error instanceof Error ? error.message : '关注列表暂时不可用。'
@@ -104,6 +107,7 @@ export function useWatchlist() {
     pageSize,
     pageSizeOptions,
     previousPage,
+    quota,
     search,
     selectedFundType,
     totalCount,

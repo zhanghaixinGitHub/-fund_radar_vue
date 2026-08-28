@@ -79,12 +79,6 @@ export const router = createRouter({
       meta: { title: '用户管理', appArea: 'admin', permissions: ['USER_ACCOUNT_READ'] },
     },
     {
-      path: '/admin/system-health',
-      name: 'admin-system-health',
-      component: () => import('@/views/SystemHealthPage.vue'),
-      meta: { title: '运行状态', appArea: 'admin', permissions: ['SYSTEM_HEALTH_READ'] },
-    },
-    {
       path: '/not-authorized',
       name: 'not-authorized',
       component: () => import('@/views/NotAuthorizedPage.vue'),

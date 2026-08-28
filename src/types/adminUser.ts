@@ -8,6 +8,9 @@ export interface AdminUser {
   status: 'ACTIVE' | 'DISABLED'
   role: AccountRole
   watchlistCount: number
+  trialCreditTotal: number
+  trialCreditLocked: number
+  trialCreditAvailable: number
   createdAt: string
   legacyRecord: boolean
 }

@@ -25,6 +25,7 @@ const {
   pageSize,
   pageSizeOptions,
   previousPage,
+  quota,
   search,
   selectedFundType,
   totalCount,
@@ -77,6 +78,17 @@ onMounted(() => {
     <p class="notice-banner">
       每个登录账号仅能查看和维护自己名下的关注基金；账户、角色与数据范围由服务端统一控制。
     </p>
+    <section
+      v-if="quota"
+      class="watchlist-quota-card"
+      aria-label="关注额度"
+    >
+      <span>关注额度</span>
+      <strong>{{ quota.activeWatchlistCount }} / {{ quota.maxActiveWatchlistCount }}</strong>
+      <p>
+        免费 {{ quota.freeWatchlistLimit }} 个；试用关注积分可用 {{ quota.trialCreditAvailable }} 个，已锁定 {{ quota.trialCreditLocked }} 个。
+      </p>
+    </section>
 
     <form
       class="search-panel watchlist-filter-panel"

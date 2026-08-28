@@ -2,6 +2,7 @@ import { get, post, put } from '@/api/http'
 import type { AccountRole } from '@/types/auth'
 import type { AdminUserPage } from '@/types/adminUser'
 import type { PortfolioSnapshot } from '@/types/portfolio'
+import type { WatchlistQuota } from '@/types/watchlist'
 
 /** 分页读取脱敏用户账户及关注数；仅管理员可用。 */
 export function getAdminUsers(page = 0, pageSize = 20): Promise<AdminUserPage> {
@@ -21,6 +22,15 @@ export function updateAdminUserStatus(userId: string, status: 'ACTIVE' | 'DISABL
 /** 由管理员人工重置指定用户密码；密码不保存在浏览器状态中。 */
 export function resetAdminUserPassword(userId: string, newPassword: string): Promise<void> {
   return post<void>(`/api/v1/admin/users/${encodeURIComponent(userId)}/reset-password`, { newPassword })
+}
+
+/** 仅系统管理员可向启用账户发放试用关注积分；积分不支持充值、支付或转赠。 */
+export function grantAdminUserWatchlistCredits(
+  userId: string,
+  amount: number,
+  reason: string,
+): Promise<WatchlistQuota> {
+  return post<WatchlistQuota>(`/api/v1/admin/users/${encodeURIComponent(userId)}/watchlist-credits`, { amount, reason })
 }
 
 /** 在二次确认后迁移历史本机关注，接口不会迁移提醒或持仓。 */
