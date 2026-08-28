@@ -1,6 +1,6 @@
 import { get, post, put } from '@/api/http'
 import type { AccountRole } from '@/types/auth'
-import type { AdminUserPage } from '@/types/adminUser'
+import type { AdminUserPage, WatchlistCreditLedgerPage } from '@/types/adminUser'
 import type { PortfolioSnapshot } from '@/types/portfolio'
 import type { WatchlistQuota } from '@/types/watchlist'
 
@@ -31,6 +31,17 @@ export function grantAdminUserWatchlistCredits(
   reason: string,
 ): Promise<WatchlistQuota> {
   return post<WatchlistQuota>(`/api/v1/admin/users/${encodeURIComponent(userId)}/watchlist-credits`, { amount, reason })
+}
+
+/** 仅系统管理员可按时间倒序读取指定账户的积分流水；响应不包含完整手机号或内部标识。 */
+export function getAdminUserWatchlistCreditLedger(
+  userId: string,
+  page = 0,
+  pageSize = 20,
+): Promise<WatchlistCreditLedgerPage> {
+  return get<WatchlistCreditLedgerPage>(
+    `/api/v1/admin/users/${encodeURIComponent(userId)}/watchlist-credit-ledger?page=${page}&pageSize=${pageSize}`,
+  )
 }
 
 /** 在二次确认后迁移历史本机关注，接口不会迁移提醒或持仓。 */

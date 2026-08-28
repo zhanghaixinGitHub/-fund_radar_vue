@@ -1778,7 +1778,8 @@ h2 {
 .admin-summary-card,
 .admin-operation-card,
 .admin-table-card,
-.admin-portfolio-card {
+.admin-portfolio-card,
+.admin-credit-ledger-card {
   padding: 24px;
   margin-bottom: 22px;
   background: rgb(255 255 255 / 82%);
@@ -1797,7 +1798,8 @@ h2 {
 .admin-action-card > span,
 .admin-table-card header p,
 .admin-operation-card p,
-.admin-portfolio-card header p {
+.admin-portfolio-card header p,
+.admin-credit-ledger-card header p {
   color: #668078;
   font-size: 13px;
 }
@@ -1809,7 +1811,8 @@ h2 {
 .admin-summary-card p,
 .admin-operation-card p,
 .admin-table-card header p,
-.admin-portfolio-card header p {
+.admin-portfolio-card header p,
+.admin-credit-ledger-card header p {
   margin-bottom: 0;
 }
 
@@ -1858,7 +1861,8 @@ h2 {
 
 .admin-operation-card h2,
 .admin-table-card h2,
-.admin-portfolio-card h2 {
+.admin-portfolio-card h2,
+.admin-credit-ledger-card h2 {
   margin-bottom: 8px;
 }
 
@@ -1873,6 +1877,7 @@ h2 {
 
 .admin-table-header,
 .admin-portfolio-card header,
+.admin-credit-ledger-card header,
 .admin-pagination {
   display: flex;
   gap: 16px;
@@ -1953,6 +1958,11 @@ h2 {
 }
 
 .admin-portfolio-card header {
+  align-items: start;
+  margin-bottom: 16px;
+}
+
+.admin-credit-ledger-card header {
   align-items: start;
   margin-bottom: 16px;
 }
@@ -2133,6 +2143,7 @@ h2 {
   .admin-operation-card,
   .admin-table-card,
   .admin-portfolio-card,
+  .admin-credit-ledger-card,
   .profile-summary-card,
   .profile-form {
     padding: 18px;
@@ -2140,6 +2151,7 @@ h2 {
 
   .admin-table-header,
   .admin-portfolio-card header,
+  .admin-credit-ledger-card header,
   .admin-pagination {
     align-items: flex-start;
     flex-direction: column;

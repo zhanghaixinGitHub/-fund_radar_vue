@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 
 import {
   grantAdminUserWatchlistCredits,
+  getAdminUserWatchlistCreditLedger,
   getAdminUserPortfolio,
   getAdminUsers,
   resetAdminUserPassword,
@@ -11,7 +12,7 @@ import {
   updateAdminUserStatus,
 } from '@/api/adminUsers'
 import type { AccountRole } from '@/types/auth'
-import type { AdminUser } from '@/types/adminUser'
+import type { AdminUser, WatchlistCreditLedgerPage } from '@/types/adminUser'
 import type { PortfolioSnapshot } from '@/types/portfolio'
 import { ACCOUNT_ROLE_OPTIONS, accountDisplayLabel, accountRoleLabel } from '@/utils/accountPresentation'
 
@@ -31,6 +32,11 @@ const creditReason = ref('')
 const transferTargetUserId = ref('')
 const portfolioUser = ref<AdminUser | null>(null)
 const portfolio = ref<PortfolioSnapshot | null>(null)
+const creditLedgerUser = ref<AdminUser | null>(null)
+const creditLedger = ref<WatchlistCreditLedgerPage | null>(null)
+const creditLedgerPage = ref(0)
+const creditLedgerLoading = ref(false)
+const creditLedgerPageSize = 10
 
 const roleOptions = ACCOUNT_ROLE_OPTIONS
 
@@ -174,6 +180,42 @@ async function viewPortfolio(user: AdminUser): Promise<void> {
   }
 }
 
+/** 系统管理员按需查看指定用户积分流水；明细只保留在当前页面内存，不进入全局状态。 */
+async function viewCreditLedger(user: AdminUser): Promise<void> {
+  actionUserId.value = user.userId
+  errorMessage.value = ''
+  try {
+    creditLedgerUser.value = user
+    creditLedgerPage.value = 0
+    await loadCreditLedger()
+  } catch (error) {
+    creditLedgerUser.value = null
+    creditLedger.value = null
+    errorMessage.value = error instanceof Error ? error.message : '积分流水暂时不可用。'
+  } finally {
+    actionUserId.value = null
+  }
+}
+
+/** 按当前页读取已选用户的积分流水；后端完成系统管理员授权和读取审计。 */
+async function loadCreditLedger(): Promise<void> {
+  if (!creditLedgerUser.value) {
+    return
+  }
+  creditLedgerLoading.value = true
+  try {
+    creditLedger.value = await getAdminUserWatchlistCreditLedger(
+      creditLedgerUser.value.userId,
+      creditLedgerPage.value,
+      creditLedgerPageSize,
+    )
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '积分流水暂时不可用。'
+  } finally {
+    creditLedgerLoading.value = false
+  }
+}
+
 /** 执行会改变账号或归属的操作，并在成功后刷新列表。 */
 async function runUserAction(userId: string, action: () => Promise<void>): Promise<void> {
   actionUserId.value = userId
@@ -211,6 +253,45 @@ function formatAmount(value: number | string): string {
 function closePortfolio(): void {
   portfolioUser.value = null
   portfolio.value = null
+}
+
+function closeCreditLedger(): void {
+  creditLedgerUser.value = null
+  creditLedger.value = null
+  creditLedgerPage.value = 0
+}
+
+function previousCreditLedgerPage(): void {
+  if (creditLedgerPage.value > 0 && !creditLedgerLoading.value) {
+    creditLedgerPage.value -= 1
+    void loadCreditLedger()
+  }
+}
+
+function nextCreditLedgerPage(): void {
+  if (creditLedger.value && creditLedgerPage.value + 1 < creditLedger.value.totalPages && !creditLedgerLoading.value) {
+    creditLedgerPage.value += 1
+    void loadCreditLedger()
+  }
+}
+
+function creditLedgerTypeLabel(entryType: string): string {
+  switch (entryType) {
+    case 'ADMIN_GRANT':
+      return '管理员发放'
+    case 'MIGRATION_GRANT':
+      return '存量迁移发放'
+    case 'WATCHLIST_CREDIT_LOCKED':
+      return '关注额度锁定'
+    case 'WATCHLIST_CREDIT_RELEASED':
+      return '取消关注释放'
+    default:
+      return '未知类型'
+  }
+}
+
+function formatCreditDelta(creditDelta: number): string {
+  return creditDelta > 0 ? `+${creditDelta}` : '—'
 }
 
 function previousPage(): void {
@@ -496,6 +577,14 @@ onMounted(() => {
                     class="text-button"
                     :disabled="actionUserId === user.userId"
                     type="button"
+                    @click="viewCreditLedger(user)"
+                  >
+                    查看积分流水
+                  </button>
+                  <button
+                    class="text-button"
+                    :disabled="actionUserId === user.userId"
+                    type="button"
                     @click="viewPortfolio(user)"
                   >
                     查看持仓
@@ -522,6 +611,85 @@ onMounted(() => {
           :disabled="!hasNextPage || loading"
           type="button"
           @click="nextPage"
+        >
+          下一页
+        </button>
+      </footer>
+    </section>
+
+    <section
+      v-if="creditLedgerUser"
+      class="admin-credit-ledger-card"
+      aria-labelledby="credit-ledger-title"
+    >
+      <header>
+        <div>
+          <h2 id="credit-ledger-title">
+            {{ accountDisplayLabel(creditLedgerUser) }} 的积分流水
+          </h2>
+          <p>按时间倒序展示发放、迁移、锁定和释放记录；手机号与内部标识不会展示。</p>
+        </div>
+        <button
+          class="text-button"
+          type="button"
+          @click="closeCreditLedger"
+        >
+          关闭
+        </button>
+      </header>
+      <p
+        v-if="creditLedgerLoading"
+        class="state-message"
+        role="status"
+      >
+        正在读取积分流水…
+      </p>
+      <p
+        v-else-if="!creditLedger?.items.length"
+        class="state-message"
+      >
+        该账户尚无积分流水。
+      </p>
+      <div
+        v-else
+        class="admin-table-wrap"
+      >
+        <table>
+          <thead>
+            <tr><th>时间</th><th>类型</th><th>积分变动</th><th>原因</th><th>操作人</th></tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="(entry, index) in creditLedger?.items"
+              :key="`${entry.createdAt}-${entry.entryType}-${index}`"
+            >
+              <td>{{ formatTime(entry.createdAt) }}</td>
+              <td>{{ creditLedgerTypeLabel(entry.entryType) }}</td>
+              <td>{{ formatCreditDelta(entry.creditDelta) }}</td>
+              <td>{{ entry.reason }}</td>
+              <td>{{ entry.actorDisplayName }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <footer
+        v-if="creditLedger && creditLedger.totalPages > 1"
+        class="admin-pagination"
+      >
+        <button
+          class="secondary-button"
+          :disabled="creditLedgerPage === 0 || creditLedgerLoading"
+          type="button"
+          @click="previousCreditLedgerPage"
+        >
+          上一页
+        </button>
+        <span>第 {{ creditLedgerPage + 1 }} / {{ creditLedger.totalPages }} 页，共 {{ creditLedger.totalCount }} 条</span>
+        <button
+          class="secondary-button"
+          :disabled="creditLedgerPage + 1 >= creditLedger.totalPages || creditLedgerLoading"
+          type="button"
+          @click="nextCreditLedgerPage"
         >
           下一页
         </button>
