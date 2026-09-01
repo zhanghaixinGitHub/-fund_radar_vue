@@ -2,15 +2,15 @@
 
 > 关联需求：docs_zhx/requirements/m3-decision-assistance.md
 > 关联设计：docs_zhx/design/m3-decision-assistance.md
-> 版本：v1.3
+> 版本：v1.4
 > 日期：2026-09-01
-> 说明：本文件保留完整验收设计。M3-04 已完成评分状态、时间泄漏和无基准不发布的代码级单元验证；M3-05 已完成本地 PostgreSQL 迁移、评分重放去重和接口认证验证；M3-06 已完成分析摘要的服务令牌/浏览器隔离、Java 权限与缓存降级映射，以及 Vue 类型检查、Lint 和生产构建。真实回测、管理员激活、ACTIVE 评分到用户通知的端到端用例尚未执行，不得用作模型上线或回测有效性证明。
+> 说明：本文件保留完整验收设计。M3-04 已完成评分状态、时间泄漏和无基准不发布的代码级单元验证；M3-05 已完成本地 PostgreSQL 迁移、评分重放去重和接口认证验证；M3-06 已完成分析摘要的服务令牌/浏览器隔离、Java 权限与缓存降级映射；v1.4 已完成基准覆盖计算、服务令牌隔离、Java 管理代理与 Vue 基准治理页面验证。真实基准导入、真实回测、管理员激活、ACTIVE 评分到用户通知的端到端用例尚未执行，不得用作模型上线或回测有效性证明。
 
 ## 已执行的基础验证（2026-09-01）
 
-- Python：特征自动/手动同步、来源血缘过滤、部分成功重试、内部服务令牌边界、模型发布约束、M3-05 分析运行/复合游标及 M3-06 基金摘要接口测试通过（Ruff、61 项 pytest）；Alembic 已新增 `20260901_08`。
+- Python：特征自动/手动同步、来源血缘过滤、部分成功重试、内部服务令牌边界、模型发布约束、M3-05 分析运行/复合游标、M3-06 基金摘要及 v1.4 基准覆盖/服务令牌接口测试通过（Ruff、64 项 pytest）；Alembic 已新增 `20260901_09`。
 - Java：Flyway 已从 V9 升至 V11，消费检查点、提醒冷却、通知权限与触发引用的迁移测试通过；评分重放只生成一条通知、检查点不重复推进、基金摘要映射和未认证访问拒绝的 PostgreSQL 16 集成测试通过（JBR release 17、37 项 Maven 测试）。
-- Vue：同步中心特征快照手动按钮、基金分析摘要、本人通知与管理员分析运行页面已通过类型检查、Lint 和生产构建。
+- Vue：同步中心特征快照手动按钮、基金分析摘要、本人通知与管理员分析运行/基准治理页面已通过类型检查、Lint 和生产构建。
 - 上述验证不产生 ACTIVE 模型、SCORED 结果、回测运行或站内通知。
 
 ## TC-M3-01｜来源和数据不足闸门
@@ -396,6 +396,58 @@ WHERE created_at >= :failure_started_at;
 | 数据不足 | 不显示方向、概率、收益或行动建议 |
 | 服务边界 | 浏览器不直接调用 Python、外部数据源或交易平台 |
 | 交易边界 | 不存在交易 API、按钮、跳转或后台任务 |
+
+测试结果：
+
+- [ ] 通过
+- [ ] 未通过
+- 未通过原因：
+
+---
+
+## TC-M3-11｜授权基准登记、覆盖闸门与候选回测
+
+前置条件：
+
+- 系统管理员已登录；`source_registry` 中存在一条人工来源登记。
+- 初始来源为未启用，且 `benchmark_series`、`benchmark_nav_daily` 均无目标基准记录。
+- 已准备具有授权依据的股票型基准日收盘序列，至少覆盖回测所需的 400 个点和独立测试窗口。
+
+操作步骤：
+
+1. 在“分析运行 → 回测基准”登记基准代码、名称、来源编码和授权依据。
+2. 在来源未启用时导入日序列并尝试启用，确认均被拒绝。
+3. 由数据治理人员确认授权后启用来源；导入不超过 10000 条的 `YYYY-MM-DD,收盘值` 数据，重复相同数据后再次导入。
+4. 确认点数不少于 400 后启用基准；选择该基准创建滚动回测。
+5. 准备一份缺少大部分未来标签日期的基准序列，执行同配置回测并查询运行和回测结果。
+
+数据库验证：
+
+~~~sql
+SELECT b.benchmark_code, b.status, s.source_code, s.enabled,
+       COUNT(n.nav_date) AS point_count, MIN(n.nav_date), MAX(n.nav_date)
+FROM benchmark_series b
+JOIN source_registry s ON s.source_id = b.source_id
+LEFT JOIN benchmark_nav_daily n ON n.benchmark_code = b.benchmark_code
+WHERE b.benchmark_code = :benchmark_code
+GROUP BY b.benchmark_code, b.status, s.source_code, s.enabled;
+
+SELECT run_id, publication_status, baselines ->> 'benchmark_id' AS benchmark_id,
+       baselines ->> 'benchmark_status' AS benchmark_status,
+       baselines ->> 'benchmark_coverage' AS benchmark_coverage,
+       failure_reason
+FROM backtest_run
+WHERE run_id = :run_id;
+~~~
+
+| 验收点 | 预期 |
+| --- | --- |
+| 服务边界 | 浏览器只调用 Java；Python 基准接口拒绝缺失服务令牌和浏览器 Origin |
+| 来源闸门 | 来源未启用时导入和启用均被拒绝，不写基准点 |
+| 幂等导入 | 相同 `benchmark_code + nav_date + value` 重复导入不产生重复行 |
+| 启用门槛 | 少于 400 点不能启用；启用基准不会激活模型、评分或提醒 |
+| 覆盖闸门 | 测试窗口基准覆盖少于 95% 时 `benchmark_status=DATA_INSUFFICIENT`、`publication_status=INELIGIBLE` |
+| 发布边界 | 完整基准回测最多生成 ELIGIBLE 候选，仍须管理员单独激活模型 |
 
 测试结果：
 

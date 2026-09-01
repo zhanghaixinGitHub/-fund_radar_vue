@@ -3,10 +3,10 @@
 > 关联需求：docs_zhx/requirements/m3-decision-assistance.md
 > 关联验收：docs_zhx/testcase/m3-decision-assistance.md
 > 关联总设计：docs_zhx/design/fund-radar.md
-> 版本：v1.3
+> 版本：v1.4
 > 日期：2026-09-01
 > 变更等级：L3
-> 状态：M3-01 至 M3-06 已实施；M3-06 只通过 Java 展示已发布或已暂停模型的受限摘要、本人通知和管理员运行状态，M3-07 监控发布仍未实施。当前没有 ACTIVE 模型或真实用户通知，本文件不代表交易能力已启用。
+> 状态：M3-01 至 M3-06 和 v1.4 基准登记/导入能力已实施；M3-06 只通过 Java 展示已发布或已暂停模型的受限摘要、本人通知和管理员运行状态，M3-07 监控发布仍未实施。当前没有 ACTIVE 模型、授权启用的业绩基准或真实用户通知，本文件不代表交易能力已启用。
 
 ## 1. 设计原则
 
@@ -48,6 +48,8 @@ Python 不向 Java 推送用户消息，不感知 user_id。Java 不直连 fund_
 | FUND_FORECAST_RESULT | FACT | fund_code + as_of_date + model_version | fund_ai.forecast_result | scored_at、forecast_id |
 | FUND_BACKTEST_RUN | METRIC | fund_type + strategy_version + time window + model_version | fund_ai.backtest_run | finished_at、run_id |
 | FUND_MODEL_RELEASE | ENTITY | model_code + model_version + fund_type | 新增 fund_ai.analysis_model_release | updated_at、model_release_id |
+| FUND_BENCHMARK_SERIES | ENTITY | benchmark_code | fund_ai.benchmark_series | updated_at、benchmark_code |
+| FUND_BENCHMARK_NAV | FACT | benchmark_code + nav_date | fund_ai.benchmark_nav_daily | updated_at、benchmark_code、nav_date |
 | FUND_SIGNAL_DELIVERY | RELATION | consumer + scored_at + forecast_id | 新增 fund_core.analysis_delivery_checkpoint | updated_at |
 | FUND_ALERT_RULE | ENTITY | user_id + fund_code + rule_type | fund_core.alert_rule | updated_at、rule_id |
 | FUND_NOTIFICATION | FACT | deduplication_key | fund_core.notification | created_at、notification_id |
@@ -91,7 +93,7 @@ feature_snapshot 继续复用现有唯一键 fund_code、as_of_date、feature_ve
 
 forecast_result 保持现有状态约束：SCORED 必须同时有 direction、directional_probability、confidence、risk_level；其他状态必须全部为空。score_status 不是错误码，页面要将 DATA_INSUFFICIENT、NOT_APPLICABLE、MODEL_REJECTED 展示为明确的业务状态。
 
-backtest_run 的 metrics 和 baselines JSON 至少包含 sample_count、annualized_return、max_drawdown、volatility、hit_rate、turnover、fee_rate、benchmark_id、long_hold_result、dca_result、data_cutoff。任一指标无法计算时记录 null 与 failure_reason，不能跳过字段后仍设为 ELIGIBLE。
+backtest_run 的 metrics 和 baselines JSON 至少包含 sample_count、annualized_return、max_drawdown、volatility、hit_rate、turnover、fee_rate、benchmark_id、benchmark_result、benchmark_coverage、benchmark_sample_count、long_hold_result、dca_result、data_cutoff。基准收益仅以同一信号日和未来标签日都存在的基准点计算；覆盖率低于 95% 时固定 `benchmark_status=DATA_INSUFFICIENT`。任一指标无法计算时记录 null 与 failure_reason，不能跳过字段后仍设为 ELIGIBLE。
 
 ### 3.4 新增控制表及变更 SQL
 
@@ -206,6 +208,11 @@ CREATE INDEX ix_notification_signal_created
 | PUT /api/v1/alert-rules | 当前用户且已关注该基金 | RISK_LEVEL 必须有 0 到 1 阈值；其他类型无阈值；写审计 |
 | GET /api/v1/notifications | 当前用户 | 稳定按 created_at、notification_id 逆序分页，不返回其他用户数据 |
 | POST /api/v1/notifications/{id}/read | 当前用户 | 幂等标记已读；不存在或非本人统一 404 |
+| GET /api/v1/admin/analysis/benchmarks | SYSTEM_ADMIN | 只返回基准元数据、来源启用状态和覆盖摘要，不返回原始日序列 |
+| PUT /api/v1/admin/analysis/benchmarks/{benchmarkCode} | SYSTEM_ADMIN | 登记 DRAFT 基准元数据；不启用来源、基准或模型 |
+| PUT /api/v1/admin/analysis/benchmarks/{benchmarkCode}/points | SYSTEM_ADMIN | 限制 10000 点，按代码和日期幂等导入；ACTIVE 基准必须先暂停 |
+| POST /api/v1/admin/analysis/benchmarks/{benchmarkCode}/activate | SYSTEM_ADMIN | 仅来源已启用且至少 400 点时启用；不激活模型 |
+| POST /api/v1/admin/analysis/benchmarks/{benchmarkCode}/suspend | SYSTEM_ADMIN | 停止新回测使用，保留历史回测和发布记录 |
 | POST /api/v1/admin/analysis/runs/rolling-backtest | SYSTEM_ADMIN | 仅创建受控异步回测，不同步等待完成 |
 | GET /api/v1/admin/analysis/runs/{runId} | SYSTEM_ADMIN | 返回持久运行、回测引用和脱敏失败摘要 |
 | POST /api/v1/admin/analysis/model-releases/{id}/activate | SYSTEM_ADMIN | 仅 ELIGIBLE 回测可激活；写审计并自动暂停同类别旧 ACTIVE 版本 |
@@ -224,6 +231,11 @@ CREATE INDEX ix_notification_signal_created
 | POST /internal/v1/analysis/model-releases/{id}/activate | Java 管理端 | 服务令牌、审核 TraceID；Python 校验关联回测为 ELIGIBLE |
 | POST /internal/v1/analysis/model-releases/{id}/suspend | Java 管理端 | 服务令牌、审核 TraceID；停止后续新评分 |
 | GET /internal/v1/analysis/fund-summary?fundCode={fundCode} | Java 基金详情 | 服务令牌、只读；仅选择最新 ACTIVE，缺失时选择最新 SUSPENDED，绝不暴露候选模型、原始 JSON 或失败细节 |
+| GET /internal/v1/analysis/benchmarks | Java 管理端 | 服务令牌、只读，仅输出摘要与覆盖范围 |
+| PUT /internal/v1/analysis/benchmarks/{benchmarkCode} | Java 管理端 | 服务令牌，登记元数据；来源仍按 source_registry 校验 |
+| PUT /internal/v1/analysis/benchmarks/{benchmarkCode}/points | Java 管理端 | 服务令牌，最大 10000 点，`benchmark_code + nav_date` UPSERT |
+| POST /internal/v1/analysis/benchmarks/{benchmarkCode}/activate | Java 管理端 | 服务令牌，要求来源已启用且最少 400 点 |
+| POST /internal/v1/analysis/benchmarks/{benchmarkCode}/suspend | Java 管理端 | 服务令牌，阻止新回测使用，不删除历史 |
 
 Python 拒绝浏览器 Origin 和缺失服务令牌请求。所有内部调用必须设置连接、读取超时与 TraceID；不在 URL、日志或错误体中包含服务令牌。
 
@@ -273,3 +285,10 @@ Python 拒绝浏览器 Origin 和缺失服务令牌请求。所有内部调用�
 - Java 缓存成功读取的同基金摘要。Python 暂不可用时，只有已缓存摘要可作为 `stale=true` 的降级结果返回；缓存未命中仍返回服务不可用，不能补造评分、回测或通知。
 - Vue 的本人通知页仅调用现有 Java 本人范围接口，并可幂等标记已读、调整既有提醒规则的风险阈值和启用状态；新增规则仍从已关注基金详情发起，不在通知页改变基金或规则类型。
 - 管理员分析运行页只能创建受控异步滚动回测并轮询持久运行状态；它不触发来源同步、特征构建、评分、激活、暂停或信号投递。所有页面均维持非交易披露，不提供外部账户、交易跳转或行动指令。
+
+## 12. v1.4｜基准序列与候选模型回测口径
+
+- `benchmark_series` 的来源不可在已有序列后改变；基准状态为 `DRAFT`、`ACTIVE` 或 `SUSPENDED`。只有 `ACTIVE + source_registry.enabled=true` 的股票型基准可进入新回测；导入或更新 ACTIVE 基准前必须先暂停，防止同一模型版本混用不同基准数据。
+- `benchmark_nav_daily` 使用 PostgreSQL 批量 UPSERT，业务键为 `benchmark_code + nav_date`，内容哈希未变时不更新。单次导入最多 10000 点，重复日期且收盘值冲突直接拒绝；不允许浏览器直连 Python 或写来源表。
+- 回测读取固定候选 `M3_STOCK_MOMENTUM_BASELINE_V1`，不会接受浏览器传入的模型、阈值或特征参数。独立测试窗口中，只有信号日和该基金未来标签日均存在的基准点才计入比较；覆盖少于 95% 或缺少基准收益时，发布状态固定 `INELIGIBLE`。
+- 本机迁移 `20260901_09` 只创建上述两张表及索引。当前基准表为 0 行、手动来源禁用，因此当前仍不能创建 ELIGIBLE 或 ACTIVE 模型；需要数据治理人员先确认来源授权并提供人工核验序列。

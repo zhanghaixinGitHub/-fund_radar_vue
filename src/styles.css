@@ -2565,6 +2565,130 @@ h2 {
   margin-top: 24px;
 }
 
+.benchmark-governance-card {
+  margin-top: 24px;
+}
+
+.helper-copy {
+  margin: 14px 0 0;
+  color: #587069;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.benchmark-list {
+  display: grid;
+  gap: 12px;
+  padding: 0;
+  margin: 18px 0 0;
+  list-style: none;
+}
+
+.benchmark-list li {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  background: #f4faf7;
+  border: 1px solid #d9e8e1;
+  border-radius: 12px;
+}
+
+.benchmark-overview {
+  min-width: 0;
+}
+
+.benchmark-overview p {
+  margin: 8px 0 0;
+  color: #587069;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.benchmark-status {
+  padding: 3px 7px;
+  color: #45645b;
+  font-size: 12px;
+  font-weight: 700;
+  background: #e5f0eb;
+  border-radius: 999px;
+}
+
+.benchmark-status.is-active {
+  color: #07574f;
+  background: #cfe9df;
+}
+
+.benchmark-status.is-suspended {
+  color: #775a1a;
+  background: #f8ebc6;
+}
+
+.benchmark-actions {
+  flex: none;
+}
+
+.benchmark-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 20px;
+}
+
+.benchmark-form {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  background: rgb(235 246 241 / 68%);
+  border: 1px solid #d9e8e1;
+  border-radius: 12px;
+}
+
+.benchmark-form h3 {
+  margin: 0;
+  color: #17332e;
+  font-size: 16px;
+}
+
+.benchmark-form label,
+.analysis-console-page .admin-inline-form label {
+  display: grid;
+  gap: 6px;
+  color: #23443e;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.benchmark-form input,
+.benchmark-form select,
+.benchmark-form textarea,
+.analysis-console-page .admin-inline-form input,
+.analysis-console-page .admin-inline-form select {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 10px;
+  color: #17332e;
+  font: inherit;
+  background: #fff;
+  border: 1px solid #b8cbc5;
+  border-radius: 8px;
+}
+
+.benchmark-form textarea {
+  min-height: 132px;
+  resize: vertical;
+}
+
+.benchmark-form input:focus-visible,
+.benchmark-form select:focus-visible,
+.benchmark-form textarea:focus-visible,
+.analysis-console-page .admin-inline-form input:focus-visible,
+.analysis-console-page .admin-inline-form select:focus-visible {
+  outline: 3px solid rgb(15 118 110 / 28%);
+  outline-offset: 2px;
+}
+
 .analysis-run-card .risk-disclaimer {
   margin-top: 18px;
 }
@@ -2603,6 +2727,15 @@ h2 {
   .notification-rule-list li {
     grid-template-columns: 1fr;
     align-items: stretch;
+  }
+
+  .benchmark-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .benchmark-list li {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 
@@ -2666,5 +2799,10 @@ h2 {
   .analysis-backtest-grid,
   .analysis-run-grid {
     grid-template-columns: 1fr;
+  }
+
+  .benchmark-form,
+  .benchmark-list li {
+    padding: 14px;
   }
 }

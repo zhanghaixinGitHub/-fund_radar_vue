@@ -17,7 +17,7 @@ export interface FundBacktestSummary {
   hitRate: number | string | null
   longHoldResult: number | string | null
   dcaResult: number | string | null
-  benchmarkStatus: 'AVAILABLE' | 'NOT_CONFIGURED' | null
+  benchmarkStatus: 'AVAILABLE' | 'NOT_CONFIGURED' | 'DATA_INSUFFICIENT' | null
   benchmarkResult: number | string | null
   completedAt: string | null
 }
@@ -58,4 +58,31 @@ export interface AnalysisRunStatus {
   requestedAt: string
   startedAt: string | null
   finishedAt: string | null
+}
+
+/** 管理员可见的已登记基准状态；不包含每日原始数据或来源凭证。 */
+export interface BenchmarkSeriesStatus {
+  benchmarkCode: string
+  displayName: string
+  fundType: 'STOCK'
+  sourceCode: string
+  sourceEnabled: boolean
+  status: 'DRAFT' | 'ACTIVE' | 'SUSPENDED'
+  licenseReference: string
+  pointCount: number
+  firstNavDate: string | null
+  lastNavDate: string | null
+}
+
+/** 一条人工核验的基准日收盘点；由服务端按代码和日期幂等写入。 */
+export interface BenchmarkNavPointInput {
+  navDate: string
+  closingValue: number
+}
+
+/** 登记候选回测基准时所需的最小治理元数据。 */
+export interface BenchmarkRegistrationInput {
+  displayName: string
+  sourceCode: string
+  licenseReference: string
 }
