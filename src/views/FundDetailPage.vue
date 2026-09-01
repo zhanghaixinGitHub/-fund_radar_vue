@@ -4,10 +4,12 @@ import { useRoute } from 'vue-router'
 
 import { getAlertRules, upsertAlertRule } from '@/api/alerts'
 import FundNavHistoryChart from '@/components/FundNavHistoryChart.vue'
+import FundSameTypeComparison from '@/components/FundSameTypeComparison.vue'
 import {
   getFundDetail,
   getFundEvents,
   getFundNavHistory,
+  getFundSameTypeComparison,
   getFundSignals,
 } from '@/api/funds'
 import { addWatchlistItem, removeWatchlistItem } from '@/api/watchlist'
@@ -16,11 +18,14 @@ import type {
   FundDetail,
   FundEventPage,
   FundNavHistory,
+  FundSameTypeComparison as FundSameTypeComparisonModel,
   FundSignal,
   FundSignalPage,
 } from '@/types/fund'
 import {
+  changeRateTone,
   dataSourceLabel,
+  formatChangeRate,
   fundStatusLabel,
   fundTypeLabel,
   netValueStatusLabel,
@@ -46,6 +51,9 @@ const signals = ref<FundSignalPage | null>(null)
 const navHistory = ref<FundNavHistory | null>(null)
 const navHistoryLoading = ref(false)
 const navHistoryError = ref('')
+const sameTypeComparison = ref<FundSameTypeComparisonModel | null>(null)
+const sameTypeComparisonLoading = ref(false)
+const sameTypeComparisonError = ref('')
 const selectedNavRange = ref<'THREE_MONTHS' | 'ONE_YEAR' | 'THREE_YEARS' | 'ALL'>('ONE_YEAR')
 const alertRules = ref<AlertRule[]>([])
 const selectedAlertType = ref<AlertRule['ruleType']>('RISK_LEVEL')
@@ -56,6 +64,56 @@ const fundCode = computed(() => String(route.params.fundCode ?? ''))
 const isMock = computed(() => fund.value?.dataSource === 'M0_MOCK')
 const isStale = computed(() => fund.value?.stale === true)
 const isWatched = computed(() => fund.value?.isWatched === true)
+const dataStatusLabel = computed(() => {
+  if (isMock.value) {
+    return '演示数据'
+  }
+  if (isStale.value) {
+    return '缓存资料'
+  }
+  return netValueStatusLabel(fund.value?.navStatus ?? 'UNAVAILABLE')
+})
+const navHistorySummary = computed(() => {
+  const items = navHistory.value?.items ?? []
+  if (items.length === 0) {
+    return null
+  }
+  const earliest = items.at(0)?.navDate
+  const latest = items.at(-1)?.navDate
+  return {
+    count: items.length,
+    range: earliest && latest ? `${earliest} 至 ${latest}` : null,
+    stale: navHistory.value?.stale === true,
+  }
+})
+const navHistoryInsight = computed(() => {
+  const points = (navHistory.value?.items ?? []).filter((point) => Number.isFinite(Number(point.unitNav)))
+  if (points.length < 2) {
+    return null
+  }
+  const first = points[0]
+  const latest = points.at(-1)
+  if (!first || !latest) {
+    return null
+  }
+  const accumulatedAvailable = Number.isFinite(Number(first.accumulatedNav))
+    && Number.isFinite(Number(latest.accumulatedNav))
+  const startValue = accumulatedAvailable ? Number(first.accumulatedNav) : Number(first.unitNav)
+  const latestValue = accumulatedAvailable ? Number(latest.accumulatedNav) : Number(latest.unitNav)
+  if (startValue <= 0 || !Number.isFinite(latestValue)) {
+    return null
+  }
+  const highest = points.reduce((current, point) => Number(point.unitNav) > Number(current.unitNav) ? point : current)
+  const lowest = points.reduce((current, point) => Number(point.unitNav) < Number(current.unitNav) ? point : current)
+  return {
+    startDate: first.navDate,
+    latestDate: latest.navDate,
+    changeRate: latestValue / startValue - 1,
+    changeBasis: accumulatedAvailable ? '累计净值' : '单位净值',
+    highest,
+    lowest,
+  }
+})
 const navRangeOptions = [
   { value: 'THREE_MONTHS', label: '近三月' },
   { value: 'ONE_YEAR', label: '近一年' },
@@ -142,6 +200,20 @@ async function loadNavHistory(): Promise<void> {
   }
 }
 
+/** 独立加载受控市场范围内的同类型比较；失败不影响详情和历史净值展示。 */
+async function loadSameTypeComparison(): Promise<void> {
+  sameTypeComparison.value = null
+  sameTypeComparisonError.value = ''
+  sameTypeComparisonLoading.value = true
+  try {
+    sameTypeComparison.value = await getFundSameTypeComparison(fundCode.value)
+  } catch (error) {
+    sameTypeComparisonError.value = error instanceof Error ? error.message : '同类型比较暂时不可用。'
+  } finally {
+    sameTypeComparisonLoading.value = false
+  }
+}
+
 /** 将后端评分状态转换为用户可理解的中文说明，不推断任何缺失的方向结论。 */
 function signalStatusLabel(signal: FundSignal): string {
   if (signal.scoreStatus === 'DATA_INSUFFICIENT') {
@@ -188,6 +260,8 @@ async function load(): Promise<void> {
   signals.value = null
   navHistory.value = null
   navHistoryError.value = ''
+  sameTypeComparison.value = null
+  sameTypeComparisonError.value = ''
   try {
     fund.value = await getFundDetail(fundCode.value)
   } catch (error) {
@@ -197,14 +271,18 @@ async function load(): Promise<void> {
     return
   }
 
-  const [historyResult, eventsResult, signalsResult, alertRulesResult] = await Promise.allSettled([
+  const [historyResult, comparisonResult, eventsResult, signalsResult, alertRulesResult] = await Promise.allSettled([
     loadNavHistory(),
+    loadSameTypeComparison(),
     getFundEvents(fundCode.value),
     getFundSignals(fundCode.value),
     getAlertRules(),
   ])
   if (historyResult.status === 'rejected') {
     navHistoryError.value = '历史净值暂时不可用。'
+  }
+  if (comparisonResult.status === 'rejected') {
+    sameTypeComparisonError.value = '同类型比较暂时不可用。'
   }
   if (eventsResult.status === 'fulfilled') {
     events.value = eventsResult.value
@@ -340,13 +418,85 @@ watch(selectedNavRange, () => {
       >
         分析服务暂不可用，当前展示缓存读模型（缓存时间：{{ fund.cachedAt || '未知' }}）。
       </p>
-      <dl class="detail-grid">
-        <div><dt>单位净值</dt><dd>{{ formatNetValue(fund.unitNav) }}</dd></div>
-        <div><dt>累计净值</dt><dd>{{ formatNetValue(fund.accumulatedNav) }}</dd></div>
-        <div><dt>净值日期</dt><dd>{{ fund.asOfDate || '暂无有效净值' }}</dd></div>
-        <div><dt>净值状态</dt><dd>{{ netValueStatusLabel(fund.navStatus) }}</dd></div>
-        <div><dt>数据来源</dt><dd>{{ dataSourceLabel(fund.dataSource) }}</dd></div>
-      </dl>
+      <section
+        class="detail-overview"
+        aria-label="净值与数据状态摘要"
+      >
+        <article class="detail-overview-card">
+          <p class="detail-overview-label">
+            最新已落库单位净值
+          </p>
+          <strong class="detail-overview-value">{{ formatNetValue(fund.unitNav) }}</strong>
+          <dl class="detail-overview-facts">
+            <div><dt>累计净值</dt><dd>{{ formatNetValue(fund.accumulatedNav) }}</dd></div>
+            <div><dt>净值日期</dt><dd>{{ fund.asOfDate || '暂无有效净值' }}</dd></div>
+          </dl>
+        </article>
+        <article class="detail-overview-card">
+          <p class="detail-overview-label">
+            最近已同步涨跌
+          </p>
+          <dl class="detail-change-grid">
+            <div>
+              <dt>日涨跌</dt>
+              <dd :class="['change-rate', changeRateTone(fund.dayChangeRate)]">
+                {{ formatChangeRate(fund.dayChangeRate) }}
+              </dd>
+            </div>
+            <div>
+              <dt>近一周</dt>
+              <dd :class="['change-rate', changeRateTone(fund.weekChangeRate)]">
+                {{ formatChangeRate(fund.weekChangeRate) }}
+              </dd>
+            </div>
+            <div>
+              <dt>近一月</dt>
+              <dd :class="['change-rate', changeRateTone(fund.monthChangeRate)]">
+                {{ formatChangeRate(fund.monthChangeRate) }}
+              </dd>
+            </div>
+          </dl>
+          <p class="detail-overview-meta">
+            以上均以最近一次已同步净值为锚点计算。
+          </p>
+        </article>
+        <article class="detail-overview-card">
+          <p class="detail-overview-label">
+            数据状态
+          </p>
+          <strong class="detail-overview-value">{{ dataStatusLabel }}</strong>
+          <dl class="detail-overview-facts">
+            <div><dt>净值状态</dt><dd>{{ netValueStatusLabel(fund.navStatus) }}</dd></div>
+            <div><dt>公告日期</dt><dd>{{ fund.navAnnDate || '暂缺' }}</dd></div>
+            <div><dt>数据来源</dt><dd>{{ dataSourceLabel(fund.dataSource) }}</dd></div>
+          </dl>
+          <p
+            v-if="navHistoryLoading"
+            class="detail-overview-meta"
+            role="status"
+          >
+            正在加载已同步历史净值…
+          </p>
+          <p
+            v-else-if="navHistoryError"
+            class="detail-overview-meta"
+          >
+            历史净值暂时不可用。
+          </p>
+          <p
+            v-else-if="navHistorySummary"
+            class="detail-overview-meta"
+          >
+            {{ navHistorySummary.stale ? '当前展示缓存历史净值' : '已同步' }} {{ navHistorySummary.count }} 条历史净值{{ navHistorySummary.range ? `（${navHistorySummary.range}）` : '' }}。
+          </p>
+          <p
+            v-else
+            class="detail-overview-meta"
+          >
+            当前范围暂无已同步历史净值。
+          </p>
+        </article>
+      </section>
       <section
         class="analysis-section"
         aria-labelledby="fund-profile-title"
@@ -419,9 +569,65 @@ watch(selectedNavRange, () => {
           :points="navHistory?.items ?? []"
           :stale="navHistory?.stale ?? false"
         />
+        <dl
+          v-if="navHistoryInsight"
+          class="history-insight-grid"
+          aria-label="所选历史净值区间解读"
+        >
+          <div>
+            <dt>所选区间涨跌</dt>
+            <dd :class="['change-rate', changeRateTone(navHistoryInsight.changeRate)]">
+              {{ formatChangeRate(navHistoryInsight.changeRate) }}
+            </dd>
+            <span>按{{ navHistoryInsight.changeBasis }}计算</span>
+          </div>
+          <div>
+            <dt>区间最高单位净值</dt>
+            <dd>{{ formatNetValue(navHistoryInsight.highest.unitNav) }}</dd>
+            <span>{{ navHistoryInsight.highest.navDate }}</span>
+          </div>
+          <div>
+            <dt>区间最低单位净值</dt>
+            <dd>{{ formatNetValue(navHistoryInsight.lowest.unitNav) }}</dd>
+            <span>{{ navHistoryInsight.lowest.navDate }}</span>
+          </div>
+          <div>
+            <dt>实际数据区间</dt>
+            <dd>{{ navHistoryInsight.startDate }} 至 {{ navHistoryInsight.latestDate }}</dd>
+            <span>仅含已同步交易日</span>
+          </div>
+        </dl>
+        <p
+          v-else-if="!navHistoryLoading && !navHistoryError"
+          class="empty-analysis history-insight-empty"
+        >
+          当前范围内不足两条有效单位净值，暂不计算区间涨跌、最高值或最低值。
+        </p>
         <p class="risk-disclaimer">
           净值曲线用于回顾已披露的历史变化，不代表实时估值、未来收益或买卖建议。
         </p>
+      </section>
+      <section
+        class="analysis-section"
+        aria-labelledby="same-type-comparison-title"
+      >
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">
+              同类型对比
+            </p>
+            <h2 id="same-type-comparison-title">
+              近一月涨跌比较
+            </h2>
+          </div>
+          <span class="section-note">仅当前基金市场样本</span>
+        </div>
+        <FundSameTypeComparison
+          :comparison="sameTypeComparison"
+          :current-fund-code="fund.fundCode"
+          :error-message="sameTypeComparisonError"
+          :loading="sameTypeComparisonLoading"
+        />
       </section>
       <button
         class="primary-button"

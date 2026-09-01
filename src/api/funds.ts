@@ -5,6 +5,7 @@ import type {
   FundListQuery,
   FundNavHistory,
   FundPage,
+  FundSameTypeComparison,
   FundSignalPage,
 } from '@/types/fund'
 
@@ -46,6 +47,11 @@ export function getFundNavHistory(
 ): Promise<FundNavHistory> {
   const query = new URLSearchParams({ startDate, endDate })
   return get<FundNavHistory>(`/api/v1/funds/${encodeURIComponent(fundCode)}/nav-history?${query.toString()}`)
+}
+
+/** 查询当前基金市场受控样本内的同类型比较，不表示全市场排名。 */
+export function getFundSameTypeComparison(fundCode: string): Promise<FundSameTypeComparison> {
+  return get<FundSameTypeComparison>(`/api/v1/funds/${encodeURIComponent(fundCode)}/same-type-comparison`)
 }
 
 /** 通过 Java 核心服务查询可追溯来源的关联事件摘要。 */

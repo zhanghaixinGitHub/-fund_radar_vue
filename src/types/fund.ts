@@ -123,6 +123,34 @@ export interface FundNavHistory {
   cachedAt: string | null
 }
 
+/** 当前用户已关注后可读取的份额规模历史；未同步时 items 必须为空。 */
+export interface FundShareHistory {
+  status: string
+  items: FundShareSnapshot[]
+}
+
+/** 当前基金市场受控样本内的一条同类型比较项，不代表全市场排名。 */
+export interface FundSameTypeComparisonItem {
+  rank: number
+  fundCode: string
+  fundName: string
+  fundType: string
+  asOfDate: string
+  monthChangeRate: number | string
+  dataSource: string
+}
+
+/** 同类型比较响应；scope 必须显式展示，避免将受控样本误解为全市场。 */
+export interface FundSameTypeComparison {
+  fundType: string
+  scope: string
+  status: string
+  asOfDate: string | null
+  targetRank: number | null
+  comparableCount: number
+  items: FundSameTypeComparisonItem[]
+}
+
 /** 基金列表响应；页码模式返回总数，游标模式仅为兼容已发布调用方保留。 */
 export interface FundPage {
   items: FundSummary[]
