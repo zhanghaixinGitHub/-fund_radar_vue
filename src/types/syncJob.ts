@@ -2,7 +2,7 @@
 export interface SyncJobStatus {
   jobId: string
   jobType: string
-  status: 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED'
+  status: 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'PARTIAL_SUCCESS' | 'FAILED'
   requestedNavDate: string
   fundCodes: string[]
   progressCurrent: number

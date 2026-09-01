@@ -5,20 +5,23 @@ import {
   getLastSuccessfulSyncTimes,
   getLatestMarketDetailSync,
   getLatestMarketNavIncrementalSync,
+  getLatestStockFeatureSnapshotSync,
   getSyncJob,
   startMarketDetailSync,
   startMarketNavIncrementalSync,
+  startStockFeatureSnapshotSync,
 } from '@/api/syncJobs'
 import type { SyncJobStatus } from '@/types/syncJob'
 
-type SyncTaskKey = 'marketNav' | 'marketDetail'
+type SyncTaskKey = 'marketNav' | 'marketDetail' | 'featureSnapshot'
 
 interface SyncTaskDefinition {
   key: SyncTaskKey
-  jobType: 'MARKET_NAV_INCREMENTAL' | 'MARKET_DETAIL'
+  jobType: 'MARKET_NAV_INCREMENTAL' | 'MARKET_DETAIL' | 'STOCK_FEATURE_SNAPSHOT'
   title: string
   description: string
   scheduleNote: string
+  actionLabel: string
   start: () => Promise<SyncJobStatus>
   loadLatest: () => Promise<SyncJobStatus | null>
 }
@@ -31,6 +34,7 @@ const tasks: readonly SyncTaskDefinition[] = [
     title: '基金市场净值增量同步',
     description: '补齐基金市场中所有启用基金截至今日的缺失净值；已是最新或非交易日时会安全地以零变更结束。',
     scheduleNote: '定时：工作日 20:00；也可在这里手动补齐。',
+    actionLabel: '开始同步',
     start: startMarketNavIncrementalSync,
     loadLatest: getLatestMarketNavIncrementalSync,
   },
@@ -40,22 +44,36 @@ const tasks: readonly SyncTaskDefinition[] = [
     title: '基金市场完整资料同步',
     description: '同步基础资料、扩展净值、基金经理、规模和分红记录；仅查询已登记的基金市场，不读取个人关注关系。',
     scheduleNote: '按需手动执行；完整资料会调用多个 Tushare 接口，因此暂不自动定时运行。',
+    actionLabel: '开始同步',
     start: startMarketDetailSync,
     loadLatest: getLatestMarketDetailSync,
+  },
+  {
+    key: 'featureSnapshot',
+    jobType: 'STOCK_FEATURE_SNAPSHOT',
+    title: '股票型基金特征快照同步',
+    description: '从已落库且已授权的股票型基金净值生成可重现的历史统计特征；不拉取外部数据，不生成预测、回测或提醒。',
+    scheduleNote: '市场净值增量同步成功后自动执行；若特征阶段未完成，可在此手动重试。',
+    actionLabel: '同步特征快照',
+    start: startStockFeatureSnapshotSync,
+    loadLatest: getLatestStockFeatureSnapshotSync,
   },
 ]
 
 const jobs = ref<Record<SyncTaskKey, SyncJobStatus | null>>({
   marketNav: null,
   marketDetail: null,
+  featureSnapshot: null,
 })
 const starting = ref<Record<SyncTaskKey, boolean>>({
   marketNav: false,
   marketDetail: false,
+  featureSnapshot: false,
 })
 const lastSuccessfulAt = ref<Record<string, string | null>>({
   MARKET_NAV_INCREMENTAL: null,
   MARKET_DETAIL: null,
+  STOCK_FEATURE_SNAPSHOT: null,
 })
 const loading = ref(true)
 const errorMessage = ref('')
@@ -77,7 +95,7 @@ function progressPercent(job: SyncJobStatus | null): number {
   if (!job || job.progressTotal <= 0) {
     return 0
   }
-  if (job.status === 'SUCCEEDED') {
+  if (job.status === 'SUCCEEDED' || job.status === 'PARTIAL_SUCCESS') {
     return 100
   }
   return Math.min(100, Math.round((job.progressCurrent / job.progressTotal) * 100))
@@ -89,6 +107,7 @@ function statusLabel(status: SyncJobStatus['status'] | undefined): string {
     QUEUED: '等待执行',
     RUNNING: '正在同步',
     SUCCEEDED: '同步完成',
+    PARTIAL_SUCCESS: '来源已同步，特征待重试',
     FAILED: '同步未完成',
   }[status ?? 'QUEUED']
 }
@@ -158,6 +177,9 @@ async function loadSyncCenter(): Promise<void> {
     ])
     tasks.forEach((task, index) => {
       jobs.value[task.key] = latestJobs[index]
+      if (latestJobs[index]) {
+        updateLastSuccessfulTime(latestJobs[index])
+      }
     })
     for (const item of successTimes) {
       lastSuccessfulAt.value[item.jobType] = item.lastSuccessfulAt
@@ -290,8 +312,9 @@ onBeforeUnmount(() => {
       </dl>
 
       <p
-        v-if="jobs[task.key]?.status === 'FAILED'"
-        class="state-message error-message sync-job-message"
+        v-if="jobs[task.key]?.status === 'FAILED' || jobs[task.key]?.status === 'PARTIAL_SUCCESS'"
+        class="state-message sync-job-message"
+        :class="jobs[task.key]?.status === 'FAILED' ? 'error-message' : 'warning-message'"
         role="alert"
       >
         {{ jobs[task.key]?.errorMessage || '同步未完成，请稍后重试。' }}
@@ -312,7 +335,7 @@ onBeforeUnmount(() => {
           type="button"
           @click="startSync(task)"
         >
-          {{ starting[task.key] ? '正在创建任务…' : isActive(task) ? '同步任务进行中…' : '开始同步' }}
+          {{ starting[task.key] ? '正在创建任务…' : isActive(task) ? '同步任务进行中…' : task.actionLabel }}
         </button>
       </div>
     </section>
@@ -334,6 +357,7 @@ onBeforeUnmount(() => {
       </h2>
       <ul>
         <li>净值增量任务保留工作日 20:00 的定时同步；本页按钮用于随时手动补齐。</li>
+        <li>净值增量成功后会在同一后台任务内自动生成股票型基金特征快照；若该阶段失败，会保留来源成功记录并提供独立手动重试。</li>
         <li>完整资料任务会调用多类 Tushare 接口，当前仅支持管理员手动发起，完成真实验权后再单独确定自动刷新频率。</li>
         <li>任意时刻只允许一个市场同步任务运行；页面每秒读取一次服务端进度，不会重复触发数据源调用。</li>
       </ul>

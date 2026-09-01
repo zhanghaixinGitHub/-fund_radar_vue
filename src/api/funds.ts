@@ -2,6 +2,7 @@ import { get } from '@/api/http'
 import type {
   FundDetail,
   FundEventPage,
+  FundFeatureStatus,
   FundListQuery,
   FundNavHistory,
   FundPage,
@@ -62,4 +63,9 @@ export function getFundEvents(fundCode: string): Promise<FundEventPage> {
 /** 查询已落库的 M3 评分结果，不触发任何模型执行。 */
 export function getFundSignals(fundCode: string): Promise<FundSignalPage> {
   return get<FundSignalPage>(`/api/v1/funds/${encodeURIComponent(fundCode)}/signals`)
+}
+
+/** 查询已落库的 M3-G1 历史统计特征；不会触发特征构建或模型执行。 */
+export function getFundFeatureStatus(fundCode: string): Promise<FundFeatureStatus> {
+  return get<FundFeatureStatus>(`/api/v1/funds/${encodeURIComponent(fundCode)}/feature-status`)
 }

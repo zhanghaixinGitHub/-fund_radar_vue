@@ -217,3 +217,30 @@ export interface FundSignalPage {
   stale: boolean
   cachedAt: string | null
 }
+
+/** M3-G1 的固定历史净值统计特征，不表示方向预测或投资建议。 */
+export interface FundFeatureMetrics {
+  return5d: number | string | null
+  return20d: number | string | null
+  return60d: number | string | null
+  volatility20d: number | string | null
+  maxDrawdown60d: number | string | null
+}
+
+/** 基金详情页展示的最新特征状态；无快照时除状态外均为空。 */
+export interface FundFeatureStatus {
+  status: 'AVAILABLE' | 'NOT_AVAILABLE'
+  asOfDate: string | null
+  fundType: string | null
+  featureVersion: string | null
+  completeness: number | string | null
+  eligibilityStatus: 'SCORABLE' | 'DATA_INSUFFICIENT' | 'NOT_APPLICABLE' | null
+  unavailableReason: string | null
+  sourceCode: string | null
+  sourceSyncFinishedAt: string | null
+  navValueBasis: 'ACCUMULATED_NAV' | 'UNIT_NAV' | null
+  metrics: FundFeatureMetrics | null
+  computedAt: string | null
+  stale: boolean
+  cachedAt: string | null
+}

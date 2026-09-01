@@ -8,6 +8,7 @@ import FundSameTypeComparison from '@/components/FundSameTypeComparison.vue'
 import {
   getFundDetail,
   getFundEvents,
+  getFundFeatureStatus,
   getFundNavHistory,
   getFundSameTypeComparison,
   getFundSignals,
@@ -17,6 +18,7 @@ import type { AlertRule, UpsertAlertRuleRequest } from '@/types/alert'
 import type {
   FundDetail,
   FundEventPage,
+  FundFeatureStatus,
   FundNavHistory,
   FundSameTypeComparison as FundSameTypeComparisonModel,
   FundSignal,
@@ -47,6 +49,7 @@ const actionMessage = ref('')
 const analysisMessage = ref('')
 const alertMessage = ref('')
 const events = ref<FundEventPage | null>(null)
+const featureStatus = ref<FundFeatureStatus | null>(null)
 const signals = ref<FundSignalPage | null>(null)
 const navHistory = ref<FundNavHistory | null>(null)
 const navHistoryLoading = ref(false)
@@ -228,6 +231,31 @@ function signalStatusLabel(signal: FundSignal): string {
   return '已完成评分'
 }
 
+/** 将特征状态转为用户文案，强调它是模型输入统计而不是预测输出。 */
+function featureStatusLabel(status: FundFeatureStatus): string {
+  if (status.status === 'NOT_AVAILABLE') {
+    return '暂无特征快照'
+  }
+  if (status.eligibilityStatus === 'DATA_INSUFFICIENT') {
+    return '数据不足，暂不评分'
+  }
+  if (status.eligibilityStatus === 'NOT_APPLICABLE') {
+    return '该基金类型暂不适用特征口径'
+  }
+  return '历史统计输入已就绪'
+}
+
+/** 显示本次特征计算统一采用的净值口径，不将缺失口径臆测为实时净值。 */
+function navValueBasisLabel(value: FundFeatureStatus['navValueBasis']): string {
+  if (value === 'ACCUMULATED_NAV') {
+    return '累计净值'
+  }
+  if (value === 'UNIT_NAV') {
+    return '单位净值'
+  }
+  return '暂缺'
+}
+
 /** 用当前基金和提醒类型已有的规则回填提醒表单；不存在时使用安全默认值。 */
 function applyCurrentAlertRule(): void {
   const existingRule = alertRules.value.find(
@@ -257,6 +285,7 @@ async function load(): Promise<void> {
   analysisMessage.value = ''
   alertMessage.value = ''
   events.value = null
+  featureStatus.value = null
   signals.value = null
   navHistory.value = null
   navHistoryError.value = ''
@@ -271,10 +300,11 @@ async function load(): Promise<void> {
     return
   }
 
-  const [historyResult, comparisonResult, eventsResult, signalsResult, alertRulesResult] = await Promise.allSettled([
+  const [historyResult, comparisonResult, eventsResult, featureResult, signalsResult, alertRulesResult] = await Promise.allSettled([
     loadNavHistory(),
     loadSameTypeComparison(),
     getFundEvents(fundCode.value),
+    getFundFeatureStatus(fundCode.value),
     getFundSignals(fundCode.value),
     getAlertRules(),
   ])
@@ -287,6 +317,9 @@ async function load(): Promise<void> {
   if (eventsResult.status === 'fulfilled') {
     events.value = eventsResult.value
   }
+  if (featureResult.status === 'fulfilled') {
+    featureStatus.value = featureResult.value
+  }
   if (signalsResult.status === 'fulfilled') {
     signals.value = signalsResult.value
   }
@@ -294,8 +327,8 @@ async function load(): Promise<void> {
     alertRules.value = alertRulesResult.value
     applyCurrentAlertRule()
   }
-  if (eventsResult.status === 'rejected' || signalsResult.status === 'rejected') {
-    analysisMessage.value = '事件或信号服务暂不可用；请确认 Java 服务已重启至包含 M2/M3 接口的版本。'
+  if (eventsResult.status === 'rejected' || featureResult.status === 'rejected' || signalsResult.status === 'rejected') {
+    analysisMessage.value = '事件、特征或信号服务暂不可用；请确认 Java 服务已重启至包含 M2/M3 接口的版本。'
   }
   if (alertRulesResult.status === 'rejected') {
     alertMessage.value = '提醒规则服务暂不可用；请确认 Java 服务已重启至包含 M3 接口的版本。'
@@ -706,6 +739,87 @@ watch(selectedNavRange, () => {
           class="empty-analysis"
         >
           暂无已审核且仍在授权保留期内的关联事件。
+        </p>
+      </section>
+      <section
+        class="analysis-section"
+        aria-labelledby="feature-title"
+      >
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">
+              特征数据
+            </p>
+            <h2 id="feature-title">
+              历史统计输入
+            </h2>
+          </div>
+          <span class="section-note">历史统计，不构成预测</span>
+        </div>
+        <p
+          v-if="featureStatus?.stale"
+          class="notice-banner"
+          role="status"
+        >
+          特征服务暂不可用，当前展示缓存内容（缓存时间：{{ featureStatus.cachedAt || '未知' }}）。
+        </p>
+        <template v-if="featureStatus?.status === 'AVAILABLE'">
+          <div class="feature-status-card">
+            <strong>{{ featureStatusLabel(featureStatus) }}</strong>
+            <p>
+              数据截至 {{ featureStatus.asOfDate || '未知' }} · 特征 {{ featureStatus.featureVersion || '未知' }} ·
+              完整度 {{ formatPercent(featureStatus.completeness) }}
+            </p>
+            <p>
+              来源 {{ dataSourceLabel(featureStatus.sourceCode || '') }} · 净值口径 {{ navValueBasisLabel(featureStatus.navValueBasis) }} ·
+              来源同步 {{ featureStatus.sourceSyncFinishedAt || '未知' }}
+            </p>
+          </div>
+          <dl
+            v-if="featureStatus.metrics"
+            class="feature-metrics"
+          >
+            <div>
+              <dt>近 5 日收益</dt>
+              <dd :class="changeRateTone(featureStatus.metrics.return5d)">
+                {{ formatChangeRate(featureStatus.metrics.return5d) }}
+              </dd>
+            </div>
+            <div>
+              <dt>近 20 日收益</dt>
+              <dd :class="changeRateTone(featureStatus.metrics.return20d)">
+                {{ formatChangeRate(featureStatus.metrics.return20d) }}
+              </dd>
+            </div>
+            <div>
+              <dt>近 60 日收益</dt>
+              <dd :class="changeRateTone(featureStatus.metrics.return60d)">
+                {{ formatChangeRate(featureStatus.metrics.return60d) }}
+              </dd>
+            </div>
+            <div>
+              <dt>20 日波动率</dt>
+              <dd>{{ formatPercent(featureStatus.metrics.volatility20d) }}</dd>
+            </div>
+            <div>
+              <dt>60 日最大回撤</dt>
+              <dd :class="changeRateTone(featureStatus.metrics.maxDrawdown60d)">
+                {{ formatChangeRate(featureStatus.metrics.maxDrawdown60d) }}
+              </dd>
+            </div>
+          </dl>
+          <p
+            v-else
+            class="empty-analysis"
+          >
+            {{ featureStatus.unavailableReason || '当前特征输入尚不完整，不展示统计指标。' }}
+          </p>
+        </template>
+        <p
+          v-else-if="!analysisMessage"
+          class="empty-analysis"
+        >
+          {{ featureStatus ? featureStatusLabel(featureStatus) : '特征状态暂时不可用。' }}
         </p>
       </section>
       <section

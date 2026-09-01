@@ -888,9 +888,20 @@ h2 {
   background: #dcefe3;
 }
 
+.sync-status.is-partial_success {
+  color: #765614;
+  background: #fff1cc;
+}
+
 .sync-status.is-failed {
   color: #a34232;
   background: #fde8e3;
+}
+
+.warning-message {
+  color: #765614;
+  background: #fff8e7;
+  border-color: #f0d18c;
 }
 
 .sync-progress-section {
@@ -1086,6 +1097,47 @@ h2 {
   margin: 8px 0 0;
   color: #597069;
   line-height: 1.65;
+}
+
+.feature-status-card {
+  padding: 16px;
+  margin-top: 18px;
+  background: rgb(255 255 255 / 72%);
+  border: 1px solid rgb(20 68 57 / 12%);
+  border-radius: 12px;
+}
+
+.feature-status-card p {
+  margin: 8px 0 0;
+  color: #597069;
+  line-height: 1.65;
+}
+
+.feature-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  padding: 0;
+  margin: 12px 0 0;
+}
+
+.feature-metrics div {
+  padding: 14px;
+  background: rgb(255 255 255 / 72%);
+  border: 1px solid rgb(20 68 57 / 12%);
+  border-radius: 12px;
+}
+
+.feature-metrics dt {
+  color: #597069;
+  font-size: 13px;
+}
+
+.feature-metrics dd {
+  margin: 7px 0 0;
+  color: #294b43;
+  font-size: 18px;
+  font-weight: 700;
 }
 
 .alert-rule-form {

@@ -125,6 +125,10 @@
 
 返回可回放的评分结果游标页，包括数据截至日期、模型/特征版本、状态、解释、风险与可用时的方向/概率/置信度。`DATA_INSUFFICIENT`、`NOT_APPLICABLE`、`MODEL_REJECTED` 三种状态的方向、概率和置信度必须为 `null`。当前无真实数据和模型结果时正常返回空 `items`，不生成方向性结论。
 
+### `GET /api/v1/funds/{fundCode}/feature-status`（M3-G1）
+
+返回该基金已持久化的最新股票型特征状态。`AVAILABLE` 时携带数据截至日、特征版本、来源代码与同步时间、统一净值口径、完整度以及 5/20/60 日收益、20 日波动率、60 日最大回撤；这些字段均是历史统计输入，不是预测、方向、概率或交易建议。`NOT_AVAILABLE` 时除状态、缓存标记与缓存时间外字段均为 `null`；读取绝不触发特征构建、评分或数据同步。
+
 ### `GET/PUT /api/v1/alert-rules`（M3 本机单用户）
 
 返回或幂等保存当前本机用户的站内信息提醒规则。请求体为：
@@ -150,6 +154,7 @@
 | GET | `/internal/v1/funds` | 已实现 | `keyword`、`pageSize`、`page` 或 `cursor` 的已持久化目录列表；页码模式返回同筛选 `total_count`/`total_pages`；未同步净值时 `as_of_date=null` |
 | GET | `/internal/v1/funds/{fund_code}` | 已实现 | 单只已持久化目录详情；`NOT_SYNCED` 不得视为实时净值 |
 | GET | `/internal/v1/sources` | M1（部分） | 仅服务身份可读的来源开关、限频、保留期与最近状态；不返回凭证、原始内容或任务触发能力 |
+| GET | `/internal/v1/features/latest` | M3-G1 | 已持久化股票型特征状态；需要 `fundCode`，不触发特征构建或模型执行 |
 | GET | `/internal/v1/signals` | M3（部分） | 本地已持久化评分结果的游标读取；不在读取时运行模型 |
 | GET | `/internal/v1/events` | M2（部分） | 已审核、未过保留期且按基金关联的只读读取 |
 | POST | `/internal/v1/tasks/rebuild` | 冻结 | 带幂等键的异步补数/重算任务；未获来源授权前不实现 |
