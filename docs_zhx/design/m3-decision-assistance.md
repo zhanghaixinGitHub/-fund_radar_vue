@@ -3,10 +3,10 @@
 > 关联需求：docs_zhx/requirements/m3-decision-assistance.md
 > 关联验收：docs_zhx/testcase/m3-decision-assistance.md
 > 关联总设计：docs_zhx/design/fund-radar.md
-> 版本：v1.1
+> 版本：v1.2
 > 日期：2026-09-01
 > 变更等级：L3
-> 状态：M3-01 至 M3-04 的 Python 后台能力已实施；M3-05 至 M3-07 的 Java 消费、页面、监控和受控发布仍未实施，本文件不代表交易能力已启用。
+> 状态：M3-01 至 M3-05 的 Python/Java 后台能力已实施；M3-06 页面和 M3-07 监控发布仍未实施。当前没有 ACTIVE 模型或真实用户通知，本文件不代表交易能力已启用。
 
 ## 1. 设计原则
 
@@ -18,7 +18,7 @@
 
 ## 2. 当前基线与目标架构
 
-现有 fund_ai.feature_snapshot、forecast_result、backtest_run 已保存基础版本、状态与约束；fund_core.alert_rule、signal_snapshot、notification 已保存规则、快照和通知骨架。当前已生成 24 条股票型基金特征快照，但没有模型发布、评分、回测、信号或通知记录；本设计的控制面扩展均为非破坏性迁移。
+现有 fund_ai.feature_snapshot、forecast_result、backtest_run、analysis_model_release 和 analysis_run 已保存基础版本、状态与约束；fund_core.alert_rule、signal_snapshot、notification 和 analysis_delivery_checkpoint 已保存规则、快照、通知和消费水位。当前已生成 24 条股票型基金特征快照，但没有 ACTIVE 模型、真实评分、回测、信号或通知记录；本设计的控制面扩展均为非破坏性迁移。
 
 ~~~text
 已授权来源与本地净值
@@ -36,7 +36,7 @@
   -> Vue 读取评分、回测摘要、规则和本人通知
 ~~~
 
-Python 不向 Java 推送用户消息，不感知 user_id。Java 不直连 fund_ai，不训练模型，也不在浏览器请求时同步或评分。
+Python 不向 Java 推送用户消息，不感知 user_id。Java 不直连 fund_ai 数据库，不训练模型，也不在浏览器请求时同步或评分。
 
 ## 3. 数据契约与所有权
 
@@ -188,11 +188,11 @@ CREATE INDEX ix_notification_signal_created
 
 ### 4.2 Java 信号消费和通知
 
-1. Java 按 analysis_delivery_checkpoint 以 scored_at、forecast_id 稳定排序拉取已发布的评分变化。
-2. 对每条评分在一个 fund_core 本地事务中执行 signal_snapshot 的唯一键 UPSERT、alert_rule 匹配、notification 去重写入、last_triggered_at 更新和消费水位推进。
-3. 通知去重键为 user_id + rule_id + trigger_type + forecast_id 或 event_id；同一评分不得重复推送。
-4. 评分已暂停、撤回或状态不是 SCORED 时只同步快照状态，不产生评分变化提醒。
-5. 消费失败不推进水位；再次消费由唯一键保证幂等。单批最大 500 条，单条失败进入隔离日志并阻止该批水位跨越。
+1. Java 按 analysis_delivery_checkpoint 以 scored_at、forecast_id 稳定排序拉取 `ACTIVE + SCORED` 的评分变化。
+2. 每页评分在一个 fund_core 本地事务中执行 signal_snapshot 的唯一键 UPSERT、alert_rule 匹配、notification 去重写入、last_triggered_at 更新和消费水位推进。
+3. 通知去重键为 rule_id + forecast_id；rule 已绑定唯一 user_id，因此同一评分不得重复推送。
+4. 暂停、撤回或非 SCORED 评分不进入 changes 接口，不产生评分变化提醒。
+5. 消费失败不推进水位；再次消费由唯一键保证幂等。每页最多 100 条、单次最多 100 页；任一写入失败会回滚该页并阻止水位跨越。
 
 ## 5. 接口契约
 
@@ -205,9 +205,11 @@ CREATE INDEX ix_notification_signal_created
 | PUT /api/v1/alert-rules | 当前用户且已关注该基金 | RISK_LEVEL 必须有 0 到 1 阈值；其他类型无阈值；写审计 |
 | GET /api/v1/notifications | 当前用户 | 稳定按 created_at、notification_id 逆序分页，不返回其他用户数据 |
 | POST /api/v1/notifications/{id}/read | 当前用户 | 幂等标记已读；不存在或非本人统一 404 |
-| POST /api/v1/admin/analysis-runs | SYSTEM_ADMIN | 仅创建受控异步运行，不同步等待回测完成 |
-| GET /api/v1/admin/analysis-runs/{runId} | SYSTEM_ADMIN | 返回运行、水位、计数、脱敏失败摘要和回测结论 |
-| POST /api/v1/admin/model-releases/{id}/activate | SYSTEM_ADMIN | 仅 ELIGIBLE 回测可激活；写审计并自动暂停同类别旧 ACTIVE 版本 |
+| POST /api/v1/admin/analysis/runs/rolling-backtest | SYSTEM_ADMIN | 仅创建受控异步回测，不同步等待完成 |
+| GET /api/v1/admin/analysis/runs/{runId} | SYSTEM_ADMIN | 返回持久运行、回测引用和脱敏失败摘要 |
+| POST /api/v1/admin/analysis/model-releases/{id}/activate | SYSTEM_ADMIN | 仅 ELIGIBLE 回测可激活；写审计并自动暂停同类别旧 ACTIVE 版本 |
+| POST /api/v1/admin/analysis/model-releases/{id}/suspend | SYSTEM_ADMIN | 显式暂停发布并写审计 |
+| POST /api/v1/admin/analysis/signal-delivery | SYSTEM_ADMIN | 仅消费已有评分，不启动评分、回测或发布 |
 
 所有公开响应均含 traceId、dataAsOf、scoreStatus 和非交易披露。基金用户只看到已发布版本的评分和面向用户的回测摘要；完整配置、失败详情和审批记录仅管理员可见。
 
@@ -215,10 +217,11 @@ CREATE INDEX ix_notification_signal_created
 
 | 内部接口 | 调用方 | 规则 |
 | --- | --- | --- |
-| POST /internal/v1/analysis-runs | Java 管理端 | 服务令牌、幂等键、异步返回运行标识 |
-| GET /internal/v1/analysis-runs/{runId} | Java 管理端 | 只读状态和脱敏统计 |
-| GET /internal/v1/signals/changes | Java 消费任务 | 必传窗口和游标；仅返回 ACTIVE 模型的评分变化 |
-| POST /internal/v1/model-releases/{id}/activate | Java 管理端 | 服务令牌、审核 TraceID；Python 校验关联回测为 ELIGIBLE |
+| POST /internal/v1/analysis/runs/rolling-backtest | Java 管理端 | 服务令牌、异步返回持久运行标识；只接受受限费率 |
+| GET /internal/v1/analysis/runs/{runId} | Java 管理端 | 只读状态和脱敏统计 |
+| GET /internal/v1/signals/changes | Java 消费任务 | 复合游标成对必传；仅返回 ACTIVE 模型的 SCORED 变化 |
+| POST /internal/v1/analysis/model-releases/{id}/activate | Java 管理端 | 服务令牌、审核 TraceID；Python 校验关联回测为 ELIGIBLE |
+| POST /internal/v1/analysis/model-releases/{id}/suspend | Java 管理端 | 服务令牌、审核 TraceID；停止后续新评分 |
 
 Python 拒绝浏览器 Origin 和缺失服务令牌请求。所有内部调用必须设置连接、读取超时与 TraceID；不在 URL、日志或错误体中包含服务令牌。
 
@@ -254,3 +257,10 @@ Python 拒绝浏览器 Origin 和缺失服务令牌请求。所有内部调用�
 - 回测在已落库股票型净值上生成离线未来标签；信号日仅使用此前 20 个交易日的输入，未来净值只用于验证。训练、验证、测试使用扩展窗口，最终日期边界和费用、样本数、对照指标都写入 `backtest_run`。
 - 当前未登记业绩比较基准，`benchmark_status=NOT_CONFIGURED` 是发布闸门的明确失败原因；长期持有和等额分期投入结果仍会被记录，但不能替代业绩比较基准。
 - 回测任务只创建 `DRAFT` 或 `ELIGIBLE` 的 `analysis_model_release`。`ACTIVE`、`SUSPENDED`、`RETIRED` 均需显式状态转换；激活会在一个事务中暂停同一模型代码、基金类型的旧 `ACTIVE` 版本。
+
+## 10. v1.2｜M3-05 实现口径
+
+- Python `analysis_run` 保存 `QUEUED/RUNNING/COMPLETED/FAILED` 和回测引用，提交失败会显式标记失败；任务不会自动补充未授权基准或自动激活模型。
+- Java 通过服务令牌、连接/读取超时和 TraceID 调用 Python；管理员创建运行、激活/暂停发布和手动投递均写 Java `audit_log`。
+- 投递器使用 PostgreSQL 事务级咨询锁，按页执行快照、规则、通知与水位的一致性事务。RISK_LEVEL 映射为 LOW=0.25、MEDIUM=0.50、HIGH=1.00，SIGNAL_CHANGE 仅在已有方向变化时命中；EVENT 留给后续已授权事件消费者。
+- `analysis.delivery.enabled` 默认 false。打开该开关只会周期投递已有 ACTIVE 评分；不会启动 Python 评分、回测或发布。M3-06 负责将当前通知接口接入 Vue。

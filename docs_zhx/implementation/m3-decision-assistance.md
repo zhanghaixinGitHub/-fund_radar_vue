@@ -3,17 +3,17 @@
 > 关联需求：docs_zhx/requirements/m3-decision-assistance.md
 > 关联设计：docs_zhx/design/m3-decision-assistance.md
 > 关联验收：docs_zhx/testcase/m3-decision-assistance.md
-> 版本：v1.1
+> 版本：v1.2
 > 日期：2026-09-01
 > 变更等级：L3
-> 当前状态：已完成 M3-01 至 M3-04 的股票型基金最小切片；M3-04 未注册定时运行，当前未配置已授权业绩比较基准，因此没有 ACTIVE 模型、用户可读评分、信号消费或用户通知。
+> 当前状态：已完成 M3-01 至 M3-05 的代码、迁移和本地集成验证；M3-04 未注册定时评分，M3-05 消费调度默认关闭，当前未配置已授权业绩比较基准，因此没有 ACTIVE 模型、真实用户可读评分或真实用户通知。
 
 ## 1. 当前恢复点
 
 当前可复用基线：
 
 - fund_ai 已有 24 条股票型基金特征快照；forecast_result、backtest_run 和 analysis_model_release 仍均为 0 条。
-- fund_core 已有 alert_rule、signal_snapshot、notification 表；当前只完成本人提醒规则的幂等配置，不会生成通知。
+- fund_core 已有 alert_rule、signal_snapshot、notification 和消费检查点；已实现本人通知读取、已读和信号投递代码，但当前没有 ACTIVE 评分可消费。
 - Vue 已能展示基金的基础事实和详情，但没有可发布的 M3 评分、回测或提醒结果。
 - 浏览器到 Java、Java 到 Python 的服务边界、服务令牌、认证会话和审计基础已存在。
 
@@ -82,14 +82,15 @@
 
 ### M3-05｜Java 管理、信号消费与通知
 
-- [ ] 新增管理员分析运行、回测查看、模型激活/暂停接口；服务端强制 SYSTEM_ADMIN，所有状态变更写 audit_log。
-- [ ] 新增 Java 到 Python 的分析任务与评分变化内部客户端；统一超时、服务令牌、TraceID 和错误映射。
-- [ ] 以 scored_at、forecast_id 游标实现消费任务：幂等 UPSERT signal_snapshot，匹配本人规则，写 notification，事务成功后才推进 checkpoint。
-- [ ] 实现当前用户通知分页和幂等已读接口；非本人数据统一不可见。
-- [ ] 规则匹配仅处理已关注、启用且未处于冷却期的规则；同一触发引用只生成一条通知。
+- [x] 新增管理员受控回测运行、状态查看、模型激活/暂停和手动信号投递接口；服务端强制 SYSTEM_ADMIN，状态变更写 audit_log。
+- [x] 新增 Java 到 Python 的分析运行与评分变化内部客户端；统一连接/读取超时、服务令牌、TraceID，以及 404、409、503 错误映射。
+- [x] Python 新增持久 analysis_run 记录与 `ACTIVE + SCORED` 复合游标读取；Java 以 scored_at、forecast_id 顺序按页事务幂等 UPSERT signal_snapshot、匹配规则、写 notification，事务成功后才推进 checkpoint。
+- [x] 实现当前用户通知分页和幂等已读接口；notification 经 alert_rule 的 user_id 二次限定，非本人统一 404。
+- [x] 规则匹配仅处理已关注、启用且未处于冷却期的规则；RISK_LEVEL 和 SIGNAL_CHANGE 使用 rule_id + forecast_id 去重，EVENT 不由评分消费者触发。
+- [x] 调度器默认关闭；仅 `ANALYSIS_DELIVERY_ENABLED=true` 才周期投递已有 ACTIVE 评分，管理员也可手动投递，但两者均不会启动评分、回测或模型发布。
 
-涉及仓库：Java。
-完成标志：Java 不直连 fund_ai；重复消费、失败重试和并发运行均不产生重复快照或通知。
+涉及仓库：Python、Java。
+完成标志：Java 不直连 fund_ai 数据库；重复消费、失败回滚和并发运行不产生重复快照或通知。真实端到端投递仍需等待已授权基准和 ACTIVE 模型。
 
 ### M3-06｜Vue 状态展示与用户控制
 
@@ -134,7 +135,7 @@ M3-01 来源授权与试点口径
 - 2026-09-01 本地受控构建已写入 24 条 `SCORABLE` 特征快照，均关联成功来源运行水位；`forecast_result` 和 `backtest_run` 中该特征版本记录仍为 0。
 - 基金详情已通过 Python → Java → Vue 受控展示上述历史统计；浏览器不直连 Python，Python 不可用时 Java 仅返回显式标记的同基金缓存。
 - 市场净值增量的本机任务和 Celery 计划任务都会在来源成功后触发特征构建；特征阶段失败会保留来源成功状态，并在同步中心提供独立手动重试。特征血缘只接受净值类成功运行，不能由经理、分红等资料同步覆盖。
-- M3-04 已完成可回放的评分、回测和发布状态机代码及 Celery 任务；尚未执行真实回测，当前没有 ACTIVE 模型。M3-05 至 M3-07 仍未实施，因此没有用户可读评分、信号消费或用户提醒。
+- M3-04 已完成可回放的评分、回测和发布状态机代码及 Celery 任务；M3-05 已完成持久运行、管理员审核入口、增量消费与本人站内通知代码。尚未执行真实回测，当前没有 ACTIVE 模型，所以不会产生真实用户评分、信号或提醒；M3-06 至 M3-07 仍未实施。
 
 ## 5. 三端改动定位
 
@@ -173,3 +174,11 @@ M3 只有在以下条件全部满足时才可标记完成：
 - 未通过准入、数据不足、来源陈旧、服务故障和用户无权场景都安全降级。
 - 用户只能收到本人、已关注基金的站内风险解释；系统不存在任何交易执行能力。
 - TC-M3-01 至 TC-M3-10 已按批准环境完成，且真实运行与回测证据独立归档。
+
+## 9. v1.2｜2026-09-01 M3-05 实现记录
+
+1. Python Alembic `20260901_08` 新增持久 `analysis_run`，`POST /internal/v1/analysis/runs/rolling-backtest` 只排队固定股票基线回测，`GET /runs/{id}` 可跨 FastAPI 进程读取状态。浏览器 Origin 和缺失服务令牌均被拒绝。
+2. 仅 `ACTIVE` 且 `SCORED` 的结果可经 `GET /internal/v1/signals/changes` 输出；请求与响应均以 `(scored_at, forecast_id)` 为复合游标，两个游标字段必须成对出现。
+3. Java Flyway V11 新增通知本人读/写权限和投递查询索引。`/api/v1/admin/analysis/*` 仅 SYSTEM_ADMIN 可访问；`/api/v1/notifications` 仅本人可分页读取和幂等标记已读。
+4. Java 使用本地事务、咨询锁、快照唯一键、通知去重键和 checkpoint 实现信号投递。默认调度关闭，避免在没有 ACTIVE 模型时产生无意义调用。
+5. 已通过 Python Ruff 与 60 项测试、Java JBR（release 17）编译及 35 项测试，其中包含 PostgreSQL 16 的 V11 迁移与评分重放不重复通知测试。该结果不代表已执行真实回测、模型激活或端到端用户通知。

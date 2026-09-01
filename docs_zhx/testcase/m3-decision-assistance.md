@@ -2,14 +2,14 @@
 
 > 关联需求：docs_zhx/requirements/m3-decision-assistance.md
 > 关联设计：docs_zhx/design/m3-decision-assistance.md
-> 版本：v1.1
+> 版本：v1.2
 > 日期：2026-09-01
-> 说明：本文件保留完整验收设计。M3-04 已完成评分状态、时间泄漏和无基准不发布的代码级单元验证；真实 PostgreSQL 回测、管理员激活、Java 消费与通知用例尚未执行，不得用作模型上线或回测有效性证明。
+> 说明：本文件保留完整验收设计。M3-04 已完成评分状态、时间泄漏和无基准不发布的代码级单元验证；M3-05 已完成本地 PostgreSQL 迁移、评分重放去重和接口认证验证。真实回测、管理员激活、ACTIVE 评分到用户通知的端到端用例尚未执行，不得用作模型上线或回测有效性证明。
 
 ## 已执行的基础验证（2026-09-01）
 
-- Python：特征自动/手动同步、来源血缘过滤、部分成功重试、内部服务令牌边界及模型发布约束测试通过；Alembic 已从 `20260828_06` 升至 `20260901_07`。
-- Java：Flyway 已从 V9 升至 V10，消费检查点、提醒冷却与通知触发引用的只读元数据测试通过。
+- Python：特征自动/手动同步、来源血缘过滤、部分成功重试、内部服务令牌边界、模型发布约束及 M3-05 分析运行/复合游标接口测试通过（Ruff、60 项 pytest）；Alembic 已新增 `20260901_08`。
+- Java：Flyway 已从 V9 升至 V11，消费检查点、提醒冷却、通知权限与触发引用的迁移测试通过；评分重放只生成一条通知、检查点不重复推进的 PostgreSQL 16 集成测试通过（JBR release 17、35 项 Maven 测试）。
 - Vue：同步中心的特征快照手动按钮、进度轮询与部分成功展示已通过类型检查、Lint 和生产构建。
 - 上述验证不产生 ACTIVE 模型、SCORED 结果、回测运行或站内通知。
 
@@ -266,7 +266,7 @@ HAVING COUNT(*) > 1;
 
 SELECT consumer_name, last_scored_at, last_forecast_id
 FROM analysis_delivery_checkpoint
-WHERE consumer_name = 'java-alert-consumer';
+WHERE consumer_name = 'JAVA_SIGNAL_NOTIFICATION_V1';
 ~~~
 
 | 验收点 | 预期 |
