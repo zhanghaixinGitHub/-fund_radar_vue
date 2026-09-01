@@ -2388,6 +2388,187 @@ h2 {
   min-width: 112px;
 }
 
+/* M3-06 决策辅助：状态展示、站内提醒和管理员运行台均保持非交易信息层级。 */
+.notifications-page {
+  max-width: 1040px;
+}
+
+.notification-card,
+.analysis-run-card {
+  padding: 24px;
+  margin-top: 22px;
+  background: rgb(255 255 255 / 82%);
+  border: 1px solid rgb(20 68 57 / 14%);
+  border-radius: 16px;
+  box-shadow: 0 14px 35px rgb(44 78 64 / 8%);
+}
+
+.notification-card-heading {
+  display: flex;
+  gap: 16px;
+  align-items: start;
+  justify-content: space-between;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #dbe7e2;
+}
+
+.notification-card-heading h2,
+.analysis-run-card h2 {
+  margin: 6px 0 0;
+}
+
+.notification-card-heading > span {
+  color: #587069;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.notification-list,
+.notification-rule-list {
+  display: grid;
+  gap: 12px;
+  padding: 0;
+  margin: 18px 0 0;
+  list-style: none;
+}
+
+.notification-list li {
+  display: flex;
+  gap: 18px;
+  align-items: start;
+  justify-content: space-between;
+  padding: 18px;
+  background: #f4faf7;
+  border: 1px solid #d9e8e1;
+  border-left: 4px solid #0f766e;
+  border-radius: 12px;
+}
+
+.notification-list li.is-read {
+  opacity: 0.72;
+  border-left-color: #93a8a0;
+}
+
+.notification-content {
+  min-width: 0;
+}
+
+.notification-title-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.notification-title-row a {
+  color: #07574f;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.notification-title-row a:hover,
+.notification-title-row a:focus-visible {
+  color: #043f3a;
+  text-decoration: underline;
+  outline: 3px solid rgb(15 118 110 / 22%);
+  outline-offset: 2px;
+}
+
+.notification-title-row span {
+  padding: 3px 7px;
+  color: #45645b;
+  font-size: 12px;
+  font-weight: 700;
+  background: #e5f0eb;
+  border-radius: 999px;
+}
+
+.notification-content p,
+.notification-content small,
+.notification-rule-list p {
+  margin: 8px 0 0;
+  color: #587069;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.notification-rule-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 0.45fr) auto auto;
+  gap: 14px;
+  align-items: end;
+  padding: 16px 0;
+  border-bottom: 1px solid #dbe7e2;
+}
+
+.notification-rule-list li:last-child {
+  border-bottom: 0;
+}
+
+.notification-rule-list label {
+  display: grid;
+  gap: 6px;
+  color: #23443e;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.notification-rule-list input {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  color: #17332e;
+  font: inherit;
+  background: #fff;
+  border: 1px solid #b8cbc5;
+  border-radius: 8px;
+}
+
+.notification-rule-list input:focus-visible {
+  outline: 3px solid rgb(15 118 110 / 28%);
+  outline-offset: 2px;
+}
+
+.analysis-backtest-grid,
+.analysis-run-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 16px 0 0;
+}
+
+.analysis-backtest-grid div,
+.analysis-run-grid div {
+  padding: 13px;
+  background: #f4faf7;
+  border: 1px solid #d9e8e1;
+  border-radius: 10px;
+}
+
+.analysis-backtest-grid dt,
+.analysis-run-grid dt {
+  color: #668078;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.analysis-backtest-grid dd,
+.analysis-run-grid dd {
+  margin: 5px 0 0;
+  color: #17332e;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
+.analysis-console-page .admin-operation-card {
+  margin-top: 24px;
+}
+
+.analysis-run-card .risk-disclaimer {
+  margin-top: 18px;
+}
+
 @media (max-width: 900px) {
   .top-bar {
     flex-wrap: wrap;
@@ -2417,6 +2598,11 @@ h2 {
 
   .profile-layout {
     grid-template-columns: 1fr;
+  }
+
+  .notification-rule-list li {
+    grid-template-columns: 1fr;
+    align-items: stretch;
   }
 }
 
@@ -2464,5 +2650,21 @@ h2 {
 
   .admin-pagination .secondary-button {
     width: 100%;
+  }
+
+  .notification-card,
+  .analysis-run-card {
+    padding: 18px;
+  }
+
+  .notification-card-heading,
+  .notification-list li {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .analysis-backtest-grid,
+  .analysis-run-grid {
+    grid-template-columns: 1fr;
   }
 }

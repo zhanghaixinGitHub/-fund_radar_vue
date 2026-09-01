@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth'
-import type { PermissionCode } from '@/types/auth'
+import type { AccountRole, PermissionCode } from '@/types/auth'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -9,6 +9,7 @@ declare module 'vue-router' {
     requiresAuth?: boolean
     guestOnly?: boolean
     permissions?: PermissionCode[]
+    roles?: AccountRole[]
     appArea?: 'user' | 'admin'
   }
 }
@@ -61,6 +62,12 @@ export const router = createRouter({
       meta: { title: '我的持仓', appArea: 'user', permissions: ['PORTFOLIO_SELF_READ'] },
     },
     {
+      path: '/notifications',
+      name: 'notifications',
+      component: () => import('@/views/NotificationsPage.vue'),
+      meta: { title: '站内提醒', appArea: 'user', permissions: ['NOTIFICATION_SELF_READ'] },
+    },
+    {
       path: '/profile',
       name: 'profile',
       component: () => import('@/views/ProfilePage.vue'),
@@ -83,6 +90,12 @@ export const router = createRouter({
       name: 'admin-users',
       component: () => import('@/views/AdminUsersPage.vue'),
       meta: { title: '用户管理', appArea: 'admin', permissions: ['USER_ACCOUNT_READ'] },
+    },
+    {
+      path: '/admin/analysis',
+      name: 'admin-analysis-console',
+      component: () => import('@/views/AnalysisConsolePage.vue'),
+      meta: { title: '分析运行', appArea: 'admin', roles: ['SYSTEM_ADMIN'] },
     },
     {
       path: '/not-authorized',
@@ -118,6 +131,9 @@ router.beforeEach(async (to) => {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
   if (to.meta.permissions?.some((permission) => !authStore.hasPermission(permission))) {
+    return { name: 'not-authorized' }
+  }
+  if (to.meta.roles && (!authStore.user || !to.meta.roles.includes(authStore.user.role))) {
     return { name: 'not-authorized' }
   }
   return true

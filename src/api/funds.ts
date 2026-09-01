@@ -9,6 +9,7 @@ import type {
   FundSameTypeComparison,
   FundSignalPage,
 } from '@/types/fund'
+import type { FundAnalysisSummary } from '@/types/analysis'
 
 /**
  * 查询 Java 对外发布的基金分页数据。
@@ -63,6 +64,11 @@ export function getFundEvents(fundCode: string): Promise<FundEventPage> {
 /** 查询已落库的 M3 评分结果，不触发任何模型执行。 */
 export function getFundSignals(fundCode: string): Promise<FundSignalPage> {
   return get<FundSignalPage>(`/api/v1/funds/${encodeURIComponent(fundCode)}/signals`)
+}
+
+/** 查询已发布模型及关联回测摘要；浏览器读取不会触发评分、回测或模型发布。 */
+export function getFundAnalysisSummary(fundCode: string): Promise<FundAnalysisSummary> {
+  return get<FundAnalysisSummary>(`/api/v1/funds/${encodeURIComponent(fundCode)}/analysis-summary`)
 }
 
 /** 查询已落库的 M3-G1 历史统计特征；不会触发特征构建或模型执行。 */

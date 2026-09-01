@@ -3,10 +3,10 @@
 > 关联需求：docs_zhx/requirements/m3-decision-assistance.md
 > 关联验收：docs_zhx/testcase/m3-decision-assistance.md
 > 关联总设计：docs_zhx/design/fund-radar.md
-> 版本：v1.2
+> 版本：v1.3
 > 日期：2026-09-01
 > 变更等级：L3
-> 状态：M3-01 至 M3-05 的 Python/Java 后台能力已实施；M3-06 页面和 M3-07 监控发布仍未实施。当前没有 ACTIVE 模型或真实用户通知，本文件不代表交易能力已启用。
+> 状态：M3-01 至 M3-06 已实施；M3-06 只通过 Java 展示已发布或已暂停模型的受限摘要、本人通知和管理员运行状态，M3-07 监控发布仍未实施。当前没有 ACTIVE 模型或真实用户通知，本文件不代表交易能力已启用。
 
 ## 1. 设计原则
 
@@ -201,6 +201,7 @@ CREATE INDEX ix_notification_signal_created
 | 接口 | 权限与范围 | 约束 |
 | --- | --- | --- |
 | GET /api/v1/funds/{fundCode}/signals | FUND_READ；只读已发布评分 | 游标分页，返回数据截至日、特征/模型版本、状态、解释和陈旧标记 |
+| GET /api/v1/funds/{fundCode}/analysis-summary | FUND_READ；只读已发布或已暂停模型摘要 | 只返回受限模型元数据和关联回测固定字段；Python 不可用时仅返回同基金的明确陈旧缓存 |
 | GET /api/v1/alert-rules | 当前用户 | 只能读取本人规则 |
 | PUT /api/v1/alert-rules | 当前用户且已关注该基金 | RISK_LEVEL 必须有 0 到 1 阈值；其他类型无阈值；写审计 |
 | GET /api/v1/notifications | 当前用户 | 稳定按 created_at、notification_id 逆序分页，不返回其他用户数据 |
@@ -222,6 +223,7 @@ CREATE INDEX ix_notification_signal_created
 | GET /internal/v1/signals/changes | Java 消费任务 | 复合游标成对必传；仅返回 ACTIVE 模型的 SCORED 变化 |
 | POST /internal/v1/analysis/model-releases/{id}/activate | Java 管理端 | 服务令牌、审核 TraceID；Python 校验关联回测为 ELIGIBLE |
 | POST /internal/v1/analysis/model-releases/{id}/suspend | Java 管理端 | 服务令牌、审核 TraceID；停止后续新评分 |
+| GET /internal/v1/analysis/fund-summary?fundCode={fundCode} | Java 基金详情 | 服务令牌、只读；仅选择最新 ACTIVE，缺失时选择最新 SUSPENDED，绝不暴露候选模型、原始 JSON 或失败细节 |
 
 Python 拒绝浏览器 Origin 和缺失服务令牌请求。所有内部调用必须设置连接、读取超时与 TraceID；不在 URL、日志或错误体中包含服务令牌。
 
@@ -263,4 +265,11 @@ Python 拒绝浏览器 Origin 和缺失服务令牌请求。所有内部调用�
 - Python `analysis_run` 保存 `QUEUED/RUNNING/COMPLETED/FAILED` 和回测引用，提交失败会显式标记失败；任务不会自动补充未授权基准或自动激活模型。
 - Java 通过服务令牌、连接/读取超时和 TraceID 调用 Python；管理员创建运行、激活/暂停发布和手动投递均写 Java `audit_log`。
 - 投递器使用 PostgreSQL 事务级咨询锁，按页执行快照、规则、通知与水位的一致性事务。RISK_LEVEL 映射为 LOW=0.25、MEDIUM=0.50、HIGH=1.00，SIGNAL_CHANGE 仅在已有方向变化时命中；EVENT 留给后续已授权事件消费者。
-- `analysis.delivery.enabled` 默认 false。打开该开关只会周期投递已有 ACTIVE 评分；不会启动 Python 评分、回测或发布。M3-06 负责将当前通知接口接入 Vue。
+- `analysis.delivery.enabled` 默认 false。打开该开关只会周期投递已有 ACTIVE 评分；不会启动 Python 评分、回测或发布。M3-06 已将当前通知接口、基金分析摘要和管理员受控回测状态接入 Vue；页面只能读取 Java API。
+
+## 11. v1.3｜M3-06 只读页面与受控操作口径
+
+- 基金详情的“模型与回测摘要”独立于基金基础事实加载；其只显示 ACTIVE 或 SUSPENDED 发布版本的固定元数据、关联回测的固定统计字段、数据截至日和陈旧缓存标记。不存在可读模型时只显示模型不可用原因，绝不把 DRAFT、ELIGIBLE、INELIGIBLE 候选或原始失败 JSON 暴露给用户。
+- Java 缓存成功读取的同基金摘要。Python 暂不可用时，只有已缓存摘要可作为 `stale=true` 的降级结果返回；缓存未命中仍返回服务不可用，不能补造评分、回测或通知。
+- Vue 的本人通知页仅调用现有 Java 本人范围接口，并可幂等标记已读、调整既有提醒规则的风险阈值和启用状态；新增规则仍从已关注基金详情发起，不在通知页改变基金或规则类型。
+- 管理员分析运行页只能创建受控异步滚动回测并轮询持久运行状态；它不触发来源同步、特征构建、评分、激活、暂停或信号投递。所有页面均维持非交易披露，不提供外部账户、交易跳转或行动指令。

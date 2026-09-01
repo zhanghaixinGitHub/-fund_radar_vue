@@ -3,10 +3,12 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import { getAlertRules, upsertAlertRule } from '@/api/alerts'
+import { ApiRequestError } from '@/api/http'
 import FundNavHistoryChart from '@/components/FundNavHistoryChart.vue'
 import FundSameTypeComparison from '@/components/FundSameTypeComparison.vue'
 import {
   getFundDetail,
+  getFundAnalysisSummary,
   getFundEvents,
   getFundFeatureStatus,
   getFundNavHistory,
@@ -15,6 +17,7 @@ import {
 } from '@/api/funds'
 import { addWatchlistItem, removeWatchlistItem } from '@/api/watchlist'
 import type { AlertRule, UpsertAlertRuleRequest } from '@/types/alert'
+import type { FundAnalysisSummary } from '@/types/analysis'
 import type {
   FundDetail,
   FundEventPage,
@@ -51,6 +54,8 @@ const alertMessage = ref('')
 const events = ref<FundEventPage | null>(null)
 const featureStatus = ref<FundFeatureStatus | null>(null)
 const signals = ref<FundSignalPage | null>(null)
+const analysisSummary = ref<FundAnalysisSummary | null>(null)
+const analysisSummaryError = ref('')
 const navHistory = ref<FundNavHistory | null>(null)
 const navHistoryLoading = ref(false)
 const navHistoryError = ref('')
@@ -256,6 +261,58 @@ function navValueBasisLabel(value: FundFeatureStatus['navValueBasis']): string {
   return '暂缺'
 }
 
+/** 将已发布模型可用性转换为业务状态，候选模型不在页面显示。 */
+function analysisAvailabilityLabel(summary: FundAnalysisSummary): string {
+  if (summary.availabilityStatus === 'ACTIVE') {
+    return '模型已发布'
+  }
+  if (summary.availabilityStatus === 'MODEL_PAUSED') {
+    return '模型已暂停'
+  }
+  return '暂无已发布模型'
+}
+
+/** 将回测发布闸门状态转换为面向用户的说明，不将合格等同于投资结果。 */
+function publicationStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    ELIGIBLE: '通过发布闸门',
+    INELIGIBLE: '未通过发布闸门',
+    NOT_EVALUATED: '尚未完成准入评估',
+  }
+  return labels[status] ?? '准入状态待确认'
+}
+
+/** 将比较基线状态转换为披露文案，明确无授权基准时不能把回测视为发布证据。 */
+function benchmarkStatusLabel(status: string | null): string {
+  if (status === 'AVAILABLE') {
+    return '已配置'
+  }
+  if (status === 'NOT_CONFIGURED') {
+    return '尚未配置'
+  }
+  return '暂缺'
+}
+
+/** 格式化后端时间字段；解析失败时保留原值，绝不替换为当前本地时间。 */
+function formatDateTime(value: string | null | undefined): string {
+  if (!value) {
+    return '暂缺'
+  }
+  const parsed = new Date(value)
+  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString('zh-CN', { hour12: false })
+}
+
+/** 将摘要接口错误收敛为页面可识别状态，不暴露内部地址、令牌或连接信息。 */
+function analysisSummaryErrorMessage(error: unknown): string {
+  if (error instanceof ApiRequestError && error.status === 503) {
+    return '回测摘要服务暂时不可用，请稍后重试；不会因此生成新的评分或提醒。'
+  }
+  if (error instanceof ApiRequestError && error.status === 403) {
+    return '当前账户没有查看分析摘要的权限。'
+  }
+  return error instanceof Error ? error.message : '回测摘要暂时不可用。'
+}
+
 /** 用当前基金和提醒类型已有的规则回填提醒表单；不存在时使用安全默认值。 */
 function applyCurrentAlertRule(): void {
   const existingRule = alertRules.value.find(
@@ -287,6 +344,8 @@ async function load(): Promise<void> {
   events.value = null
   featureStatus.value = null
   signals.value = null
+  analysisSummary.value = null
+  analysisSummaryError.value = ''
   navHistory.value = null
   navHistoryError.value = ''
   sameTypeComparison.value = null
@@ -300,12 +359,13 @@ async function load(): Promise<void> {
     return
   }
 
-  const [historyResult, comparisonResult, eventsResult, featureResult, signalsResult, alertRulesResult] = await Promise.allSettled([
+  const [historyResult, comparisonResult, eventsResult, featureResult, signalsResult, analysisSummaryResult, alertRulesResult] = await Promise.allSettled([
     loadNavHistory(),
     loadSameTypeComparison(),
     getFundEvents(fundCode.value),
     getFundFeatureStatus(fundCode.value),
     getFundSignals(fundCode.value),
+    getFundAnalysisSummary(fundCode.value),
     getAlertRules(),
   ])
   if (historyResult.status === 'rejected') {
@@ -322,6 +382,11 @@ async function load(): Promise<void> {
   }
   if (signalsResult.status === 'fulfilled') {
     signals.value = signalsResult.value
+  }
+  if (analysisSummaryResult.status === 'fulfilled') {
+    analysisSummary.value = analysisSummaryResult.value
+  } else {
+    analysisSummaryError.value = analysisSummaryErrorMessage(analysisSummaryResult.reason)
   }
   if (alertRulesResult.status === 'fulfilled') {
     alertRules.value = alertRulesResult.value
@@ -869,6 +934,92 @@ watch(selectedNavRange, () => {
       </section>
       <section
         class="analysis-section"
+        aria-labelledby="backtest-summary-title"
+      >
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">
+              发布闸门
+            </p>
+            <h2 id="backtest-summary-title">
+              模型与回测摘要
+            </h2>
+          </div>
+          <span class="section-note">回测不是模拟交易账本</span>
+        </div>
+        <p
+          v-if="analysisSummaryError"
+          class="state-message error-message"
+          role="status"
+        >
+          {{ analysisSummaryError }}
+        </p>
+        <template v-else-if="analysisSummary">
+          <p
+            v-if="analysisSummary.stale"
+            class="notice-banner"
+            role="status"
+          >
+            回测摘要服务暂时不可用，当前展示缓存内容（缓存时间：{{ analysisSummary.cachedAt || '未知' }}）。
+          </p>
+          <div class="feature-status-card">
+            <strong>{{ analysisAvailabilityLabel(analysisSummary) }}</strong>
+            <p>{{ analysisSummary.message }}</p>
+            <p v-if="analysisSummary.model">
+              模型 {{ analysisSummary.model.modelVersion }} · 特征 {{ analysisSummary.model.featureVersion }} ·
+              状态 {{ analysisSummary.model.releaseStatus === 'ACTIVE' ? '已发布' : '已暂停' }}
+            </p>
+          </div>
+          <dl
+            v-if="analysisSummary.backtest"
+            class="analysis-backtest-grid"
+          >
+            <div><dt>发布闸门</dt><dd>{{ publicationStatusLabel(analysisSummary.backtest.publicationStatus) }}</dd></div>
+            <div><dt>数据截至日</dt><dd>{{ analysisSummary.backtest.dataCutoff || analysisSummary.backtest.testEnd || '暂缺' }}</dd></div>
+            <div>
+              <dt>回测窗口</dt>
+              <dd>{{ analysisSummary.backtest.windowStart }} 至 {{ analysisSummary.backtest.windowEnd }}</dd>
+            </div>
+            <div>
+              <dt>测试样本</dt>
+              <dd>{{ analysisSummary.backtest.sampleCount ?? '暂缺' }} 条 · {{ analysisSummary.backtest.rollingFoldCount ?? '暂缺' }} 折</dd>
+            </div>
+            <div>
+              <dt>年化结果（历史）</dt>
+              <dd :class="changeRateTone(analysisSummary.backtest.annualizedReturn)">
+                {{ formatChangeRate(analysisSummary.backtest.annualizedReturn) }}
+              </dd>
+            </div>
+            <div>
+              <dt>最大回撤（历史）</dt>
+              <dd :class="changeRateTone(analysisSummary.backtest.maxDrawdown)">
+                {{ formatChangeRate(analysisSummary.backtest.maxDrawdown) }}
+              </dd>
+            </div>
+            <div><dt>波动率（历史）</dt><dd>{{ formatPercent(analysisSummary.backtest.volatility) }}</dd></div>
+            <div><dt>命中率（历史）</dt><dd>{{ formatPercent(analysisSummary.backtest.hitRate) }}</dd></div>
+            <div><dt>比较基线</dt><dd>{{ benchmarkStatusLabel(analysisSummary.backtest.benchmarkStatus) }}</dd></div>
+            <div><dt>完成时间</dt><dd>{{ formatDateTime(analysisSummary.backtest.completedAt) }}</dd></div>
+          </dl>
+          <p
+            v-else
+            class="empty-analysis"
+          >
+            当前没有可披露的已发布模型回测摘要；候选或未准入模型不会在此展示。
+          </p>
+        </template>
+        <p
+          v-else
+          class="empty-analysis"
+        >
+          正在读取模型发布与回测状态…
+        </p>
+        <p class="risk-disclaimer">
+          回测只用于检验模型是否具备发布资格。历史指标不能推导个人收益、未来表现或申购、赎回结论。
+        </p>
+      </section>
+      <section
+        class="analysis-section"
         aria-labelledby="alert-rule-title"
       >
         <div class="section-heading">
@@ -883,6 +1034,7 @@ watch(selectedNavRange, () => {
           <span class="section-note">仅生成站内信息提醒</span>
         </div>
         <form
+          v-if="isWatched"
           class="alert-rule-form"
           @submit.prevent="saveAlertRule"
         >
@@ -929,6 +1081,12 @@ watch(selectedNavRange, () => {
             {{ savingAlert ? '保存中…' : '保存提醒规则' }}
           </button>
         </form>
+        <p
+          v-else
+          class="empty-analysis"
+        >
+          请先加入关注列表，再为该基金配置仅站内的信息提醒规则。
+        </p>
         <p
           v-if="alertMessage"
           class="state-message"

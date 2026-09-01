@@ -111,6 +111,12 @@ async function signOut(): Promise<void> {
         >
           我的持仓
         </RouterLink>
+        <RouterLink
+          v-if="can('NOTIFICATION_SELF_READ')"
+          to="/notifications"
+        >
+          站内提醒
+        </RouterLink>
       </nav>
       <nav
         v-else
@@ -134,6 +140,12 @@ async function signOut(): Promise<void> {
           to="/admin/users"
         >
           用户管理
+        </RouterLink>
+        <RouterLink
+          v-if="authStore.user?.role === 'SYSTEM_ADMIN'"
+          to="/admin/analysis"
+        >
+          分析运行
         </RouterLink>
       </nav>
       <div
