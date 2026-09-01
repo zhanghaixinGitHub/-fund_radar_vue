@@ -3,9 +3,11 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import FieldHelpTooltip from '@/components/FieldHelpTooltip.vue'
+import FundNavHistoryChart from '@/components/FundNavHistoryChart.vue'
 import FundShareHistoryChart from '@/components/FundShareHistoryChart.vue'
+import { getFundNavHistory } from '@/api/funds'
 import { getWatchlistFundDetail, getWatchlistFundShareHistory } from '@/api/watchlist'
-import type { FundShareHistory, WatchlistFundDetail } from '@/types/fund'
+import type { FundNavHistory, FundShareHistory, WatchlistFundDetail } from '@/types/fund'
 import { dataSourceLabel, fundStatusLabel, fundTypeLabel, netValueStatusLabel } from '@/utils/fundPresentation'
 
 /** 当前用户已关注基金的完整资料页；服务端会在读取前校验本人关注关系。 */
@@ -13,9 +15,13 @@ const route = useRoute()
 const detail = ref<WatchlistFundDetail | null>(null)
 const loading = ref(false)
 const errorMessage = ref('')
+const navHistory = ref<FundNavHistory | null>(null)
+const navHistoryLoading = ref(false)
+const navHistoryError = ref('')
 const shareHistory = ref<FundShareHistory | null>(null)
 const shareHistoryLoading = ref(false)
 const shareHistoryError = ref('')
+const selectedNavRange = ref<'THREE_MONTHS' | 'ONE_YEAR' | 'THREE_YEARS' | 'ALL'>('ONE_YEAR')
 const fundCode = computed(() => String(route.params.fundCode ?? ''))
 const basic = computed(() => detail.value?.basic ?? null)
 const currentManagers = computed(() => (detail.value?.managers ?? [])
@@ -23,6 +29,12 @@ const currentManagers = computed(() => (detail.value?.managers ?? [])
   .slice(0, 2))
 const currentManagerNames = computed(() => currentManagers.value.map((manager) => manager.managerName).join('、'))
 const recentDividend = computed(() => detail.value?.dividends.at(0) ?? null)
+const navRangeOptions = [
+  { value: 'THREE_MONTHS', label: '近三月' },
+  { value: 'ONE_YEAR', label: '近一年' },
+  { value: 'THREE_YEARS', label: '近三年' },
+  { value: 'ALL', label: '全部已同步' },
+] as const
 
 /** 不猜测来源单位，仅格式化数值，缺失数据保持为“暂缺”。 */
 function formatSourceNumber(value: number | string | null | undefined, maximumFractionDigits = 6): string {
@@ -59,6 +71,42 @@ function shareHistoryStartDate(endDate: string): string {
   return anchor.toISOString().slice(0, 10)
 }
 
+/** 以已同步净值业务日期为锚点计算查询窗口，避免浏览器时钟导致未来日期查询。 */
+function navHistoryStartDate(endDate: string): string {
+  if (selectedNavRange.value === 'ALL') {
+    return '2015-01-01'
+  }
+  const [year, month, day] = endDate.split('-').map(Number)
+  const anchor = new Date(Date.UTC(year, month - 1, day))
+  anchor.setUTCDate(anchor.getUTCDate() - {
+    THREE_MONTHS: 92,
+    ONE_YEAR: 366,
+    THREE_YEARS: 1_096,
+  }[selectedNavRange.value])
+  return anchor.toISOString().slice(0, 10)
+}
+
+/** 复用市场详情的历史净值读取接口；只查询 Java 已落库数据，不触发同步。 */
+async function loadNavHistory(endDate: string | null): Promise<void> {
+  navHistory.value = null
+  navHistoryError.value = ''
+  if (!endDate) {
+    return
+  }
+  navHistoryLoading.value = true
+  try {
+    navHistory.value = await getFundNavHistory(
+      fundCode.value,
+      navHistoryStartDate(endDate),
+      endDate,
+    )
+  } catch (error) {
+    navHistoryError.value = error instanceof Error ? error.message : '历史净值暂时不可用。'
+  } finally {
+    navHistoryLoading.value = false
+  }
+}
+
 /** 独立读取已关注基金的份额规模历史；服务端会再次校验本人关注关系。 */
 async function loadShareHistory(endDate: string | null): Promise<void> {
   shareHistory.value = null
@@ -85,10 +133,13 @@ async function load(): Promise<void> {
   loading.value = true
   errorMessage.value = ''
   detail.value = null
+  navHistory.value = null
+  navHistoryError.value = ''
   shareHistory.value = null
   shareHistoryError.value = ''
   try {
     detail.value = await getWatchlistFundDetail(fundCode.value)
+    void loadNavHistory(detail.value.basic.asOfDate)
     void loadShareHistory(detail.value.latestShare?.tradeDate ?? detail.value.basic.asOfDate)
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '完整关注资料暂时不可用。'
@@ -103,6 +154,10 @@ onMounted(() => {
 
 watch(fundCode, () => {
   void load()
+})
+
+watch(selectedNavRange, () => {
+  void loadNavHistory(basic.value?.asOfDate ?? null)
 })
 </script>
 
@@ -450,6 +505,45 @@ watch(fundCode, () => {
             />
           </div>
         </dl>
+      </section>
+
+      <section
+        class="analysis-section"
+        aria-labelledby="watchlist-nav-history-title"
+      >
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">
+              净值走势
+            </p>
+            <h2 id="watchlist-nav-history-title">
+              历史单位净值
+            </h2>
+          </div>
+          <span class="section-note">仅展示已同步历史数据</span>
+        </div>
+        <div
+          class="nav-range-controls"
+          aria-label="历史净值时间范围"
+        >
+          <button
+            v-for="option in navRangeOptions"
+            :key="option.value"
+            :aria-pressed="selectedNavRange === option.value"
+            :class="{ 'is-active': selectedNavRange === option.value }"
+            type="button"
+            @click="selectedNavRange = option.value"
+          >
+            {{ option.label }}
+          </button>
+        </div>
+        <FundNavHistoryChart
+          :cached-at="navHistory?.cachedAt ?? null"
+          :error-message="navHistoryError"
+          :loading="navHistoryLoading"
+          :points="navHistory?.items ?? []"
+          :stale="navHistory?.stale ?? false"
+        />
       </section>
 
       <section

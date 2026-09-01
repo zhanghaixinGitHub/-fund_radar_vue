@@ -69,7 +69,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   })
 
   const payload = (await response.json().catch(() => null)) as ApiResponse<T> | null
-  if (!response.ok || !payload.success) {
+  if (!response.ok || payload === null || !payload.success) {
     throw new ApiRequestError(
       payload?.message || `请求失败（HTTP ${response.status}）`,
       response.status,

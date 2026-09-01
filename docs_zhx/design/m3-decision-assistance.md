@@ -3,10 +3,10 @@
 > 关联需求：docs_zhx/requirements/m3-decision-assistance.md
 > 关联验收：docs_zhx/testcase/m3-decision-assistance.md
 > 关联总设计：docs_zhx/design/fund-radar.md
-> 版本：v1.0-draft
+> 版本：v1.1
 > 日期：2026-09-01
 > 变更等级：L3
-> 状态：M3-01、M3-02 与股票型基金特征切片已实施；模型训练、评分、回测与提醒仍待后续业务确认，本文件不代表交易能力已启用。
+> 状态：M3-01 至 M3-04 的 Python 后台能力已实施；M3-05 至 M3-07 的 Java 消费、页面、监控和受控发布仍未实施，本文件不代表交易能力已启用。
 
 ## 1. 设计原则
 
@@ -247,3 +247,10 @@ Python 拒绝浏览器 Origin 和缺失服务令牌请求。所有内部调用�
 - 通知命中数、去重数、失败数、每用户每天通知数和未读积压。
 
 模型或来源异常时优先自动暂停 analysis_model_release，停止新评分与新通知；旧结果可以只读展示为陈旧，并附暂停原因和最后成功时间。发布必须采用先部署 Python、再 Java、最后 Vue 的兼容顺序；回滚时先暂停模型，再回退读取端，禁止删除历史派生数据。
+
+## 9. v1.1｜M3-04 实现口径
+
+- `M3_STOCK_MOMENTUM_BASELINE_V1` 只读取 `M3_STOCK_FEATURE_V1` 的 20 日收益、20 日波动率和 60 日最大回撤；概率、置信度和风险层级只有在特征为 `SCORABLE` 且同类别发布为 `ACTIVE` 时才写入。
+- 回测在已落库股票型净值上生成离线未来标签；信号日仅使用此前 20 个交易日的输入，未来净值只用于验证。训练、验证、测试使用扩展窗口，最终日期边界和费用、样本数、对照指标都写入 `backtest_run`。
+- 当前未登记业绩比较基准，`benchmark_status=NOT_CONFIGURED` 是发布闸门的明确失败原因；长期持有和等额分期投入结果仍会被记录，但不能替代业绩比较基准。
+- 回测任务只创建 `DRAFT` 或 `ELIGIBLE` 的 `analysis_model_release`。`ACTIVE`、`SUSPENDED`、`RETIRED` 均需显式状态转换；激活会在一个事务中暂停同一模型代码、基金类型的旧 `ACTIVE` 版本。
