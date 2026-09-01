@@ -32,6 +32,27 @@ export interface FundModelAnalysisSummary {
   suspendedAt: string | null
 }
 
+/** 已持久化的模型解释证据；只解释已发布评分，不重新计算分数或给出交易指令。 */
+export interface FundAnalysisExplanationEvidence {
+  label: string
+  detail: string
+}
+
+/** 管理员手动生成并通过数据边界校验的 DeepSeek 解释快照。 */
+export interface FundAnalysisExplanation {
+  provider: 'DEEPSEEK'
+  providerModel: 'deepseek-v4-pro'
+  asOfDate: string
+  modelVersion: string
+  featureVersion: string
+  generatedAt: string
+  overview: string
+  evidence: FundAnalysisExplanationEvidence[]
+  riskNotice: string
+  dataGap: string
+  disclaimer: string
+}
+
 /** 基金详情的已发布模型可用性与关联回测摘要。 */
 export interface FundAnalysisSummary {
   fundCode: string
@@ -40,6 +61,7 @@ export interface FundAnalysisSummary {
   message: string
   model: FundModelAnalysisSummary | null
   backtest: FundBacktestSummary | null
+  explanation: FundAnalysisExplanation | null
   stale: boolean
   cachedAt: string | null
 }
@@ -47,7 +69,7 @@ export interface FundAnalysisSummary {
 /** 管理员受控回测的持久状态；浏览器仅查询和显示，不可自行改写。 */
 export interface AnalysisRunStatus {
   analysisRunId: string
-  runType: 'ROLLING_BACKTEST'
+  runType: 'ROLLING_BACKTEST' | 'FUND_EXPLANATION'
   status: 'QUEUED' | 'RUNNING' | 'COMPLETED' | 'FAILED'
   fundType: string
   taskId: string | null

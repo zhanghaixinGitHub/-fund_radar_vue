@@ -1007,6 +1007,49 @@ watch(selectedNavRange, () => {
           >
             当前没有可披露的已发布模型回测摘要；候选或未准入模型不会在此展示。
           </p>
+          <article
+            v-if="analysisSummary.explanation"
+            class="analysis-explanation-card"
+            aria-labelledby="deepseek-explanation-title"
+          >
+            <header class="analysis-explanation-heading">
+              <div>
+                <p class="eyebrow">
+                  PUBLISHED SCORE EXPLANATION
+                </p>
+                <h3 id="deepseek-explanation-title">
+                  DeepSeek V4-Pro 评分说明
+                </h3>
+              </div>
+              <span class="section-note">已保存快照</span>
+            </header>
+            <p class="analysis-explanation-meta">
+              数据截至 {{ analysisSummary.explanation.asOfDate }} · 模型 {{ analysisSummary.explanation.modelVersion }} ·
+              特征 {{ analysisSummary.explanation.featureVersion }} · 生成于 {{ formatDateTime(analysisSummary.explanation.generatedAt) }}
+            </p>
+            <p class="analysis-explanation-overview">
+              {{ analysisSummary.explanation.overview }}
+            </p>
+            <ul
+              v-if="analysisSummary.explanation.evidence.length"
+              class="analysis-explanation-evidence"
+            >
+              <li
+                v-for="evidence in analysisSummary.explanation.evidence"
+                :key="`${evidence.label}-${evidence.detail}`"
+              >
+                <strong>{{ evidence.label }}</strong>
+                <span>{{ evidence.detail }}</span>
+              </li>
+            </ul>
+            <dl class="analysis-explanation-notes">
+              <div><dt>风险提示</dt><dd>{{ analysisSummary.explanation.riskNotice }}</dd></div>
+              <div><dt>数据缺口</dt><dd>{{ analysisSummary.explanation.dataGap }}</dd></div>
+            </dl>
+            <p class="risk-disclaimer">
+              {{ analysisSummary.explanation.disclaimer }}
+            </p>
+          </article>
         </template>
         <p
           v-else

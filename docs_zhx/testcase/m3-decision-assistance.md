@@ -2,15 +2,17 @@
 
 > 关联需求：docs_zhx/requirements/m3-decision-assistance.md
 > 关联设计：docs_zhx/design/m3-decision-assistance.md
-> 版本：v1.4
+> 版本：v1.5
 > 日期：2026-09-01
-> 说明：本文件保留完整验收设计。M3-04 已完成评分状态、时间泄漏和无基准不发布的代码级单元验证；M3-05 已完成本地 PostgreSQL 迁移、评分重放去重和接口认证验证；M3-06 已完成分析摘要的服务令牌/浏览器隔离、Java 权限与缓存降级映射；v1.4 已完成基准覆盖计算、服务令牌隔离、Java 管理代理与 Vue 基准治理页面验证。真实基准导入、真实回测、管理员激活、ACTIVE 评分到用户通知的端到端用例尚未执行，不得用作模型上线或回测有效性证明。
+> 说明：本文件保留完整验收设计。M3-04 已完成评分状态、时间泄漏和无基准不发布的代码级单元验证；M3-05 已完成本地 PostgreSQL 迁移、评分重放去重和接口认证验证；M3-06 已完成分析摘要的服务令牌/浏览器隔离、Java 权限与缓存降级映射；v1.4 已完成基准覆盖计算、服务令牌隔离、Java 管理代理与 Vue 基准治理页面验证；v1.5 已完成 DeepSeek 受控输出解析、Python 服务令牌边界、Java 管理代理与 Vue 只读展示的代码级验证。真实基准导入、真实回测、管理员激活、ACTIVE 评分到用户通知或真实基金解释的端到端用例尚未执行，不得用作模型上线或回测有效性证明。
 
 ## 已执行的基础验证（2026-09-01）
 
 - Python：特征自动/手动同步、来源血缘过滤、部分成功重试、内部服务令牌边界、模型发布约束、M3-05 分析运行/复合游标、M3-06 基金摘要及 v1.4 基准覆盖/服务令牌接口测试通过（Ruff、64 项 pytest）；Alembic 已新增 `20260901_09`。
-- Java：Flyway 已从 V9 升至 V11，消费检查点、提醒冷却、通知权限与触发引用的迁移测试通过；评分重放只生成一条通知、检查点不重复推进、基金摘要映射和未认证访问拒绝的 PostgreSQL 16 集成测试通过（JBR release 17、37 项 Maven 测试）。
+- Python：v1.5 已新增解释快照 JSON 白名单、截断拒绝、固定模型配置、任务接口服务令牌和运行状态验证（Ruff、68 项 pytest）；Alembic 已升级 `20260901_10`，并核验快照表、幂等键和 `FUND_EXPLANATION` 运行类型约束。
+- Java：Flyway 已从 V9 升至 V11，消费检查点、提醒冷却、通知权限与触发引用的迁移测试通过；评分重放只生成一条通知、检查点不重复推进、基金摘要映射、解释任务基金代码校验和未认证访问拒绝的 PostgreSQL 16 集成测试通过（JBR release 17、39 项 Maven 测试）。
 - Vue：同步中心特征快照手动按钮、基金分析摘要、本人通知与管理员分析运行/基准治理页面已通过类型检查、Lint 和生产构建。
+- Vue：管理员手动解释入口、运行类别状态和基金详情只读解释快照已通过类型检查、Lint 和生产构建。
 - 上述验证不产生 ACTIVE 模型、SCORED 结果、回测运行或站内通知。
 
 ## TC-M3-01｜来源和数据不足闸门
@@ -448,6 +450,60 @@ WHERE run_id = :run_id;
 | 启用门槛 | 少于 400 点不能启用；启用基准不会激活模型、评分或提醒 |
 | 覆盖闸门 | 测试窗口基准覆盖少于 95% 时 `benchmark_status=DATA_INSUFFICIENT`、`publication_status=INELIGIBLE` |
 | 发布边界 | 完整基准回测最多生成 ELIGIBLE 候选，仍须管理员单独激活模型 |
+
+测试结果：
+
+- [ ] 通过
+- [ ] 未通过
+- 未通过原因：
+
+---
+
+## TC-M3-12｜DeepSeek 已发布评分解释快照
+
+前置条件：
+
+- 系统管理员已登录；Python 的 DeepSeek 本机运行配置已启用，且密钥只存在于被 Git 忽略的本机配置。
+- 已存在一条 `ACTIVE` 模型版本、该版本关联的一条 `SCORED` 评分及对应特征快照；另准备一只不满足此前置的基金。
+
+操作步骤：
+
+1. 以基金用户调用管理员解释接口，确认被拒绝；以管理员提交满足前置的六位基金代码。
+2. 查询持久运行状态至完成，重复提交相同基金和评分，确认复用现有快照而非重复外部调用。
+3. 打开基金详情，确认只显示已保存解释的业务日期、模型/特征版本、说明、证据、风险、数据缺口和非交易声明。
+4. 提交不满足 `ACTIVE + SCORED` 前置的基金，确认任务以 `EXPLANATION_SOURCE_NOT_READY` 结束且未调用外部模型。
+5. 模拟服务未启用、认证失败、余额不足、限流、响应截断或 JSON 多字段，确认不写半成品，原评分、回测、发布和提醒记录不变。
+
+数据库验证：
+
+~~~sql
+SELECT e.forecast_id, e.model_release_id, e.fund_code, e.as_of_date,
+       e.provider, e.provider_model, e.prompt_version, e.generated_at,
+       e.source_input_hash, e.content_hash, e.prompt_tokens, e.completion_tokens
+FROM analysis_explanation_snapshot e
+WHERE e.fund_code = :fund_code
+ORDER BY e.generated_at DESC;
+
+SELECT forecast_id, provider, provider_model, prompt_version, COUNT(*) AS row_count
+FROM analysis_explanation_snapshot
+GROUP BY forecast_id, provider, provider_model, prompt_version
+HAVING COUNT(*) > 1;
+
+SELECT analysis_run_id, run_type, status, failure_reason, requested_at, finished_at
+FROM analysis_run
+WHERE run_type = 'FUND_EXPLANATION'
+ORDER BY requested_at DESC;
+~~~
+
+| 验收点 | 预期 |
+| --- | --- |
+| 权限与服务边界 | 浏览器只调用 Java；仅 SYSTEM_ADMIN 可创建；Python 拒绝浏览器 Origin 和缺失服务令牌 |
+| 前置闸门 | 没有 ACTIVE 模型或 SCORED 评分时不访问外部模型，任务明确记录未就绪原因 |
+| 最小化输入 | 外部调用不含 user_id、关注、持仓、原始净值序列、完整记录或任意扩展字段 |
+| 输出契约 | 只持久化五个顶层字段和 1 至 4 条 `label/detail` 证据；截断、空内容或额外字段被拒绝 |
+| 幂等与审计 | 相同评分、模型和提示词版本不产生重复快照；仅保留哈希、受限内容、请求标识和用量 |
+| 业务隔离 | 解释运行不重新评分、不修改回测/发布状态、不投递提醒，也不出现买卖或收益承诺 |
+| 密钥保护 | 密钥不出现在仓库、数据库、日志、接口响应、测试报告或前端包中 |
 
 测试结果：
 

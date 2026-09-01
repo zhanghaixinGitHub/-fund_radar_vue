@@ -2561,6 +2561,81 @@ h2 {
   line-height: 1.5;
 }
 
+.analysis-explanation-card {
+  padding: 18px;
+  margin-top: 18px;
+  background: rgb(255 255 255 / 78%);
+  border: 1px solid #b9d5c5;
+  border-radius: 12px;
+}
+
+.analysis-explanation-heading {
+  display: flex;
+  gap: 16px;
+  align-items: end;
+  justify-content: space-between;
+}
+
+.analysis-explanation-heading h3 {
+  margin: 4px 0 0;
+  color: #17332e;
+  font-size: 17px;
+}
+
+.analysis-explanation-heading .eyebrow {
+  margin: 0;
+}
+
+.analysis-explanation-meta,
+.analysis-explanation-overview {
+  margin: 12px 0 0;
+  color: #597069;
+  line-height: 1.65;
+}
+
+.analysis-explanation-overview {
+  color: #23443e;
+}
+
+.analysis-explanation-evidence {
+  display: grid;
+  gap: 10px;
+  padding: 0;
+  margin: 16px 0 0;
+  list-style: none;
+}
+
+.analysis-explanation-evidence li,
+.analysis-explanation-notes div {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  background: #f4faf7;
+  border: 1px solid #d9e8e1;
+  border-radius: 10px;
+}
+
+.analysis-explanation-evidence strong,
+.analysis-explanation-notes dt {
+  color: #17332e;
+  font-size: 13px;
+}
+
+.analysis-explanation-evidence span,
+.analysis-explanation-notes dd {
+  margin: 0;
+  color: #587069;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.analysis-explanation-notes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 16px 0 0;
+}
+
 .analysis-console-page .admin-operation-card {
   margin-top: 24px;
 }
@@ -2797,8 +2872,14 @@ h2 {
   }
 
   .analysis-backtest-grid,
-  .analysis-run-grid {
+  .analysis-run-grid,
+  .analysis-explanation-notes {
     grid-template-columns: 1fr;
+  }
+
+  .analysis-explanation-heading {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .benchmark-form,

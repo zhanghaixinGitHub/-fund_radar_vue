@@ -3,7 +3,7 @@
 > 关联需求：docs_zhx/requirements/m3-decision-assistance.md
 > 关联设计：docs_zhx/design/m3-decision-assistance.md
 > 关联验收：docs_zhx/testcase/m3-decision-assistance.md
-> 版本：v1.4
+> 版本：v1.5
 > 日期：2026-09-01
 > 变更等级：L3
 > 当前状态：已完成 M3-01 至 M3-06 及 v1.4 基准登记/导入的代码、迁移和本地集成验证；M3-04 未注册定时评分，M3-05 消费调度默认关闭，当前没有已启用的授权业绩比较基准，因此没有 ACTIVE 模型、真实用户可读评分或真实用户通知。
@@ -196,3 +196,11 @@ M3 只有在以下条件全部满足时才可标记完成：
 2. 只有 `ACTIVE + source_registry.enabled` 且至少 400 个点的股票型基准可传入固定 `M3_STOCK_MOMENTUM_BASELINE_V1` 回测。回测仅比较同一信号日和未来标签日均覆盖的基准收益；覆盖率低于 95% 时记录 `BENCHMARK_DATA_INSUFFICIENT` 并保持 `INELIGIBLE`。
 3. Java `/api/v1/admin/analysis/benchmarks/*` 强制 SYSTEM_ADMIN、代理 Python 内部服务令牌接口并记录管理员、动作、基准代码及导入条数审计；Vue 分步展示来源状态、覆盖范围、登记、导入、启停和回测选择，不提供模型参数自由编辑或交易操作。
 4. 本机已升级 V9 迁移并核验两张新表和三个业务索引；表内仍为 0 行，`MANUAL_PUBLISHER_VERIFIED_SAMPLE` 仍禁用。已通过 Python Ruff/64 项 pytest、Java JBR（release 17）37 项 Maven 测试和 Vue Lint/生产构建；结果不代表已导入真实基准、执行真实回测或激活模型。
+
+## 12. v1.5｜2026-09-01 DeepSeek V4-Pro 解释快照记录
+
+1. Python Alembic `20260901_10` 创建 `analysis_explanation_snapshot`，并将 `analysis_run.run_type` 扩展为 `FUND_EXPLANATION`。表包含评分、发布版本、基金、业务日期、模型/提示词版本、受限解释、哈希、请求标识和用量；唯一键阻止同一评分重复生成。
+2. Python 只在已有 `ACTIVE + SCORED` 本地来源时才调用固定 `deepseek-v4-pro`。请求使用 OpenAI 兼容的 `POST /chat/completions` JSON 模式；为受控事实说明关闭展开式思考，避免占用输出上限导致结构化结果截断。输入/输出均经白名单，任务失败不落半成品。
+3. Java 新增管理员解释任务代理和审计，并将 Python 的已保存解释映射进既有基金分析摘要。Vue 管理页提供六位基金代码的手动入口、持久运行轮询和明确失败提示；基金详情只展示后端已保存的说明、证据、风险、数据缺口和非交易声明。
+4. 密钥存放于 Python 工作区已忽略的本机 `.env.deepseek`，配置只读取本机环境；源码、迁移、接口、日志、测试输出和 Git 提交均不包含密钥。实际冒烟只发送虚拟评分事实，确认 `deepseek-v4-pro` 返回符合 JSON 契约的结果、请求标识和用量字段。
+5. 已通过 Python Ruff 和 68 项 pytest、迁移 V10 与 PostgreSQL 表/约束核验、DeepSeek 虚拟事实连通性冒烟、Java JBR 17 的 39 项 Maven 测试、Vue 类型检查/Lint/生产构建。该结果不代表存在 ACTIVE 模型、真实评分、真实基金解释、真实基准或模型发布；当前解释任务会在前置缺失时受控结束。

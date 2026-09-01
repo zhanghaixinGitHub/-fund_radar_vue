@@ -3,10 +3,10 @@
 > 关联需求：docs_zhx/requirements/m3-decision-assistance.md
 > 关联验收：docs_zhx/testcase/m3-decision-assistance.md
 > 关联总设计：docs_zhx/design/fund-radar.md
-> 版本：v1.4
+> 版本：v1.5
 > 日期：2026-09-01
 > 变更等级：L3
-> 状态：M3-01 至 M3-06 和 v1.4 基准登记/导入能力已实施；M3-06 只通过 Java 展示已发布或已暂停模型的受限摘要、本人通知和管理员运行状态，M3-07 监控发布仍未实施。当前没有 ACTIVE 模型、授权启用的业绩基准或真实用户通知，本文件不代表交易能力已启用。
+> 状态：M3-01 至 M3-06、v1.4 基准登记/导入和 v1.5 已发布评分的受控解释快照已实施；M3-06 只通过 Java 展示已发布或已暂停模型的受限摘要、本人通知和管理员运行状态，M3-07 监控发布仍未实施。当前没有 ACTIVE 模型、授权启用的业绩基准或真实用户通知，本文件不代表交易能力已启用。
 
 ## 1. 设计原则
 
@@ -292,3 +292,45 @@ Python 拒绝浏览器 Origin 和缺失服务令牌请求。所有内部调用�
 - `benchmark_nav_daily` 使用 PostgreSQL 批量 UPSERT，业务键为 `benchmark_code + nav_date`，内容哈希未变时不更新。单次导入最多 10000 点，重复日期且收盘值冲突直接拒绝；不允许浏览器直连 Python 或写来源表。
 - 回测读取固定候选 `M3_STOCK_MOMENTUM_BASELINE_V1`，不会接受浏览器传入的模型、阈值或特征参数。独立测试窗口中，只有信号日和该基金未来标签日均存在的基准点才计入比较；覆盖少于 95% 或缺少基准收益时，发布状态固定 `INELIGIBLE`。
 - 本机迁移 `20260901_09` 只创建上述两张表及索引。当前基准表为 0 行、手动来源禁用，因此当前仍不能创建 ELIGIBLE 或 ACTIVE 模型；需要数据治理人员先确认来源授权并提供人工核验序列。
+
+## 13. v1.5｜已发布评分的 DeepSeek 解释快照设计
+
+### 13.1 数据链路与前置
+
+~~~text
+ACTIVE 模型发布 + 最新 SCORED forecast_result + 对应 feature_snapshot
+  -> 管理员手动 POST /api/v1/admin/analysis/runs/fund-explanations
+  -> Java 鉴权、审计、服务令牌代理
+  -> Python analysis_run(FUND_EXPLANATION)
+  -> 白名单事实 + DeepSeek deepseek-v4-pro
+  -> analysis_explanation_snapshot
+  -> 只读 fund-summary
+  -> Java 映射和同基金陈旧缓存
+  -> Vue 基金详情“评分说明”
+~~~
+
+解释位于评分之后、页面读取之前，不参与特征、数值评分、滚动回测、发布闸门、信号消费和通知。没有 ACTIVE + SCORED 来源时任务以 `EXPLANATION_SOURCE_NOT_READY` 结束，禁止访问外部模型。
+
+### 13.2 解释快照契约
+
+`analysis_explanation_snapshot` 的稳定关联为 `forecast_id`、`model_release_id` 和 `fund_code`。幂等键为 `(forecast_id, provider, provider_model, prompt_version)`；内容哈希用于审计重复内容而不保存原始提示词。提供方只能为 `DEEPSEEK`，模型固定 `deepseek-v4-pro`。
+
+外部输入严格限制为已发布评分字段、数据截至日、模型/特征版本、评分解释、完整度及 `return_20d`、`volatility_20d`、`max_drawdown_60d`、`nav_observation_count` 四项特征。输出必须是以下受限 JSON：
+
+~~~json
+{
+  "overview": "简短说明",
+  "evidence": [{"label": "证据名称", "detail": "说明"}],
+  "risk_notice": "风险提示",
+  "data_gap": "数据缺口",
+  "disclaimer": "仅供信息参考，不构成交易建议。"
+}
+~~~
+
+服务端校验仅五个顶层字段、1 至 4 条证据、每个字段的最大长度及非空约束。`provider_request_id` 和 token 用量可持久化用于受控审计；密钥、完整提示词、原始模型响应、用户数据和净值原始序列不得写入数据库、日志或 Java/Vue 响应。
+
+### 13.3 接口、缓存与降级
+
+新增 Java `POST /api/v1/admin/analysis/runs/fund-explanations` 与 Python `POST /internal/v1/analysis/runs/fund-explanations`，均只接受六位基金代码，前者强制 `SYSTEM_ADMIN`，后者要求服务令牌。复用现有持久运行查询；同一时刻只允许一个分析运行，避免重复计费和并发外部调用。
+
+基金摘要只读取当前发布版本关联的最新成功快照。外部模型的认证、余额、限流、暂不可用、响应截断或 JSON 校验失败均以稳定失败码结束任务，不影响已有评分、回测、发布或提醒；详情页不会自动重试或触发新的外部请求。

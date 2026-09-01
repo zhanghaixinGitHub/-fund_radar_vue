@@ -14,6 +14,11 @@ export function startRollingBacktest(feeRate?: number, benchmarkCode?: string): 
   })
 }
 
+/** 手动排队 DeepSeek V4-Pro 解释；仅处理已有 ACTIVE 模型的已评分基金，不改变评分或发布状态。 */
+export function startFundExplanation(fundCode: string): Promise<AnalysisRunStatus> {
+  return post<AnalysisRunStatus>('/api/v1/admin/analysis/runs/fund-explanations', { fundCode })
+}
+
 /** 读取已创建分析运行的持久状态；请求不会重跑回测或发起外部数据同步。 */
 export function getAnalysisRun(analysisRunId: string): Promise<AnalysisRunStatus> {
   return get<AnalysisRunStatus>(`/api/v1/admin/analysis/runs/${encodeURIComponent(analysisRunId)}`)

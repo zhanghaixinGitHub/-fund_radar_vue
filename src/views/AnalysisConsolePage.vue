@@ -7,6 +7,7 @@ import {
   getAnalysisRun,
   importAnalysisBenchmarkPoints,
   registerAnalysisBenchmark,
+  startFundExplanation,
   startRollingBacktest,
   suspendAnalysisBenchmark,
 } from '@/api/analysis'
@@ -16,6 +17,9 @@ import type { AnalysisRunStatus, BenchmarkNavPointInput, BenchmarkSeriesStatus }
 const feeRate = ref(0.0015)
 const run = ref<AnalysisRunStatus | null>(null)
 const submitting = ref(false)
+const explanationSubmitting = ref(false)
+const explanationFundCode = ref('')
+const explanationFundCodeError = ref('')
 const refreshing = ref(false)
 const message = ref('')
 const pollAttempts = ref(0)
@@ -43,6 +47,10 @@ function runStatusLabel(status: AnalysisRunStatus['status']): string {
     QUEUED: '已排队', RUNNING: '运行中', COMPLETED: '已完成', FAILED: '运行失败',
   }
   return labels[status]
+}
+
+function runTypeLabel(runType: AnalysisRunStatus['runType']): string {
+  return runType === 'FUND_EXPLANATION' ? 'DeepSeek 解释快照' : '滚动回测'
 }
 
 function benchmarkStatusLabel(status: BenchmarkSeriesStatus['status']): string {
@@ -248,6 +256,39 @@ async function startRun(): Promise<void> {
   }
 }
 
+function validateExplanationFundCode(): boolean {
+  const fundCode = explanationFundCode.value.trim()
+  if (!/^\d{6}$/.test(fundCode)) {
+    explanationFundCodeError.value = '请输入 6 位基金代码，例如 000001。'
+    return false
+  }
+  explanationFundCode.value = fundCode
+  explanationFundCodeError.value = ''
+  return true
+}
+
+/** 仅为已发布且已有评分的基金手动生成解释，不触发同步、预测、回测或模型发布。 */
+async function startExplanation(): Promise<void> {
+  if (!validateExplanationFundCode()) return
+  explanationSubmitting.value = true
+  message.value = ''
+  clearPolling()
+  try {
+    run.value = await startFundExplanation(explanationFundCode.value)
+    pollAttempts.value = 0
+    message.value = 'DeepSeek V4-Pro 解释任务已排队；它只基于已发布评分生成快照，不会改变模型评分、回测或发布状态。'
+    schedulePolling()
+  } catch (error) {
+    message.value = displayRequestError(
+      error,
+      '解释任务未创建。',
+      '已有分析任务正在排队或运行，请等待其结束后再创建新的解释任务。',
+    )
+  } finally {
+    explanationSubmitting.value = false
+  }
+}
+
 onMounted(() => { void loadBenchmarks() })
 onBeforeUnmount(() => { clearPolling() })
 </script>
@@ -446,6 +487,44 @@ onBeforeUnmount(() => { clearPolling() })
       </form>
     </section>
 
+    <section class="admin-operation-card deepseek-explanation-operation">
+      <div>
+        <h2>4. 生成 DeepSeek V4-Pro 解释</h2>
+        <p>仅管理员可手动生成。任务只能读取“已发布模型 + 已评分基金”的受控事实并保存解释快照；不会重新预测、修改回测结论或自动发送提醒。</p>
+      </div>
+      <form
+        class="admin-inline-form"
+        @submit.prevent="startExplanation"
+      >
+        <label for="explanation-fund-code">基金代码<input
+          id="explanation-fund-code"
+          v-model="explanationFundCode"
+          :aria-describedby="explanationFundCodeError ? 'explanation-fund-code-error' : undefined"
+          :aria-invalid="Boolean(explanationFundCodeError)"
+          autocomplete="off"
+          inputmode="numeric"
+          maxlength="6"
+          placeholder="例如 000001"
+          @blur="validateExplanationFundCode"
+        ></label>
+        <p
+          v-if="explanationFundCodeError"
+          id="explanation-fund-code-error"
+          class="form-error"
+          role="alert"
+        >
+          {{ explanationFundCodeError }}
+        </p>
+        <button
+          class="primary-button"
+          :disabled="explanationSubmitting || canPoll"
+          type="submit"
+        >
+          {{ explanationSubmitting ? '正在排队…' : canPoll ? '已有运行进行中' : '生成解释快照' }}
+        </button>
+      </form>
+    </section>
+
     <p
       v-if="message"
       class="state-message"
@@ -475,7 +554,13 @@ onBeforeUnmount(() => { clearPolling() })
         </button>
       </header>
       <dl class="analysis-run-grid">
-        <div><dt>状态</dt><dd>{{ runStatusLabel(run.status) }}</dd></div><div><dt>基金类型</dt><dd>{{ run.fundType }}</dd></div><div><dt>创建时间</dt><dd>{{ formatDateTime(run.requestedAt) }}</dd></div><div><dt>开始时间</dt><dd>{{ formatDateTime(run.startedAt) }}</dd></div><div><dt>结束时间</dt><dd>{{ formatDateTime(run.finishedAt) }}</dd></div><div><dt>候选发布状态</dt><dd>{{ run.modelReleaseStatus || '等待运行结论' }}</dd></div>
+        <div><dt>运行类别</dt><dd>{{ runTypeLabel(run.runType) }}</dd></div><div><dt>状态</dt><dd>{{ runStatusLabel(run.status) }}</dd></div><div><dt>基金类型</dt><dd>{{ run.fundType }}</dd></div><div><dt>创建时间</dt><dd>{{ formatDateTime(run.requestedAt) }}</dd></div><div><dt>开始时间</dt><dd>{{ formatDateTime(run.startedAt) }}</dd></div><div><dt>结束时间</dt><dd>{{ formatDateTime(run.finishedAt) }}</dd></div>
+        <div v-if="run.runType === 'ROLLING_BACKTEST'">
+          <dt>候选发布状态</dt><dd>{{ run.modelReleaseStatus || '等待运行结论' }}</dd>
+        </div>
+        <div v-else>
+          <dt>解释模型</dt><dd>DeepSeek V4-Pro</dd>
+        </div>
       </dl>
       <p
         v-if="run.failureReason"
@@ -484,7 +569,9 @@ onBeforeUnmount(() => { clearPolling() })
         运行摘要：{{ run.failureReason }}
       </p>
       <p class="risk-disclaimer">
-        回测是模型发布闸门，不是模拟下单或个人收益账本。即使运行完成，也必须经过合格判定与人工审核后才可能进入发布状态。
+        {{ run.runType === 'ROLLING_BACKTEST'
+          ? '回测是模型发布闸门，不是模拟下单或个人收益账本。即使运行完成，也必须经过合格判定与人工审核后才可能进入发布状态。'
+          : '解释快照不是预测模型，也不构成投资建议。它只能说明已发布评分所依赖的有限事实、风险与数据缺口。' }}
       </p>
     </section>
   </section>
