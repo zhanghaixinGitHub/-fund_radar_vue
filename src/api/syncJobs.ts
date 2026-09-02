@@ -11,6 +11,11 @@ export function startMarketDetailSync(): Promise<SyncJobStatus> {
   return post<SyncJobStatus>('/api/v1/sync-jobs/market-details')
 }
 
+/** 手工补齐当前 2000 积分已验权的免费基金与市场参考数据；不会读取持仓、新闻或公告。 */
+export function startMarketFreeDataCompletionSync(): Promise<SyncJobStatus> {
+  return post<SyncJobStatus>('/api/v1/sync-jobs/market-free-data-completion')
+}
+
 /** 从已落库、已授权净值生成特征快照；不触发外部市场数据调用。 */
 export function startStockFeatureSnapshotSync(): Promise<SyncJobStatus> {
   return post<SyncJobStatus>('/api/v1/sync-jobs/stock-feature-snapshots')
@@ -29,6 +34,11 @@ export function getLatestMarketNavIncrementalSync(): Promise<SyncJobStatus | nul
 /** 查询当前 Python 进程最近一次完整资料同步任务。 */
 export function getLatestMarketDetailSync(): Promise<SyncJobStatus | null> {
   return get<SyncJobStatus | null>('/api/v1/sync-jobs/market-details/latest')
+}
+
+/** 查询当前 Python 进程最近一次免费数据补齐任务，不会重新发起同步。 */
+export function getLatestMarketFreeDataCompletionSync(): Promise<SyncJobStatus | null> {
+  return get<SyncJobStatus | null>('/api/v1/sync-jobs/market-free-data-completion/latest')
 }
 
 /** 查询当前 Python 进程最近一次特征快照任务。 */

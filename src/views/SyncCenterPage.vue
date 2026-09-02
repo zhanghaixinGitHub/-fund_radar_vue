@@ -4,20 +4,22 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import {
   getLastSuccessfulSyncTimes,
   getLatestMarketDetailSync,
+  getLatestMarketFreeDataCompletionSync,
   getLatestMarketNavIncrementalSync,
   getLatestStockFeatureSnapshotSync,
   getSyncJob,
   startMarketDetailSync,
+  startMarketFreeDataCompletionSync,
   startMarketNavIncrementalSync,
   startStockFeatureSnapshotSync,
 } from '@/api/syncJobs'
 import type { SyncJobStatus } from '@/types/syncJob'
 
-type SyncTaskKey = 'marketNav' | 'marketDetail' | 'featureSnapshot'
+type SyncTaskKey = 'marketNav' | 'marketDetail' | 'freeDataCompletion' | 'featureSnapshot'
 
 interface SyncTaskDefinition {
   key: SyncTaskKey
-  jobType: 'MARKET_NAV_INCREMENTAL' | 'MARKET_DETAIL' | 'STOCK_FEATURE_SNAPSHOT'
+  jobType: 'MARKET_NAV_INCREMENTAL' | 'MARKET_DETAIL' | 'MARKET_FREE_DATA_COMPLETION' | 'STOCK_FEATURE_SNAPSHOT'
   title: string
   description: string
   scheduleNote: string
@@ -49,6 +51,16 @@ const tasks: readonly SyncTaskDefinition[] = [
     loadLatest: getLatestMarketDetailSync,
   },
   {
+    key: 'freeDataCompletion',
+    jobType: 'MARKET_FREE_DATA_COMPLETION',
+    title: '当前 2000 积分免费数据补齐',
+    description: '补齐当前已验权的基金基础资料、扩展净值、经理、规模、分红、场内基金日线与市场参考指数数据；不读取基金持仓、新闻或公告。',
+    scheduleNote: '按需手动执行；不会因打开详情页或预测页面自动拉取，指数仅同步已登记的 DRAFT/ACTIVE 参考序列。',
+    actionLabel: '开始补齐',
+    start: startMarketFreeDataCompletionSync,
+    loadLatest: getLatestMarketFreeDataCompletionSync,
+  },
+  {
     key: 'featureSnapshot',
     jobType: 'STOCK_FEATURE_SNAPSHOT',
     title: '股票型基金特征快照同步',
@@ -63,16 +75,19 @@ const tasks: readonly SyncTaskDefinition[] = [
 const jobs = ref<Record<SyncTaskKey, SyncJobStatus | null>>({
   marketNav: null,
   marketDetail: null,
+  freeDataCompletion: null,
   featureSnapshot: null,
 })
 const starting = ref<Record<SyncTaskKey, boolean>>({
   marketNav: false,
   marketDetail: false,
+  freeDataCompletion: false,
   featureSnapshot: false,
 })
 const lastSuccessfulAt = ref<Record<string, string | null>>({
   MARKET_NAV_INCREMENTAL: null,
   MARKET_DETAIL: null,
+  MARKET_FREE_DATA_COMPLETION: null,
   STOCK_FEATURE_SNAPSHOT: null,
 })
 const loading = ref(true)
@@ -358,7 +373,7 @@ onBeforeUnmount(() => {
       <ul>
         <li>净值增量任务保留工作日 20:00 的定时同步；本页按钮用于随时手动补齐。</li>
         <li>净值增量成功后会在同一后台任务内自动生成股票型基金特征快照；若该阶段失败，会保留来源成功记录并提供独立手动重试。</li>
-        <li>完整资料任务会调用多类 Tushare 接口，当前仅支持管理员手动发起，完成真实验权后再单独确定自动刷新频率。</li>
+        <li>完整资料和免费数据补齐任务会调用多类 Tushare 接口，当前仅支持管理员手动发起；不自动读取基金持仓、新闻或公告。</li>
         <li>任意时刻只允许一个市场同步任务运行；页面每秒读取一次服务端进度，不会重复触发数据源调用。</li>
       </ul>
     </section>

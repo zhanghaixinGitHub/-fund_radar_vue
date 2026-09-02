@@ -3,7 +3,7 @@
 > 关联需求：[当前 2000 积分可用数据补齐需求](../requirements/tushare-2000-data-completion.md)
 > 关联设计：[免费已授权数据预测 V1](../design/free-data-prediction-v1.md)
 > 关联既有实施：[基金雷达总实施看板](fund-radar.md)、[关注基金预测模块](watchlist-prediction-module.md)
-> 版本：v1.0 ｜ 日期：2026-09-02 ｜ 变更等级：L3 ｜ 状态：待实施，不授权自动发起真实同步
+> 版本：v1.1 ｜ 日期：2026-09-02 ｜ 变更等级：L3 ｜ 状态：代码和本地迁移已完成；管理员已手动完成一次真实补齐，后续仍不自动发起外部同步
 
 ## 0. 实施结论
 
@@ -20,6 +20,17 @@ Vue 同步中心（只展示、管理员手动启动）
 它只处理需求文档中 P0 的当前已授权数据；`daily`、`daily_basic` 虽已最小验权成功，但仍是 P1，默认没有全市场同步任务。`fund_portfolio`、新闻、公告和未获授权接口没有客户端调用、没有表写入、没有页面展示。
 
 历史回补由具备 `SYNC_JOB_START` 权限的管理员在同步中心手动启动。打开基金详情、打开关注页、读取预测结果都只能查本地数据库，绝不触发 Tushare。
+
+### 0.1 本次实施记录（2026-09-02）
+
+1. 已对 `fund_daily`、`index_basic`、`index_classify`、`index_daily`、`index_weight` 做最小只读字段探测，均返回业务码 `0`；未输出 Token 或原始数据。
+2. `index_basic` 的 `CSI` 市场分片探测恰好达到来源 8,000 行上限，因此默认目录同步只处理 `SSE,SZSE,SW,CICC,MSCI,OTH`。这不是数据缺失的补零策略，而是主动拒绝将可能截断的 `CSI` 目录入库；后续若要使用某个 CSI 指数，只能先在 `benchmark_series` 显式登记为 `DRAFT`，再同步其日线和权重。
+3. 本地 PostgreSQL 已从 `20260901_10` 加性升级到 `20260902_11`，未执行真实外部补齐；自动化和构建验证见[测试用例](../testcase/tushare-2000-data-completion.md)。
+4. 当前本地 `TUSHARE_PRO_FUND` 来源已登记 13 个已验权接口能力；`fund_portfolio` 不在清单中。能力登记只更新治理元数据，不读取或写入外部行情、持仓、新闻或公告数据。
+5. 当前尚无 `DRAFT` 或 `ACTIVE` 的市场参考指数登记，因此首次任务会同步指数目录和分类，但不会擅自拉取任意指数的日线/权重。先由管理员按基准治理流程登记候选指数，才能启动这两类数据的受控回补。
+6. 首次管理员任务发现 `fund_daily.change` 与 `pct_chg` 可以为负数。适配器已改为解析“有限有符号十进制”；失败游标计数改为从 ORM 未回填默认值时安全地从 `0` 累加，并确保游标落库异常不会覆盖原始数据域失败。该次遗留的场内基金日线运行记录已人工标记为 `FAILED`，未重跑外部补齐。
+7. 第二次管理员任务已成功完成详情补齐、场内基金日线和指数目录三个阶段；`index_classify.level` 的真实值为 `L1`，而非仅有数字。适配器现只接受 `1` 或 `L1`（不区分大小写）并规范为整数层级；如 `LEVEL_ONE` 等未知值仍失败。分类阶段及父任务已正确收口为 `FAILED`，成功阶段数据保留，未遗留 `RUNNING` 记录，也未自动重跑。
+8. 第三次管理员手动任务已成功结束：读取 72,931 条，新增 360 条，更新 0 条，跳过 72,516 条。详情补齐、场内基金日线、指数目录、指数分类均已成功；当前未登记 `DRAFT` 或 `ACTIVE` 基准指数，所以指数日线和权重阶段以 0 条成功结束，不把无白名单误报为数据缺失。最新运行记录、游标和已落库数据均可追溯。
 
 ## 1. 现有基础与本次改动边界
 
@@ -238,9 +249,9 @@ COMMIT;
 | `fund_manager` | 复用现有明细同步 | `fund_manager_assignment` | `FUND_MANAGER/{source_fund_code}` | 只保存姓名、任职日期、学历和公告日期；不采集非必要个人资料 |
 | `fund_share` | 复用现有日期窗口读取 | `fund_share_snapshot` | `FUND_SHARE/{source_fund_code}` | 空响应写 `NO_DISCLOSURE` 结果但不写零份额；成功水位使用请求窗口末日 |
 | `fund_div` | 复用现有分红合并逻辑 | `fund_dividend` | `FUND_DIVIDEND/{source_fund_code}` | 同键同值或空字段补全可合并；不同非空值冲突必须失败，不推进水位 |
-| `fund_daily` | 新增场内基金日线适配 | `fund_exchange_daily` | `FUND_EXCHANGE_DAILY/{trade_code}` | 只有已有明确交易代码的 ETF/LOF 才调用；绝不根据六位代码猜 `.SH`/`.SZ` 后缀 |
-| `index_basic` | 新增指数目录适配 | `market_index_catalog` | `INDEX_CATALOG/GLOBAL` | 全量目录可入库，但默认不成为模型基准 |
-| `index_classify` | 新增分类适配 | `market_index_classification` | `INDEX_CLASSIFY/GLOBAL` | 保留层级和来源分类，不把分类名当基金行业暴露 |
+| `fund_daily` | 新增场内基金日线适配 | `fund_exchange_daily` | `FUND_EXCHANGE_DAILY/{trade_code}` | 只有已有明确交易代码的 ETF/LOF 才调用；`change`/`pct_chg` 允许负值；绝不根据六位代码猜 `.SH`/`.SZ` 后缀 |
+| `index_basic` | 新增指数目录适配 | `market_index_catalog` | `INDEX_CATALOG/GLOBAL` | 只同步未达到来源行上限的市场分片；默认不成为模型基准 |
+| `index_classify` | 新增分类适配 | `market_index_classification` | `INDEX_CLASSIFY/GLOBAL` | `level` 接受 `1` 或 `L1` 并规范为整数；保留层级和来源分类，不把分类名当基金行业暴露 |
 | `index_daily` | 新增指数日线适配 | `benchmark_nav_daily`（仅白名单） | `INDEX_DAILY/{index_code}` | 白名单指数才入日线；无记录要与非交易日区分，不能伪造成功 |
 | `index_weight` | 新增指数权重适配 | `index_weight_snapshot`（仅白名单） | `INDEX_WEIGHT/{index_code}` | 每个权重生效日全量比对；不把成分股写成基金持仓 |
 
@@ -252,13 +263,12 @@ COMMIT;
 
 ```text
 MARKET_FREE_DATA_COMPLETION          # 管理员手动历史补齐父任务
-MARKET_FREE_PROFILE                  # 基金档案/公司子运行
+MARKET_DETAIL / MARKET_DETAIL_*      # 复用既有基金档案、净值、经理、份额和分红子运行
 MARKET_FREE_EXCHANGE_DAILY           # 场内基金日线子运行
 MARKET_FREE_INDEX_CATALOG            # 指数目录子运行
 MARKET_FREE_INDEX_CLASSIFY           # 指数分类子运行
 MARKET_FREE_INDEX_DAILY              # 指数日线子运行
 MARKET_FREE_INDEX_WEIGHT             # 指数权重子运行
-MARKET_FREE_DATA_INCREMENTAL         # 历史补齐通过后的低频/市场参考增量父任务
 ```
 
 现有 `MARKET_DETAIL_*`、`MARKET_NAV_INCREMENTAL` 继续保留，不重命名历史审计记录。总任务创建一个 `MARKET_FREE_DATA_COMPLETION` 父运行；每个子阶段的 `source_sync_run.parent_sync_run_id` 指向它。父运行只有在所有“必需阶段”完成且质量检查通过时才为 `SUCCEEDED`。
@@ -307,10 +317,10 @@ MARKET_FREE_DATA_INCREMENTAL         # 历史补齐通过后的低频/市场参�
 
 | 方向 | 方法和路径 | 权限/认证 | 行为 |
 | --- | --- | --- | --- |
-| 浏览器 → Java | `POST /api/v1/sync-jobs/free-data-completion` | `SYNC_JOB_START`、会话、CSRF、Origin | 创建管理员手动补齐任务 |
-| 浏览器 → Java | `GET /api/v1/sync-jobs/free-data-completion/latest` | `SYNC_JOB_READ` | 读取最近任务，不触发同步 |
-| Java → FastAPI | `POST /internal/v1/funds/sync-jobs/free-data-completion` | 服务 Token；浏览器 Origin 拦截 | 启动 `LocalSyncJobManager` 任务 |
-| Java → FastAPI | `GET /internal/v1/funds/sync-jobs/free-data-completion/latest` | 服务 Token；浏览器 Origin 拦截 | 查询任务摘要 |
+| 浏览器 → Java | `POST /api/v1/sync-jobs/market-free-data-completion` | `SYNC_JOB_START`、会话、CSRF、Origin | 创建管理员手动补齐任务 |
+| 浏览器 → Java | `GET /api/v1/sync-jobs/market-free-data-completion/latest` | `SYNC_JOB_READ` | 读取最近任务，不触发同步 |
+| Java → FastAPI | `POST /internal/v1/funds/sync-jobs/market-free-data-completion` | 服务 Token；浏览器 Origin 拦截 | 启动 `LocalSyncJobManager` 任务 |
+| Java → FastAPI | `GET /internal/v1/funds/sync-jobs/market-free-data-completion/latest` | 服务 Token；浏览器 Origin 拦截 | 查询任务摘要 |
 
 Java 需要在 `SyncJobController`、`SyncJobService` 和 `AiSyncJobClient` 增加对称方法。Controller 的 Javadoc 更新为本需求、设计和本文档路径；Controller 只做鉴权、参数和响应，任务编排仍在 Service，远程调用仍在 Integration Client。
 
