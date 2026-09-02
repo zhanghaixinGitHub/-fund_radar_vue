@@ -32,27 +32,6 @@ export interface FundModelAnalysisSummary {
   suspendedAt: string | null
 }
 
-/** 已持久化的模型解释证据；只解释已发布评分，不重新计算分数或给出交易指令。 */
-export interface FundAnalysisExplanationEvidence {
-  label: string
-  detail: string
-}
-
-/** 管理员手动生成并通过数据边界校验的 DeepSeek 解释快照。 */
-export interface FundAnalysisExplanation {
-  provider: 'DEEPSEEK'
-  providerModel: 'deepseek-v4-pro'
-  asOfDate: string
-  modelVersion: string
-  featureVersion: string
-  generatedAt: string
-  overview: string
-  evidence: FundAnalysisExplanationEvidence[]
-  riskNotice: string
-  dataGap: string
-  disclaimer: string
-}
-
 /** 基金详情的已发布模型可用性与关联回测摘要。 */
 export interface FundAnalysisSummary {
   fundCode: string
@@ -61,50 +40,6 @@ export interface FundAnalysisSummary {
   message: string
   model: FundModelAnalysisSummary | null
   backtest: FundBacktestSummary | null
-  explanation: FundAnalysisExplanation | null
   stale: boolean
   cachedAt: string | null
-}
-
-/** 管理员受控回测的持久状态；浏览器仅查询和显示，不可自行改写。 */
-export interface AnalysisRunStatus {
-  analysisRunId: string
-  runType: 'ROLLING_BACKTEST' | 'FUND_EXPLANATION'
-  status: 'QUEUED' | 'RUNNING' | 'COMPLETED' | 'FAILED'
-  fundType: string
-  taskId: string | null
-  backtestRunId: string | null
-  modelReleaseId: string | null
-  modelReleaseStatus: 'DRAFT' | 'ELIGIBLE' | 'ACTIVE' | 'SUSPENDED' | 'RETIRED' | null
-  failureReason: string | null
-  requestedAt: string
-  startedAt: string | null
-  finishedAt: string | null
-}
-
-/** 管理员可见的已登记基准状态；不包含每日原始数据或来源凭证。 */
-export interface BenchmarkSeriesStatus {
-  benchmarkCode: string
-  displayName: string
-  fundType: 'STOCK'
-  sourceCode: string
-  sourceEnabled: boolean
-  status: 'DRAFT' | 'ACTIVE' | 'SUSPENDED'
-  licenseReference: string
-  pointCount: number
-  firstNavDate: string | null
-  lastNavDate: string | null
-}
-
-/** 一条人工核验的基准日收盘点；由服务端按代码和日期幂等写入。 */
-export interface BenchmarkNavPointInput {
-  navDate: string
-  closingValue: number
-}
-
-/** 登记候选回测基准时所需的最小治理元数据。 */
-export interface BenchmarkRegistrationInput {
-  displayName: string
-  sourceCode: string
-  licenseReference: string
 }

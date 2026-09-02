@@ -3,10 +3,11 @@
 > 关联需求：docs_zhx/requirements/m3-decision-assistance.md
 > 关联验收：docs_zhx/testcase/m3-decision-assistance.md
 > 关联总设计：docs_zhx/design/fund-radar.md
-> 版本：v1.5
+> 关联用户模块：docs_zhx/design/watchlist-prediction-module.md
+> 版本：v1.6
 > 日期：2026-09-01
 > 变更等级：L3
-> 状态：M3-01 至 M3-06、v1.4 基准登记/导入和 v1.5 已发布评分的受控解释快照已实施；M3-06 只通过 Java 展示已发布或已暂停模型的受限摘要、本人通知和管理员运行状态，M3-07 监控发布仍未实施。当前没有 ACTIVE 模型、授权启用的业绩基准或真实用户通知，本文件不代表交易能力已启用。
+> 状态：M3-01 至 M3-06 的部分工程基础仍保留；v1.4 人工基准和 v1.5 外部解释控制面已退役。当前没有 ACTIVE 模型、授权启用的业绩基准、真实评分或真实用户通知。公共详情摘要不等于“我的关注”多周期预测；该用户模块尚未实施。
 
 ## 1. 设计原则
 
@@ -18,7 +19,7 @@
 
 ## 2. 当前基线与目标架构
 
-现有 fund_ai.feature_snapshot、forecast_result、backtest_run、analysis_model_release 和 analysis_run 已保存基础版本、状态与约束；fund_core.alert_rule、signal_snapshot、notification 和 analysis_delivery_checkpoint 已保存规则、快照、通知和消费水位。当前已生成 24 条股票型基金特征快照，但没有 ACTIVE 模型、真实评分、回测、信号或通知记录；本设计的控制面扩展均为非破坏性迁移。
+现有 fund_ai.feature_snapshot、forecast_result、backtest_run 和 analysis_model_release 已保存基础版本、状态与约束；fund_core.alert_rule、signal_snapshot、notification 和 analysis_delivery_checkpoint 已保存规则、快照、通知和消费水位。当前已生成 24 条股票型基金特征快照，但没有 ACTIVE 模型、真实评分、回测、信号或通知记录；本设计的控制面扩展均为非破坏性迁移。
 
 ~~~text
 已授权来源与本地净值
@@ -334,3 +335,16 @@ ACTIVE 模型发布 + 最新 SCORED forecast_result + 对应 feature_snapshot
 新增 Java `POST /api/v1/admin/analysis/runs/fund-explanations` 与 Python `POST /internal/v1/analysis/runs/fund-explanations`，均只接受六位基金代码，前者强制 `SYSTEM_ADMIN`，后者要求服务令牌。复用现有持久运行查询；同一时刻只允许一个分析运行，避免重复计费和并发外部调用。
 
 基金摘要只读取当前发布版本关联的最新成功快照。外部模型的认证、余额、限流、暂不可用、响应截断或 JSON 校验失败均以稳定失败码结束任务，不影响已有评分、回测、发布或提醒；详情页不会自动重试或触发新的外部请求。
+
+## 14. v1.6｜2026-09-01 关注详情多周期预测的架构定位
+
+1. “分析运行”路由是管理员控制面：登记来源、导入已授权基准、创建回测、审核发布和手动生成解释。它不向普通用户承担预测展示职责，也不能因页面存在而被描述成模型已经上线。
+2. 用户侧主入口是 `WatchlistFundDetailPage.vue`（`/watchlist/:fundCode`）。Java 必须先校验当前用户本人关注关系，再聚合仅基金层面的多周期预测摘要；公共 `/funds/:fundCode` 上的既有摘要不得替代该权限和交互。
+3. 现有 `forecast_result` 的单周期设计只覆盖 20 个交易日基线。多周期实现须用新模型/特征版本和非破坏性迁移增加周期字段及输入覆盖摘要，按 `fund_code + as_of_date + model_version + horizon_trading_days` 唯一化，保留旧记录语义。
+4. 预测卡的任何方向概率都必须由同周期 `ACTIVE` 发布、合格滚动回测和新鲜特征共同支撑。持仓/板块和新闻/公告尚未接入时，结果最多称为“净值历史基线”，不得称为综合预测。
+5. 用户模块的完整组件、数据截止时间、来源授权、分阶段交付和故障降级设计见 `docs_zhx/design/watchlist-prediction-module.md`；该文档不复制 M3 共享控制面细节。
+## 15. v1.7｜分析运行页面与外部解释链路删除
+
+已删除 Vue 的后台分析路由、Java 的管理员分析接口、Python 的分析运行与基准内部接口，以及对应的运行调度、投递控制和 DeepSeek 解释路径。公共基金详情仍可只读查询模型/回测摘要，但响应不再包含解释快照字段。
+
+旧 Flyway/Alembic 迁移不删除、不回滚；这是数据库历史，不是当前运行能力。未来要交付的运维能力必须围绕真实四周期预测的批处理、证据、权限与审计单独设计。

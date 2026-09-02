@@ -141,12 +141,6 @@ async function signOut(): Promise<void> {
         >
           用户管理
         </RouterLink>
-        <RouterLink
-          v-if="authStore.user?.role === 'SYSTEM_ADMIN'"
-          to="/admin/analysis"
-        >
-          分析运行
-        </RouterLink>
       </nav>
       <div
         ref="accountMenuElement"

@@ -92,12 +92,6 @@ export const router = createRouter({
       meta: { title: '用户管理', appArea: 'admin', permissions: ['USER_ACCOUNT_READ'] },
     },
     {
-      path: '/admin/analysis',
-      name: 'admin-analysis-console',
-      component: () => import('@/views/AnalysisConsolePage.vue'),
-      meta: { title: '分析运行', appArea: 'admin', roles: ['SYSTEM_ADMIN'] },
-    },
-    {
       path: '/not-authorized',
       name: 'not-authorized',
       component: () => import('@/views/NotAuthorizedPage.vue'),
