@@ -311,3 +311,22 @@ Python仓库中的`docs_zhx/implementation/historical-nav-http-preview.md`提供
 
 手工调用与详细解释见Python仓库`docs_zhx/implementation/historical-nav-http-preview.md`第7节，测试见TC-FDP-12。
 **本步完成后暂停：先看懂“出题日”和“旧起点”，不继续保存样本或训练。首次公告日期与历史修订追溯仍待后续核实。**
+
+### 当前小步：先准备保存格式，不执行真实建表（2026-09-07）
+
+用户确认采用“批次封面、题目、答案”三部分后，现只准备三张表的Python实体、Alembic迁移、等价原生PostgreSQL DDL和测试。
+**当前没有执行真实数据库迁移，没有保存接口，原GET仍然只读，不会保存结果。** 看见实体里的“模型”一词是ORM数据模型，不是已经训练出的预测模型。
+
+| 阅读位置（Python仓库） | 这一页先看懂什么 |
+| --- | --- |
+| `app/models/historical_nav_sample.py` | Batch是封面、Record是题目、Label是答案。先读字段中文注释，再读主键、外键、唯一约束。 |
+| `docs_zhx/implementation/historical-nav-http-preview.md`第8节 | 逐字段通俗解释；重试与重算；数据库约束和未来保存服务各负责什么。 |
+| `alembic/versions/20260907_13_add_historical_nav_sample_storage.py` | Alembic迁移是有版本的建表步骤，不是预测算法，也不会因导入实体自动执行。 |
+| `tests/test_historical_nav_storage_schema.py` | 离线核对三表定义、33个字段注释、约束、独立答案、Decimal精度及原生SQL一致性，不连接项目数据库。 |
+
+封面记录基金、起点范围、来源水位、规则版本与统计；题目保存当时已知条件及拒收原因；答案是后来实际结果，缺失时不写行，不用0冒充未知。
+`request_key`是保存请求凭证：将来重试沿用，明确重算换新凭证并保留新旧批次。`batch_id`则是已经保存的那份练习册编号。
+`LEARNING_ONLY`表示只冻结学习计算结果，不证明来源首次可得日期已修复，也不自动取得训练/发布资格。
+
+先完成TC-FDP-13的离线验收。**本步停下：一起看懂字段与关联，再确认是否实际建表；随后另一步才实现整批保存和回滚。**
+不要直接开始模型训练，也不要把准备好的原生SQL与Alembic迁移各执行一次。

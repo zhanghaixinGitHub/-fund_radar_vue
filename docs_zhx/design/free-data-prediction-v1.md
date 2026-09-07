@@ -250,3 +250,39 @@ L2局部规则变更：从“终点已知才拒收”收紧为“起点公告时
 - 验收：覆盖部分后续净值已知、仅第21条先公告、同日边界、错误来源/基金、长间隔但无更新公告、日期错误优先级、原始记录不变与分页/单日一致。
 
 这道检查只防止选用旧起点；不证明来源的`ann_date`就是首次可得日期，也没有恢复历史修订版本。保存训练集、训练与发布继续暂停在后续阶段。
+
+### v1.6｜学习批次、题目与答案存储结构（2026-09-07，L2）
+
+本次只交付Python实体、Alembic `20260907_13`迁移、等价PostgreSQL建表/空表回退SQL及离线契约测试。
+**未在真实数据库执行迁移；无保存服务、HTTP写入口或样本数据。** 不复用会按基金/日期/版本覆盖旧内容的`feature_snapshot`，新增结构独立保留学习批次。
+
+| 七维筛查 | 决策与边界 |
+| --- | --- |
+| 业务 | 一只股票型基金、起点日期含首尾最多31个自然日；20个净值区间。固定LEARNING_ONLY，存储就绪不代表可以训练或发布。 |
+| 数据 | 三表分离；无答案不写标签行；保留拒收样本及缺失/错误公告事实；规则版本按批次登记。原始净值和既有特征表不改。 |
+| 规模 | 封面按基金/创建时间/批次编号索引；题目以批次/日期唯一键检索；答案以题目编号主键检索。后续读取必须有界分页，不加载全基金历史。 |
+| 稳定性 | 请求凭证唯一；以后同凭证同请求重试复用，异参数拒绝，明确重算换凭证。整批事务和不覆盖旧批次由后续服务实现，本步不做任务状态机。 |
+| 安全 | 不增加API或个人字段，不变更现有Token与关注权限。数据库所有者为Python Alembic管理的fund_ai，不触碰Java Flyway管理的fund_core。 |
+| 可观测 | 封面保留来源水位、三个规则版本、保存时间、质量数量与原因统计；未来保存日志只记录TraceID/批次/基金/计数/耗时和异常堆栈，不打印密钥或全量题目。本步没有运行日志链路。 |
+| 兼容与扩展 | 加性迁移接在20260905_12之后，不修改旧迁移。只声明学习数据，后续训练准入、首次可得校验、全历史任务单独推进。 |
+
+#### 三表字段契约
+
+- `historical_nav_sample_batch`：`batch_id UUID`主键，`request_key UUID`唯一且由未来调用方显式提供；`fund_code varchar(32)`关联基金档案；`fund_type varchar(32)`固定STOCK；`source_code varchar(64)`为来源快照；`source_sync_run_id UUID`可空并关联来源运行；`start_date/end_date date`；`feature_version/sample_rule_version/label_version varchar(128)`非空；`purpose varchar(32)`固定LEARNING_ONLY；四个质量计数为integer；`unavailable_reasons jsonb`为原因到数量的对象；`created_at timestamptz`为保存时间。
+- `historical_nav_sample`：`sample_id UUID`主键，`batch_id UUID`关联批次，`as_of_date date`与批次组成唯一键；`available_at date`可空；`nav_value_basis/eligibility_status varchar(32)`；`unavailable_reason text`可空；`feature_payload jsonb`；`feature_hash varchar(64)`。同批共享基金、来源和规则，未来服务核对载荷中的重复元数据与封面一致。
+- `historical_nav_sample_label`：`sample_id UUID`同时是主键和题目外键；`horizon_trading_days smallint`固定20；`label_end_date/label_available_at date`；`future_return_20d numeric`不固定小数位，保持现有Decimal值；`label_up_20d smallint`为1/0。所有列非空，缺答案通过没有行表达。
+
+数据库结构声明：日期差0–30；计数非负、总数不超过日期范围且等于三种状态数之和；JSON顶层为对象；哈希为64位小写十六进制。
+完整样本无拒收原因，其余状态必须有原因；非DATA_INSUFFICIENT要求有效可得日期与已确定口径。
+拒收行允许公告为空或早于业务日，不能为了满足约束而改写错误事实；标签收益须有限且大于-1，上涨1与非上涨0必须与收益符号相符。
+外键不配置级联删除。`feature_hash`只覆盖已有特征包，不含标签、批次编号或独立筛选规则版本；不保证整个批次内容相同。
+
+以下为**下一步保存服务必验规则，当前未实现**：题目日期在批次范围；基金/来源运行归属/三个版本一致；特征不混答案且哈希匹配；数量/原因统计与明细相符；仅SCORABLE有且必须有答案，标签终点晚于起点且标签可得日晚于输入截止；输入与标签口径一致。当前读库保存场景仍应拒绝未就绪来源，不因水位列可空而放宽现有准入。
+重试与重算区别：同`request_key`先校验原请求身份，同请求返回旧批次，即使来源随后更新也不重新计算；请求身份不含`pageSize`。想使用新源数据或新规则，必须明确提交新凭证。凭证相同但基金/日期/规则不同应冲突拒绝，而非静默返回错误批次。
+整批提交或整批回滚、不覆盖旧批次、未来标签成熟生成新批次，由后续事务代码实现；当前没有触发器/权限来提供数据库层绝对不可变保证。
+
+迁移位置在Python仓库`alembic/versions/20260907_13_add_historical_nav_sample_storage.py`；原生DDL在`docs_zhx/sql/20260907_13_historical_nav_sample_storage_upgrade.sql`及`downgrade.sql`，无业务DML。
+常规升级使用Alembic，不能再重复执行原生SQL；后者不更新迁移版本表。迁移前确认fund_ai、前置版本、备份、权限和执行窗口，并先在隔离PostgreSQL库验收。
+回退仅允许三表全部0行：先NOWAIT加排他锁，再检查，非空/锁不可得则拒绝；事务内按答案、题目、批次逆序删除，不CASCADE。有数据时保留表，另行评审备份与回退方案，禁止绕过保护。
+
+验收见TC-FDP-13。通俗字段字典、代码阅读顺序与术语解释见Python仓库`docs_zhx/implementation/historical-nav-http-preview.md`第8节。
