@@ -270,3 +270,13 @@ Python：离线生成并保存已发布结果
 下一次只做**阶段 0 和阶段 1**：固定当前三端 P0 改动、抽取 3 只基金的 6 条手算样本、输出日期和标签核对表。完成后暂停，一起看懂样本和时间边界，再决定是否进入“历史逐日样本集”。
 
 这就是“边学习边完成”的节奏：每次只跨过一个能验证、能解释、能回退的小台阶。
+
+## 11. 阶段2当前学习入口：HTTP样本预览（2026-09-07）
+
+阶段0/1已完成首轮核对。现在阶段2已实现单基金历史样本纯函数及`POST /internal/v1/features/historical-nav-samples/preview`，允许通过Postman提交小批量净值、指定一个业务日查看结果。阶段2的分页读库、持久化、来源水位验证尚未完成，仍未进入模型训练。
+
+Python仓库中的`docs_zhx/implementation/historical-nav-http-preview.md`提供逐步操作，`docs_zhx/examples/historical-nav-preview.postman_collection.json`可直接导入，`historical-nav-preview.request.json`提供可编辑的完整请求。示例为模拟数据，Token不包含在集合中。
+
+本轮优先学习HTTP输入、特征和标签分离、样本状态；净值口径已改为逐个历史时点确定，未来标签缺失或补齐均不改变过去特征。核对完示例和TC-FDP-09后，再逐步接入真实数据读取。
+
+2026-09-07补充：已接入单基金、单净值日的数据库只读预览，优先使用GET同一路径，传`fundCode`和`asOfDate`即可，Body留空。普通验收无需导入文件或构造净值；参见TC-FDP-10。这里只读取单条样本所需最多81条记录，全量分页生成、样本持久化和训练仍未实施。
