@@ -3,7 +3,7 @@
 > 关联需求：[我的关注基金多周期预测模块](../requirements/watchlist-prediction-module.md)
 > 关联设计：[免费已授权数据预测 V1](../design/free-data-prediction-v1.md)
 > 关联实施：[免费已授权数据预测 V1.0 实施手册](../implementation/free-data-prediction-v1.md)
-> 版本：v1.6 ｜ 更新：2026-09-07 ｜ 状态：候选数据准备与基线验证已验收；预测模型训练及发布未实现。前文历次验证状态保留，当前进展见TC-FDP-15。
+> 版本：v1.10 ｜ 更新：2026-09-08 ｜ 状态：独立交易日窗口预览已实现并验收；旧样本/模型不变，净值口径与首次版本仍未准入，未发布。前文历次验证状态保留，当前进展见TC-FDP-19。
 
 这些用例不是要求一次性全部执行。每完成一个实施阶段，只执行对应的一小组；任何关键用例失败，都回到上一个阶段处理，不继续发布。
 
@@ -400,3 +400,167 @@ PostgreSQL测试显式启用`RUN_NAV_STORAGE_PG_TESTS=1`，只写随机隔离测
 
 这些只是本次固定验证段的学习成绩，不能当未来概率、泛化保证或发布依据。当前固定公式在两个指标上均未超过历史频率对照，不能凭此上线。
 完整请求、报告及原始数据指纹清单位于Python本机`.local-runs/nav-baseline-2022-2025-2a87b245/`，已忽略，不含Token、不提交个人环境运行产物。
+
+## TC-FDP-16｜固定逻辑回归候选、只用训练段拟合与产物复现
+
+前置：Python安装本轮固定数值依赖并加载新路由；沿用Token、不带Origin。接口、完整本机请求和字段说明见Python接口手册第11节。
+
+| 验收项 | 预期 |
+| --- | --- |
+| 相同批次与已确认指纹 | 200 CANDIDATE_EVALUATED；七列、L2、C=1、lbfgs、最多1000轮，不搜索参数，未校准。 |
+| dataset_hash不匹配 | 409 DATASET_HASH_MISMATCH，拟合函数不执行。 |
+| 任一基金数量不足 | 200 INSUFFICIENT_DATA，model/candidate为null，保留原缺口和无模型状态。 |
+| 修改验证或测试答案 | 模型均值、尺度、系数、训练指纹与模型哈希均不变；测试答案变化也不影响候选验证成绩。完整数据哈希允许变化。 |
+| 修改验证输入 | 标准化和模型不变，仅验证预测可以改变；测试对象设为禁止读取仍可完成训练。 |
+| 修改训练输入 | 学到的均值/尺度及模型内容可以变化。 |
+| 调换批次顺序或previewSize=0 | 模型、数据指纹及成绩不变，只改变预览字段。 |
+| 不等量基金训练 | 每基金总权重相同，标准化也采用该权重；常量列scale=1。不是类别重采样。 |
+| 单类训练、NaN/Infinity/缺失值 | 明确拒绝，不补造样本或伪造0；未收敛或超出阶段预算不交付模型。 |
+| 同进程训练忙碌 | 429 TRAINING_BUSY，不读库；失败后锁释放。限流非跨进程，阶段预算非硬中断。 |
+| JSON回读 | 完整七列顺序/有限数值/正尺度/协议及内容哈希校验，纯数值公式与库预测差值不超过1e-12。 |
+| 篡改系数、列顺序、尺度、协议或增加未知字段 | 拒绝回读，不执行产物中的任何代码。哈希不冒充安全签名。 |
+| CLI成功 | 新目录中request/report/model/complete四文件，完成清单文件指纹全部一致，保存后模型与内存相同。 |
+| CLI重复目录、磁盘失败或非本机库 | 不覆盖，不改原实验；失败无有效完成清单，不冒充保存成功。 |
+| 未授权/Origin/调参/外部矩阵/路径/includeTest/坏请求 | 403或422且不训练；数据库或缺依赖错误503，响应不暴露内部细节。 |
+| 真实隔离库端到端 | 人工700行通过真实存储契约保存；训练入口仅SET只读+封面SELECT+明细SELECT，拟合时连接已释放，表行数不变。 |
+
+自动化：265项离线相关测试通过（含40项新训练/HTTP/产物/CLI用例），18项显式PostgreSQL隔离测试通过（含1项新增完整训练链路），合计283项。Ruff、pip check通过；既有Starlette/TestClient弃用提示仍在，未升级原Web依赖。
+PostgreSQL使用已验证的随机测试schema隔离及清理机制，不在public业务表保存人工样本。启用命令：
+
+```powershell
+$env:RUN_NAV_STORAGE_PG_TESTS = '1'
+.\.venv\Scripts\python.exe -m pytest tests/test_historical_nav_training_postgres.py tests/test_historical_nav_evaluation_postgres.py tests/test_historical_nav_storage_postgres.py -q
+```
+
+### 真实三基金验收（不是人工测试成绩）
+
+- 沿用144个已确认批次；数据指纹`67e1bd1ab68226a1e8ef29cfd5f369cd3879eb96d57a2e8ce20276ca243e1e10`，训练1377/验证660/保留测试657。只训练固定方案，未根据结果调参。
+- 候选正确351/660，准确率0.53181818、平衡准确率0.52798391、Brier 0.26914973；逐基金正确106/220、130/220、115/220。相对历史频率准确率增加约2.58个百分点，Brier反而变差0.01094936，不宣称全面优于基线或可以发布。
+- 实验编号`6e25d583-5ab3-443c-bd65-8aa7ae2ce5d1`；模型哈希`05c5873aecb134651222011ce8a282e69c1812de62f4a9bf3022c96e26ebebac`，实际21次求解迭代。JSON模型回读、完成清单文件指纹核验通过。
+- 新代码连接真实数据库的进程内HTTP200，重复请求/批次倒序与已存报告完整JSON一致，无Token403，错误数据指纹409。三次读库仅21条只读SQL，不查询nav_daily，不写模型或样本表。
+- 独立临时`127.0.0.1:18011`网络HTTP200且与保存报告一致，无Token和Origin均403；验证后已关闭临时服务，不改用户已有服务。验收时8000未连通，不能把临时端口验证当作用户8000已部署。
+- 真实运行前后三表保持145/2923/2875；三基金2022–2025的2922条原始净值全列内容MD5保持`ccba9f019c6d7f1c6f281d052d4aa34c`，这是本次前后变化检查，与旧SHA256用途不同，不混用。
+- 测试段未输出分数/类别比例/答案，LEARNING_ONLY、training_eligible=false、MODEL_NOT_RELEASED保持。校准、滚动回测、历史修订及严格发布验收仍未完成。
+
+## TC-FDP-17｜训练期独立校准与固定三窗研究验证（2026-09-08）
+
+前置：沿用144个已保存月度批次，不重新保存样本；加载新Python代码、使用原服务Token、不带Origin。
+接口为`POST /internal/v1/features/historical-nav-samples/calibration-evaluation`，Body沿用候选训练请求。
+时间窗口、字段解释和完整本机文件见Python接口手册第12节。这里验收的是功能和实验可复现，不是模型效果已经达标。
+
+| 验收项 | 预期与实际通过边界 |
+| --- | --- |
+| 固定协议 | 只接受2022–2025全局边界和三个预先定义窗口；不接受自定义窗口、方法、门槛、includeTest或路径。 |
+| FIT / CALIBRATION / EXAM隔离 | 基础模型只用FIT，校准器只用其后的CALIBRATION，成绩只用再后面的EXAM；各段答案都必须在段末前可得。 |
+| 逐基金数量与跨界答案 | 全局252/120/120不变；本窗FIT最低252、CALIBRATION最低60、季度EXAM最低40、2024最低120。报告分别列缺口和新增跨界剔除，不重复计算已全局剔除项。 |
+| 修改2024/2025答案 | 三组组合模型均不变；2025答案变化也不影响任何一窗成绩。完整数据指纹允许随源数据变化。 |
+| 修改考试输入/禁止访问测试对象 | 不改变对应模型拟合；把TEST设置为读取即报错，训练和校准仍完成，不生成2025预测或答案预览。 |
+| 修改CALIBRATION答案 | 可改变校准参数，不改变对应基础模型。修改某DEV考试答案不改变该窗模型，后续窗口可依法使用已经成熟的历史。 |
+| 成对比较 | before/after必须使用同一冻结基础模型；校准后不再用FIT+CAL重训基础模型。不能与上一轮全TRAIN模型混比。 |
+| 权重与数值回读 | 基金总权重相同；校准仅拟合一维映射，固定L2/C=1；组合JSON回读与库预测差值不超过1e-12。 |
+| 五档可靠性 | 手算边界、平均分数、实际上涨比例、偏差和ECE相符；空档null、少于30条提示不足；不造独立样本置信区间。 |
+| 非正校准斜率 | 保留研究参数并显示NON_POSITIVE_CALIBRATION_SLOPE，不根据考试成绩事后裁剪或换方法。 |
+| 缺口、单类、未收敛 | 保留失败窗口及原因，部分成功为PARTIAL_EVALUATION，全无可用窗口为NO_VALID_WINDOWS或INSUFFICIENT_DATA；不伪造成绩或模型。 |
+| 指纹、忙碌和时间预算 | 错指纹409且不拟合；候选训练和校准共享同进程计算槽，忙时429；超出阶段预算不返回部分成功报告。阶段预算不是硬中断。 |
+| HTTP安全 | 缺Token或带Origin返回403；坏协议422；数据库/运行错误返回受控错误，不暴露敏感连接信息。HTTP不写数据库或本机文件。 |
+| CLI完整性 | 新目录保存request/report/models，回读后最后写complete清单；文件指纹、组合模型关联及内容指纹全部一致。重复目录拒绝覆盖，磁盘失败不生成有效完成清单。 |
+| 旧能力回归 | 原候选模型和接口完整JSON不变，既有基线、样本预览、批量及保存测试继续通过。 |
+| 真实隔离PostgreSQL | 人工1570行经真实保存契约入随机测试schema；校准读取只执行SET只读事务+封面SELECT+两页明细SELECT，共4条SQL，拟合时连接已释放，行数不变。 |
+
+自动化已执行：303项离线相关测试通过（本轮新增38项校准测试），19项显式PostgreSQL隔离测试通过（本轮新增1项校准端到端），合计322项。Ruff、pip check、差异检查通过；既有TestClient弃用警告仍在。
+PostgreSQL只在受控随机测试schema内保存人工样本并清理，不写public业务样本表。两类测试分开执行：
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests/test_historical_nav_calibration.py tests/test_historical_nav_training.py tests/test_historical_nav_evaluation.py tests/test_historical_nav_storage.py tests/test_historical_nav_storage_schema.py tests/test_historical_nav_samples.py tests/test_historical_nav_repository.py tests/test_historical_nav_batch.py tests/test_historical_nav_http.py tests/test_stock_feature_snapshot.py tests/test_feature_read.py tests/test_baseline_analysis.py -q --tb=short
+$env:RUN_NAV_STORAGE_PG_TESTS = '1'
+.\.venv\Scripts\python.exe -m pytest tests/test_historical_nav_training_postgres.py tests/test_historical_nav_evaluation_postgres.py tests/test_historical_nav_storage_postgres.py -q --tb=short
+```
+
+### 真实三基金研究结果与只读核验
+
+- 沿用001632、006730、008888及原数据指纹`67e1bd1ab68226a1e8ef29cfd5f369cd3879eb96d57a2e8ce20276ca243e1e10`。三窗每基金FIT/CALIBRATION/EXAM数量分别254/61/44、315/64/40、335/104/220。
+- 实验编号`f0f9f709-b82b-4af1-8326-f09b11abac50`；独立保存到本机忽略目录`.local-runs/nav-calibration-<编号>/`，不覆盖上一轮实验。三模型与完成清单的文件指纹回读验证通过。
+- 三轮均完成，但只有1轮Brier改善。2023第三季度Brier为0.25659806→0.25797493；第四季度0.30338054→0.21464207；2024为0.27513393→0.33669545。不能把完成状态解释为通过发布门槛。
+- 2024成对准确率51.82%→51.21%，第四季度和2024校准斜率均为负。没有据此调整算法、窗口或参数；目前只能判定本方案未稳定改善，不能由此断言具体根因。
+- 新代码连接真实数据库的进程内HTTP返回200；重排批次与已保存报告完整JSON一致；错误指纹409、无Token403。原候选接口仍与上一轮保存报告完整JSON一致。四次实际读库共28条SET/SELECT，不查询nav_daily，不执行数据写入。
+- 独立临时`127.0.0.1:18012`网络HTTP返回200且与保存报告完整JSON一致，无Token/Origin为403、错指纹409。验收后关闭了自建临时服务，确认端口释放；未重启或修改用户已有进程。验收时8000未连通，调用用户端口前仍需启动/重载Python服务。
+- 真实运行前后三表数量保持145/2923/2875；试点范围2922条原始净值全列内容MD5保持`ccba9f019c6d7f1c6f281d052d4aa34c`；上一轮request/model/report/complete四文件SHA256全部不变。
+- 2025仍仅由既有准备层读取、核验、纳入完整数据指纹，不进入模型/校准拟合或评分；这不是数据库权限层封存。LEARNING_ONLY、training_eligible=false、MODEL_NOT_RELEASED保持，没有新增产品展示或自动发布。
+
+下一步是失败归因和历史数据准入核验，而不是继续按2024成绩反复调参，也不是提前使用2025测试。当前仍缺完整多行情验证、严格历史数据准入及正式发布验收。
+
+## TC-FDP-18｜只读失败诊断、旧模型复现及当前源快照核验（2026-09-08）
+
+本轮无新HTTP、训练参数或表结构。维护脚本`python -m scripts.historical_nav_diagnostics`读取完整旧校准实验，输出新诊断目录。业务发现与限制见[诊断报告](../implementation/free-data-prediction-v1-diagnostics.md)，字段说明见Python手册第13节。
+
+| 验收项 | 预期与已验证边界 |
+| --- | --- |
+| 不重新训练 | 把LogisticRegression.fit替换为调用即报错，诊断仍完成；三个旧组合模型哈希和原考试成绩保持完全一致。 |
+| 不读取TEST计算 | 将PreparedDataset.test设为迭代即报错，模型诊断和当前NAV重放都完成；不输出2025预测或方向统计。既有准备层仍做2025完整性和指纹校验。 |
+| 旧产物与数据关联 | 数据指纹、固定三窗协议、FIT/CAL内容指纹、版本和旧EXAM成绩不匹配则拒绝；不以重训绕过差异。 |
+| 分组与手算 | 总体/基金/FIT/CAL/EXAM有角色说明；四季度数量加回原2024总数；常量分数、单类和空组行为可手算，单类平均得分差null。 |
+| 负斜率与输入指标 | 不裁剪负斜率；保留七列描述统计，不筛选特征。均值/尺度复用冻结基础模型，贡献不冒充因果重要性。 |
+| 当前NAV重放 | 人工同源快照与已存输入、方向和可得日期一致；修改当前净值可报告差异，缺失也报告且不覆盖旧样本，例子最多5条。 |
+| 复权敏感性 | 改变人工adjusted_nav可使方向差异被计数，已存标签和累计口径输入不变；不可比较返回null，不填0。 |
+| 原始读取边界 | 仅既有试点基金、同一来源、2021-01-01至2024-12-31，4501条哨兵发现超量；重复、乱序、混来源、测试年原始行或未知基金拒绝。 |
+| 查询和连接 | 仓储测试确认SET只读+四个SELECT、来源/日期条件和LIMIT，退出连接；无授权基金在连接前拒绝。真实现场SQL另外核验，不以替身冒充现场。 |
+| 旧实验文件 | 完成清单仅允许request/report/models三个固定文件名、每文件2MiB上限；文件SHA256、模型哈希、请求/报告关联和完成状态均校验，未知路径或部分实验拒绝。 |
+| 本机新报告保存 | 原校准四文件前后不变；新report写完回读后最后写complete。重复目录拒绝覆盖，磁盘失败无有效完成清单；非本机fund_ai和非法UUID拒绝。 |
+
+自动化：本轮29项新增诊断用例通过；与303项既有离线相关回归合计332项，另19项真实PostgreSQL隔离存储/读取/训练回归通过，共351项。Ruff、pip check和差异检查通过。既有TestClient弃用提示保留，无依赖升级。
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests/test_historical_nav_diagnostics.py tests/test_historical_nav_calibration.py tests/test_historical_nav_training.py tests/test_historical_nav_evaluation.py tests/test_historical_nav_storage.py tests/test_historical_nav_storage_schema.py tests/test_historical_nav_samples.py tests/test_historical_nav_repository.py tests/test_historical_nav_batch.py tests/test_historical_nav_http.py tests/test_stock_feature_snapshot.py tests/test_feature_read.py tests/test_baseline_analysis.py -q --tb=short
+$env:RUN_NAV_STORAGE_PG_TESTS = '1'
+.\.venv\Scripts\python.exe -m pytest tests/test_historical_nav_training_postgres.py tests/test_historical_nav_evaluation_postgres.py tests/test_historical_nav_storage_postgres.py -q --tb=short
+```
+
+### 真实现场证据
+
+- 复盘旧校准实验`f0f9f709-b82b-4af1-8326-f09b11abac50`，新诊断编号`1054d538-301e-44a1-858c-0deca79a32f6`，完整数据指纹仍为`67e1bd1ab68226a1e8ef29cfd5f369cd3879eb96d57a2e8ce20276ca243e1e10`。
+- 实际运行时禁止fit仍完成，12条数据库语句全部SET/SELECT，其中两个REPEATABLE READ/READ ONLY事务；完成后连接释放，无外部采集请求。没有新增HTTP，因此不把这次CLI验收写成用户8000已更新。
+- 当前原始净值2922行，仅2021–2024，不读2025原始净值；2037条已纳入训练/验证行的输入、方向、可得日期重放一致。当前原始诊断快照SHA256`d31e7b0be21e102eeb3d4096a5f6d24eb61c8b8e771cad38e1802aaa5f637283`前后相同。
+- 真实样本三表仍145/2923/2875；原三基金2022–2025净值全列MD5仍`ccba9f019c6d7f1c6f281d052d4aa34c`。候选实验四文件和校准实验四文件SHA256均未变。
+- 诊断report.json的SHA256为`f669844e68791b08cb3fdbad2093a5e7214ef3fb3d3113236adee54295ce19a4`；完整清单回读核验，产物在Git忽略目录。
+- 2024三个基金、四个季度Brier均恶化；校准后只判10/660条上涨。当前源数据每基金五个周末净值日，240条已纳入样本的未来窗口含周末记录；累计与复权口径同端点比较2037条，仅006730的一条方向不同，但收益幅度也存在差异。
+- 上述结果没有授予训练/发布资格：来源登记不代表重新验证法律或账号授权，当前重放一致不证明历史首次可得正确，20条源净值未通过严格交易日历核验。无样本重存、模型调参或发布。
+
+## TC-FDP-19｜独立交易日窗口、可得截止与只读HTTP（2026-09-08）
+
+关联设计v1.11、实施第17节、Python HTTP手册第14节。新GET仅`fundCode/cutoffDate`，仅三基金日期预览；不修改既有样本/训练接口，不生成特征或标签。
+
+| 检查 | 预期 |
+| --- | --- |
+| 官方日历 | 五年年度公告各2个官方来源，交易日243/242/242/242/243；规范化JSON与固定SHA256一致，周末和节假日排除。 |
+| 春节/调休 | 2024-02-08之后首个交易日为02-19；02-09及调休周末02-18、04-07不参与计数。 |
+| 日历边界 | 2020、2026、2021年初历史不足、2025年末未来不足均拒绝；读库前检查，不用普通工作日兜底。 |
+| 日历文件 | 损坏、缺年份、超过64KiB或同版本内容改变拒绝；不请求第三方API。 |
+| 起点 | 只取`nav_date <= ann_date <= cutoff`且属于交易日的最新日期；正常可同日或滞后1交易日，滞后2日明确拒收。 |
+| 起点不可用 | 无已知起点或过旧时历史为空并给出原因；未来日期仍只由日历决定，不将未查询旧日期伪报成源数据缺失。 |
+| 精确历史 | 固定截至起点61交易日；删除一条或改晚/改错/去掉公告，会报告对应日期，不能向前补一条掩盖。 |
+| 精确未来 | 严格晚于cutoff的20交易日；缺某日时终点及历史均不变，返回未来不完整，最晚可得日null。 |
+| 非交易日净值 | 增加周末记录不改变历史和未来日期，只进入忽略列表及影响旧记录计数的对照值；不删除源记录。 |
+| 不看未来选历史 | 修改未来公告只能改变未来诊断，不能影响已知起点/历史；无2025数值、标签或评分。 |
+| 年度公告可得性 | 2023-12-08的窗口跨到2024，年度安排尚未公告，返回`future_schedule_known_at_cutoff=false`，不伪称当时已知。 |
+| 仓储约束 | 单基金、同来源、范围不足192自然日、最多192行、LIMIT193；只取两个日期列；重复/乱序/越界/超量拒绝。 |
+| 鉴权及参数 | 无Token、错Token和Origin403；非试点、错日期、额外参数422；拒绝后不查询数据库。 |
+| 异常映射 | 缺基金404，来源/适用性/日历范围不足409，SQL/文件/超时内部异常503且脱敏。 |
+| 状态与边界 | 日期齐全也仅`WINDOW_DATES_COMPLETE`，所有生成/写入/训练资格标记false，仍`MODEL_NOT_RELEASED`。 |
+
+### 自动化与现场证据
+
+- 新增50项测试。382项相关离线回归、19项真实PostgreSQL隔离回归通过，共401项；Ruff/pip check通过，既有TestClient弃用警告保留。隔离测试仅使用自己创建的测试schema，未写业务样本表。
+- 三基金×2021–2024按年只读核对：每只969个官方交易日都有源记录，额外五日为2022-12-31、2023-09-30、2023-12-31、2024-03-31、2024-06-30。没有按源数据反向构造日历或删除源记录。
+- 六组真实预览（3基金×2024-03-07/2025-08-08）均日期完整；再通过真实数据库的TestClient核验008888完整响应一致。7次请求35条SQL全为SET/SELECT，7个READ ONLY/REPEATABLE READ事务，7条净值SELECT均只含`nav_date, ann_date`。
+- 008888截止2025-08-08：起点08-07/公告08-08/滞后1；历史61日，未来20日08-11至09-05；从净值日起算两个对照终点均09-04。2024-03-07的三个对照分别04-02/04-03/04-08，体现周末记录与起算语义两种独立差异。
+- 临时18013实际网络成功200、无Token/Origin403、额外参数422、越日历范围409，TraceID传递及重复完整JSON一致。临时服务已关闭；验收时用户8000未监听，未声称该端口已加载新代码。
+- 三表保持145/2923/2875；三基金2022–2025净值2922行全列MD5仍`ccba9f019c6d7f1c6f281d052d4aa34c`，仅用于前后不变核对，不把2025数值作为窗口/模型输入。旧候选、校准、诊断JSON指纹全部不变。
+- 日历内容指纹`a7258f7368a071b9fd1df2b2ac039a60bb2be0b4e5c9bde51e836c76ca3c75fa`；本地验收包`.local-runs/nav-trading-window-0147bbd8-f375-40a3-aabc-fc1bea4a3955/report.json`记录日期核验、响应、SQL摘要及前后保护快照。
+
+复跑本步单测：
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests/test_trading_nav_window.py -q --tb=short
+```
+
+全量相关回归在TC-FDP-18的离线命令中增加`tests/test_trading_nav_window.py`，隔离PG命令不变。本轮无DDL/DML、重训、参数搜索、2025最终评分或发布。日期元数据齐备不是完整净值样本准入，分红/复权和历史首次版本仍须另行核验。
