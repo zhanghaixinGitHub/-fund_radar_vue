@@ -2,8 +2,8 @@
 
 > 关联需求：`docs_zhx/requirements/sync-center-tasks.md`
 > 关联测试：`docs_zhx/testcase/sync-center-tasks.md`
-> 版本：v1.0
-> 日期：2026-08-28
+> 版本：v1.1（补记已实现的免费数据补齐任务）
+> 日期：2026-09-09
 > 变更等级：L2
 
 ## 1. 链路
@@ -31,16 +31,19 @@ Vue 初始化 GET /api/v1/sync-jobs/last-success
 
 `LocalSyncJobManager` 使用 `SyncJobSnapshot` 保存当前 Python 进程内的实时状态。`MARKET_NAV_INCREMENTAL` 按基金逐只更新进度，并在来源成功后自动执行特征阶段；`MARKET_DETAIL` 的总步数为“基础资料、扩展净值及三类逐基金资料”，经理、规模、分红每读取一只基金就更新一次。`STOCK_FEATURE_SNAPSHOT` 可独立手动重试，只读取本地股票型基金净值并逐基金回报进度。
 
+后续已增加第四类任务 `MARKET_FREE_DATA_COMPLETION`：按需手动执行已授权的免费数据补齐，沿用同一任务互斥和进度读取方式；具体数据阶段及持久化父运行见[数据补齐实施记录](../implementation/tushare-2000-data-completion.md)。来源任务最近成功时间包含净值增量、完整资料和免费补齐三项；特征任务的最近信息仍限于当前 Python 进程。
+
 完整资料同步在既有五个子运行记录外增加 `MARKET_DETAIL` 父运行记录：子运行记录便于定位数据源阶段；父运行记录聚合读取/新增/更新/跳过统计，只在全部子阶段成功后完成。`source_sync_run` 不保存 Token 或原始响应。
 
 | 浏览器接口 | 权限 | 说明 |
 | --- | --- | --- |
 | `POST /api/v1/sync-jobs/market-nav-incremental` | `SYNC_JOB_START` | 手动净值增量同步 |
 | `POST /api/v1/sync-jobs/market-details` | `SYNC_JOB_START` | 手动完整资料同步 |
+| `POST /api/v1/sync-jobs/market-free-data-completion` | `SYNC_JOB_START` | 手动免费数据补齐 |
 | `POST /api/v1/sync-jobs/stock-feature-snapshots` | `SYNC_JOB_START` | 手动特征快照重试 |
 | `GET /api/v1/sync-jobs/{jobId}` | `SYNC_JOB_READ` | 任务实时状态 |
 | `GET /api/v1/sync-jobs/*/latest` | `SYNC_JOB_READ` | 当前 Python 进程最近任务 |
-| `GET /api/v1/sync-jobs/last-success` | `SYNC_JOB_READ` | 每类任务最后成功时间 |
+| `GET /api/v1/sync-jobs/last-success` | `SYNC_JOB_READ` | 三类来源任务的持久化最后成功时间；不含特征任务重启前历史 |
 
 ## 3. 一致性、稳定性与安全
 
