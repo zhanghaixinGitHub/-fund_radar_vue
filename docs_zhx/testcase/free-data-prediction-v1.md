@@ -459,7 +459,7 @@ $env:RUN_NAV_STORAGE_PG_TESTS = '1'
 | 成对比较 | before/after必须使用同一冻结基础模型；校准后不再用FIT+CAL重训基础模型。不能与上一轮全TRAIN模型混比。 |
 | 权重与数值回读 | 基金总权重相同；校准仅拟合一维映射，固定L2/C=1；组合JSON回读与库预测差值不超过1e-12。 |
 | 五档可靠性 | 手算边界、平均分数、实际上涨比例、偏差和ECE相符；空档null、少于30条提示不足；不造独立样本置信区间。 |
-| 非正校准斜率 | 保留研究参数并显示NON_POSITIVE_CALIBRATION_SLOPE，不根据考试成绩事后裁剪或换方法。 |
+| 非正校准斜率 | 新规则保留研究参数并继续评分：负值显示REVERSED_PENDING_VALIDATION，零显示CONSTANT_PENDING_VALIDATION；旧报告的NON_POSITIVE_CALIBRATION_SLOPE原样保留，不根据考试成绩事后裁剪或换方法。 |
 | 缺口、单类、未收敛 | 保留失败窗口及原因，部分成功为PARTIAL_EVALUATION，全无可用窗口为NO_VALID_WINDOWS或INSUFFICIENT_DATA；不伪造成绩或模型。 |
 | 指纹、忙碌和时间预算 | 错指纹409且不拟合；候选训练和校准共享同进程计算槽，忙时429；超出阶段预算不返回部分成功报告。阶段预算不是硬中断。 |
 | HTTP安全 | 缺Token或带Origin返回403；坏协议422；数据库/运行错误返回受控错误，不暴露敏感连接信息。HTTP不写数据库或本机文件。 |
