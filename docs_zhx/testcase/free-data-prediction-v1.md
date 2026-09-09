@@ -3,7 +3,7 @@
 > 关联需求：[我的关注基金多周期预测模块](../requirements/watchlist-prediction-module.md)
 > 关联设计：[免费已授权数据预测 V1](../design/free-data-prediction-v1.md)
 > 关联实施：[免费已授权数据预测 V1.0 实施手册](../implementation/free-data-prediction-v1.md)
-> 版本：v1.24 ｜ 更新：2026-09-09 ｜ 状态：计划先行的新研究及绑定已验证，迁移18已落地；最新相关离线970项、隔离PG111项及28项真实TCP/完整性检查通过。真实规则未批准/冻结，正式发布成功链路仍未完成；最新范围见TC-FDP-33，先前页面证据见TC-FDP-29。
+> 版本：v1.26 ｜ 更新：2026-09-09 ｜ 状态：源值观察留档及只读诊断已验证，迁移19已落地；最新相关离线1005项、隔离PG135项及44项真实TCP/完整性检查通过，原同步11项测试通过。真实规则未批准/冻结，正式数据准入和发布成功链路仍未完成；最新范围见TC-FDP-35，先前页面证据见TC-FDP-29。
 
 这些用例不是要求一次性全部执行。每完成一个实施阶段，只执行对应的一小组；任何关键用例失败，都回到上一个阶段处理，不继续发布。
 
@@ -966,3 +966,40 @@ $env:RUN_NAV_STORAGE_PG_TESTS='1'
 全部相关离线970项；TC-FDP-32十个PG文件加本文件共111项通过。真实脚本28项检查通过：草案POST409且不查询数据库、身份/Origin403、旧报告/时间额外字段422、缺绑定GET404，133条捕获SQL只读。真实规则/绑定各0条，旧研究及业务计数不变；新迁移18已在本机执行，字段注释和不可变触发器核验通过。
 
 当前尚未有真实计划绑定研究或正式发布。旧报告仍不补绑，2025保持保护；本轮不重新执行页面验收，也不提交推送代码。绑定证据接入发布审查及其他正式资格缺口继续见实施31.3。
+
+## TC-FDP-34｜发布审查读取绑定、实际评分覆盖和缺证据分支
+
+```powershell
+Set-Location C:\pythonProject\workSpace06
+$env:PYTHONIOENCODING='utf-8'
+.venv\Scripts\python.exe -m pytest tests/test_cash_planned_release_review.py tests/test_cash_release_review.py tests/test_cash_policy_freeze.py -q
+$env:RUN_NAV_STORAGE_PG_TESTS='1'
+.venv\Scripts\python.exe -m pytest tests/test_cash_planned_release_review_postgres.py tests/test_cash_policy_freeze_postgres.py -q
+.venv\Scripts\python.exe scripts/cash_exam_preparation_acceptance.py --research-run-id f70feb1a-129d-4482-b66d-f4e2e3a5425c --expected-report-hash db527ccca8015a4f41af2ee68608dae27ec5ab86c2627ef158d39f2f6b067795 --verify-planned-research
+```
+
+- 第一条测试命令132项通过：人工完整报告对应九组评分覆盖；旧报告有规则无绑定仍MISSING；不同报告身份、响应引用/计划/分数不一致拒绝；低Decimal精度不误判内容损坏；HTTP不接受绑定编号、自报核验成功和覆盖明细。
+- 第二条23项通过，其中本轮新增10项隔离PG：实际新研究及绑定→HTTP审查，每次9条只读SQL，重复稳定；同库旧报告不借用新绑定。人工矩阵只替换资料读取，实际拟合、保存和审查均执行，不冒称真实来源准入。
+- 去掉早期FIT资料使两个季度不能评估时，仅年度三组返回覆盖；全部不能评估则零组，准备好40/44题也不填评分数。减少年度EXAM资料仍满足最低考试数量但覆盖不足时，判FAIL，不标缺证据或放行。
+- 旧研究被换请求号、改创建时刻、改正文并另算指纹均503，不静默回退旧报告模式；审批退回草案时引用为空，APPROVED配置冲突409；只读事务中的意外UPDATE实际被PG拒绝。原报告、规则、绑定快照在每次只读验证前后相同。
+
+全部相关离线988项、十二个PG文件121项通过。真实TCP32项通过：旧报告仍118项检查、九项覆盖MISSING、绑定引用为空；客户端自报三个证据字段422。规则和绑定0条、旧报告与业务计数不变，临时服务停止。无新迁移、2025评分、真实模型生成或浏览器复验。
+
+## TC-FDP-35｜源值变化留档、实际观察时间与到期保护
+
+```powershell
+Set-Location C:\pythonProject\workSpace06
+$env:PYTHONIOENCODING='utf-8'
+.venv\Scripts\python.exe -m pytest tests/test_cash_source_observation_schema.py tests/test_cash_source_observation.py tests/test_tushare_fund_sync.py -q
+$env:RUN_NAV_STORAGE_PG_TESTS='1'
+.venv\Scripts\python.exe -m pytest tests/test_cash_source_observation_postgres.py -q
+.venv\Scripts\python.exe scripts/cash_exam_preparation_acceptance.py --research-run-id f70feb1a-129d-4482-b66d-f4e2e3a5425c --expected-report-hash db527ccca8015a4f41af2ee68608dae27ec5ab86c2627ef158d39f2f6b067795 --verify-planned-research --verify-source-observations
+.venv\Scripts\python.exe scripts/cash_source_observation_retention.py
+```
+
+- 新增17项离线/结构、14项隔离PG通过，原同步11项通过。真实源行写入和留档同事务；修改再改回仍有两次记录，不以内容去重破坏变化链；非现金字段变化不额外存源值版本；空表迁移不回填旧资料。
+- 并发UPDATE等待实际源行锁，前后值形成正确链；直接写现有分区及新分区也能触发。零保留期、非试点不扩大留档；源主键重分配拒绝。日志UPDATE/未到期DELETE/TRUNCATE实际被PG拒绝，到期记录仅按明确上限清理；源表/样本/模型不参与该清理。
+- 人工2024业务值在当前时刻修改后，诊断为ONLY_AFTER_CUTOFF、截点前计数0；不能把旧业务日当观察日。已到期人工记录不计作有效证据；只读HTTP仅四条SET/SELECT，无前后JSON/净值金额。未授权403、2025日期/自报证据/读取正文开关422。
+- 全部相关离线1005项、十三个PG文件135项通过；真实TCP44项通过，三只试点均NO_LOCAL_RECORDS，新表0条。迁移19及public分区触发器已核验；原报告摘要/业务计数不变，保留期CLI仅dry-run且删除0条，临时服务与测试schema已清理。
+
+留档证据不等同来源首次公开、事务提交可见性或全量事件证明。此次未批准真实规则、执行来源网络同步、读取2025答案或训练真实模型；正式数据准入和发布链路仍待完成。
