@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import { getWatchlistPrediction } from '@/api/watchlist'
 import type { WatchlistPrediction } from '@/types/prediction'
+import { assertWatchlistPrediction, displayUpProbability } from '@/utils/prediction'
 
 const props = defineProps<{ fundCode: string }>()
 const prediction = ref<WatchlistPrediction | null>(null)
@@ -14,19 +15,21 @@ let requestSequence = 0
 const statusLabel = computed(() => {
   if (!prediction.value) return ''
   return {
+    AVAILABLE: '已读取有效结果',
+    STALE: '原预测已失效',
     MODEL_NOT_RELEASED: '模型未发布',
-    DATA_INSUFFICIENT: '研究资料不足',
+    DATA_INSUFFICIENT: '预测资料不足',
     NOT_APPLICABLE: '暂不适用',
     UNAVAILABLE: '暂时无法读取',
   }[prediction.value.status]
 })
 
 function displayTime(value: string | null): string {
-  if (!value) return '暂无研究记录'
+  if (!value) return '暂无记录'
   const time = new Date(value)
   return Number.isFinite(time.getTime())
     ? time.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false })
-    : '研究时间暂缺'
+    : '时间暂缺'
 }
 
 /** 卡片独立请求，失败不影响基金资料和净值图；不触发训练或同步。 */
@@ -39,12 +42,7 @@ async function load(): Promise<void> {
   try {
     const result = await getWatchlistPrediction(code)
     if (sequence !== requestSequence) return
-    // 前端仅辅助防止错配；Java/Python仍是实际授权与发布边界。
-    if (result.fundCode !== code || result.upProbability !== null || result.direction !== null
-      || result.horizonTradingDays !== 20
-      || !['MODEL_NOT_RELEASED', 'DATA_INSUFFICIENT', 'NOT_APPLICABLE', 'UNAVAILABLE'].includes(result.status)) {
-      throw new Error('预测状态未通过校验，暂不展示。')
-    }
+    assertWatchlistPrediction(result, code)
     prediction.value = result
   } catch (error) {
     if (sequence === requestSequence) {
@@ -69,7 +67,7 @@ onBeforeUnmount(() => { ++requestSequence })
     <div class="section-heading prediction-heading">
       <div>
         <p class="eyebrow">
-          仅我的关注 · 研究验证中
+          仅我的关注 · 净值历史模型
         </p>
         <h2 id="watchlist-prediction-title">
           未来 20 个交易日方向
@@ -86,7 +84,7 @@ onBeforeUnmount(() => { ++requestSequence })
       </button>
     </div>
     <p class="prediction-intro">
-      观察这段时间整体上涨还是下跌，不是每天的涨跌，也不预测具体净值。
+      观察未来 20 个交易日计入现金分红并再投资后的整体回报，不是每天的涨跌，也不预测具体净值。
     </p>
     <p
       v-if="loading"
@@ -113,9 +111,23 @@ onBeforeUnmount(() => { ++requestSequence })
         <p class="prediction-message">
           {{ prediction.message }}
         </p>
-        <p>目前不展示上涨概率，不用 0% 或 50% 代替未知结果。</p>
+        <template v-if="prediction.status === 'AVAILABLE' && prediction.upProbability !== null">
+          <p
+            class="prediction-probability"
+            data-testid="prediction-probability"
+          >
+            上涨概率约 <strong>{{ displayUpProbability(prediction.upProbability) }}</strong>
+          </p>
+          <p>指整个预测区间的现金再投总回报为正，不是预计收益率，也不表示每天都会上涨。</p>
+        </template>
+        <p v-else>
+          目前不展示上涨概率，不用 0% 或 50% 代替未知结果。
+        </p>
       </div>
-      <details class="prediction-reasons">
+      <details
+        v-if="prediction.status !== 'AVAILABLE'"
+        class="prediction-reasons"
+      >
         <summary>为什么现在没有预测数字？</summary>
         <ul>
           <li
@@ -127,11 +139,31 @@ onBeforeUnmount(() => { ++requestSequence })
         </ul>
       </details>
       <dl class="prediction-metadata">
+        <template v-if="prediction.forecastId">
+          <div>
+            <dt>原信息截止日</dt>
+            <dd>{{ prediction.cutoffDate }}</dd>
+          </div>
+          <div>
+            <dt>原预测区间（20 个交易日）</dt>
+            <dd>{{ prediction.targetBaseDate }} → {{ prediction.targetEndDate }}</dd>
+          </div>
+          <div>
+            <dt>结果生成时间（北京时间）</dt>
+            <dd>{{ displayTime(prediction.generatedAt) }}</dd>
+          </div>
+          <div>
+            <dt>模型版本指纹</dt>
+            <dd :title="prediction.modelHash || undefined">
+              {{ prediction.modelHash?.slice(0, 12) || '暂缺' }}
+            </dd>
+          </div>
+        </template>
         <div>
           <dt>本地最新净值日</dt>
           <dd>{{ prediction.latestNavDate || '暂缺' }}</dd>
         </div>
-        <div>
+        <div v-if="!prediction.forecastId">
           <dt>最近研究记录时间（北京时间）</dt>
           <dd>{{ displayTime(prediction.researchEvaluatedAt) }}</dd>
         </div>
@@ -163,13 +195,14 @@ onBeforeUnmount(() => { ++requestSequence })
   color: #385b4b; background: #e3eee7; font-size: 13px; font-weight: 700;
 }
 .prediction-message { font-size: 18px; font-weight: 700; }
+.prediction-probability strong { font-size: 30px; font-variant-numeric: tabular-nums; }
 .prediction-reasons { color: #345b4e; line-height: 1.8; }
 .prediction-reasons summary { min-height: 44px; padding: 10px 0; cursor: pointer; }
 .prediction-reasons li { margin: 8px 0; }
 .prediction-reasons ul { padding-left: 24px; margin: 4px 0 16px; }
 .prediction-metadata { display: flex; flex-wrap: wrap; gap: 16px 40px; margin: 20px 0 0; }
 .prediction-metadata dt { color: #536c63; font-size: 13px; }
-.prediction-metadata dd { margin: 6px 0 0; font-size: 14px; }
+.prediction-metadata dd { margin: 6px 0 0; font-size: 14px; overflow-wrap: anywhere; }
 .prediction-disclaimer { padding-top: 16px; margin: 18px 0 0; border-top: 1px solid #dce7df; font-size: 13px; }
 @media (max-width: 600px) {
   .prediction-heading { flex-direction: column; }

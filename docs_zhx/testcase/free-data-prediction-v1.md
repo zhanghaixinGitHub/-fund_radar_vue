@@ -3,7 +3,7 @@
 > 关联需求：[我的关注基金多周期预测模块](../requirements/watchlist-prediction-module.md)
 > 关联设计：[免费已授权数据预测 V1](../design/free-data-prediction-v1.md)
 > 关联实施：[免费已授权数据预测 V1.0 实施手册](../implementation/free-data-prediction-v1.md)
-> 版本：v1.19 ｜ 更新：2026-09-09 ｜ 状态：提交前相关离线790项、隔离PG62项通过；新结果表尚未在本机业务schema迁移，新结果端点真实TCP待验。既有拒绝回执HTTP证据保留；最新范围见TC-FDP-28。
+> 版本：v1.20 ｜ 更新：2026-09-09 ｜ 状态：迁移16及真实拒绝HTTP已验；相关离线790项、隔离PG68项、Java10项、前端协议27项通过，真实状态及人工结果页面分支通过。正式发布成功链路仍未完成；最新范围见TC-FDP-29。
 
 这些用例不是要求一次性全部执行。每完成一个实施阶段，只执行对应的一小组；任何关键用例失败，都回到上一个阶段处理，不继续发布。
 
@@ -845,3 +845,27 @@ $env:RUN_NAV_STORAGE_PG_TESTS='1'
 ```
 
 本机业务schema只读核验仍为迁移15，`cash_forecast_result`不存在。下一次部署先执行迁移16，再在TC-FDP-27的真实HTTP命令末尾加入`--verify-forecast-endpoints`；应增加三基金新生成拒绝、指纹/参数/鉴权和缺失结果等10项检查，验证结果行数仍0、既有3份回执不重复新增。**这10项真实TCP检查本次尚未执行，不将隔离HTTP成功写成实库业务场景成功。**
+
+## TC-FDP-29：实库迁移、只读产品结果及三端页面（2026-09-09）
+
+TC-FDP-28的“待迁移/待真实TCP”已在本节完成，不删除当时记录。本机迁移16成功，新结果表字段注释无遗漏；TC-FDP-27命令加`--verify-forecast-endpoints`后26项通过，原数据摘要一致，现金结果0条、拒绝回执3条。
+
+### 后端与接口
+
+Python相关离线命令仍790项通过；TC-FDP-28的PG命令增加`tests/test_watchlist_cash_forecast_postgres.py`，七文件68项通过。新增6项执行真实隔离SQL、模型计算、INSERT和产品GET；仅授权和原始测试资料为人工。GET无推理、无写入、无内部模型/快照泄露，最新坏结果不能回退到旧数字，撤销/停用/过期隐藏数字。Java `WatchlistPredictionControllerTests`10项通过，包含本人关注校验顺序及实际TCP人工上游的数值/日期/状态防错。
+
+### 前端及真实浏览器
+
+前端执行`node --test scripts/watchlist-prediction-contract.test.mjs`，27项通过；lint、type-check、build通过。三端临时服务启动：
+
+```powershell
+Set-Location C:\pythonProject\workSpace06
+$env:PYTHONIOENCODING='utf-8'
+.venv\Scripts\python.exe scripts/prediction_page_acceptance.py --execute --core-dir C:\ideaProject\workSpace12 --web-dir C:\WebStormProject\workSpace05 --synthetic-contract-fixture
+```
+
+前置Java已用项目JDK17重新打包。默认夹具仍读真实研究并完成24项HTTP检查；显式新增选项才允许在打印出的独占log_dir下使用`fixture-mode.txt`，内容仅`real/available/stale/revoked`。这些模式只验证已授权隔离账号的页面投影，人工样例带明显提示；不签发模型、不改真实结果。真实结果生成仍由既有正式授权边界拒绝，正常服务没有这个模式入口。
+
+实际浏览器通过：真实未发布；人工有效的概率/原区间；人工失效、撤销隐藏数字；键盘刷新及展开；390×844无横向溢出；停止测试Python后卡片独立降级、恢复后回到真实状态；公开详情无卡、未关注006730无卡且拒绝；001021不适用、007045资料不足。后两只关注只写隔离测试账号。
+
+本次脱敏回执在忽略目录`.local-runs/prediction_e2e_b748d76f214740f199f565d96bc1a533/`的`http-receipt.json`、`browser-receipt.json`；脚本结束返回stopped及真实账号/关注/会话未变。测试schema已删、临时端口关闭、视口复原、标签页关闭。人工页面成功不是“真实模型发布→生成→显示”的成功证明；正式发布与数据证据缺口仍见实施27.3。
