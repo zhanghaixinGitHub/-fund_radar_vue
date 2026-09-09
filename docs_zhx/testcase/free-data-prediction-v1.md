@@ -3,7 +3,7 @@
 > 关联需求：[我的关注基金多周期预测模块](../requirements/watchlist-prediction-module.md)
 > 关联设计：[免费已授权数据预测 V1](../design/free-data-prediction-v1.md)
 > 关联实施：[免费已授权数据预测 V1.0 实施手册](../implementation/free-data-prediction-v1.md)
-> 版本：v1.22 ｜ 更新：2026-09-09 ｜ 状态：规则审查及不可变快照接口已验证，迁移17已落地；最新相关离线904项、隔离PG84项及21项真实TCP/完整性检查通过。真实规则未批准/冻结，正式发布成功链路仍未完成；最新范围见TC-FDP-31，先前页面证据见TC-FDP-29。
+> 版本：v1.24 ｜ 更新：2026-09-09 ｜ 状态：计划先行的新研究及绑定已验证，迁移18已落地；最新相关离线970项、隔离PG111项及28项真实TCP/完整性检查通过。真实规则未批准/冻结，正式发布成功链路仍未完成；最新范围见TC-FDP-33，先前页面证据见TC-FDP-29。
 
 这些用例不是要求一次性全部执行。每完成一个实施阶段，只执行对应的一小组；任何关键用例失败，都回到上一个阶段处理，不继续发布。
 
@@ -928,3 +928,41 @@ $env:RUN_NAV_STORAGE_PG_TESTS='1'
 完整相关离线复跑904项通过；TC-FDP-30的八个PG文件加本文件共84项通过。TC-FDP-30真实TCP命令再次运行21项通过，55条服务SQL只读，原研究和业务计数不变。
 
 本机实库只读复核迁移17、规则快照0条、有效不可变触发器1个、无注释字段0个；当前规则DRAFT。隔离测试成功不能算成真实规则已确认/已冻结。测试schema已清理、临时服务已停止，用户常驻服务未重启。本次没有新的浏览器验收或正式发布成功证据。
+
+## TC-FDP-32｜固定日历分母、资料覆盖及测试期正文保护
+
+```powershell
+Set-Location C:\pythonProject\workSpace06
+$env:PYTHONIOENCODING='utf-8'
+.venv\Scripts\python.exe -m pytest tests/test_cash_exam_plan.py -q
+$env:RUN_NAV_STORAGE_PG_TESTS='1'
+.venv\Scripts\python.exe -m pytest tests/test_cash_exam_preparation_postgres.py -q
+.venv\Scripts\python.exe scripts/cash_exam_preparation_acceptance.py --research-run-id f70feb1a-129d-4482-b66d-f4e2e3a5425c --expected-report-hash db527ccca8015a4f41af2ee68608dae27ec5ab86c2627ef158d39f2f6b067795
+```
+
+- 33项离线：计划仅依赖固定日历，逐截止索引核对20交易日终点；四窗分母44/40/222/223，全部三基金保留。删日期、换基金、改窗口即使重算指纹也拒绝。V1快照不被V2默认字段污染，历史回读不依赖今天的审批文件。
+- 减少批次或可用行不改变分母，晚标签增加缺口，顺序和X/y数值不改变覆盖；重复身份、错误基金或未来日期拒绝。2025实际数值必须null，不能声称已评分、发布、写入或事前冻结。HTTP身份/额外字段在准备前拒绝。
+- 9项隔离PG：真实SELECT顺序为批次封面→仅日期→正文；2025批次、题目或标签日期在正文读取前409，坏日期503且脱敏。9批分两页，重复题合并但不增加覆盖；实际只读事务中UPDATE被数据库拒绝，不只检查返回标志。
+- 本轮完整相关离线937项，TC-FDP-31九个PG文件加新文件共93项通过。真实脚本17项检查通过，131条捕获SQL只读，不查询nav_daily；旧报告审查仍有九项覆盖证据MISSING，不因新预览冒充事前记录。
+
+真实108批的逐基金结果见实施30.1；旧研究内容摘要、业务计数和规则快照0条不变。临时服务退出；没有真实模型重训、2025评分、新迁移或浏览器验收，新增代码未提交推送。现有规则审批、新研究训练前绑定计划、数据证据及最终发布仍未完成。
+
+## TC-FDP-33｜计划先行的新研究、原子绑定及历史读回
+
+```powershell
+Set-Location C:\pythonProject\workSpace06
+$env:PYTHONIOENCODING='utf-8'
+.venv\Scripts\python.exe -m pytest tests/test_cash_planned_research.py tests/test_cash_planned_research_schema.py -q
+$env:RUN_NAV_STORAGE_PG_TESTS='1'
+.venv\Scripts\python.exe -m pytest tests/test_cash_planned_research_postgres.py -q
+.venv\Scripts\python.exe scripts/cash_exam_preparation_acceptance.py --research-run-id f70feb1a-129d-4482-b66d-f4e2e3a5425c --expected-report-hash db527ccca8015a4f41af2ee68608dae27ec5ab86c2627ef158d39f2f6b067795 --verify-planned-research
+```
+
+- 33项离线/结构测试：DRAFT不连接数据库/不调用研究器；不接受旧研究、模型、时间、审批或测试开关。即使重算绑定指纹，时间倒置、错报告请求号、错规则/资料/报告仍拒绝。新表字段、注释、外键、唯一性及指纹/时间约束与迁移一致，旧迁移保持原定义。
+- 18项隔离PG：规则记录在计算前已提交，计算时无被占用的资料连接；小型人工批次实际读库并生成不足报告，另以人工矩阵实际拟合三窗模型、原子保存及读回。不把替换资料读取的数值用例称为真实数据通过准入。
+- 初次201、已完成重试200且不再调用研究器；不同参数409；计算失败/写后校验失败均无半条记录。深复制底稿隔离计算中元数据修改。模拟跨进程同key并发最多一份研究和绑定，同key异资料只留胜出的完整事务且另一方冲突。
+- GET使用实际只读事务及三次主键查询，不读样本，不依赖当前审批文件。数据库阻止UPDATE/DELETE/TRUNCATE；已有报告单独被改且重算指纹，关联回读仍503；非空降级拒绝，空表降级不删除规则和研究表。
+
+全部相关离线970项；TC-FDP-32十个PG文件加本文件共111项通过。真实脚本28项检查通过：草案POST409且不查询数据库、身份/Origin403、旧报告/时间额外字段422、缺绑定GET404，133条捕获SQL只读。真实规则/绑定各0条，旧研究及业务计数不变；新迁移18已在本机执行，字段注释和不可变触发器核验通过。
+
+当前尚未有真实计划绑定研究或正式发布。旧报告仍不补绑，2025保持保护；本轮不重新执行页面验收，也不提交推送代码。绑定证据接入发布审查及其他正式资格缺口继续见实施31.3。
