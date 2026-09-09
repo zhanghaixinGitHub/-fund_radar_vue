@@ -3,7 +3,7 @@
 > 关联需求：[我的关注基金多周期预测模块](../requirements/watchlist-prediction-module.md)
 > 关联设计：[免费已授权数据预测 V1](../design/free-data-prediction-v1.md)
 > 关联实施：[免费已授权数据预测 V1.0 实施手册](../implementation/free-data-prediction-v1.md)
-> 版本：v1.17 ｜ 更新：2026-09-09 ｜ 状态：Docker已恢复，29项实库及真实三端/浏览器复验通过，相关离线724项通过；完整数值生成尚未完成。最新现场结果见TC-FDP-26，早先环境阻塞记录保留。
+> 版本：v1.19 ｜ 更新：2026-09-09 ｜ 状态：提交前相关离线790项、隔离PG62项通过；新结果表尚未在本机业务schema迁移，新结果端点真实TCP待验。既有拒绝回执HTTP证据保留；最新范围见TC-FDP-28。
 
 这些用例不是要求一次性全部执行。每完成一个实施阶段，只执行对应的一小组；任何关键用例失败，都回到上一个阶段处理，不继续发布。
 
@@ -795,3 +795,53 @@ $predictionTestFiles = @(rg --files tests | Where-Object { $_ -match 'test_(cash
 本次脱敏证据：Python `.local-runs/prediction_e2e_bf37c42ca0684ba48ac83a8275e0c53e/`下的`http-receipt.json`、`browser-receipt.json`、`database-receipt.json`。该目录已被Git忽略。复跑方式沿用TC-FDP-23的隔离启动命令，不修改真实账户、不覆盖旧研究、不购买或采集新来源；临时数据可重建。
 
 通过的是研究状态页面和输入/拒绝路径；正式证据驱动的发布、产品数值结果生成/存储/失效及已发布概率E2E仍未完成。不得把26个HTTP场景或人工成功分数改写成模型已可发布。
+
+## TC-FDP-27：数值内核、拒绝回执与真实HTTP（2026-09-09）
+
+前置：沿用Python虚拟环境，本机fund_ai已迁移到20260909_15；旧研究报告仍未发布。下面的真实HTTP命令会保存三份拒绝回执，使用相同request-namespace重跑不会重复新增；不会训练、读取未来答案或写产品预测。
+
+```powershell
+Set-Location C:\pythonProject\workSpace06
+$env:PYTHONIOENCODING='utf-8'
+.venv\Scripts\python.exe -m pytest tests/test_cash_prediction_inference.py tests/test_cash_prediction_attempt.py tests/test_cash_prediction_attempt_schema.py -q
+$env:RUN_NAV_STORAGE_PG_TESTS='1'
+.venv\Scripts\python.exe -m pytest tests/test_cash_prediction_attempt_postgres.py tests/test_cash_reinvestment_postgres.py tests/test_historical_nav_storage_postgres.py tests/test_historical_nav_evaluation_postgres.py tests/test_historical_nav_training_postgres.py -q
+.venv\Scripts\python.exe scripts/cash_prediction_attempt_acceptance.py --research-run-id f70feb1a-129d-4482-b66d-f4e2e3a5425c --expected-report-hash db527ccca8015a4f41af2ee68608dae27ec5ab86c2627ef158d39f2f6b067795 --cutoff-date 2026-09-04 --request-namespace 6cda68be-e9f6-4c9c-8ae8-0a3d976a9383 --confirm-write-local-attempts
+```
+
+验收项及实际结果：
+
+| 检查 | 应当发生的事 | 本轮证据 |
+| --- | --- | --- |
+| 人工模型的纯计算 | 与独立公式一致；不拟合、不查询任何数据库或未来NAV | 26项内核测试通过，包含半数阈值舍入一致性 |
+| 不同口径/日期/缺失输入 | 即使重算模型哈希，旧口径仍拒绝；校准尚未结束或日历当时未公布也拒绝 | 自动化负例通过 |
+| 保存、读回和重试 | 首次201，重复200，GET200；同key换参数409，新key保留旧回执 | 隔离PG及三基金真实TCP均通过 |
+| 并发/失败 | 两请求只提交一条；INSERT后异常整笔回滚 | 隔离PG通过，不仅是内存替身 |
+| 数据库底线 | 不接受拒绝回执夹带0.9概率、执行过推理、空原因或缺字段；非空表不能降级删除 | PostgreSQL实际约束及迁移回退保护通过 |
+| 权限/错误 | 无Token、错Token、Origin403；force/2025参数422；不存在回执404 | 实际TCP响应通过；异常脱敏另由接口测试验证 |
+| 真数据没有被拿来强行计算 | 三基金都6条拒绝原因、无概率、不推理、不写forecast_result | 真实报告及数据库回执读回通过 |
+| 原数据保护 | NAV与研究内容摘要一致，现金表计数不变，旧预测/发布表0条 | 脚本before_equals_after=true；只新增3条回执 |
+
+本轮相关离线769项、五个隔离PG文件41项、真实HTTP16项通过。新增migration/ORM字段、约束、外键、索引及注释逐项对照通过；本机迁移已执行。随机本机HTTP服务已停止；未修改真实账号、关注关系或旧模型，未操作用户8000进程。正式发布与概率显示的成功链路仍未验收，不据人工内核计算宣称模型通过发布门槛。
+
+## TC-FDP-28：结果层隔离验收与待部署边界（2026-09-09）
+
+关联设计v1.19及实施第26节。提交前实际执行：相关离线790项、六个隔离PG文件62项通过，Ruff通过。其中新增结果层离线21项、PG21项；不是全仓所有测试通过声明。
+
+隔离结果层以人工发布授权和人工源资料为前提，实际运行SQL、特征计算、模型公式及事务：
+
+- POST首次201、同请求重试200、GET200；GET/重试不再调用数值内核。相同key改参数或不同key重复同一业务结果409，并发同key只有一条结果。
+- 无授权先拒绝，不读取输入或计算，结果表0条；中途异常整笔回滚；缺失输入不写假结果。
+- 新NAV、分红等非NAV同步、同步中/失败、来源停用、过期或授权撤销，查询不返回概率；新来源版本可用新key另存，不覆盖原记录。
+- 损坏快照503；数据库实际拒绝越界概率或缺少必要字段；表字段注释齐全，非空表降级保护和空表回退均通过。
+- HTTP校验服务Token、拒绝Origin及外部授权/模型/force字段；2025仍禁止使用。人工授权只证明后续工程分支可运行，不能声称正式凭证签发或真实模型发布已通过。
+
+复跑隔离PG命令：
+
+```powershell
+$env:PYTHONIOENCODING='utf-8'
+$env:RUN_NAV_STORAGE_PG_TESTS='1'
+.venv\Scripts\python.exe -m pytest tests/test_cash_forecast_postgres.py tests/test_cash_prediction_attempt_postgres.py tests/test_cash_reinvestment_postgres.py tests/test_historical_nav_storage_postgres.py tests/test_historical_nav_evaluation_postgres.py tests/test_historical_nav_training_postgres.py -q
+```
+
+本机业务schema只读核验仍为迁移15，`cash_forecast_result`不存在。下一次部署先执行迁移16，再在TC-FDP-27的真实HTTP命令末尾加入`--verify-forecast-endpoints`；应增加三基金新生成拒绝、指纹/参数/鉴权和缺失结果等10项检查，验证结果行数仍0、既有3份回执不重复新增。**这10项真实TCP检查本次尚未执行，不将隔离HTTP成功写成实库业务场景成功。**
