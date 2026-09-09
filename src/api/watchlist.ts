@@ -1,6 +1,7 @@
 import { get, post, remove } from '@/api/http'
 import type { FundShareHistory, WatchlistFundDetail } from '@/types/fund'
 import type { WatchlistItem, WatchlistPage, WatchlistQuery } from '@/types/watchlist'
+import type { WatchlistPrediction } from '@/types/prediction'
 
 /** 查询当前登录用户已关注的分页基金列表；服务端按会话用户隔离数据。 */
 export function getWatchlist(query: WatchlistQuery = {}): Promise<WatchlistPage> {
@@ -31,6 +32,11 @@ export function removeWatchlistItem(fundCode: string): Promise<void> {
 /** 查询当前用户已关注基金的完整资料；授权和数据范围由 Java 服务端校验。 */
 export function getWatchlistFundDetail(fundCode: string): Promise<WatchlistFundDetail> {
   return get<WatchlistFundDetail>(`/api/v1/watchlist/${encodeURIComponent(fundCode)}/detail`)
+}
+
+/** 仅本人关注详情调用；不请求Python，不传用户编号，不触发计算或训练。 */
+export function getWatchlistPrediction(fundCode: string): Promise<WatchlistPrediction> {
+  return get<WatchlistPrediction>(`/api/v1/watchlist/${encodeURIComponent(fundCode)}/prediction`)
 }
 
 /** 查询当前用户已关注基金的份额规模历史；服务端会再次校验本人关注关系。 */

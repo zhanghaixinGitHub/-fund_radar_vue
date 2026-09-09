@@ -3,7 +3,7 @@
 > 关联需求：[我的关注基金多周期预测模块](../requirements/watchlist-prediction-module.md)
 > 关联设计：[免费已授权数据预测 V1](../design/free-data-prediction-v1.md)
 > 关联实施：[免费已授权数据预测 V1.0 实施手册](../implementation/free-data-prediction-v1.md)
-> 版本：v1.13 ｜ 更新：2026-09-08 ｜ 状态：新版单日与批量只读预览均已验收，单日/批量和分页不变通过；未接新版保存/训练，未发布。前文历次验证状态保留，当前进展见TC-FDP-22。
+> 版本：v1.17 ｜ 更新：2026-09-09 ｜ 状态：Docker已恢复，29项实库及真实三端/浏览器复验通过，相关离线724项通过；完整数值生成尚未完成。最新现场结果见TC-FDP-26，早先环境阻塞记录保留。
 
 这些用例不是要求一次性全部执行。每完成一个实施阶段，只执行对应的一小组；任何关键用例失败，都回到上一个阶段处理，不继续发布。
 
@@ -683,3 +683,115 @@ $env:RUN_NAV_STORAGE_PG_TESTS = '1'
 ```
 
 完整离线命令在TC-FDP-21基础上新增`tests/test_cash_reinvestment_batch.py`，隔离PG命令不变。本轮不保存、新训练器未接入，历史首次版本/分红完整性及拆分折算仍未核准。
+
+## TC-FDP-23｜新版保存、研究与本人关注页面连续验收
+
+关联设计v1.15、实施第21节、Python HTTP手册第18节。验收的是“研究资料到页面状态”的真实链路；正式发布、2025最终评分和在线预测生成仍未启用。
+
+### 核心验收边界
+
+| 场景 | 预期和实际结果 |
+| --- | --- |
+| 独立保存 | 新迁移20260908_14在本机fund_ai成功执行，新4表与旧累计净值表隔离；批次、输入、答案在同一事务保存。 |
+| 幂等和一致性 | 同requestKey/同基金日期读回原批次，换pageSize不重新生成；冲突409。并发相同key只留一批，失败整批回滚。 |
+| 不可变资料 | 读回校验规则、批次/输入/答案指纹、日期窗口、指标及状态计数；损坏503，不自动修补或混入旧资料。 |
+| 研究准备 | 明确1–128个批次、有界分页读取；完全一致的重复题合并，不同内容冲突409；X只有七个历史指标，y独立；跨分段答案剔除。 |
+| 研究边界 | 只允许既定三基金2022–2024，固定三窗、算法、数量门槛；2025数值不进入研究。expectedDatasetHash绑定资料，重试不再训练。 |
+| 发布防线 | 历史版本、分红完整性、非现金调整和最终测试证据缺口不能靠请求清除；模型状态始终未发布，概率和方向只能null。旧ACTIVE记录不能绕过新门禁。 |
+| HTTP鉴权 | Java真实HTTP：未登录401、未关注403、另一用户403、本人关注200、非法代码400、非法Origin403、no-store及TraceID均通过。 |
+| 页面隔离 | 本人关注详情展示独立卡片；普通基金详情不展示；直接打开未关注006730显示“请先将该基金加入关注列表后再查看完整详情”，不渲染预测卡。 |
+| 真实状态 | 008888读取真实研究编号，显示“模型未发布”；不是前端固定写死。查看原因、净值日、研究时间，无上涨概率或涨跌方向。 |
+| 不适用 | 合成测试账户关注真实债券型001021后，卡片显示“暂不适用”，说明本版仅研究股票型；没有修改真实账户。 |
+| 故障恢复 | 暂停临时Python→点击刷新→“暂时无法读取”，原基金资料保持；恢复Python→再次刷新→恢复真实未发布状态，无须刷新整页。 |
+| 前端校验 | 请求切换/卸载时旧响应不能覆盖新基金；不合法状态或概率拒绝展示。刷新按钮加载时禁用。 |
+| 窄屏与键盘 | 390×844视口下卡片宽343，文档scrollWidth=clientWidth=375，无横向溢出；刷新按钮高44。说明可用Enter展开/收起；正常页面无控制台error。 |
+
+### 实际结果与证据等级
+
+- Python相关离线测试639项通过；独立PostgreSQL测试27项通过（新现金链路8项，旧保存/准备/训练19项）。真实PG测试仅操作各自随机隔离schema，结束清理，不向业务批次插测试题。
+- Java使用项目JDK17：新预测控制器/真实HTTP上游测试7项、原关注4项、认证授权7项，共18项通过；编译打包通过。未运行会连接真实业务库的全套Spring测试。
+- Vue type-check、lint、production build通过。既有ECharts大块体积警告保留；Python既有TestClient弃用警告保留。
+- 三端真实联调夹具的11项HTTP检查全部为true；浏览器真实登录、页面范围、原因展开、故障恢复、非股票型和窄屏检查通过。不是只靠Mock或编译推断页面成功。
+- 真资料：108批、2118题、1750条答案；269条输入不可用、99条答案不可用。研究记录为 `f70feb1a-129d-4482-b66d-f4e2e3a5425c`。
+- 两个DEV窗口数量不足，2024窗口拟合778、校准272、验证625条；状态PARTIAL_EVALUATION。准确率52.64%，Brier0.35242478，简单频率对照Brier0.25321469；未证明优于简单对照，不能宣称预测可靠。
+- 原累计净值三表仍145/2923/2875；三试点2022–2025原始净值2922行、全列MD5 `ccba9f019c6d7f1c6f281d052d4aa34c`及旧研究/现金预览包SHA256与本轮执行前完全一致。2025这次只做保护指纹，不作为新研究输入/答案；普通基金页面展示既有净值历史不等于模型做2025评分。
+- 临时Java测试schema `prediction_e2e_744a1f8df70f4efdb13afe865334592e`已删除，18000/18080/15173无监听；真实public账户、关注、角色权限、会话的行数和内容指纹前后相同。合成账户与测试关注随schema清理，不保留到真实用户空间。
+
+### 可复跑入口
+
+Python离线新链路：
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests/test_cash_reinvestment_storage.py tests/test_cash_reinvestment_research.py tests/test_cash_reinvestment_schema.py tests/test_watchlist_prediction.py -q --tb=short
+```
+
+隔离PG（仅本机fund_ai；脚本包含数据库/schema归属防护）：
+
+```powershell
+$env:RUN_NAV_STORAGE_PG_TESTS='1'
+.\.venv\Scripts\python.exe -m pytest tests/test_cash_reinvestment_postgres.py tests/test_historical_nav_storage_postgres.py tests/test_historical_nav_evaluation_postgres.py tests/test_historical_nav_training_postgres.py -q --tb=short
+```
+
+可重复三端联调：Python目录运行 `python -m scripts.prediction_page_acceptance --execute --core-dir C:\ideaProject\workSpace12 --web-dir C:\WebStormProject\workSpace05`。它要求已构建的新Java JAR和当前Vue依赖，使用临时端口与随机schema，不替代正常服务启动；输出本次日志目录。向该目录的UTF-8 `command.txt`写入 `pause-python`、`resume-python`或`stop`控制故障测试，最多20分钟自动清理。合成账户仅用于该隔离环境，不能用来登录真实服务。
+
+人工正常环境验收步骤见实施第21.3节。本轮未提交推送。
+
+## TC-FDP-24｜生成前检查与未发布原因的证据复核（2026-09-09）
+
+关联设计v1.16、实施第22节、Python手册第19节。生成前检查不是正式数值生成，完整目标仍有未完成项。
+
+- 新增20项离线用例，相关Python离线总计659项通过；Ruff和diff检查通过。
+- 人工数据构造的三窗完整报告逐窗/总体/三基金/四对照，共48组比较；检查差值方向和等号不算严格改善。即便报告全窗完成仍不获得正式准入，不能以人工通过样例作为真实发布证据。
+- 缺窗口、缺对照、重复基金、答案群体错配、非有限指标，即使重新计算普通内容哈希，也会拒绝；哈希不是授权签名。
+- 无效基金类型/停用来源/不匹配报告指纹/报告无该基金资料409。请求只能带fundCode/researchRunId/expectedReportHash；传force/includeTest/trainingEligible/X均422。
+- Token/Origin失败在读取前403；数据库异常503且不泄漏内部信息；成功检查响应no-store。
+- 对推理和训练函数设置“调用即失败”的测试替身，检查仍完成且未调用它们。SQL断言只读一致性事务、指定主键报告、日期元数据；不访问旧发布/预测表、现金样本或原始净值数值。
+- 页面未发布原因复用同一检查，不修改已有报告内容/指纹。Java/Vue接口形状不变，现有20项Python页面状态测试通过。
+
+### 本轮现场结果及阻塞
+
+- 新入口通过临时loopback真实HTTP验证：无Token403、force额外参数422、数据库离线503；响应不泄漏连接地址或Token，含TraceID，没有伪造成功检查或概率。临时HTTP服务已停止。这是故障路径的现场证据，不是正常实库检查完成。
+- 新增1项隔离PG用例，验证指定报告读回、READ ONLY/REPEATABLE READ及前后行数不变；当前仅收集成功，未实际执行。原8项加本项共9项，与原19项合计应复跑28项；不得沿用上一轮27项通过数冒充本轮结果。
+- 54329无监听，Docker首次启动日志明确为dockerInference临时通信文件不可访问。只备份了Docker/run目录（核实仅两个零字节通信文件）至`C:\Users\a\AppData\Local\Docker\run.before-prediction-20260909`，未删除原文件；备份保留以便回退，没有修改镜像、数据卷、数据库或配置。
+- 第二次启动越过上述目录后，又因`docker-secrets-engine/engine.sock`不可访问而退出。该凭据服务目录未修改，未重置Docker、未改WSL/权限。此次启动的Docker进程已退出；最后状态仍是数据库/引擎不可用，不是后台正在正常等待启动。
+- 新接口真实资料200、新增隔离PG测试及本轮新增页面原因的浏览器复验未完成。上一轮真实三端/研究证据继续保留其日期；完整目标不能标为完成。
+
+## TC-FDP-25｜历史输入隔离、旧结果不变及2026日历（2026-09-09）
+
+关联设计v1.17、实施第23节、Python手册第20节；这是实际预测前的输入组件，不是已发布概率生成器。
+
+- 新增`test_cash_prediction_features.py`41项及`test_cash_prediction_calendar.py`29项，全部通过。四个历史截止日、含/不含分红，输入payload/hash与旧样本的历史部分一致；缺数、迟公告、零净值、常数序列、过时起点都明确拒绝。
+- 将截止日未公告价格改为大数/NaN/删除，或者加入晚公告分红，不会改变既知输入。把未来日期函数替换为“调用即失败”，历史输入仍能生成；输出没有未来日期、标签、概率或方向字段。
+- 仓储SQL编译检查覆盖CASE屏蔽未公告价格、仅已知分红、基金/来源/日期范围、193/101行哨兵上限。重复、乱序、越界、保护期交叉、返回隐藏价格等均拒绝。适配器人工验证2023和2026日历选择、未结束当日拒绝、REPEATABLE READ/READ ONLY，不冒称已连真实库。
+- 2026独立日历242个交易日；七组休市事实及调休周末已按沪深官方公告核对。日期计算确认2026-09-08之后第20个交易日为2026-10-14，这是日期尺子验收，不是收益预测。年初不足历史不向2025借数，年末历史输入不要求尚未核验的2027日历；未来窗口不足时仍拒绝。
+- 对Git HEAD `32152e6`中改动前的日期计算器和现金样本计算器进行独立比较：4个截止日×10种原始资料变化×2种完整输出，共80组逐字段相等。包括标签、诊断、版本和内容指纹，不只是两处调用新共用函数互相对照。人工现金样本集合摘要：`9c64c60a7f0df2dce8aee2b819501dd79fd607162aa03e404cd8f287dcadf12a`。
+- 当前相关离线回归724项通过；全app/tests及本功能脚本Ruff通过。额外健康测试19项中18项通过、1项失败：旧市场同步最后成功列表测试少预期`MARKET_FREE_DATA_COMPLETION`条目。使用HEAD旧路由（未挂载本次新入口）也复现同一失败，该测试及funds/sync_jobs代码本次未修改；不能宣称仓库全部测试通过。
+- 新增一项真实SQL隔离PG用例，验证当前历史价格屏蔽、已知分红筛选、只读事务和前后行数不变。现金PG文件现10项收集成功，连同原19项应复跑29项；本轮数据库54329仍无监听，**没有实际执行这29项**，也没有当前2026真实资料或新增页面原因的浏览器验收。
+
+相关离线回归命令（Python仓库PowerShell，无需启用PG）：
+
+```powershell
+$env:PYTHONIOENCODING='utf-8'
+$predictionTestFiles = @(rg --files tests | Where-Object { $_ -match 'test_(cash_|historical_nav_|trading_nav_|watchlist_prediction|stock_feature_snapshot|feature_read|nav_basis_audit|analysis_model_release_contract)' -and $_ -notmatch '_postgres\.py$' })
+.venv\Scripts\python.exe -m pytest @predictionTestFiles -q
+```
+
+本轮不训练、不解封2025、不保存预测、不提交推送。Docker凭据服务目录未作进一步改动；环境恢复前保留TC-FDP-24阻塞结论，不以离线测试数替代现场验证。
+
+## TC-FDP-26｜环境恢复后补齐实库、HTTP及浏览器证据（2026-09-09）
+
+关联实施第24节。TC-FDP-24/25的“当时未验”记录不删除，本节单独记录恢复后取得的证据。
+
+1. PostgreSQL容器健康、54329可连接；显式启用RUN_NAV_STORAGE_PG_TESTS后，原命令的4个PG文件合计29项通过。没有访问真实用户表来制造测试状态，临时schema全部清理。
+2. 实库检查已有研究`f70feb1a-129d-4482-b66d-f4e2e3a5425c`，报告指纹仍为`db527ccca8015a4f41af2ee68608dae27ec5ab86c2627ef158d39f2f6b067795`。三基金均16组比较、6项阻止原因，GENERATION_BLOCKED且无推理、无写入。2023Q3/Q4仍未完成，未重新拟合或解封2025。
+3. 真实当前输入：三基金以09-04/09-05为cutoff均INPUT_READY、61点、绑定2026日历；以09-08为cutoff均因起点09-04落后2日拒绝，feature/hash为空。最新数据不足不能靠选择较早日期冒充今天的结果。
+4. 更新验收脚本`prediction_page_acceptance.py`，补入真实内部HTTP生成前检查及页面新增原因断言，并保存无令牌的http-receipt。24项布尔检查全真；另以同一隔离账户实测001021→NOT_APPLICABLE、007045→DATA_INSUFFICIENT，均无概率。
+5. 使用真实浏览器和隔离合成账户，验证本人关注正常、6条未发布原因可见、未关注006730被拒绝且没有预测卡、公开详情无卡。001021及007045两种页面状态与API一致。
+6. 通过脚本pause-python/resume-python控制本次独占服务，刷新卡片后分别得到UNAVAILABLE和恢复的MODEL_NOT_RELEASED；故障期间基础资料仍显示，未出现内部地址/令牌/假概率。
+7. 390×844视口下documentWidth=375、viewportWidth=390，无横向溢出，随后恢复默认视口；原因说明用Enter收起/展开均成功，焦点保留。浏览器role选择器未识别原生summary时改用实际可见文本定位，未改页面角色来迎合测试。
+8. Java仅本预测测试类7项通过并重新打包；Vue type-check、lint、build通过；相关Python离线724项重新通过。不是Java/全仓全部测试声明，既有健康测试断言问题仍见TC-FDP-25。
+9. 实库前后现金计数108/2118/1750/1不变；限定三基金2022-01-01至2026-09-08的3414条NAV指纹不变。Java真实账户、关注、权限和会话指纹不变。脚本返回stopped=true及real_accounts_watchlist_sessions_unchanged=true，测试schema移除，三个临时端口已无监听。
+
+本次脱敏证据：Python `.local-runs/prediction_e2e_bf37c42ca0684ba48ac83a8275e0c53e/`下的`http-receipt.json`、`browser-receipt.json`、`database-receipt.json`。该目录已被Git忽略。复跑方式沿用TC-FDP-23的隔离启动命令，不修改真实账户、不覆盖旧研究、不购买或采集新来源；临时数据可重建。
+
+通过的是研究状态页面和输入/拒绝路径；正式证据驱动的发布、产品数值结果生成/存储/失效及已发布概率E2E仍未完成。不得把26个HTTP场景或人工成功分数改写成模型已可发布。

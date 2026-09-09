@@ -5,6 +5,7 @@ import { useRoute } from 'vue-router'
 import FieldHelpTooltip from '@/components/FieldHelpTooltip.vue'
 import FundNavHistoryChart from '@/components/FundNavHistoryChart.vue'
 import FundShareHistoryChart from '@/components/FundShareHistoryChart.vue'
+import WatchlistPredictionCard from '@/components/WatchlistPredictionCard.vue'
 import { getFundNavHistory } from '@/api/funds'
 import { getWatchlistFundDetail, getWatchlistFundShareHistory } from '@/api/watchlist'
 import type { FundNavHistory, FundShareHistory, WatchlistFundDetail } from '@/types/fund'
@@ -270,6 +271,12 @@ watch(selectedNavRange, () => {
           </article>
         </div>
       </section>
+
+      <WatchlistPredictionCard
+        v-if="basic.fundCode === fundCode"
+        :key="basic.fundCode"
+        :fund-code="basic.fundCode"
+      />
 
       <section
         class="analysis-section"
