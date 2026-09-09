@@ -3,7 +3,7 @@
 > 关联需求：[我的关注基金多周期预测模块](../requirements/watchlist-prediction-module.md)
 > 关联设计：[免费已授权数据预测 V1](../design/free-data-prediction-v1.md)
 > 关联实施：[免费已授权数据预测 V1.0 实施手册](../implementation/free-data-prediction-v1.md)
-> 版本：v1.20 ｜ 更新：2026-09-09 ｜ 状态：迁移16及真实拒绝HTTP已验；相关离线790项、隔离PG68项、Java10项、前端协议27项通过，真实状态及人工结果页面分支通过。正式发布成功链路仍未完成；最新范围见TC-FDP-29。
+> 版本：v1.22 ｜ 更新：2026-09-09 ｜ 状态：规则审查及不可变快照接口已验证，迁移17已落地；最新相关离线904项、隔离PG84项及21项真实TCP/完整性检查通过。真实规则未批准/冻结，正式发布成功链路仍未完成；最新范围见TC-FDP-31，先前页面证据见TC-FDP-29。
 
 这些用例不是要求一次性全部执行。每完成一个实施阶段，只执行对应的一小组；任何关键用例失败，都回到上一个阶段处理，不继续发布。
 
@@ -869,3 +869,62 @@ $env:PYTHONIOENCODING='utf-8'
 实际浏览器通过：真实未发布；人工有效的概率/原区间；人工失效、撤销隐藏数字；键盘刷新及展开；390×844无横向溢出；停止测试Python后卡片独立降级、恢复后回到真实状态；公开详情无卡、未关注006730无卡且拒绝；001021不适用、007045资料不足。后两只关注只写隔离测试账号。
 
 本次脱敏回执在忽略目录`.local-runs/prediction_e2e_b748d76f214740f199f565d96bc1a533/`的`http-receipt.json`、`browser-receipt.json`；脚本结束返回stopped及真实账号/关注/会话未变。测试schema已删、临时端口关闭、视口复原、标签页关闭。人工页面成功不是“真实模型发布→生成→显示”的成功证明；正式发布与数据证据缺口仍见实施27.3。
+
+## TC-FDP-30｜候选发布规则审查，不冻结、不放行、不写业务库
+
+前置：Python既有虚拟环境、本机fund_ai与指定现金研究报告可读；真实发布资格仍缺证据。不能修改报告或规则以凑出一份通过结果。
+
+### 规则与错误边界
+
+```powershell
+Set-Location C:\pythonProject\workSpace06
+$env:PYTHONIOENCODING='utf-8'
+.venv\Scripts\python.exe -m pytest tests/test_cash_release_review.py tests/test_cash_prediction_check.py -q
+```
+
+预期：新规则测试85项，原生成检查20项，共105项通过。年度固定5档（0/.2/.4/.6/.8/1），至少两个非空档；每非空档30条、平均误差.10、单档误差.15均含边界，准确率和Brier必须严格胜过对照，打平FAIL。季度不执行完整年度分档门槛，空档不填0、不按成绩合并；ECE使用分档重算原值比较门槛，不将略超限舍入成通过。
+
+覆盖无效审批/范围/未来测试日期、规则缺失/损坏/超限无宽松回退、分档及总体算术不一致、重算报告指纹仍不能掩盖矛盾、缺覆盖率分母保持null/MISSING、审批不等于冻结、整体BLOCKED且所有副作用标志false。修改调用方Decimal精度不改变检查结果，原报告不变。检查项数量不允许冒称模型准确率。
+
+### 隔离PostgreSQL与只读强制
+
+```powershell
+$env:RUN_NAV_STORAGE_PG_TESTS='1'
+.venv\Scripts\python.exe -m pytest tests/test_cash_release_review_postgres.py -q
+```
+
+新增3项：真实SQL只选基金/来源和净值日期，再主键读取指定报告；核验实际事务为REPEATABLE READ和READ ONLY。重复请求除checked_at外一致，前后研究内容摘要一致。故意在测试自己的只读事务中UPDATE原值也被PG拒绝，HTTP503不泄露SQL；损坏分档不自动修复。随机schema由既有fixture验证归属后清理。
+
+八文件回归：上述文件，加TC-FDP-29七个现金及旧样本/准备/训练PG文件，本轮共71项通过；完整相关离线命令增加新文件后875项通过。不是全仓所有模块测试结果。已有Starlette/httpx弃用提示不在本次升级依赖。
+
+### 真实TCP，只用真实未发布报告
+
+```powershell
+.venv\Scripts\python.exe scripts/cash_release_review_acceptance.py --research-run-id f70feb1a-129d-4482-b66d-f4e2e3a5425c --expected-report-hash db527ccca8015a4f41af2ee68608dae27ec5ab86c2627ef158d39f2f6b067795
+```
+
+实测21项：三基金各请求/重试正常，原generation-check各回归一次且仍拒绝生成数字；缺/错Token与Origin403；客户端policy、coverage、force和includeTest422且不查询数据库；报告指纹冲突409、缺失报告404；表计数/报告摘要前后一致，仅SET/SELECT，无净值数值/样本/预测表读取。响应Cache-Control=no-store并有TraceID。
+
+本报告三基金均完整检查同一3基金范围，118项中PASS50、FAIL47、MISSING21；policy仍DRAFT，顶层BLOCKED，publication_allowed/policy_persisted/inference_executed/independent_test_read/database_written均false。55条服务SQL均为只读，旧报告MD5仍`93549dcd6522737534ed5d9c7a0a3920`，现金预测仍0条。临时服务退出，不重启用户8000、不重新训练或解封2025；正式发布签发与数据证据仍未完成。
+
+## TC-FDP-31｜已确认规则的不可变快照，不是模型发布授权
+
+```powershell
+Set-Location C:\pythonProject\workSpace06
+$env:PYTHONIOENCODING='utf-8'
+.venv\Scripts\python.exe -m pytest tests/test_cash_policy_freeze.py -q
+$env:RUN_NAV_STORAGE_PG_TESTS='1'
+.venv\Scripts\python.exe -m pytest tests/test_cash_policy_freeze_postgres.py -q
+```
+
+预期29项离线、13项隔离PG测试通过：
+
+- GET规则不查库；DRAFT冻结请求409且不创建引擎。客户端审批字段、规则正文或force等拒绝；无/错Token及Origin均403。旧指纹不能冻结已变化的服务器规则。
+- 只在隔离schema和临时规则文件中使用人工APPROVED；首次201，同key重试200、仅1条，GET历史内容一致。不同key争抢同版本时只允许1份，失败回滚不留半份。
+- 修改内容或身份后校验503；当前配置与快照不匹配409，不覆盖旧记录。历史GET不依赖今天的规则文件，使用实际只读事务。
+- 实际数据库拒绝UPDATE/DELETE/TRUNCATE；非空降级拒绝，空表降级不影响研究表。各字段注释齐全。
+- 匹配快照只解除`POLICY_NOT_FROZEN`，仍保留数据证据及独立考试缺口，审查仍BLOCKED，不执行推理、读取2025答案或签发模型。
+
+完整相关离线复跑904项通过；TC-FDP-30的八个PG文件加本文件共84项通过。TC-FDP-30真实TCP命令再次运行21项通过，55条服务SQL只读，原研究和业务计数不变。
+
+本机实库只读复核迁移17、规则快照0条、有效不可变触发器1个、无注释字段0个；当前规则DRAFT。隔离测试成功不能算成真实规则已确认/已冻结。测试schema已清理、临时服务已停止，用户常驻服务未重启。本次没有新的浏览器验收或正式发布成功证据。
