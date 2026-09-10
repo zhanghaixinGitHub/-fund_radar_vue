@@ -7,6 +7,9 @@ import type { DirectionExperiment } from '@/types/directionExperiment'
 /** 查询当前登录用户已关注的分页基金列表；服务端按会话用户隔离数据。 */
 export function getWatchlist(query: WatchlistQuery = {}): Promise<WatchlistPage> {
   const search = new URLSearchParams()
+  if (query.keyword) {
+    search.set('keyword', query.keyword)
+  }
   if (query.fundType) {
     search.set('fundType', query.fundType)
   }

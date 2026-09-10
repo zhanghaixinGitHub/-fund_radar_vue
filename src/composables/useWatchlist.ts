@@ -10,6 +10,7 @@ export function useWatchlist() {
   const { location, navigate, isCurrent } = useListLocation()
   let requestSequence = 0
   const watchlist = ref<WatchlistItem[]>([])
+  const keyword = ref('')
   const selectedFundType = ref<FundType | ''>('')
   const loading = ref(false)
   const errorMessage = ref('')
@@ -31,6 +32,7 @@ export function useWatchlist() {
     errorMessage.value = ''
     try {
       const response = await getWatchlist({
+        keyword: keyword.value.trim() || undefined,
         fundType: selectedFundType.value || undefined,
         page: targetPage,
         pageSize: pageSize.value,
@@ -58,7 +60,7 @@ export function useWatchlist() {
   }
 
   async function loadPage(targetPage: number): Promise<void> {
-    if (!await navigate(selectedFundType.value, '', targetPage, pageSize.value)) {
+    if (!await navigate(selectedFundType.value, keyword.value, targetPage, pageSize.value)) {
       await fetchPage(targetPage)
     }
   }
@@ -66,6 +68,7 @@ export function useWatchlist() {
   watch(location, (value) => {
     if (!isCurrent.value) return
     selectedFundType.value = value.type as FundType | ''
+    keyword.value = value.keyword
     pageSize.value = value.size
     currentPage.value = value.page
     pageInput.value = String(value.page)
@@ -73,7 +76,7 @@ export function useWatchlist() {
   }, { immediate: true })
   onBeforeUnmount(() => { ++requestSequence })
 
-  /** 切换类型筛选或重新加载时回到第一页。 */
+  /** 查询关键词、切换类型筛选或重新加载时回到第一页。 */
   async function search(): Promise<void> {
     currentPage.value = 1
     pageInput.value = '1'
@@ -121,6 +124,7 @@ export function useWatchlist() {
     goToPage,
     hasNextPage,
     hasPreviousPage,
+    keyword,
     loadPage,
     loading,
     marketDataUnavailable,

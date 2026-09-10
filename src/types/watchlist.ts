@@ -24,6 +24,7 @@ export interface WatchlistItem {
 
 /** 当前登录用户关注列表的页码查询参数。 */
 export interface WatchlistQuery {
+  keyword?: string
   fundType?: FundType
   page?: number
   pageSize?: number

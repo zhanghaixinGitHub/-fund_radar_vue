@@ -18,6 +18,7 @@ const {
   goToPage,
   hasNextPage,
   hasPreviousPage,
+  keyword,
   loading,
   marketDataUnavailable,
   nextPage,
@@ -87,6 +88,28 @@ function formatCreatedAt(value: string): string {
       </p>
     </section>
 
+    <form
+      class="search-panel"
+      @submit.prevent="search"
+    >
+      <label for="watchlist-keyword">基金代码或名称</label>
+      <div class="search-row">
+        <input
+          id="watchlist-keyword"
+          v-model="keyword"
+          maxlength="50"
+          placeholder="例如：000001"
+          type="search"
+        >
+        <button
+          class="primary-button"
+          :disabled="loading"
+          type="submit"
+        >
+          {{ loading ? '查询中…' : '查询基金' }}
+        </button>
+      </div>
+    </form>
 
     <p
       v-if="marketDataUnavailable && !errorMessage"
@@ -121,7 +144,7 @@ function formatCreatedAt(value: string): string {
       class="watchlist-state"
     >
       <h2>还没有符合条件的关注基金</h2>
-      <p>可以调整类型筛选，或前往基金市场后在基金详情中加入关注。</p>
+      <p>可以调整搜索关键词或类型筛选，或前往基金市场后在基金详情中加入关注。</p>
       <RouterLink
         class="primary-link"
         to="/funds"
