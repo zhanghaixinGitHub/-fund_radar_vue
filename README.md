@@ -16,6 +16,11 @@
 
 - 想知道项目做到了哪一步：先读 [完成情况检查](docs_zhx/reviews/project-status-2026-09-09.md)。
 - 想继续开发：读 [总进度看板](docs_zhx/implementation/fund-radar.md)的“当前状态”，再进入对应专项手册。
+- 想研究模型的 20 日涨跌判断：读 [训练优化实施文档](docs_zhx/implementation/fund-direction-training-improvement.md)和[完整验收记录](docs_zhx/reviews/direction-training-final-2026-09-09.md)。T00—T09 已按交付定义完成；扩样、市场组与校准均已实验，仍未证明稳定提升。独立测试交付精确未执行原因，前向观察完成设计；本专项不是事实或规则预警的统一前置条件。
+- 2026-09-10 已追加完成[净值可用性修正与缺失实验](docs_zhx/reviews/direction-nav-availability-gaps-2026-09-10.md)：新研究恢复 377 个被公告规则排除的历史输入，限定人为缺失检查通过；真实缺失与模型稳定优势仍未证明，未发布模型。
+- 同日完成[线性模型错误诊断与有限优化](docs_zhx/reviews/direction-linear-refinement-2026-09-10.md)的实际训练对照：三个单因素方案、三窗 378 道同题，最高准确率 62.96%，但跨基金不稳定，未选出合格候选；独立验证未执行，未增加隐藏层或发布模型。
+- 随后完成[60 日特征逐项删减训练](docs_zhx/reviews/direction-single-feature-ablation-2026-09-10.md)：单删收益、回撤、位置的准确率分别为 60.85%/59.79%/60.32%，时间稳定性均未过关。12 次主拟合及等量复跑完成，338 项检查通过；模型和独立验证状态保持未发布、未执行。
+- 最新完成[训练截止时间与跨时段误差验证](docs_zhx/reviews/direction-mature-recency-2026-09-10.md)：补近期成熟样本及同数量移近分别为 55.82%/60.32%，均未稳定胜过原模型；2,598 个不同样本的特征、标签复算一致，001632 的时段判断错配仍明显。主实验和复跑各 9 次拟合、1,161 个分数一致；无合格候选，独立验证未执行。
 - 想理解目标与分工：读 [需求说明](docs_zhx/requirements/fund-radar.md)和 [总体设计](docs_zhx/design/fund-radar.md)。目标不等于已实现功能，历史章节中的样本数和测试结果仅代表当时。
 
 ## 本地启动
