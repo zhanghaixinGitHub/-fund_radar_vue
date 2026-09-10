@@ -1,5 +1,7 @@
 # 基金雷达 — 我的关注基金多周期预测模块详细设计
 
+> 当前定位（2026-09-09）：总目标已调整为[持仓预警与决策辅助](../requirements/fund-radar.md#current-positioning)。本文件只定义可选预测辅助模块；四周期、模型发布及其门槛不套用于独立事实/用户规则预警。新建议链路见[总设计第 0 节](fund-radar.md)，尚未实现，现有预测接口职责不变。
+
 > 关联需求：`docs_zhx/requirements/watchlist-prediction-module.md`
 > 关联 M3 设计：`docs_zhx/design/m3-decision-assistance.md`
 > 关联实施看板：`docs_zhx/implementation/watchlist-prediction-module.md`

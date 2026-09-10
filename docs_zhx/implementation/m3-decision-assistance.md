@@ -1,5 +1,7 @@
 # 基金雷达 — M3 特征、概率评分、滚动回测与站内提醒实施看板
 
+> 当前定位（2026-09-09）：项目主线为[持仓预警与决策辅助](../requirements/fund-radar.md#current-positioning)，恢复入口以[总看板](fund-radar.md)为准。本文件保留 M3 概率辅助能力的实现及历史限制，不以训练或四周期扩展替代新目标，也不因旧门槛阻断独立事实/规则预警。
+
 > 关联需求：docs_zhx/requirements/m3-decision-assistance.md
 > 关联设计：docs_zhx/design/m3-decision-assistance.md
 > 关联验收：docs_zhx/testcase/m3-decision-assistance.md
