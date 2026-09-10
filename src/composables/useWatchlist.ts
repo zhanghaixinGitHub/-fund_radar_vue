@@ -1,11 +1,14 @@
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import { getWatchlist } from '@/api/watchlist'
 import type { FundType } from '@/types/fund'
 import type { WatchlistItem, WatchlistQuota } from '@/types/watchlist'
+import { useListLocation } from '@/composables/useListLocation'
 
 /** 当前登录用户关注列表的筛选、分页和降级状态。 */
 export function useWatchlist() {
+  const { location, navigate, isCurrent } = useListLocation()
+  let requestSequence = 0
   const watchlist = ref<WatchlistItem[]>([])
   const selectedFundType = ref<FundType | ''>('')
   const loading = ref(false)
@@ -22,7 +25,8 @@ export function useWatchlist() {
   const hasNextPage = computed(() => currentPage.value < totalPages.value)
 
   /** 按目标页加载当前用户的数据范围，服务端负责用户隔离与类型排序。 */
-  async function loadPage(targetPage: number): Promise<void> {
+  async function fetchPage(targetPage: number): Promise<void> {
+    const sequence = ++requestSequence
     loading.value = true
     errorMessage.value = ''
     try {
@@ -31,6 +35,7 @@ export function useWatchlist() {
         page: targetPage,
         pageSize: pageSize.value,
       })
+      if (sequence !== requestSequence) return
       watchlist.value = response.items
       marketDataUnavailable.value = response.marketDataUnavailable
       quota.value = response.quota
@@ -40,6 +45,7 @@ export function useWatchlist() {
       totalPages.value = response.totalPages
       pageInput.value = String(currentPage.value)
     } catch (error) {
+      if (sequence !== requestSequence) return
       watchlist.value = []
       marketDataUnavailable.value = false
       quota.value = null
@@ -47,9 +53,25 @@ export function useWatchlist() {
       totalPages.value = 0
       errorMessage.value = error instanceof Error ? error.message : '关注列表暂时不可用。'
     } finally {
-      loading.value = false
+      if (sequence === requestSequence) loading.value = false
     }
   }
+
+  async function loadPage(targetPage: number): Promise<void> {
+    if (!await navigate(selectedFundType.value, '', targetPage, pageSize.value)) {
+      await fetchPage(targetPage)
+    }
+  }
+
+  watch(location, (value) => {
+    if (!isCurrent.value) return
+    selectedFundType.value = value.type as FundType | ''
+    pageSize.value = value.size
+    currentPage.value = value.page
+    pageInput.value = String(value.page)
+    void fetchPage(value.page)
+  }, { immediate: true })
+  onBeforeUnmount(() => { ++requestSequence })
 
   /** 切换类型筛选或重新加载时回到第一页。 */
   async function search(): Promise<void> {

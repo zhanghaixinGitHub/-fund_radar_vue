@@ -6,6 +6,7 @@ import FieldHelpTooltip from '@/components/FieldHelpTooltip.vue'
 import FundNavHistoryChart from '@/components/FundNavHistoryChart.vue'
 import FundShareHistoryChart from '@/components/FundShareHistoryChart.vue'
 import WatchlistPredictionCard from '@/components/WatchlistPredictionCard.vue'
+import { usePageNavigation } from '@/composables/usePageNavigation'
 import { getFundNavHistory } from '@/api/funds'
 import { getWatchlistFundDetail, getWatchlistFundShareHistory } from '@/api/watchlist'
 import type { FundNavHistory, FundShareHistory, WatchlistFundDetail } from '@/types/fund'
@@ -13,6 +14,7 @@ import { dataSourceLabel, fundStatusLabel, fundTypeLabel, netValueStatusLabel } 
 
 /** 当前用户已关注基金的完整资料页；服务端会在读取前校验本人关注关系。 */
 const route = useRoute()
+const { section, sectionLabel, sectionTarget, returnTarget } = usePageNavigation()
 const detail = ref<WatchlistFundDetail | null>(null)
 const loading = ref(false)
 const errorMessage = ref('')
@@ -169,7 +171,7 @@ watch(selectedNavRange, () => {
   >
     <RouterLink
       class="back-link"
-      to="/watchlist"
+      :to="returnTarget ?? '/watchlist'"
     >
       ← 返回我的关注
     </RouterLink>
@@ -189,7 +191,7 @@ watch(selectedNavRange, () => {
     </p>
     <template v-else-if="basic && detail">
       <p class="eyebrow">
-        我的关注 · 完整资料
+        我的关注 · {{ sectionLabel }}
       </p>
       <h1 id="watchlist-fund-detail-title">
         {{ basic.fundName }}
@@ -205,6 +207,7 @@ watch(selectedNavRange, () => {
         分析服务暂不可用，当前展示缓存资料（缓存时间：{{ detail.cachedAt || '未知' }}）。
       </p>
       <section
+        v-if="section === 'overview'"
         class="watchlist-summary"
         aria-labelledby="watchlist-summary-title"
       >
@@ -217,7 +220,7 @@ watch(selectedNavRange, () => {
               已同步资料摘要
             </h2>
           </div>
-          <span class="section-note">完整记录见下方</span>
+          <span class="section-note">完整记录可从左侧分类查看</span>
         </div>
         <div class="watchlist-summary-grid">
           <article class="detail-overview-card">
@@ -273,12 +276,13 @@ watch(selectedNavRange, () => {
       </section>
 
       <WatchlistPredictionCard
-        v-if="basic.fundCode === fundCode"
+        v-if="section === 'research' && basic.fundCode === fundCode"
         :key="basic.fundCode"
         :fund-code="basic.fundCode"
       />
 
       <section
+        v-if="section === 'basic'"
         class="analysis-section"
         aria-labelledby="watchlist-profile-title"
       >
@@ -433,6 +437,7 @@ watch(selectedNavRange, () => {
       </section>
 
       <section
+        v-if="section === 'nav'"
         class="analysis-section"
         aria-labelledby="watchlist-nav-title"
       >
@@ -515,6 +520,7 @@ watch(selectedNavRange, () => {
       </section>
 
       <section
+        v-if="section === 'nav' || section === 'overview'"
         class="analysis-section"
         aria-labelledby="watchlist-nav-history-title"
       >
@@ -527,7 +533,17 @@ watch(selectedNavRange, () => {
               历史单位净值
             </h2>
           </div>
-          <span class="section-note">仅展示已同步历史数据</span>
+          <RouterLink
+            v-if="section === 'overview'"
+            class="secondary-link"
+            :to="sectionTarget('nav')"
+          >
+            查看净值详情 →
+          </RouterLink>
+          <span
+            v-else
+            class="section-note"
+          >仅展示已同步历史数据</span>
         </div>
         <div
           class="nav-range-controls"
@@ -554,6 +570,7 @@ watch(selectedNavRange, () => {
       </section>
 
       <section
+        v-if="section === 'manager'"
         class="analysis-section"
         aria-labelledby="watchlist-manager-title"
       >
@@ -598,6 +615,7 @@ watch(selectedNavRange, () => {
       </section>
 
       <section
+        v-if="section === 'share'"
         class="analysis-section"
         aria-labelledby="watchlist-share-title"
       >
@@ -643,6 +661,7 @@ watch(selectedNavRange, () => {
       </section>
 
       <section
+        v-if="section === 'dividend'"
         class="analysis-section"
         aria-labelledby="watchlist-dividend-title"
       >

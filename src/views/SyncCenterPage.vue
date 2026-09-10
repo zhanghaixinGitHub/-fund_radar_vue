@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { usePageNavigation } from '@/composables/usePageNavigation'
 
 import {
   getLastSuccessfulSyncTimes,
@@ -16,6 +17,7 @@ import {
 import type { SyncJobStatus } from '@/types/syncJob'
 
 type SyncTaskKey = 'marketNav' | 'marketDetail' | 'freeDataCompletion' | 'featureSnapshot'
+const { section, sectionLabel, sectionTarget } = usePageNavigation()
 
 interface SyncTaskDefinition {
   key: SyncTaskKey
@@ -91,6 +93,9 @@ const lastSuccessfulAt = ref<Record<string, string | null>>({
   STOCK_FEATURE_SNAPSHOT: null,
 })
 const loading = ref(true)
+const visibleTasks = computed(() => tasks.filter((task) => task.key === section.value))
+const runningCount = computed(() => Object.values(jobs.value).filter((job) => job?.status === 'RUNNING' || job?.status === 'QUEUED').length)
+const attentionCount = computed(() => Object.values(jobs.value).filter((job) => job?.status === 'FAILED' || job?.status === 'PARTIAL_SUCCESS').length)
 const errorMessage = ref('')
 const actionMessage = ref('')
 let pollingTimer: ReturnType<typeof globalThis.setTimeout> | undefined
@@ -244,7 +249,7 @@ onBeforeUnmount(() => {
       数据运维
     </p>
     <h1 id="sync-center-title">
-      数据同步中心
+      {{ sectionLabel }}
     </h1>
     <p class="lead">
       集中发起和跟踪基金市场同步任务；所有进度均来自服务端实际执行状态，不涉及买卖或交易。
@@ -264,8 +269,71 @@ onBeforeUnmount(() => {
       {{ errorMessage }}
     </p>
 
+    <template v-if="section === 'overview'">
+      <div class="watchlist-summary-grid workspace-summary-grid">
+        <article class="detail-overview-card">
+          <p class="detail-overview-label">
+            已配置任务
+          </p><strong class="detail-overview-value">{{ tasks.length }} 类</strong>
+        </article>
+        <article class="detail-overview-card">
+          <p class="detail-overview-label">
+            排队 / 运行中
+          </p><strong class="detail-overview-value">{{ loading || errorMessage ? '—' : runningCount }} 项</strong>
+        </article>
+        <article class="detail-overview-card">
+          <p class="detail-overview-label">
+            需要处理
+          </p><strong class="detail-overview-value">{{ loading || errorMessage ? '—' : attentionCount }} 项</strong>
+        </article>
+      </div>
+      <section
+        class="admin-table-card"
+        aria-labelledby="sync-overview-title"
+      >
+        <header class="admin-table-header">
+          <h2 id="sync-overview-title">
+            各类任务最近状态
+          </h2><RouterLink
+            class="secondary-link"
+            :to="sectionTarget('notes')"
+          >
+            运行说明
+          </RouterLink>
+        </header>
+        <div class="admin-table-wrap">
+          <table>
+            <thead><tr><th>任务</th><th>最近状态</th><th>上次成功</th><th>操作</th></tr></thead>
+            <tbody>
+              <tr
+                v-for="task in tasks"
+                :key="task.key"
+              >
+                <td><strong>{{ task.title }}</strong><span>{{ task.scheduleNote }}</span></td>
+                <td>
+                  <span
+                    class="sync-status"
+                    :class="jobs[task.key] ? `is-${jobs[task.key]!.status.toLowerCase()}` : 'is-idle'"
+                  >{{ loading ? '读取中…' : errorMessage ? '状态暂不可用' : jobs[task.key] ? statusLabel(jobs[task.key]!.status) : '尚未运行' }}</span>
+                </td>
+                <td>{{ loading || errorMessage ? '—' : formatTime(lastSuccessfulAt[task.jobType]) }}</td>
+                <td>
+                  <RouterLink
+                    class="secondary-link"
+                    :to="sectionTarget(task.key)"
+                  >
+                    查看详情 →
+                  </RouterLink>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </template>
+
     <section
-      v-for="task in tasks"
+      v-for="task in visibleTasks"
       :key="task.key"
       class="sync-task-card"
       :aria-labelledby="`${task.key}-sync-title`"
@@ -364,6 +432,7 @@ onBeforeUnmount(() => {
     </p>
 
     <section
+      v-if="section === 'notes'"
       class="sync-center-notes"
       aria-labelledby="sync-center-notes-title"
     >

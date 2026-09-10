@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { usePageNavigation } from '@/composables/usePageNavigation'
 
 import {
   grantAdminUserWatchlistCredits,
@@ -16,9 +18,16 @@ import type { AdminUser, WatchlistCreditLedgerPage } from '@/types/adminUser'
 import type { PortfolioSnapshot } from '@/types/portfolio'
 import { ACCOUNT_ROLE_OPTIONS, accountDisplayLabel, accountRoleLabel } from '@/utils/accountPresentation'
 
+const route = useRoute()
+const router = useRouter()
+const { section, sectionLabel, sectionTarget } = usePageNavigation()
 const users = ref<AdminUser[]>([])
+const selectedUser = computed(() => users.value.find((user) => user.userId === route.query.user) ?? null)
+const detailTab = computed(() => ['ledger', 'portfolio'].includes(String(route.query.tab)) ? String(route.query.tab) : 'account')
+let detailRequest = 0
+let usersRequest = 0
 const total = ref(0)
-const page = ref(0)
+const page = ref(Math.max(0, Number.isInteger(Number(route.query.page)) ? Number(route.query.page) - 1 : 0))
 const pageSize = 20
 const loading = ref(false)
 const actionUserId = ref<string | null>(null)
@@ -46,18 +55,21 @@ const hasNextPage = computed(() => (page.value + 1) * pageSize < total.value)
 
 /** 读取脱敏账户列表；服务端已完成权限和数据范围判断。 */
 async function loadUsers(): Promise<void> {
+  const sequence = ++usersRequest
   loading.value = true
   errorMessage.value = ''
   try {
     const response = await getAdminUsers(page.value, pageSize)
+    if (sequence !== usersRequest) return
     users.value = response.items
     total.value = response.total
   } catch (error) {
+    if (sequence !== usersRequest) return
     users.value = []
     total.value = 0
     errorMessage.value = error instanceof Error ? error.message : '用户列表暂时不可用。'
   } finally {
-    loading.value = false
+    if (sequence === usersRequest) loading.value = false
   }
 }
 
@@ -114,10 +126,8 @@ async function submitPasswordReset(): Promise<void> {
 
 /** 打开积分发放表单；积分仅代表额外有效关注名额，发放原因必填且不写入浏览器持久化状态。 */
 function openCreditGrant(user: AdminUser): void {
-  creditTarget.value = user
-  creditAmount.value = 1
-  creditReason.value = ''
   successMessage.value = ''
+  void router.push({ path: route.path, query: { ...route.query, section: 'credits', user: user.userId, tab: undefined } })
 }
 
 async function submitCreditGrant(): Promise<void> {
@@ -144,6 +154,7 @@ async function submitCreditGrant(): Promise<void> {
     creditAmount.value = 1
     creditReason.value = ''
     successMessage.value = '试用关注积分已发放，目标账户的有效关注额度已更新。'
+    await router.replace(sectionTarget('credits'))
   })
 }
 
@@ -166,17 +177,21 @@ async function submitLegacyTransfer(): Promise<void> {
 
 /** 管理员按需查看指定用户的已确认持仓，不把财务数据写入全局状态。 */
 async function viewPortfolio(user: AdminUser): Promise<void> {
+  const sequence = ++detailRequest
   actionUserId.value = user.userId
   errorMessage.value = ''
   try {
     portfolioUser.value = user
-    portfolio.value = await getAdminUserPortfolio(user.userId)
+    const response = await getAdminUserPortfolio(user.userId)
+    if (sequence !== detailRequest) return
+    portfolio.value = response
   } catch (error) {
+    if (sequence !== detailRequest) return
     portfolioUser.value = null
     portfolio.value = null
     errorMessage.value = error instanceof Error ? error.message : '持仓快照暂时不可用。'
   } finally {
-    actionUserId.value = null
+    if (sequence === detailRequest) actionUserId.value = null
   }
 }
 
@@ -193,7 +208,7 @@ async function viewCreditLedger(user: AdminUser): Promise<void> {
     creditLedger.value = null
     errorMessage.value = error instanceof Error ? error.message : '积分流水暂时不可用。'
   } finally {
-    actionUserId.value = null
+    if (creditLedgerUser.value?.userId === user.userId && detailTab.value === 'ledger') actionUserId.value = null
   }
 }
 
@@ -203,16 +218,20 @@ async function loadCreditLedger(): Promise<void> {
     return
   }
   creditLedgerLoading.value = true
+  const sequence = ++detailRequest
   try {
-    creditLedger.value = await getAdminUserWatchlistCreditLedger(
+    const response = await getAdminUserWatchlistCreditLedger(
       creditLedgerUser.value.userId,
       creditLedgerPage.value,
       creditLedgerPageSize,
     )
+    if (sequence !== detailRequest) return
+    creditLedger.value = response
   } catch (error) {
+    if (sequence !== detailRequest) return
     errorMessage.value = error instanceof Error ? error.message : '积分流水暂时不可用。'
   } finally {
-    creditLedgerLoading.value = false
+    if (sequence === detailRequest) creditLedgerLoading.value = false
   }
 }
 
@@ -251,14 +270,11 @@ function formatAmount(value: number | string): string {
 }
 
 function closePortfolio(): void {
-  portfolioUser.value = null
-  portfolio.value = null
+  void setUserTab('account')
 }
 
 function closeCreditLedger(): void {
-  creditLedgerUser.value = null
-  creditLedger.value = null
-  creditLedgerPage.value = 0
+  void setUserTab('account')
 }
 
 function previousCreditLedgerPage(): void {
@@ -296,17 +312,52 @@ function formatCreditDelta(creditDelta: number): string {
 
 function previousPage(): void {
   if (hasPreviousPage.value) {
-    page.value -= 1
-    void loadUsers()
+    void router.push({ path: route.path, query: { ...route.query, page: String(page.value), user: undefined, tab: undefined } })
   }
 }
 
 function nextPage(): void {
   if (hasNextPage.value) {
-    page.value += 1
-    void loadUsers()
+    void router.push({ path: route.path, query: { ...route.query, page: String(page.value + 2), user: undefined, tab: undefined } })
   }
 }
+
+function openUser(user: AdminUser, tab = 'account'): void {
+  void router.push({ path: route.path, query: { ...route.query, section: 'accounts', user: user.userId, tab } })
+}
+
+async function setUserTab(tab: string): Promise<void> {
+  await router.push({ path: route.path, query: { ...route.query, tab } })
+}
+
+watch(() => route.query.page, () => {
+  if (route.name !== 'admin-users') return
+  page.value = Math.max(0, Number.isInteger(Number(route.query.page)) ? Number(route.query.page) - 1 : 0)
+  void loadUsers()
+})
+
+/** 切换用户或子页立即清空敏感表单与旧明细，慢响应不能覆盖新选择。 */
+watch(() => `${selectedUser.value?.userId ?? ''}:${section.value}:${detailTab.value}`, () => {
+  ++detailRequest
+  if (portfolioUser.value || creditLedgerUser.value) actionUserId.value = null
+  portfolioUser.value = null
+  portfolio.value = null
+  creditLedgerUser.value = null
+  creditLedger.value = null
+  creditLedgerLoading.value = false
+  resetTarget.value = null
+  resetPasswordValue.value = ''
+  creditTarget.value = null
+  creditAmount.value = 1
+  creditReason.value = ''
+  const user = selectedUser.value
+  if (!user) return
+  if (section.value === 'credits') creditTarget.value = user
+  else if (detailTab.value === 'ledger') void viewCreditLedger(user)
+  else if (detailTab.value === 'portfolio') void viewPortfolio(user)
+}, { immediate: true })
+
+onBeforeUnmount(() => { ++detailRequest; ++usersRequest; resetPasswordValue.value = '' })
 
 onMounted(() => {
   void loadUsers()
@@ -322,10 +373,10 @@ onMounted(() => {
       ACCOUNT GOVERNANCE
     </p>
     <h1 id="admin-users-title">
-      用户管理
+      {{ selectedUser ? accountDisplayLabel(selectedUser) : sectionLabel }}
     </h1>
     <p class="lead">
-      手机号在页面中始终脱敏。重置密码、调整角色、启停账户、历史关注迁移和试用关注积分发放均由管理员二次确认并由服务端审计。
+      {{ selectedUser ? '查看所选账户资料及已授权操作。' : '选择账户后查看详情，或从左侧管理关注积分和历史关注归属。' }}
     </p>
 
     <p
@@ -343,7 +394,94 @@ onMounted(() => {
       {{ successMessage }}
     </p>
 
+    <div
+      v-if="selectedUser"
+      class="workspace-detail-navigation"
+    >
+      <RouterLink
+        class="secondary-link"
+        :to="sectionTarget(section)"
+      >
+        ← 返回{{ sectionLabel }}
+      </RouterLink>
+      <nav
+        v-if="section === 'accounts'"
+        class="workspace-tabs"
+        aria-label="用户详情分类"
+      >
+        <button
+          v-for="tab in [{ key: 'account', label: '账户信息' }, { key: 'ledger', label: '积分流水' }, { key: 'portfolio', label: '确认持仓' }]"
+          :key="tab.key"
+          type="button"
+          :aria-pressed="detailTab === tab.key"
+          @click="setUserTab(tab.key)"
+        >
+          {{ tab.label }}
+        </button>
+      </nav>
+    </div>
+
     <section
+      v-if="selectedUser && section === 'accounts' && detailTab === 'account'"
+      class="admin-summary-card"
+      aria-labelledby="selected-user-title"
+    >
+      <h2 id="selected-user-title">
+        账户资料
+      </h2>
+      <dl class="detail-grid">
+        <div><dt>账户</dt><dd>{{ accountDisplayLabel(selectedUser) }}</dd></div>
+        <div><dt>手机号</dt><dd>{{ selectedUser.mobileMasked }}</dd></div>
+        <div><dt>状态</dt><dd>{{ selectedUser.status === 'ACTIVE' ? '已启用' : '已停用' }}</dd></div>
+        <div>
+          <dt>当前角色</dt><dd>
+            <select
+              :value="selectedUser.role"
+              :disabled="selectedUser.legacyRecord || actionUserId !== null"
+              aria-label="所选用户角色"
+              @change="changeRoleFromEvent(selectedUser, $event)"
+            >
+              <option
+                v-for="option in roleOptions"
+                :key="option.value"
+                :value="option.value"
+              >
+                {{ option.label }}
+              </option>
+            </select>
+          </dd>
+        </div>
+      </dl>
+      <div class="admin-row-actions">
+        <button
+          class="secondary-button"
+          :disabled="selectedUser.legacyRecord || actionUserId !== null"
+          type="button"
+          @click="toggleStatus(selectedUser)"
+        >
+          {{ selectedUser.status === 'ACTIVE' ? '停用账户' : '启用账户' }}
+        </button>
+        <button
+          class="secondary-button"
+          :disabled="selectedUser.legacyRecord || actionUserId !== null"
+          type="button"
+          @click="openPasswordReset(selectedUser)"
+        >
+          重置密码
+        </button>
+        <button
+          class="secondary-button"
+          :disabled="selectedUser.legacyRecord || selectedUser.status !== 'ACTIVE' || actionUserId !== null"
+          type="button"
+          @click="openCreditGrant(selectedUser)"
+        >
+          发放关注积分
+        </button>
+      </div>
+    </section>
+
+    <section
+      v-if="section === 'migration'"
       class="admin-operation-card"
       aria-labelledby="legacy-transfer-title"
     >
@@ -352,6 +490,25 @@ onMounted(() => {
           迁移待归属的历史关注
         </h2>
         <p>仅迁移旧本机账户的关注列表；提醒规则和个人持仓不会被自动迁移。</p>
+      </div>
+      <div class="admin-pagination">
+        <button
+          class="text-button"
+          :disabled="loading || !hasPreviousPage"
+          type="button"
+          @click="previousPage"
+        >
+          上一页用户
+        </button>
+        <span>接收用户来自账户列表第 {{ page + 1 }} 页</span>
+        <button
+          class="text-button"
+          :disabled="loading || !hasNextPage"
+          type="button"
+          @click="nextPage"
+        >
+          下一页用户
+        </button>
       </div>
       <div class="admin-inline-form">
         <label for="legacy-target">接收用户</label>
@@ -382,7 +539,7 @@ onMounted(() => {
     </section>
 
     <section
-      v-if="resetTarget"
+      v-if="section === 'accounts' && detailTab === 'account' && resetTarget"
       class="admin-operation-card password-reset-card"
       aria-labelledby="password-reset-title"
     >
@@ -423,7 +580,7 @@ onMounted(() => {
     </section>
 
     <section
-      v-if="creditTarget"
+      v-if="section === 'credits' && creditTarget"
       class="admin-operation-card credit-grant-card"
       aria-labelledby="credit-grant-title"
     >
@@ -458,7 +615,7 @@ onMounted(() => {
         >
         <button
           class="primary-button"
-          :disabled="actionUserId === creditTarget.userId"
+          :disabled="actionUserId === creditTarget.userId || creditTarget.legacyRecord || creditTarget.status !== 'ACTIVE'"
           type="submit"
         >
           {{ actionUserId === creditTarget.userId ? '正在发放…' : '确认发放' }}
@@ -466,7 +623,7 @@ onMounted(() => {
         <button
           class="text-button"
           type="button"
-          @click="creditTarget = null"
+          @click="router.push(sectionTarget('credits'))"
         >
           取消
         </button>
@@ -474,6 +631,7 @@ onMounted(() => {
     </section>
 
     <section
+      v-if="section !== 'migration' && !selectedUser"
       class="admin-table-card"
       aria-labelledby="user-list-title"
     >
@@ -528,20 +686,7 @@ onMounted(() => {
                 <span>{{ user.mobileMasked }}{{ user.legacyRecord ? ' · 待归属历史账户' : '' }}</span>
               </td>
               <td>
-                <select
-                  :disabled="user.legacyRecord || actionUserId === user.userId"
-                  :value="user.role"
-                  :aria-label="`${accountDisplayLabel(user)}的角色`"
-                  @change="changeRoleFromEvent(user, $event)"
-                >
-                  <option
-                    v-for="option in roleOptions"
-                    :key="option.value"
-                    :value="option.value"
-                  >
-                    {{ option.label }}
-                  </option>
-                </select>
+                {{ accountRoleLabel(user.role) }}
               </td>
               <td><span :class="`account-status is-${user.status.toLowerCase()}`">{{ user.status === 'ACTIVE' ? '已启用' : '已停用' }}</span></td>
               <td>{{ user.watchlistCount }} / {{ 5 + user.trialCreditTotal }}</td>
@@ -551,21 +696,14 @@ onMounted(() => {
                 <div class="admin-row-actions">
                   <button
                     class="text-button"
-                    :disabled="user.legacyRecord || actionUserId === user.userId"
+                    :disabled="actionUserId === user.userId"
                     type="button"
-                    @click="toggleStatus(user)"
+                    @click="openUser(user)"
                   >
-                    {{ user.status === 'ACTIVE' ? '停用' : '启用' }}
+                    查看详情
                   </button>
                   <button
-                    class="text-button"
-                    :disabled="user.legacyRecord || actionUserId === user.userId"
-                    type="button"
-                    @click="openPasswordReset(user)"
-                  >
-                    重置密码
-                  </button>
-                  <button
+                    v-if="section === 'credits'"
                     class="text-button"
                     :disabled="user.legacyRecord || user.status !== 'ACTIVE' || actionUserId === user.userId"
                     type="button"
@@ -574,20 +712,13 @@ onMounted(() => {
                     发放积分
                   </button>
                   <button
+                    v-if="section === 'credits'"
                     class="text-button"
                     :disabled="actionUserId === user.userId"
                     type="button"
-                    @click="viewCreditLedger(user)"
+                    @click="openUser(user, 'ledger')"
                   >
                     查看积分流水
-                  </button>
-                  <button
-                    class="text-button"
-                    :disabled="actionUserId === user.userId"
-                    type="button"
-                    @click="viewPortfolio(user)"
-                  >
-                    查看持仓
                   </button>
                 </div>
               </td>
@@ -717,7 +848,14 @@ onMounted(() => {
         </button>
       </header>
       <p
-        v-if="!portfolio?.available"
+        v-if="actionUserId === portfolioUser.userId"
+        class="state-message"
+        role="status"
+      >
+        正在加载确认持仓…
+      </p>
+      <p
+        v-else-if="!portfolio?.available"
         class="state-message"
       >
         该用户尚无可展示的确认持仓快照。

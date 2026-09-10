@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 
 import { useWatchlist } from '@/composables/useWatchlist'
 import type { WatchlistItem } from '@/types/watchlist'
@@ -7,7 +8,6 @@ import {
   changeRateTone,
   formatChangeRate,
   fundTypeLabel,
-  fundTypeOptions,
 } from '@/utils/fundPresentation'
 
 /** 当前登录用户的关注列表页面；数据范围、类型排序与基金摘要均由服务端统一控制。 */
@@ -27,11 +27,11 @@ const {
   previousPage,
   quota,
   search,
-  selectedFundType,
   totalCount,
   totalPages,
   watchlist,
 } = useWatchlist()
+const route = useRoute()
 
 /** 后端先按类型、再按关注时间稳定排序；页面按同样顺序展示分组。 */
 const watchlistGroups = computed(() => {
@@ -56,9 +56,6 @@ function formatCreatedAt(value: string): string {
   }).format(parsed)
 }
 
-onMounted(() => {
-  void search()
-})
 </script>
 
 <template>
@@ -90,38 +87,6 @@ onMounted(() => {
       </p>
     </section>
 
-    <form
-      class="search-panel watchlist-filter-panel"
-      @submit.prevent="search"
-    >
-      <label for="watchlist-type-filter">基金类型</label>
-      <div class="search-row">
-        <select
-          id="watchlist-type-filter"
-          v-model="selectedFundType"
-          :disabled="loading"
-          @change="search"
-        >
-          <option value="">
-            全部类型
-          </option>
-          <option
-            v-for="option in fundTypeOptions"
-            :key="option.value"
-            :value="option.value"
-          >
-            {{ option.label }}
-          </option>
-        </select>
-        <button
-          class="primary-button"
-          :disabled="loading"
-          type="submit"
-        >
-          {{ loading ? '查询中…' : '筛选关注' }}
-        </button>
-      </div>
-    </form>
 
     <p
       v-if="marketDataUnavailable && !errorMessage"
@@ -184,7 +149,7 @@ onMounted(() => {
           >
             <RouterLink
               class="watchlist-card"
-              :to="{ name: 'watchlist-fund-detail', params: { fundCode: item.fundCode } }"
+              :to="{ name: 'watchlist-fund-detail', params: { fundCode: item.fundCode }, query: { from: route.fullPath } }"
             >
               <span class="fund-code">{{ item.fundCode }}</span>
               <span class="fund-primary">

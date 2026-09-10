@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 
 import { useFundMarket } from '@/composables/useFundMarket'
 import {
@@ -7,7 +8,6 @@ import {
   formatChangeRate,
   fundStatusLabel,
   fundTypeLabel,
-  fundTypeOptions,
   shouldDisplayFundStatus,
 } from '@/utils/fundPresentation'
 
@@ -33,11 +33,11 @@ const {
   pageSizeOptions,
   previousPage,
   search,
-  selectedFundType,
   stale,
   totalCount,
   totalPages,
 } = useFundMarket()
+const route = useRoute()
 
 /** 后端已按基金类型稳定排序；此处只把相邻类型组织为可读的分组。 */
 const fundGroups = computed(() => {
@@ -50,10 +50,6 @@ const fundGroups = computed(() => {
   return [...groups.entries()].map(([fundType, items]) => ({ fundType, items }))
 })
 
-/** 页面挂载后加载默认首页。 */
-onMounted(() => {
-  void search()
-})
 </script>
 
 <template>
@@ -99,24 +95,6 @@ onMounted(() => {
           {{ loading ? '查询中…' : '查询基金' }}
         </button>
       </div>
-      <label for="fund-type-filter">基金类型</label>
-      <select
-        id="fund-type-filter"
-        v-model="selectedFundType"
-        :disabled="loading"
-        @change="search"
-      >
-        <option value="">
-          全部类型
-        </option>
-        <option
-          v-for="option in fundTypeOptions"
-          :key="option.value"
-          :value="option.value"
-        >
-          {{ option.label }}
-        </option>
-      </select>
     </form>
 
     <p
@@ -152,7 +130,7 @@ onMounted(() => {
           >
             <RouterLink
               class="fund-card"
-              :to="`/funds/${fund.fundCode}`"
+              :to="{ name: 'fund-detail', params: { fundCode: fund.fundCode }, query: { from: route.fullPath } }"
             >
               <span class="fund-code">{{ fund.fundCode }}</span>
               <span class="fund-primary">

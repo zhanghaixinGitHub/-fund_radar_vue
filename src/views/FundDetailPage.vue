@@ -6,6 +6,7 @@ import { getAlertRules, upsertAlertRule } from '@/api/alerts'
 import { ApiRequestError } from '@/api/http'
 import FundNavHistoryChart from '@/components/FundNavHistoryChart.vue'
 import FundSameTypeComparison from '@/components/FundSameTypeComparison.vue'
+import { usePageNavigation } from '@/composables/usePageNavigation'
 import {
   getFundDetail,
   getFundAnalysisSummary,
@@ -44,6 +45,7 @@ import {
  * 展示基金基本信息、关联事件和评分结果，并提供关注与资讯型提醒规则维护；所有数据均通过 Java 对外接口读取或写入。
  */
 const route = useRoute()
+const { section, sectionLabel, returnTarget } = usePageNavigation()
 const fund = ref<FundDetail | null>(null)
 const loading = ref(false)
 const changingWatchlist = ref(false)
@@ -476,7 +478,7 @@ watch(selectedNavRange, () => {
   >
     <RouterLink
       class="back-link"
-      to="/funds"
+      :to="returnTarget ?? '/funds'"
     >
       ← 返回基金市场
     </RouterLink>
@@ -495,7 +497,7 @@ watch(selectedNavRange, () => {
     </p>
     <template v-else-if="fund">
       <p class="eyebrow">
-        基金详情
+        基金详情 · {{ sectionLabel }}
       </p>
       <h1 id="fund-detail-title">
         {{ fund.fundName }}
@@ -517,6 +519,7 @@ watch(selectedNavRange, () => {
         分析服务暂不可用，当前展示缓存读模型（缓存时间：{{ fund.cachedAt || '未知' }}）。
       </p>
       <section
+        v-if="section === 'overview'"
         class="detail-overview"
         aria-label="净值与数据状态摘要"
       >
@@ -596,6 +599,7 @@ watch(selectedNavRange, () => {
         </article>
       </section>
       <section
+        v-if="section === 'basic'"
         class="analysis-section"
         aria-labelledby="fund-profile-title"
       >
@@ -631,6 +635,7 @@ watch(selectedNavRange, () => {
         </dl>
       </section>
       <section
+        v-if="section === 'nav' || section === 'overview'"
         class="analysis-section"
         aria-labelledby="nav-history-title"
       >
@@ -706,6 +711,7 @@ watch(selectedNavRange, () => {
         </p>
       </section>
       <section
+        v-if="section === 'comparison'"
         class="analysis-section"
         aria-labelledby="same-type-comparison-title"
       >
@@ -753,6 +759,7 @@ watch(selectedNavRange, () => {
         本页面仅提供信息与关注管理，不构成投资建议，也不提供交易功能。
       </p>
       <section
+        v-if="section === 'events'"
         class="analysis-section"
         aria-labelledby="event-title"
       >
@@ -807,6 +814,7 @@ watch(selectedNavRange, () => {
         </p>
       </section>
       <section
+        v-if="section === 'research'"
         class="analysis-section"
         aria-labelledby="feature-title"
       >
@@ -888,6 +896,7 @@ watch(selectedNavRange, () => {
         </p>
       </section>
       <section
+        v-if="section === 'research'"
         class="analysis-section"
         aria-labelledby="signal-title"
       >
@@ -933,6 +942,7 @@ watch(selectedNavRange, () => {
         </p>
       </section>
       <section
+        v-if="section === 'research'"
         class="analysis-section"
         aria-labelledby="backtest-summary-title"
       >
@@ -1019,6 +1029,7 @@ watch(selectedNavRange, () => {
         </p>
       </section>
       <section
+        v-if="section === 'rules'"
         class="analysis-section"
         aria-labelledby="alert-rule-title"
       >

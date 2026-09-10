@@ -2,10 +2,12 @@
 import { computed, onMounted } from 'vue'
 
 import { usePortfolioSnapshot } from '@/composables/usePortfolioSnapshot'
+import { usePageNavigation } from '@/composables/usePageNavigation'
 import type { PortfolioHoldingSnapshot } from '@/types/portfolio'
 
 /** 当前登录用户持仓快照页面；只展示 Java 已保存且用户确认的字段。 */
 const { errorMessage, load, loading, snapshot } = usePortfolioSnapshot()
+const { section, sectionLabel, sectionTarget } = usePageNavigation()
 
 const holdings = computed(() => snapshot.value?.holdings ?? [])
 const visibleAmount = computed(() => sumBy(holdings.value, 'reportedAmount'))
@@ -103,18 +105,17 @@ function formatImportedAt(value: string | null): string {
     <div class="portfolio-hero">
       <div>
         <p class="eyebrow portfolio-eyebrow">
-          LOCAL PORTFOLIO SNAPSHOT
+          我的持仓 · 个人确认快照
         </p>
         <h1 id="portfolio-title">
-          持仓快照，
-          <span>不把未知说成实时。</span>
+          {{ sectionLabel }}
         </h1>
         <p class="portfolio-lead">
-          展示当前登录用户确认入库的基金截图字段。基金目录已核验；截图未显示日期、份额与成本，
-          所以页面不会推算实时总资产、持仓成本或投资建议。
+          查看已确认的持仓快照。数据日期、完整性和缺失字段在“数据说明”中展示。
         </p>
       </div>
       <aside
+        v-if="section === 'source'"
         class="portfolio-source-card"
         aria-label="数据边界"
       >
@@ -168,6 +169,7 @@ function formatImportedAt(value: string | null): string {
       </div>
 
       <div
+        v-if="section === 'overview'"
         class="portfolio-metrics"
         aria-label="截图可见部分汇总"
       >
@@ -200,6 +202,7 @@ function formatImportedAt(value: string | null): string {
       </div>
 
       <section
+        v-if="section === 'holdings'"
         class="portfolio-table-card"
         aria-labelledby="holdings-heading"
       >
@@ -281,6 +284,7 @@ function formatImportedAt(value: string | null): string {
       </section>
 
       <section
+        v-if="section === 'source'"
         class="portfolio-readout"
         aria-labelledby="readout-heading"
       >
@@ -289,7 +293,7 @@ function formatImportedAt(value: string | null): string {
             HOW TO READ
           </p>
           <h2 id="readout-heading">
-            这版页面已经区分了三类数据
+            持仓数据说明
           </h2>
         </div>
         <div class="portfolio-readout-grid">
@@ -301,15 +305,32 @@ function formatImportedAt(value: string | null): string {
           <article>
             <span>02</span>
             <h3>确认持仓快照</h3>
-            <p>金额、收益和占比已作为本机私有快照入库；没有份额和日期就不做成本、收益率推算。</p>
+            <p>金额、收益和占比来自当前用户已确认的快照；缺少份额和日期时，不推算成本与收益率。</p>
           </article>
           <article>
             <span>03</span>
-            <h3>待授权市场数据</h3>
-            <p>日净值、资讯、评分和回测仍为空，等合规数据源与历史净值到位后再生成。</p>
+            <h3>快照与市场数据</h3>
+            <p>市场净值、资讯与模型状态在对应基金页面查看，不将快照金额自动换算为实时资产。</p>
           </article>
         </div>
       </section>
+      <div
+        v-if="section === 'overview'"
+        class="workspace-quick-links"
+      >
+        <RouterLink
+          class="primary-link"
+          :to="sectionTarget('holdings')"
+        >
+          查看持仓明细 →
+        </RouterLink>
+        <RouterLink
+          class="secondary-link"
+          :to="sectionTarget('source')"
+        >
+          查看数据说明
+        </RouterLink>
+      </div>
     </template>
   </section>
 </template>

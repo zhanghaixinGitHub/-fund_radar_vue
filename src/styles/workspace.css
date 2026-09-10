@@ -1,0 +1,300 @@
+/* 已登录工作区：前后台共用导航与内容密度，登录和注册保留独立布局。 */
+body:has(.app-shell) { min-width: 0; }
+.app-shell {
+  --workspace-border: #dfe8e3;
+  --workspace-muted: #647b72;
+  --workspace-surface: #fff;
+  --workspace-accent: #0f766e;
+  min-height: 100dvh;
+  color: #203a34;
+  background: #f4f7f6;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.app-shell .top-bar {
+  position: sticky;
+  z-index: 30;
+  top: 0;
+  width: 100%;
+  max-width: none;
+  min-height: 68px;
+  gap: 24px;
+  padding: 0 28px;
+  background: #fff;
+  border-bottom: 1px solid var(--workspace-border);
+}
+
+.app-shell .brand { flex-shrink: 0; font-size: 18px; }
+.app-shell .top-nav { flex: 1; justify-content: center; gap: 28px; }
+.app-shell .top-nav a {
+  align-self: stretch;
+  min-height: 68px;
+  color: var(--workspace-muted);
+  border-bottom: 3px solid transparent;
+  font-size: 14px;
+  font-weight: 600;
+}
+.app-shell .top-nav a.router-link-active,
+.app-shell .top-nav a.is-active-module { color: #0f766e; border-bottom-color: #0f766e; }
+.app-shell .account-trigger { min-width: 150px; border-color: transparent; background: #fff; }
+.app-shell .account-dropdown { z-index: 40; }
+
+.workspace-layout { display: grid; grid-template-columns: 216px minmax(0, 1fr); align-items: start; }
+.workspace-layout.without-sidebar { grid-template-columns: minmax(0, 1fr); }
+.workspace-sidebar {
+  position: sticky;
+  top: 68px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: calc(100dvh - 68px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 24px 12px 16px;
+  background: #fff;
+  border-right: 1px solid var(--workspace-border);
+}
+.sidebar-heading { padding: 0 12px; font-size: 15px; }
+.sidebar-back { padding: 8px 12px; color: var(--workspace-muted); font-size: 12px; text-decoration: none; }
+.sidebar-back:hover { color: #0f766e; }
+.sidebar-context { margin: -6px 12px 0; padding-bottom: 14px; border-bottom: 1px solid var(--workspace-border); color: var(--workspace-muted); font-size: 12px; }
+.sidebar-nav { display: flex; flex-direction: column; gap: 4px; }
+.sidebar-nav a {
+  display: flex;
+  align-items: center;
+  min-height: 42px;
+  padding: 9px 14px;
+  color: #536e63;
+  font-size: 14px;
+  font-weight: 400;
+  border-radius: 6px;
+}
+.sidebar-nav a:hover { background: #f2f6f4; }
+.sidebar-nav a.is-selected { color: #0f766e; background: #e8f4ee; box-shadow: inset 3px 0 #0f766e; font-weight: 600; }
+.sidebar-group { padding: 14px 14px 5px; color: var(--workspace-muted); font-size: 11px; }
+.sidebar-footer { margin-top: auto; padding: 16px 12px 0; border-top: 1px solid var(--workspace-border); color: var(--workspace-muted); font-size: 11px; }
+.sidebar-toggle { display: none; }
+.app-shell .page-content { width: 100%; max-width: 1680px; min-width: 0; padding: 22px 32px 48px; margin: 0 auto; }
+.workspace-location { display: flex; align-items: center; gap: 12px; min-height: 24px; margin-bottom: 18px; }
+.workspace-breadcrumb { display: flex; flex-wrap: wrap; gap: 4px; color: var(--workspace-muted); font-size: 12px; }
+.workspace-breadcrumb a { color: inherit; font-weight: 400; }
+.workspace-breadcrumb a:hover { color: #0f766e; text-decoration: underline; }
+.workspace-detail-navigation { display: grid; gap: 16px; margin: 0 0 20px; }
+.workspace-tabs { display: flex; flex-wrap: wrap; gap: 20px; border-bottom: 1px solid var(--workspace-border); }
+.workspace-tabs button { min-height: 42px; padding: 8px 0; color: var(--workspace-muted); background: none; border: 0; border-bottom: 2px solid transparent; cursor: pointer; }
+.workspace-tabs button[aria-pressed="true"] { color: #0f766e; border-bottom-color: #0f766e; }
+.workspace-quick-links { display: flex; flex-wrap: wrap; align-items: center; gap: 20px; margin-top: 20px; }
+.workspace-summary-grid { margin-bottom: 20px; }
+
+.app-shell .market-page,
+.app-shell .admin-page,
+.app-shell .profile-page,
+.app-shell .notifications-page,
+.app-shell .sync-center-page { max-width: none; min-width: 0; }
+.app-shell h1 { max-width: none; margin: 0 0 10px; font-size: 28px; font-weight: 700; line-height: 1.4; letter-spacing: -.025em; overflow-wrap: anywhere; }
+.app-shell h2 { margin-bottom: 10px; font-size: 18px; line-height: 1.5; }
+.app-shell .eyebrow { margin-bottom: 7px; font-size: 11px; letter-spacing: .04em; }
+.app-shell .lead { max-width: none; margin-bottom: 24px; color: #647b72; font-size: 14px; line-height: 1.8; }
+.app-shell .back-link { display: none; }
+.app-shell .analysis-section { margin: 20px 0 0; padding: 22px; background: #fff; border: 1px solid var(--workspace-border); border-radius: 10px; }
+.app-shell .section-heading { gap: 12px; align-items: center; margin-bottom: 14px; }
+.app-shell .section-heading h2 { margin-bottom: 0; font-size: 17px; }
+.app-shell .section-note { padding-bottom: 0; color: var(--workspace-muted); font-size: 12px; }
+.app-shell .watchlist-summary { margin: 0 0 20px; }
+.app-shell .watchlist-summary-grid { gap: 14px; }
+.app-shell .detail-overview-card { min-width: 0; padding: 18px; background: #fff; border-color: var(--workspace-border); border-radius: 10px; }
+.app-shell .detail-overview-value { font-size: 24px; line-height: 1.4; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.app-shell .detail-overview-meta { margin-top: 8px; font-size: 12px; }
+.app-shell .detail-grid { gap: 0 24px; margin-bottom: 0; }
+.app-shell .detail-grid > div { min-width: 0; padding: 14px 0; background: transparent; border: 0; border-bottom: 1px solid var(--workspace-border); border-radius: 0; }
+.app-shell .detail-grid dd { overflow-wrap: anywhere; font-size: 14px; }
+.app-shell .full-detail-list { gap: 0; }
+.app-shell .full-detail-list li { background: transparent; padding: 14px 0; border: 0; border-bottom: 1px solid var(--workspace-border); border-radius: 0; }
+.app-shell .fund-timeline li { background: #f7faf8; border-color: var(--workspace-border); border-radius: 6px; }
+.app-shell .risk-disclaimer { margin: 20px 0 0; font-size: 12px; color: var(--workspace-muted); }
+.app-shell .notice-banner { margin-bottom: 18px; padding: 11px 14px; font-size: 12px; line-height: 1.7; border-radius: 6px; }
+.app-shell .search-panel { padding: 18px; margin-bottom: 22px; background: #fff; border-color: var(--workspace-border); border-radius: 10px; }
+.app-shell .search-row { max-width: 660px; }
+.app-shell .search-panel > select { max-width: 280px; }
+.app-shell .watchlist-quota-card { padding: 14px 18px; margin-bottom: 18px; border-color: var(--workspace-border); background: #eaf5ef; }
+.app-shell .fund-list,
+.app-shell .watchlist-items { gap: 0; overflow: hidden; background: #fff; border: 1px solid var(--workspace-border); border-radius: 10px; }
+.app-shell .fund-card,
+.app-shell .watchlist-card { gap: 16px; padding: 17px 20px; background: #fff; border: 0; border-bottom: 1px solid var(--workspace-border); border-radius: 0; }
+.app-shell .fund-list li:last-child .fund-card,
+.app-shell .watchlist-items li:last-child .watchlist-card { border-bottom: 0; }
+.app-shell .fund-card:hover,
+.app-shell .watchlist-card:hover { background: #f2f8f5; transform: none; }
+.app-shell .fund-primary strong { font-size: 14px; }
+.app-shell .fund-type-group { margin-top: 22px; }
+.app-shell .fund-type-group h2 { font-size: 15px; }
+.app-shell .fund-type-group h2::after { background: var(--workspace-border); }
+.app-shell .watchlist-card time,
+.app-shell .as-of-date,
+.app-shell .fund-card > .as-of-date { font-size: 12px; }
+.app-shell .pagination { gap: 14px; padding: 14px 0; background: transparent; border: 0; }
+.app-shell .primary-button,
+.app-shell .secondary-button,
+.app-shell .primary-link { min-height: 38px; padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 500; }
+.app-shell .primary-button:hover { transform: none; }
+.app-shell .secondary-button { background: #fff; border-color: #c9d8d0; }
+.app-shell .nav-range-controls { margin-bottom: 16px; }
+.app-shell .nav-range-controls button { padding: 6px 12px; min-height: 34px; font-size: 12px; border-radius: 5px; }
+.app-shell .sync-task-card,
+.app-shell .sync-center-notes,
+.app-shell .admin-summary-card,
+.app-shell .admin-operation-card,
+.app-shell .admin-table-card,
+.app-shell .admin-portfolio-card,
+.app-shell .admin-credit-ledger-card,
+.app-shell .notification-card,
+.app-shell .analysis-run-card,
+.app-shell .profile-summary-card,
+.app-shell .profile-form { margin-top: 0; margin-bottom: 20px; padding: 22px; background: #fff; border-color: var(--workspace-border); border-radius: 10px; box-shadow: none; }
+.app-shell .sync-task-heading h2 { font-size: 18px; }
+.app-shell .sync-status { padding: 4px 8px; font-size: 12px; white-space: nowrap; }
+.app-shell .sync-progress-section { margin: 18px 0; padding: 16px; background: #f4f8f5; }
+.app-shell .sync-summary-grid { gap: 12px; }
+.app-shell .sync-summary-grid div { padding: 12px; background: #f5f8f6; border: 0; }
+.app-shell .admin-summary-card { display: block; }
+.app-shell .admin-summary-card .admin-row-actions { margin-top: 20px; }
+.app-shell .admin-inline-form { max-width: 640px; }
+.app-shell .admin-table-wrap { margin-top: 16px; border-radius: 6px; }
+.app-shell .admin-table-wrap table { min-width: 640px; }
+.app-shell .admin-table-wrap th { background: #f2f6f3; }
+.app-shell .admin-table-wrap th,
+.app-shell .admin-table-wrap td { padding: 13px 16px; border-color: var(--workspace-border); font-size: 13px; }
+.app-shell .admin-table-wrap td > span { font-size: 12px; }
+.app-shell .admin-action-card { background: #fff; border-color: var(--workspace-border); border-radius: 10px; }
+.app-shell .profile-layout { display: block; max-width: 780px; }
+.app-shell .profile-summary-card dl { margin-bottom: 24px; }
+.app-shell .notification-card-heading { padding-bottom: 12px; }
+.app-shell .notification-list li { border-radius: 6px; }
+.app-shell :is(a, button, input, select, summary):focus-visible { outline: 2px solid #0f766e; outline-offset: 3px; }
+
+/* 持仓延续红涨绿跌语义，与全站使用相同浅色工作区。 */
+.app-shell .portfolio-page {
+  --portfolio-ink: #203a34;
+  --portfolio-muted: #647b72;
+  --portfolio-soft: #536e63;
+  --portfolio-border: #dfe8e3;
+  --portfolio-positive: #bc4444;
+  --portfolio-negative: #08775d;
+  --portfolio-neutral: #647b72;
+  padding: 0;
+  color: var(--portfolio-ink);
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+.app-shell .portfolio-hero { display: block; padding: 0; margin-bottom: 22px; }
+.app-shell .portfolio-hero h1 { max-width: none; font-size: 28px; }
+.app-shell .portfolio-lead { max-width: none; margin-bottom: 0; font-size: 14px; color: #647b72; }
+.app-shell .portfolio-source-card { margin-top: 20px; padding: 18px; background: #fff; border-color: var(--workspace-border); border-radius: 10px; }
+.app-shell .portfolio-source-card strong,
+.app-shell .portfolio-metrics strong,
+.app-shell .portfolio-section-heading h2,
+.app-shell .portfolio-readout h2,
+.app-shell .portfolio-readout-grid h3,
+.app-shell .portfolio-amount strong,
+.app-shell .portfolio-value { color: var(--portfolio-ink); }
+.app-shell .portfolio-metrics p { color: var(--portfolio-muted); }
+.app-shell .portfolio-readout-grid span { color: #0f766e; }
+.app-shell .portfolio-error { color: #a23c3c; background: #fff2ef; }
+.app-shell .portfolio-eyebrow,
+.app-shell .section-kicker,
+.app-shell .source-card-kicker { color: #0f766e; letter-spacing: .04em; }
+.app-shell .portfolio-notice { background: #fff5df; border-color: #ead6a1; color: #70581f; }
+.app-shell .notice-dot { background: #9c7c2d; box-shadow: none; }
+.app-shell .portfolio-metrics { gap: 14px; }
+.app-shell .portfolio-metrics article,
+.app-shell .portfolio-table-card,
+.app-shell .portfolio-readout,
+.app-shell .portfolio-state { background: #fff; border: 1px solid var(--workspace-border); border-radius: 10px; }
+.app-shell .portfolio-metrics article { padding: 18px; }
+.app-shell .portfolio-metrics strong { font-size: 24px; }
+.app-shell .portfolio-section-heading { padding: 20px; }
+.app-shell .portfolio-section-heading h2,
+.app-shell .portfolio-readout h2 { font-size: 18px; }
+.app-shell .portfolio-table-header { min-height: 40px; padding: 0 20px; color: #647b72; background: #f2f6f3; }
+.app-shell .portfolio-table { overflow-x: auto; }
+.app-shell .portfolio-table-header,
+.app-shell .portfolio-row { min-width: 850px; }
+.app-shell .portfolio-row { padding: 17px 20px; }
+.app-shell .portfolio-row:hover { background: #f3f8f5; }
+.app-shell .portfolio-fund strong { color: #203a34; font-size: 14px; }
+.app-shell .portfolio-amount i { background: #99c7b8; }
+.app-shell .portfolio-readout { padding: 22px; margin-top: 0; }
+.app-shell .portfolio-readout-grid article { background: #f4f8f5; border-color: var(--workspace-border); }
+.app-shell .portfolio-retry-button { color: #fff; background: #0f766e; }
+
+@media (max-width: 1100px) {
+  .workspace-layout { grid-template-columns: 196px minmax(0, 1fr); }
+  .app-shell .page-content { padding: 20px 24px 40px; }
+  .app-shell .top-bar { gap: 16px; padding: 0 22px; flex-wrap: nowrap; }
+  .app-shell .top-nav { gap: 20px; flex-basis: auto; }
+  .app-shell .watchlist-summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .app-shell .detail-overview-value { font-size: 21px; }
+  .app-shell .portfolio-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .app-shell .portfolio-readout-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 760px) {
+  .app-shell .top-bar { position: sticky; flex-wrap: wrap; gap: 0 10px; padding: 6px 16px 0; }
+  .app-shell .brand { font-size: 16px; }
+  .app-shell .account-menu { margin-left: auto; }
+  .app-shell .account-trigger { min-width: 0; min-height: 42px; padding: 4px 6px; }
+  .app-shell .account-identity small { display: none; }
+  .app-shell .top-nav { order: 3; flex: 1 0 100%; justify-content: space-between; gap: 8px; }
+  .app-shell .top-nav a { min-height: 48px; font-size: 13px; }
+  .workspace-layout { display: block; }
+  .workspace-sidebar { display: none; position: fixed; top: 105px; z-index: 25; left: 12px; right: 12px; max-height: calc(100dvh - 125px); height: auto; border: 1px solid var(--workspace-border); border-radius: 10px; box-shadow: 0 18px 45px #17332e25; }
+  .workspace-sidebar.is-open { display: flex; }
+  .sidebar-footer { display: none; }
+  .sidebar-toggle { display: inline-flex; flex-shrink: 0; min-height: 38px; align-items: center; padding: 6px 10px; color: #0f766e; background: #fff; border: 1px solid var(--workspace-border); border-radius: 6px; cursor: pointer; }
+  .app-shell .page-content { padding: 16px 16px 36px; }
+  .workspace-location { margin-bottom: 14px; }
+  .app-shell h1,
+  .app-shell .portfolio-hero h1 { font-size: 24px; }
+  .app-shell .lead { margin-bottom: 20px; }
+  .app-shell .watchlist-summary-grid,
+  .app-shell .detail-overview { grid-template-columns: 1fr; }
+  .app-shell .analysis-section,
+  .app-shell .sync-task-card,
+  .app-shell .sync-center-notes,
+  .app-shell .admin-summary-card,
+  .app-shell .admin-operation-card,
+  .app-shell .admin-table-card,
+  .app-shell .admin-portfolio-card,
+  .app-shell .admin-credit-ledger-card,
+  .app-shell .notification-card { padding: 16px; }
+  .app-shell .detail-grid { grid-template-columns: 1fr; }
+  .app-shell .section-heading { flex-wrap: wrap; }
+  .app-shell .watchlist-quota-card { grid-template-columns: 1fr auto; }
+  .app-shell .watchlist-quota-card p { grid-column: 1 / -1; text-align: left; }
+  .app-shell .fund-card,
+  .app-shell .watchlist-card { grid-template-columns: 1fr; gap: 8px; padding: 16px; }
+  .app-shell .fund-primary,
+  .app-shell .watchlist-card .fund-primary,
+  .app-shell .fund-card > .as-of-date { grid-column: auto; }
+  .app-shell .portfolio-metrics { grid-template-columns: 1fr; }
+  .app-shell .portfolio-metrics article { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 5px 10px; min-height: 0; padding: 14px; }
+  .app-shell .portfolio-metrics span { margin: 0; font-size: 12px; }
+  .app-shell .portfolio-metrics strong { font-size: 21px; }
+  .app-shell .portfolio-metrics p { grid-column: 1 / -1; margin: 0; }
+  .app-shell .portfolio-row { grid-template-columns: 1fr 1fr; }
+  .app-shell .portfolio-row { min-width: 0; }
+  .app-shell .portfolio-table { overflow-x: visible; }
+  .app-shell .portfolio-fund { grid-column: 1 / -1; }
+  .app-shell .portfolio-table-header { display: none; }
+  .app-shell .portfolio-row .portfolio-value::before { display: block; margin-bottom: 5px; color: var(--portfolio-muted); font-family: inherit; font-size: 12px; font-weight: 400; }
+  .app-shell .portfolio-row .portfolio-value:nth-child(3)::before { content: '日收益'; }
+  .app-shell .portfolio-row .portfolio-value:nth-child(4)::before { content: '持有收益'; }
+  .app-shell .portfolio-row .portfolio-value:nth-child(5)::before { content: '累计收益'; }
+  .app-shell :is(input, select) { max-width: 100%; font-size: 16px; }
+}
+
+@media (pointer: coarse) {
+  .app-shell :is(button, .sidebar-nav a, .sidebar-back) { min-height: 44px; }
+}

@@ -17,6 +17,11 @@ declare module 'vue-router' {
 /** 所有基金与个人数据路由均由守卫要求已登录会话；后台路由额外需要服务端返回的权限。 */
 export const router = createRouter({
   history: createWebHistory(),
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) return savedPosition
+    if (to.fullPath === from.fullPath) return false
+    return { top: 0 }
+  },
   routes: [
     { path: '/', redirect: { name: 'fund-market' } },
     {

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { usePageNavigation } from '@/composables/usePageNavigation'
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
@@ -188,6 +189,7 @@ async function saveRule(rule: AlertRule, enabled: boolean): Promise<void> {
 onMounted(() => {
   void load()
 })
+const { section, sectionLabel } = usePageNavigation()
 </script>
 
 <template>
@@ -199,26 +201,26 @@ onMounted(() => {
       IN-APP NOTICES
     </p>
     <h1 id="notifications-title">
-      站内提醒
+      {{ sectionLabel }}
     </h1>
     <p class="lead">
       这里只展示已发布评分或已授权事件触发的信息提示；不包含交易指令、收益承诺或外部账户入口。
     </p>
 
     <p
-      v-if="loading && !notificationPage"
+      v-if="section === 'messages' && loading && !notificationPage"
       class="state-message"
     >
       正在加载你的站内提醒…
     </p>
     <p
-      v-else-if="notificationError"
+      v-else-if="section === 'messages' && notificationError"
       class="state-message error-message"
       role="alert"
     >
       {{ notificationError }}
     </p>
-    <template v-else-if="notificationPage">
+    <template v-else-if="section === 'messages' && notificationPage">
       <section
         class="notification-card"
         aria-labelledby="notification-list-title"
@@ -302,6 +304,7 @@ onMounted(() => {
     </template>
 
     <section
+      v-if="section === 'rules'"
       class="notification-card"
       aria-labelledby="notification-rule-title"
     >

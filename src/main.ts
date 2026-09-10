@@ -4,6 +4,7 @@ import { createPinia } from 'pinia'
 import App from './App.vue'
 import { router } from './router'
 import './styles.css'
+import './styles/workspace.css'
 
 /**
  * 前端应用启动入口。

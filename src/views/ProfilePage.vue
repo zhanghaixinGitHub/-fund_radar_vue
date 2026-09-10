@@ -2,9 +2,11 @@
 import { computed, ref, watch } from 'vue'
 
 import { useAuthStore } from '@/stores/auth'
+import { usePageNavigation } from '@/composables/usePageNavigation'
 import { accountDisplayLabel, accountRoleLabel } from '@/utils/accountPresentation'
 
 const authStore = useAuthStore()
+const { section, sectionLabel, sectionTarget } = usePageNavigation()
 const displayName = ref(authStore.user?.displayName ?? '')
 const submitting = ref(false)
 const localError = ref('')
@@ -56,7 +58,7 @@ async function submit(): Promise<void> {
       ACCOUNT PROFILE
     </p>
     <h1 id="profile-title">
-      个人信息
+      {{ sectionLabel }}
     </h1>
     <p class="lead profile-lead">
       姓名用于账户展示。手机号是当前登录标识，角色由管理员管理，因此这两项不能在此修改。
@@ -64,6 +66,7 @@ async function submit(): Promise<void> {
 
     <div class="profile-layout">
       <aside
+        v-if="section === 'overview'"
         class="profile-summary-card"
         aria-label="当前账户摘要"
       >
@@ -81,9 +84,16 @@ async function submit(): Promise<void> {
             <dd>{{ authStore.user?.mobileMasked ?? '—' }}</dd>
           </div>
         </dl>
+        <RouterLink
+          class="secondary-link"
+          :to="sectionTarget('name')"
+        >
+          修改姓名 →
+        </RouterLink>
       </aside>
 
       <form
+        v-if="section === 'name'"
         class="profile-form"
         @submit.prevent="submit"
       >
