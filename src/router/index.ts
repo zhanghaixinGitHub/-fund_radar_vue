@@ -63,8 +63,14 @@ export const router = createRouter({
     {
       path: '/portfolio',
       name: 'portfolio-snapshot',
-      component: () => import('@/views/PortfolioSnapshotPage.vue'),
+      component: () => import('@/views/SimulatedPortfolioPage.vue'),
       meta: { title: '我的持仓', appArea: 'user', permissions: ['PORTFOLIO_SELF_READ'] },
+    },
+    {
+      path: '/portfolio/confirmed-snapshot',
+      name: 'portfolio-confirmed-snapshot',
+      component: () => import('@/views/PortfolioSnapshotPage.vue'),
+      meta: { title: '历史确认快照', appArea: 'user', permissions: ['PORTFOLIO_SELF_READ'] },
     },
     {
       path: '/notifications',

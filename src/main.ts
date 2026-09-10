@@ -5,6 +5,7 @@ import App from './App.vue'
 import { router } from './router'
 import './styles.css'
 import './styles/workspace.css'
+import './styles/simulation.css'
 
 /**
  * 前端应用启动入口。

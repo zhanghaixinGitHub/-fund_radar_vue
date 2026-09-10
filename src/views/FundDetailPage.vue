@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import SimulationFundActions from '@/components/SimulationFundActions.vue'
 
 import { getAlertRules, upsertAlertRule } from '@/api/alerts'
 import { ApiRequestError } from '@/api/http'
@@ -505,6 +506,7 @@ watch(selectedNavRange, () => {
       <p class="lead">
         {{ fund.fundCode }} · {{ fundTypeLabel(fund.fundType) }} · {{ fundStatusLabel(fund.status) }}
       </p>
+      <SimulationFundActions :fund-code="fund.fundCode" />
       <p
         v-if="isMock"
         class="notice-banner"

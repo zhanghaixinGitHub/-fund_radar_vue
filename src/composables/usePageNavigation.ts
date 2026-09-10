@@ -30,6 +30,11 @@ const pageSections: Record<string, PageSection[]> = {
     { key: 'rules', label: '提醒规则' },
   ],
   'portfolio-snapshot': [
+    { key: 'holdings', label: '持仓' },
+    { key: 'plans', label: '定投计划' },
+    { key: 'orders', label: '交易记录' },
+  ],
+  'portfolio-confirmed-snapshot': [
     { key: 'overview', label: '持仓概览' },
     { key: 'holdings', label: '持仓明细' },
     { key: 'source', label: '数据说明' },

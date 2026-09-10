@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import SimulationFundActions from '@/components/SimulationFundActions.vue'
 
 import FieldHelpTooltip from '@/components/FieldHelpTooltip.vue'
 import FundNavHistoryChart from '@/components/FundNavHistoryChart.vue'
@@ -199,6 +200,7 @@ watch(selectedNavRange, () => {
       <p class="lead">
         {{ basic.fundCode }} · {{ fundTypeLabel(basic.fundType) }} · {{ fundStatusLabel(basic.status) }}
       </p>
+      <SimulationFundActions :fund-code="basic.fundCode" />
       <p
         v-if="detail.stale"
         class="notice-banner"

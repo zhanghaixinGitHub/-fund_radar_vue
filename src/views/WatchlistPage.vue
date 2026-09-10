@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import SimulationFundActions from '@/components/SimulationFundActions.vue'
 
 import { useWatchlist } from '@/composables/useWatchlist'
 import type { WatchlistItem } from '@/types/watchlist'
@@ -189,6 +190,7 @@ function formatCreatedAt(value: string): string {
               </span>
               <time :datetime="item.createdAt">关注于 {{ formatCreatedAt(item.createdAt) }}</time>
             </RouterLink>
+            <SimulationFundActions :fund-code="item.fundCode" />
           </li>
         </ul>
       </section>
