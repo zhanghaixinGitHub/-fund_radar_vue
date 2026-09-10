@@ -3,6 +3,7 @@
 > 日期：2026-09-10。用户要求停止本窗口的模型优化，完整记录后提交推送，由新窗口继续。
 > 当前状态：已完成的有限实验全部保留；当前快照参数搜索为 `CLOSED`，自动后续训练为 `false`。本交接不启动新实验、独立测试或未来观察。
 > 最终研究结论：尚无合格候选，模型未发布。已完成工程和实验交付，不等于已经训练出稳定更准的模型。
+> 代码与文档已统一提交推送，远端核验见第 8 节；第 9 节提供新窗口启动文字。
 > 详细历史：[训练优化实施文档](fund-direction-training-improvement.md)第 16—22 节；最新证据：[八季度验收](../reviews/direction-full-quarter-coverage-2026-09-10.md)。本文件是新窗口的第一阅读入口。
 
 ## 1. 目标、用户决定与工作边界
@@ -169,10 +170,12 @@ Set-Location -LiteralPath 'C:\pythonProject\workSpace06\.local-runs\direction-li
 | 仓库 / 检查点 | 提交 | 状态 |
 | --- | --- | --- |
 | Python 实现 | `2dc167fb7b7505ee0bd6c1d216c88ca26cfe361e`，`[zhx]完成方向模型约束与跨季度训练验证` | 已推送 `origin/main`；`ls-remote` 核对远端与本地 HEAD 相同，工作区干净 |
-| Vue / 文档交接正文 | 本文首次完整提交后补记 | 本文及现有文档已整理、核查，正在完成提交推送 |
-| Java | 本次未新建提交 | 工作区无改动 |
+| Vue / 文档交接正文 | `058076160e970b0235ae600289df40a368098a9a`，`[zhx]整理训练优化交接与项目现有文档` | 已推送 `origin/main`；`ls-remote` 核对远端与本地 HEAD 相同，提交正文后工作区干净 |
+| Java | 保持 `a7e3cb5d52505559e762f9793d9feb64eae26c5b`，本次未新建提交 | 工作区无改动，已核对远端 `main` 与本地相同 |
 
-提交只保存代码与文档，未包含凭据或研究运行包。后续核对远端应运行 `git ls-remote --heads origin refs/heads/main`，不要只看本地缓存的 `origin/main`。本节记录的文档提交是交接正文检查点，后续补记提交结果不改变实验内容。
+上述三个检查点已在 2026-09-10 用远端实际查询核验。本节在首次推送成功后补记结果；补记提交只更新交接状态，不改变训练实现、模型或实验结论，最终版本以本文件的 Git 历史为准。
+
+提交只保存代码与文档，未包含凭据或研究运行包。后续核对远端应运行 `git ls-remote --heads origin refs/heads/main`，不要只看本地缓存的 `origin/main`。最新文档提交可用 `git log -1 --format="%H %s" -- docs_zhx/implementation/fund-direction-training-handoff-2026-09-10.md` 查看。
 
 ## 9. 给新窗口的启动文字
 
