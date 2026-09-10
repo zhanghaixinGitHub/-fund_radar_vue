@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import { getWatchlistPrediction } from '@/api/watchlist'
+import DirectionExperimentPanel from '@/components/DirectionExperimentPanel.vue'
 import type { WatchlistPrediction } from '@/types/prediction'
 import { assertWatchlistPrediction, displayUpProbability } from '@/utils/prediction'
 
@@ -73,105 +74,108 @@ onBeforeUnmount(() => { ++requestSequence })
           未来 20 个交易日方向
         </h2>
       </div>
-      <button
-        class="prediction-refresh"
-        type="button"
-        :disabled="loading"
-        aria-label="刷新预测状态"
-        @click="load"
-      >
-        {{ loading ? '正在读取…' : '刷新状态' }}
-      </button>
     </div>
     <p class="prediction-intro">
       观察未来 20 个交易日计入现金分红并再投资后的整体回报，不是每天的涨跌，也不预测具体净值。
     </p>
-    <p
-      v-if="loading"
-      class="prediction-state"
-      role="status"
-    >
-      正在读取这只基金的研究与发布状态…
-    </p>
-    <div
-      v-else-if="errorMessage"
-      class="prediction-state"
-      role="alert"
-    >
-      <strong>暂时无法读取预测状态</strong>
-      <p>{{ errorMessage }}</p>
-      <p>这不表示基金会下跌，你仍可查看其他基金资料。</p>
-    </div>
-    <template v-else-if="prediction">
-      <div
+    <DirectionExperimentPanel :fund-code="fundCode" />
+    <details class="prediction-reasons">
+      <summary>正式模型发布状态</summary>
+      <button
+        class="prediction-refresh"
+        type="button"
+        :disabled="loading"
+        @click="load"
+      >
+        {{ loading ? '正在读取…' : '刷新正式状态' }}
+      </button>
+      <p
+        v-if="loading"
         class="prediction-state"
         role="status"
       >
-        <span class="prediction-badge">{{ statusLabel }}</span>
-        <p class="prediction-message">
-          {{ prediction.message }}
-        </p>
-        <template v-if="prediction.status === 'AVAILABLE' && prediction.upProbability !== null">
-          <p
-            class="prediction-probability"
-            data-testid="prediction-probability"
-          >
-            上涨概率约 <strong>{{ displayUpProbability(prediction.upProbability) }}</strong>
-          </p>
-          <p>指整个预测区间的现金再投总回报为正，不是预计收益率，也不表示每天都会上涨。</p>
-        </template>
-        <p v-else>
-          目前不展示上涨概率，不用 0% 或 50% 代替未知结果。
-        </p>
-      </div>
-      <details
-        v-if="prediction.status !== 'AVAILABLE'"
-        class="prediction-reasons"
-      >
-        <summary>为什么现在没有预测数字？</summary>
-        <ul>
-          <li
-            v-for="reason in prediction.reasons"
-            :key="reason"
-          >
-            {{ reason }}
-          </li>
-        </ul>
-      </details>
-      <dl class="prediction-metadata">
-        <template v-if="prediction.forecastId">
-          <div>
-            <dt>原信息截止日</dt>
-            <dd>{{ prediction.cutoffDate }}</dd>
-          </div>
-          <div>
-            <dt>原预测区间（20 个交易日）</dt>
-            <dd>{{ prediction.targetBaseDate }} → {{ prediction.targetEndDate }}</dd>
-          </div>
-          <div>
-            <dt>结果生成时间（北京时间）</dt>
-            <dd>{{ displayTime(prediction.generatedAt) }}</dd>
-          </div>
-          <div>
-            <dt>模型版本指纹</dt>
-            <dd :title="prediction.modelHash || undefined">
-              {{ prediction.modelHash?.slice(0, 12) || '暂缺' }}
-            </dd>
-          </div>
-        </template>
-        <div>
-          <dt>本地最新净值日</dt>
-          <dd>{{ prediction.latestNavDate || '暂缺' }}</dd>
-        </div>
-        <div v-if="!prediction.forecastId">
-          <dt>最近研究记录时间（北京时间）</dt>
-          <dd>{{ displayTime(prediction.researchEvaluatedAt) }}</dd>
-        </div>
-      </dl>
-      <p class="prediction-disclaimer">
-        {{ prediction.disclaimer }}
+        正在读取这只基金的研究与发布状态…
       </p>
-    </template>
+      <div
+        v-else-if="errorMessage"
+        class="prediction-state"
+        role="alert"
+      >
+        <strong>暂时无法读取预测状态</strong>
+        <p>{{ errorMessage }}</p>
+        <p>这不表示基金会下跌，你仍可查看其他基金资料。</p>
+      </div>
+      <template v-else-if="prediction">
+        <div
+          class="prediction-state"
+          role="status"
+        >
+          <span class="prediction-badge">{{ statusLabel }}</span>
+          <p class="prediction-message">
+            {{ prediction.message }}
+          </p>
+          <template v-if="prediction.status === 'AVAILABLE' && prediction.upProbability !== null">
+            <p
+              class="prediction-probability"
+              data-testid="prediction-probability"
+            >
+              上涨概率约 <strong>{{ displayUpProbability(prediction.upProbability) }}</strong>
+            </p>
+            <p>指整个预测区间的现金再投总回报为正，不是预计收益率，也不表示每天都会上涨。</p>
+          </template>
+          <p v-else>
+            目前不展示上涨概率，不用 0% 或 50% 代替未知结果。
+          </p>
+        </div>
+        <details
+          v-if="prediction.status !== 'AVAILABLE'"
+          class="prediction-reasons"
+        >
+          <summary>为什么现在没有预测数字？</summary>
+          <ul>
+            <li
+              v-for="reason in prediction.reasons"
+              :key="reason"
+            >
+              {{ reason }}
+            </li>
+          </ul>
+        </details>
+        <dl class="prediction-metadata">
+          <template v-if="prediction.forecastId">
+            <div>
+              <dt>原信息截止日</dt>
+              <dd>{{ prediction.cutoffDate }}</dd>
+            </div>
+            <div>
+              <dt>原预测区间（20 个交易日）</dt>
+              <dd>{{ prediction.targetBaseDate }} → {{ prediction.targetEndDate }}</dd>
+            </div>
+            <div>
+              <dt>结果生成时间（北京时间）</dt>
+              <dd>{{ displayTime(prediction.generatedAt) }}</dd>
+            </div>
+            <div>
+              <dt>模型版本指纹</dt>
+              <dd :title="prediction.modelHash || undefined">
+                {{ prediction.modelHash?.slice(0, 12) || '暂缺' }}
+              </dd>
+            </div>
+          </template>
+          <div>
+            <dt>本地最新净值日</dt>
+            <dd>{{ prediction.latestNavDate || '暂缺' }}</dd>
+          </div>
+          <div v-if="!prediction.forecastId">
+            <dt>最近研究记录时间（北京时间）</dt>
+            <dd>{{ displayTime(prediction.researchEvaluatedAt) }}</dd>
+          </div>
+        </dl>
+        <p class="prediction-disclaimer">
+          {{ prediction.disclaimer }}
+        </p>
+      </template>
+    </details>
   </section>
 </template>
 
