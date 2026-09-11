@@ -3,6 +3,13 @@
 > 关联需求：`docs_zhx/requirements/sync-center-tasks.md`
 > 关联设计：`docs_zhx/design/sync-center-tasks.md`
 
+## 一键同步验收（2026-09-10）
+
+- Python：`pytest tests/test_sync_jobs.py tests/test_sync_all_jobs.py tests/test_health.py tests/test_tushare_fund_sync.py -q`，45 项通过；新增 9 项用例覆盖固定串行顺序、四阶段各执行一次、各阶段失败和全部失败、跨阶段互斥、资源清理、最近批次查询、服务令牌和浏览器 Origin 拒绝。Ruff 通过。
+- Java：`mvn -q -Dtest=SyncAllTests,InternalSyncJobServiceTests,AuthSecurityUnitTests test`，15 项通过。新接口通过 MockMvc → 真实内部 HTTP 客户端 → 本地替身服务验证，覆盖 202、401/403、409、不自动重发 POST、部分成功映射和无历史批次返回 null。
+- Vue：全量 ESLint、类型检查及生产构建通过；保留既有 ECharts 大文件提示。浏览器使用隔离模拟接口，已验证一键创建、运行中禁止重复启动、刷新仍为同一批次且 POST 总计一次、单项失败后其他任务继续、结束后失败项可单独重试、读取失败时禁用启动按钮及恢复后重新可用。
+- 本次没有触发真实 Tushare 同步，没有执行数据库迁移；上述结果不能作为真实来源已补齐或运行中的后端已更新的证据。新接口需由更新后的 Java / Python 服务共同提供；Python 重启后的批次断点续跑不在当前实现范围内。
+
 > 用例范围校正（2026-09-09）：同步中心已有净值增量、完整资料、免费数据补齐和特征快照四类任务。以下修改仅同步用例预期，本次未执行同步或浏览器验收，原测试结果不自动改为通过；免费补齐的专项验证见[tushare-2000-data-completion](tushare-2000-data-completion.md)。
 
 ## TC-01｜管理员手动触发与实时进度

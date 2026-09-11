@@ -1,6 +1,16 @@
 import { get, post } from '@/api/http'
 import type { SyncJobLastSuccess, SyncJobStatus } from '@/types/syncJob'
 
+/** 一次创建全部同步的后台串行批次；后续调度不依赖当前页面。 */
+export function startAllSync(): Promise<SyncJobStatus> {
+  return post<SyncJobStatus>('/api/v1/sync-jobs/all')
+}
+
+/** 恢复当前 Python 进程最近批次，只读取状态。 */
+export function getLatestAllSync(): Promise<SyncJobStatus | null> {
+  return get<SyncJobStatus | null>('/api/v1/sync-jobs/all/latest')
+}
+
 /** 创建基金市场最新净值增量同步任务；浏览器只调用 Java 核心服务。 */
 export function startMarketNavIncrementalSync(): Promise<SyncJobStatus> {
   return post<SyncJobStatus>('/api/v1/sync-jobs/market-nav-incremental')
