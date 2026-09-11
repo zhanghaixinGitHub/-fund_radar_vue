@@ -30,6 +30,7 @@ const pageSections: Record<string, PageSection[]> = {
     { key: 'rules', label: '提醒规则' },
   ],
   'portfolio-snapshot': [
+    { key: 'overview', label: '总览' },
     { key: 'holdings', label: '持仓' },
     { key: 'plans', label: '定投计划' },
     { key: 'orders', label: '交易记录' },
@@ -94,6 +95,9 @@ export function usePageNavigation() {
     : pageSections[routeName.value] ?? [])
   const section = computed(() => {
     const candidate = isList.value ? route.query.type : route.query.section
+    // 兼容旧的单基金持仓链接；普通模块入口默认进入总览。
+    if (routeName.value === 'portfolio-snapshot' && candidate == null
+      && /^\d{6}$/.test(String(route.query.fundCode ?? ''))) return 'holdings'
     return sections.value.find((item) => item.key === candidate)?.key ?? sections.value[0]?.key ?? ''
   })
   const sectionLabel = computed(() => sections.value.find((item) => item.key === section.value)?.label ?? '')
@@ -114,6 +118,10 @@ export function usePageNavigation() {
       query.section = key
       delete query.user
       delete query.tab
+      // 总览展示整个模拟账户，清除单基金范围，避免汇总提示跳入局部交易记录。
+      if (routeName.value === 'portfolio-snapshot' && (key === 'overview' || section.value === 'overview')) {
+        delete query.fundCode
+      }
     }
     return { path: route.path, query }
   }

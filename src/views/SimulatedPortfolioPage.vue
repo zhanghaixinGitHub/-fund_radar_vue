@@ -13,7 +13,7 @@ import { planFrequency, shanghaiDate, simMoney, simPercent, simShares, simTime, 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
-const { section, sectionTarget } = usePageNavigation()
+const { section, sectionLabel, sectionTarget } = usePageNavigation()
 const overview = ref<SimOverview | null>(null)
 const plans = ref<SimPlan[]>([])
 const orders = ref<SimPage<SimOrder> | null>(null)
@@ -136,8 +136,11 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
         <p class="eyebrow">
           我的持仓 · 模拟账户
         </p><h1 id="sim-title">
-          记录每次投入，看清每笔收益
-        </h1><p class="lead">
+          {{ section === 'overview' ? '持仓总览' : sectionLabel }}
+        </h1><p
+          v-if="section === 'overview'"
+          class="lead"
+        >
           按真实净值更新，买入、定投和卖出均为模拟记录。
         </p>
       </div>
@@ -180,40 +183,32 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
       正在加载模拟持仓…
     </p>
     <template v-if="overview">
-      <div class="sim-metrics">
-        <article><span>持仓市值（元）</span><strong>{{ simMoney(overview.marketValue) }}</strong><small>{{ overview.complete ? '按已公布净值计算' : '部分数据待核对，汇总含上次估值' }}</small></article>
-        <article><span>持有收益（元）</span><strong :class="simTone(overview.holdingGain)">{{ simMoney(overview.holdingGain) }}</strong><small>当前剩余份额的浮动盈亏</small></article>
-        <article><span>累计收益（元）</span><strong :class="simTone(overview.cumulativeGain)">{{ simMoney(overview.cumulativeGain) }}</strong><small>包含卖出盈亏与现金分红</small></article>
-      </div>
-      <p
-        v-if="overview.pendingOrders"
-        class="notice-banner"
-      >
-        {{ overview.pendingOrders }} 笔交易待确认，其中买入金额 {{ simMoney(overview.pendingBuyAmount) }} 元，尚未计入持仓市值。<RouterLink :to="sectionTarget('orders')">
-          查看交易
-        </RouterLink>
-      </p>
-      <div class="sim-status">
-        <span :class="jobStale || overview.job?.status === 'FAILED' ? 'sim-warning' : ''">{{ jobStale ? '后台运行状态待确认' : overview.job?.message }}</span><span>最近完成：{{ simTime(overview.job?.completedAt) }}</span><RouterLink to="/portfolio/confirmed-snapshot">
-          查看历史确认快照
-        </RouterLink>
-      </div>
-      <nav
-        class="sim-tabs"
-        aria-label="持仓功能"
-      >
-        <RouterLink
-          v-for="tab in [{ key: 'holdings', label: '持仓' }, { key: 'plans', label: '定投计划' }, { key: 'orders', label: '交易记录' }]"
-          :key="tab.key"
-          :to="sectionTarget(tab.key)"
-          :aria-current="section === tab.key ? 'page' : undefined"
-          :class="{ active: section === tab.key }"
+      <!-- 账户汇总集中在总览，明细页直接展示当前功能，减少首屏重复信息。 -->
+      <template v-if="section === 'overview'">
+        <div class="sim-metrics">
+          <article><span>持仓市值（元）</span><strong>{{ simMoney(overview.marketValue) }}</strong><small>{{ overview.complete ? '按已公布净值计算' : '部分数据待核对，汇总含上次估值' }}</small></article>
+          <article><span>持有收益（元）</span><strong :class="simTone(overview.holdingGain)">{{ simMoney(overview.holdingGain) }}</strong><small>当前剩余份额的浮动盈亏</small></article>
+          <article><span>累计收益（元）</span><strong :class="simTone(overview.cumulativeGain)">{{ simMoney(overview.cumulativeGain) }}</strong><small>包含卖出盈亏与现金分红</small></article>
+        </div>
+        <p
+          v-if="overview.pendingOrders"
+          class="notice-banner"
         >
-          {{ tab.label }}
-        </RouterLink>
-      </nav>
+          {{ overview.pendingOrders }} 笔交易待确认，其中买入金额 {{ simMoney(overview.pendingBuyAmount) }} 元，尚未计入持仓市值。<RouterLink :to="sectionTarget('orders')">
+            查看交易
+          </RouterLink>
+        </p>
+        <div class="sim-status">
+          <span :class="jobStale || overview.job?.status === 'FAILED' ? 'sim-warning' : ''">{{ jobStale ? '后台运行状态待确认' : overview.job?.message }}</span><span>最近完成：{{ simTime(overview.job?.completedAt) }}</span><RouterLink to="/portfolio/confirmed-snapshot">
+            查看历史确认快照
+          </RouterLink>
+        </div>
+        <details class="sim-rules">
+          <summary>模拟规则与数据说明</summary><p>{{ overview.rules }}</p><p>未公布净值时保持待更新。新增投入不算收益，卖出和现金分红记录为转出，不模拟钱包余额。旧确认快照独立保存。全部卖出后累计收益及历史交易保留。</p>
+        </details>
+      </template>
       <label
-        v-if="overview.positions.length || selectedCode"
+        v-if="section !== 'overview' && (overview.positions.length || selectedCode)"
         class="sim-filter"
       >基金范围<select
         :value="selectedCode"
@@ -603,9 +598,6 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
           </nav>
         </template>
       </template>
-      <details class="sim-rules">
-        <summary>模拟规则与数据说明</summary><p>{{ overview.rules }}</p><p>未公布净值时保持待更新。新增投入不算收益，卖出和现金分红记录为转出，不模拟钱包余额。旧确认快照独立保存。全部卖出后累计收益及历史交易保留。</p>
-      </details>
     </template>
     <SimulationFundPicker
       v-if="picker"

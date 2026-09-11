@@ -36,7 +36,7 @@ function saved(value: string) { mode.value = null; message.value = value }
       </button>
       <RouterLink
         class="primary-link"
-        :to="{ path: '/portfolio', query: { fundCode } }"
+        :to="{ path: '/portfolio', query: { section: 'holdings', fundCode } }"
       >
         查看持仓
       </RouterLink>

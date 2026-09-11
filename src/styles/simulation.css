@@ -13,9 +13,6 @@
 .sim-positive { color: #bc4444 !important; }.sim-negative { color: #08775d !important; }
 .sim-warning { color: #855710; }.sim-muted { color: #647b72; font-size: 13px; line-height: 1.7; }
 .sim-status { display: flex; flex-wrap: wrap; gap: 10px 20px; font-size: 13px; color: #647b72; margin: 16px 0; }
-.sim-tabs { display: flex; gap: 24px; border-bottom: 1px solid #dfe8e3; margin: 20px 0; }
-.sim-tabs a { padding: 12px 0; text-decoration: none; color: #647b72; border-bottom: 3px solid transparent; }
-.sim-tabs a.active { color: #0f766e; border-color: #0f766e; }
 .sim-filter { display: flex; align-items: center; gap: 12px; margin: 20px 0; }.sim-filter select { max-width: 100%; min-width: 180px; }
 .sim-section-header { margin: 22px 0 15px; }.sim-section-header select { margin-left: 8px; }
 .sim-position-list { display: grid; gap: 15px; }
@@ -48,4 +45,4 @@
 .sim-picker-list { list-style: none; padding: 0; margin: 0; }.sim-picker-list li { border-bottom: 1px solid #e5ece7; }.sim-picker-list button { display: flex; flex-direction: column; gap: 8px; text-align: left; padding: 15px 5px; width: 100%; border: 0; background: transparent; color: #203a34; cursor: pointer; font: inherit; }.sim-picker-list button:hover { background: #f0f7f3; }.sim-picker-list span { color: #647b72; font-size: 13px; }
 .sim-fund-actions { margin: 14px 0; }.watchlist-items .sim-fund-actions { margin: 0; padding: 0 20px 16px; border-bottom: 1px solid #dfe8e3; }.watchlist-items .sim-fund-actions p { margin: 12px 0 0; font-size: 13px; }
 @media (max-width: 900px) { .sim-position-values { grid-template-columns: repeat(2, minmax(0, 1fr)); }.sim-metrics strong { font-size: 23px; } }
-@media (max-width: 580px) { .sim-page h1 { font-size: 23px; }.sim-page-header { display: block; }.sim-metrics { grid-template-columns: 1fr; gap: 9px; }.sim-metrics article { display: grid; grid-template-columns: 1fr auto; gap: 7px; padding: 16px; }.sim-metrics strong { margin: 0; grid-row: span 2; }.sim-metrics small { font-size: 11px; }.sim-metrics span { font-size: 13px; }.sim-position-card, .sim-detail-panel { padding: 16px; }.sim-dialog { padding: 18px; }.sim-form-grid { grid-template-columns: 1fr; }.sim-actions button { min-height: 44px; }.sim-page select, .sim-form input:not([type="checkbox"]), .sim-form select { font-size: 16px; }.sim-filter { align-items: stretch; flex-direction: column; }.sim-tabs { gap: 23px; }.sim-chart { height: 245px; } }
+@media (max-width: 580px) { .sim-page h1 { font-size: 23px; }.sim-page-header { display: block; }.sim-metrics { grid-template-columns: 1fr; gap: 9px; }.sim-metrics article { display: grid; grid-template-columns: 1fr auto; gap: 7px; padding: 16px; }.sim-metrics strong { margin: 0; grid-row: span 2; }.sim-metrics small { font-size: 11px; }.sim-metrics span { font-size: 13px; }.sim-position-card, .sim-detail-panel { padding: 16px; }.sim-dialog { padding: 18px; }.sim-form-grid { grid-template-columns: 1fr; }.sim-actions button { min-height: 44px; }.sim-page select, .sim-form input:not([type="checkbox"]), .sim-form select { font-size: 16px; }.sim-filter { align-items: stretch; flex-direction: column; }.sim-chart { height: 245px; } }
