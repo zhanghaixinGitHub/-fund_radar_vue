@@ -18,6 +18,12 @@ export function portfolioReturnPath(value: unknown): string {
   // 返回持仓时恢复已提交的搜索条件；仍只保留允许的字段，并与搜索框使用相同长度上限。
   const keyword = (input.get('keyword') ?? '').slice(0, 50).trim()
   if (keyword) output.set('keyword', keyword)
+  // 仅恢复受限的持仓分页字段，与列表页保持相同上限；未知参数仍不进入返回链接。
+  const page = Number(input.get('page'))
+  if (Number.isInteger(page) && page > 1) output.set('page', String(Math.min(page, 1_000_000)))
+  const size = Number(input.get('size'))
+  if ([20, 50].includes(size)) output.set('size', String(size))
+  if (input.get('showHistory') === '1') output.set('showHistory', '1')
   return `/portfolio${output.size ? `?${output}` : ''}`
 }
 export function evidenceUrl(value: string | null): string | undefined {

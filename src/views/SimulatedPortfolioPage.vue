@@ -9,6 +9,7 @@ import { cancelSimOrder, changeSimPlan, getSimLedger, getSimOrders, getSimOvervi
 import SimulationTradeDialog from '@/components/SimulationTradeDialog.vue'
 import SimulationFundPicker from '@/components/SimulationFundPicker.vue'
 import SimulationPerformanceChart from '@/components/SimulationPerformanceChart.vue'
+import { useListLocation } from '@/composables/useListLocation'
 import { usePageNavigation } from '@/composables/usePageNavigation'
 import { useAuthStore } from '@/stores/auth'
 import type { SimDaily, SimLedger, SimOrder, SimOverview, SimPage, SimPeriod, SimPlan } from '@/types/simulation'
@@ -18,6 +19,7 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const { section, sectionLabel, sectionTarget } = usePageNavigation()
+const { location: listLocation, navigate: navigateList, isCurrent } = useListLocation()
 const overview = ref<SimOverview | null>(null)
 const advice = ref<AdviceSummary[]>([])
 const adviceError = ref('')
@@ -37,14 +39,14 @@ const endingPlan = ref<string | null>(null)
 const picker = ref(false)
 const pickerMode = ref<'BUY' | 'PLAN'>('BUY')
 const trade = ref<{ fundCode: string; mode: 'BUY' | 'SELL' | 'PLAN'; plan?: SimPlan } | null>(null)
-const showHistory = ref(false)
+const showHistory = computed(() => route.query.showHistory === '1')
 const orderPage = ref(1)
 const ledgerPage = ref(1)
 const periodPage = ref(1)
 const recordMode = ref<'orders' | 'ledger'>('orders')
 const days = ref(365)
 // 已提交的关键词由 URL 保存，输入框草稿在点击查询或按回车后才生效，返回持仓时可恢复。
-const appliedKeyword = computed(() => typeof route.query.keyword === 'string' ? route.query.keyword.slice(0, 50).trim() : '')
+const appliedKeyword = computed(() => listLocation.value.keyword.trim())
 const keyword = ref(appliedKeyword.value)
 const selectedCode = computed(() => /^\d{6}$/.test(String(route.query.fundCode ?? '')) ? String(route.query.fundCode) : '')
 const selectedPosition = computed(() => overview.value?.positions.find(p => p.fundCode === selectedCode.value) ?? null)
@@ -54,6 +56,16 @@ const positions = computed(() => {
   return (overview.value?.positions ?? []).filter(p => (!selectedCode.value || p.fundCode === selectedCode.value) &&
     (showHistory.value || selectedCode.value || Number(p.shares) > 0 || (Number(p.totalBuy) === 0 && Number(p.totalSell) === 0)) &&
     (!query || p.fundCode.includes(query) || p.fundName.toLocaleLowerCase().includes(query)))
+})
+// 先按当前搜索与持仓状态筛选，再分页展示；沿用市场和关注页的 URL 页码、每页条数规则。
+const holdingPageSizeOptions = [10, 20, 50]
+const holdingPageSize = computed(() => listLocation.value.size)
+const holdingTotalPages = computed(() => Math.max(1, Math.ceil(positions.value.length / holdingPageSize.value)))
+const holdingPage = computed(() => Math.min(listLocation.value.page, holdingTotalPages.value))
+const holdingPageInput = ref(String(holdingPage.value))
+const pagedPositions = computed(() => {
+  const start = (holdingPage.value - 1) * holdingPageSize.value
+  return positions.value.slice(start, start + holdingPageSize.value)
 })
 const canWrite = computed(() => auth.hasPermission('SIM_PORTFOLIO_SELF_WRITE'))
 const canPlan = computed(() => auth.hasPermission('SIM_PLAN_SELF_WRITE'))
@@ -103,12 +115,29 @@ async function loadDetails() {
     }
   } catch (reason) { if (alive && current === detailGeneration) detailError.value = reason instanceof Error ? reason.message : '记录加载失败。' }
 }
-function selectCode(code: string) { void router.replace({ path: route.path, query: { ...route.query, fundCode: code || undefined } }) }
+function selectCode(code: string) { void router.replace({ path: route.path, query: { ...route.query, fundCode: code || undefined, page: undefined } }) }
 /** 查询时回到完整持仓列表，清除单基金详情限定，避免隐藏条件影响搜索；空关键词恢复全部持仓。 */
 function searchHoldings() {
   if (loading.value) return
   keyword.value = keyword.value.trim().slice(0, 50)
-  void router.push({ path: route.path, query: { ...route.query, section: 'holdings', fundCode: undefined, keyword: keyword.value || undefined } })
+  void router.push({ path: route.path, query: { ...route.query, section: 'holdings', fundCode: undefined, keyword: keyword.value || undefined, page: undefined } })
+}
+/** 切换展示范围时重置页码；状态进入 URL，查看建议后返回仍能恢复已清仓基金所在的列表。 */
+function changeHoldingHistory(checked: boolean) {
+  if (loading.value) return
+  void router.push({ path: route.path, query: { ...route.query, showHistory: checked ? '1' : undefined, page: undefined } })
+}
+/** 在已有筛选结果内翻页；切换每页条数时由调用方传入第一页，避免跳过持仓。 */
+function changeHoldingPage(page: number, size = holdingPageSize.value) {
+  if (loading.value || !Number.isInteger(page) || !holdingPageSizeOptions.includes(size)) return
+  const total = Math.max(1, Math.ceil(positions.value.length / size))
+  const target = Math.min(Math.max(1, page), total)
+  holdingPageInput.value = String(target)
+  void navigateList('', appliedKeyword.value, target, size)
+}
+function goToHoldingPage() {
+  const page = Number(holdingPageInput.value)
+  changeHoldingPage(Number.isInteger(page) ? page : holdingPage.value)
 }
 function openPicker(mode: 'BUY' | 'PLAN') { pickerMode.value = mode; picker.value = true }
 function picked(code: string) { picker.value = false; trade.value = { fundCode: code, mode: pickerMode.value } }
@@ -146,6 +175,14 @@ watch([section, selectedCode], () => {
 })
 watch([orderPage, ledgerPage, recordMode, days], () => void loadDetails())
 watch(appliedKeyword, value => { keyword.value = value })
+watch(holdingPage, value => { holdingPageInput.value = String(value) })
+// 等持仓实际加载后才修正越界页码，避免刷新或详情返回时被尚未加载的空列表重置到第一页。
+watch([() => listLocation.value.page, holdingPage, section, overview], () => {
+  if (!isCurrent.value || section.value !== 'holdings' || !overview.value) return
+  if (listLocation.value.page !== holdingPage.value) {
+    void router.replace({ path: route.path, query: { ...route.query, page: holdingPage.value > 1 ? String(holdingPage.value) : undefined } })
+  }
+})
 onMounted(() => {
   void load().then(async () => {
     await nextTick()
@@ -287,8 +324,10 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
       <template v-if="section === 'holdings'">
         <div class="sim-section-header">
           <h2>{{ selectedPosition?.fundName ?? '持仓明细' }}</h2><label class="sim-check"><input
-            v-model="showHistory"
+            :checked="showHistory"
+            :disabled="loading"
             type="checkbox"
+            @change="changeHoldingHistory(($event.target as HTMLInputElement).checked)"
           >显示已清仓基金</label>
         </div>
         <div
@@ -328,7 +367,7 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
           class="sim-position-list"
         >
           <article
-            v-for="p in positions"
+            v-for="p in pagedPositions"
             :key="p.fundCode"
             class="sim-position-card"
           >
@@ -414,6 +453,81 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
             </div>
           </article>
         </div>
+        <nav
+          v-if="positions.length > 0"
+          class="pagination"
+          aria-label="持仓列表分页"
+        >
+          <p
+            class="pagination-summary"
+            aria-live="polite"
+          >
+            共 {{ positions.length }} 条
+          </p>
+          <div class="pagination-controls">
+            <label
+              class="page-size-control"
+              for="portfolio-page-size"
+            >
+              每页
+              <select
+                id="portfolio-page-size"
+                :value="holdingPageSize"
+                :disabled="loading"
+                @change="changeHoldingPage(1, Number(($event.target as HTMLSelectElement).value))"
+              >
+                <option
+                  v-for="option in holdingPageSizeOptions"
+                  :key="option"
+                  :value="option"
+                >
+                  {{ option }}
+                </option>
+              </select>
+              条
+            </label>
+            <button
+              :disabled="loading || holdingPage <= 1"
+              type="button"
+              @click="changeHoldingPage(holdingPage - 1)"
+            >
+              上一页
+            </button>
+            <span class="page-position">第 {{ holdingPage }} / {{ holdingTotalPages }} 页</span>
+            <button
+              :disabled="loading || holdingPage >= holdingTotalPages"
+              type="button"
+              @click="changeHoldingPage(holdingPage + 1)"
+            >
+              下一页
+            </button>
+            <label
+              class="page-jump-control"
+              for="portfolio-page-jump"
+            >
+              跳至
+              <input
+                id="portfolio-page-jump"
+                v-model="holdingPageInput"
+                :disabled="loading"
+                inputmode="numeric"
+                min="1"
+                :max="holdingTotalPages"
+                step="1"
+                type="number"
+                @keyup.enter="goToHoldingPage"
+              >
+              页
+            </label>
+            <button
+              :disabled="loading"
+              type="button"
+              @click="goToHoldingPage"
+            >
+              跳转
+            </button>
+          </div>
+        </nav>
         <section
           v-if="selectedPosition && positions.length"
           class="sim-detail-panel"
