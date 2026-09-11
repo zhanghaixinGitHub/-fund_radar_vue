@@ -3,6 +3,7 @@ import { useRoute } from 'vue-router'
 import type { LocationQuery, RouteLocationRaw } from 'vue-router'
 
 import { fundTypeOptions } from '@/utils/fundPresentation'
+import { portfolioReturnPath } from '@/utils/advice'
 
 export interface PageSection {
   key: string
@@ -11,6 +12,11 @@ export interface PageSection {
 }
 
 const pageSections: Record<string, PageSection[]> = {
+  'portfolio-advice': [
+    { key: 'latest', label: '最新建议', group: '持仓分析' },
+    { key: 'history', label: '历史记录' },
+    { key: 'review', label: '效果回看' },
+  ],
   'watchlist-fund-detail': [
     { key: 'overview', label: '资料概览', group: '关注资料' },
     { key: 'basic', label: '基础资料' },
@@ -68,6 +74,7 @@ const moduleNames: Record<string, string> = {
   'fund-market': '基金市场', 'fund-detail': '基金市场',
   watchlist: '我的关注', 'watchlist-fund-detail': '我的关注',
   'portfolio-snapshot': '我的持仓', notifications: '站内提醒', profile: '个人信息',
+  'portfolio-advice': '我的持仓',
   'admin-dashboard': '工作台', 'admin-sync-center': '数据同步', 'admin-users': '用户管理',
 }
 
@@ -103,6 +110,7 @@ export function usePageNavigation() {
   const sectionLabel = computed(() => sections.value.find((item) => item.key === section.value)?.label ?? '')
   const moduleLabel = computed(() => moduleNames[routeName.value] ?? String(route.meta.title ?? '基金雷达'))
   const returnTarget = computed(() => {
+    if (routeName.value === 'portfolio-advice') return portfolioReturnPath(route.query.from)
     if (routeName.value === 'watchlist-fund-detail') return listReturnTarget(route.query.from, '/watchlist')
     if (routeName.value === 'fund-detail') return listReturnTarget(route.query.from, '/funds')
     return null
@@ -118,6 +126,10 @@ export function usePageNavigation() {
       query.section = key
       delete query.user
       delete query.tab
+      if (routeName.value === 'portfolio-advice') {
+        delete query.report
+        delete query.page
+      }
       // 总览展示整个模拟账户，清除单基金范围，避免汇总提示跳入局部交易记录。
       if (routeName.value === 'portfolio-snapshot' && (key === 'overview' || section.value === 'overview')) {
         delete query.fundCode

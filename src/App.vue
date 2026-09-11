@@ -135,6 +135,7 @@ async function signOut(): Promise<void> {
         </RouterLink>
         <RouterLink
           v-if="can('PORTFOLIO_SELF_READ')"
+          :class="{ 'is-active-module': moduleLabel === '我的持仓' }"
           to="/portfolio"
         >
           我的持仓

@@ -16,6 +16,8 @@
 
 ## 文档从哪里看
 
+- 2026-09-11 已完成[持仓操作建议与每日留档](docs_zhx/design/portfolio-advice-history.md)：持仓卡片展示继续持有/卖出及理由，详情支持完整依据、每日历史与效果回看。当前使用已有三只基金的实验模型，新闻政策分析和长期实际效果仍未完成。
+
 - 想知道项目做到了哪一步：先读 [完成情况检查](docs_zhx/reviews/project-status-2026-09-09.md)。
 - 想继续开发：读 [总进度看板](docs_zhx/implementation/fund-radar.md)的“当前状态”，再进入对应专项手册。
 - 想理解当前目标：先读[持仓预警定位与证据要求](docs_zhx/requirements/fund-radar.md#current-positioning)。新目标尚未完成实现，不能将已有预测卡当作持仓预警交付。

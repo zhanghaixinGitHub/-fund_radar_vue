@@ -67,6 +67,12 @@ export const router = createRouter({
       meta: { title: '我的持仓', appArea: 'user', permissions: ['PORTFOLIO_SELF_READ'] },
     },
     {
+      path: '/portfolio/:fundCode/advice',
+      name: 'portfolio-advice',
+      component: () => import('@/views/PortfolioAdvicePage.vue'),
+      meta: { title: '持仓建议与回看', appArea: 'user', permissions: ['PORTFOLIO_SELF_READ'] },
+    },
+    {
       path: '/portfolio/confirmed-snapshot',
       name: 'portfolio-confirmed-snapshot',
       component: () => import('@/views/PortfolioSnapshotPage.vue'),

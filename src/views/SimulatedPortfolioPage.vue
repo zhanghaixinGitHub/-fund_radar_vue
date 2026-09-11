@@ -1,6 +1,10 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
+import { getLatestAdvice } from '@/api/advice'
+import PortfolioAdviceCard from '@/components/PortfolioAdviceCard.vue'
+import type { AdviceSummary } from '@/types/advice'
+import { rememberPortfolioScroll, takePortfolioScroll } from '@/utils/advice'
 import { cancelSimOrder, changeSimPlan, getSimLedger, getSimOrders, getSimOverview, getSimPerformance, getSimPeriods, getSimPlans } from '@/api/simulation'
 import SimulationTradeDialog from '@/components/SimulationTradeDialog.vue'
 import SimulationFundPicker from '@/components/SimulationFundPicker.vue'
@@ -15,6 +19,9 @@ const router = useRouter()
 const auth = useAuthStore()
 const { section, sectionLabel, sectionTarget } = usePageNavigation()
 const overview = ref<SimOverview | null>(null)
+const advice = ref<AdviceSummary[]>([])
+const adviceError = ref('')
+const adviceByFund = computed(() => new Map(advice.value.map(item => [item.fundCode, item])))
 const plans = ref<SimPlan[]>([])
 const orders = ref<SimPage<SimOrder> | null>(null)
 const ledger = ref<SimPage<SimLedger> | null>(null)
@@ -57,9 +64,14 @@ async function load(silent = false) {
   if (!silent) loading.value = true
   error.value = ''
   try {
-    const [result, planResult] = await Promise.all([getSimOverview(), getSimPlans()])
+    // 建议读取失败不遮挡已有持仓和交易功能；批量读取避免每张卡片单独请求。
+    const [result, planResult, adviceResult] = await Promise.all([
+      getSimOverview(), getSimPlans(), getLatestAdvice().then(items => ({ items, error: '' })).catch(() => ({ items: null, error: '操作建议暂时无法读取，可进入详情重试。' })),
+    ])
     if (!alive || current !== loadGeneration) return
     overview.value = result; plans.value = planResult
+    if (adviceResult.items) advice.value = adviceResult.items
+    adviceError.value = adviceResult.error
     await loadDetails()
   } catch (reason) { if (alive && current === loadGeneration) error.value = reason instanceof Error ? reason.message : '持仓加载失败。' }
   finally { if (alive && current === loadGeneration) loading.value = false }
@@ -120,9 +132,14 @@ watch([section, selectedCode], () => {
 })
 watch([orderPage, ledgerPage, recordMode, days], () => void loadDetails())
 onMounted(() => {
-  void load()
+  void load().then(async () => {
+    await nextTick()
+    const top = takePortfolioScroll(route.fullPath)
+    if (alive && top !== null) globalThis.scrollTo({ top })
+  })
   polling = globalThis.setInterval(() => { if (globalThis.document.visibilityState === 'visible' && !busy.value && !trade.value) void load(true) }, 60_000)
 })
+onBeforeRouteLeave(to => { if (to.name === 'portfolio-advice') rememberPortfolioScroll(route.fullPath, globalThis.scrollY) })
 onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; globalThis.clearInterval(polling) })
 </script>
 
@@ -309,6 +326,12 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
             <p class="sim-muted">
               持有 {{ simShares(p.shares) }} 份 · 可卖 {{ simShares(p.availableShares) }} 份 · 冻结 {{ simShares(p.frozenShares) }} 份 · 剩余成本 {{ simMoney(p.cost) }} 元
             </p>
+            <PortfolioAdviceCard
+              :fund-code="p.fundCode"
+              :report="adviceByFund.get(p.fundCode)"
+              :error="adviceError"
+              :loading="loading && !advice.length"
+            />
             <div class="sim-actions">
               <button
                 v-if="canWrite"

@@ -124,8 +124,15 @@ body:has(.app-shell) { min-width: 0; }
 .app-shell .watchlist-card { gap: 16px; padding: 17px 20px; background: #fff; border: 0; border-bottom: 1px solid var(--workspace-border); border-radius: 0; }
 .app-shell .fund-list li:last-child .fund-card,
 .app-shell .watchlist-items li:last-child .watchlist-card { border-bottom: 0; }
-.app-shell .fund-card:hover,
-.app-shell .watchlist-card:hover { background: #f2f8f5; transform: none; }
+.app-shell .fund-card:hover { background: #f2f8f5; transform: none; }
+/* 整条关注记录统一高亮，覆盖基金信息、操作按钮及留白；保留链接的键盘焦点提示。 */
+.app-shell .watchlist-items > li { position: relative; isolation: isolate; }
+.app-shell .watchlist-items > li:hover { background: #f2f8f5; }
+.app-shell .watchlist-items > li > .watchlist-card { background: transparent; }
+.app-shell .watchlist-card:hover:not(:focus-visible) { box-shadow: none; }
+/* 扩大原有详情链接的命中范围；按钮单独置于上层，按钮间隙与下方留白仍可打开详情。 */
+.app-shell .watchlist-items > li > .watchlist-card::after { position: absolute; inset: 0; content: ""; }
+.app-shell .watchlist-items > li > .sim-fund-actions > .sim-actions > :is(button, a) { position: relative; z-index: 1; }
 .app-shell .fund-primary strong { font-size: 14px; }
 .app-shell .fund-type-group { margin-top: 22px; }
 .app-shell .fund-type-group h2 { font-size: 15px; }
