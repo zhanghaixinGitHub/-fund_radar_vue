@@ -15,6 +15,9 @@ export function portfolioReturnPath(value: unknown): string {
   const output = new URLSearchParams()
   if (['overview', 'holdings', 'plans', 'orders'].includes(input.get('section') ?? '')) output.set('section', input.get('section')!)
   if (/^\d{6}$/.test(input.get('fundCode') ?? '')) output.set('fundCode', input.get('fundCode')!)
+  // 返回持仓时恢复已提交的搜索条件；仍只保留允许的字段，并与搜索框使用相同长度上限。
+  const keyword = (input.get('keyword') ?? '').slice(0, 50).trim()
+  if (keyword) output.set('keyword', keyword)
   return `/portfolio${output.size ? `?${output}` : ''}`
 }
 export function evidenceUrl(value: string | null): string | undefined {

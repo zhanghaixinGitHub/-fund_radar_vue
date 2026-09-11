@@ -43,10 +43,18 @@ const ledgerPage = ref(1)
 const periodPage = ref(1)
 const recordMode = ref<'orders' | 'ledger'>('orders')
 const days = ref(365)
+// 已提交的关键词由 URL 保存，输入框草稿在点击查询或按回车后才生效，返回持仓时可恢复。
+const appliedKeyword = computed(() => typeof route.query.keyword === 'string' ? route.query.keyword.slice(0, 50).trim() : '')
+const keyword = ref(appliedKeyword.value)
 const selectedCode = computed(() => /^\d{6}$/.test(String(route.query.fundCode ?? '')) ? String(route.query.fundCode) : '')
 const selectedPosition = computed(() => overview.value?.positions.find(p => p.fundCode === selectedCode.value) ?? null)
-const positions = computed(() => (overview.value?.positions ?? []).filter(p => (!selectedCode.value || p.fundCode === selectedCode.value) &&
-  (showHistory.value || selectedCode.value || Number(p.shares) > 0 || (Number(p.totalBuy) === 0 && Number(p.totalSell) === 0))))
+// 接口已返回当前账号的全部持仓；兼容单基金详情链接和已清仓条件，账户汇总仍按全部持仓计算。
+const positions = computed(() => {
+  const query = appliedKeyword.value.toLocaleLowerCase()
+  return (overview.value?.positions ?? []).filter(p => (!selectedCode.value || p.fundCode === selectedCode.value) &&
+    (showHistory.value || selectedCode.value || Number(p.shares) > 0 || (Number(p.totalBuy) === 0 && Number(p.totalSell) === 0)) &&
+    (!query || p.fundCode.includes(query) || p.fundName.toLocaleLowerCase().includes(query)))
+})
 const canWrite = computed(() => auth.hasPermission('SIM_PORTFOLIO_SELF_WRITE'))
 const canPlan = computed(() => auth.hasPermission('SIM_PLAN_SELF_WRITE'))
 const jobStale = computed(() => !overview.value?.job?.completedAt || Date.now() - Date.parse(overview.value.job.completedAt) > 5 * 60_000)
@@ -96,6 +104,12 @@ async function loadDetails() {
   } catch (reason) { if (alive && current === detailGeneration) detailError.value = reason instanceof Error ? reason.message : '记录加载失败。' }
 }
 function selectCode(code: string) { void router.replace({ path: route.path, query: { ...route.query, fundCode: code || undefined } }) }
+/** 查询时回到完整持仓列表，清除单基金详情限定，避免隐藏条件影响搜索；空关键词恢复全部持仓。 */
+function searchHoldings() {
+  if (loading.value) return
+  keyword.value = keyword.value.trim().slice(0, 50)
+  void router.push({ path: route.path, query: { ...route.query, section: 'holdings', fundCode: undefined, keyword: keyword.value || undefined } })
+}
 function openPicker(mode: 'BUY' | 'PLAN') { pickerMode.value = mode; picker.value = true }
 function picked(code: string) { picker.value = false; trade.value = { fundCode: code, mode: pickerMode.value } }
 function saved(value: string) { trade.value = null; message.value = value; void load() }
@@ -131,6 +145,7 @@ watch([section, selectedCode], () => {
   void loadDetails()
 })
 watch([orderPage, ledgerPage, recordMode, days], () => void loadDetails())
+watch(appliedKeyword, value => { keyword.value = value })
 onMounted(() => {
   void load().then(async () => {
     await nextTick()
@@ -179,6 +194,29 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
         </button>
       </div>
     </header>
+    <form
+      v-if="section === 'overview' || section === 'holdings'"
+      class="search-panel"
+      @submit.prevent="searchHoldings"
+    >
+      <label for="portfolio-keyword">基金代码或名称</label>
+      <div class="search-row">
+        <input
+          id="portfolio-keyword"
+          v-model="keyword"
+          maxlength="50"
+          placeholder="例如：000001"
+          type="search"
+        >
+        <button
+          class="primary-button"
+          :disabled="loading"
+          type="submit"
+        >
+          {{ loading ? '查询中…' : '查询基金' }}
+        </button>
+      </div>
+    </form>
     <p
       v-if="error"
       class="error-message"
@@ -225,7 +263,7 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
         </details>
       </template>
       <label
-        v-if="section !== 'overview' && (overview.positions.length || selectedCode)"
+        v-if="(section === 'plans' || section === 'orders') && (overview.positions.length || selectedCode)"
         class="sim-filter"
       >基金范围<select
         :value="selectedCode"
@@ -257,7 +295,17 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
           v-if="!positions.length"
           class="sim-empty"
         >
-          <h3>还没有{{ selectedCode ? '这只基金的' : '' }}模拟持仓</h3><p>从关注中选一只基金买入，或直接设置第一笔定投。</p><div class="sim-actions">
+          <template v-if="appliedKeyword">
+            <h3>没有符合条件的持仓基金</h3>
+            <p>请调整基金代码或名称后重新查询，清空关键词可恢复持仓列表。</p>
+          </template>
+          <template v-else>
+            <h3>还没有{{ selectedCode ? '这只基金的' : '' }}模拟持仓</h3><p>从关注中选一只基金买入，或直接设置第一笔定投。</p>
+          </template>
+          <div
+            v-if="!appliedKeyword"
+            class="sim-actions"
+          >
             <button
               v-if="canWrite"
               class="primary-button"
@@ -367,7 +415,7 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
           </article>
         </div>
         <section
-          v-if="selectedPosition"
+          v-if="selectedPosition && positions.length"
           class="sim-detail-panel"
           aria-label="基金收益详情"
         >
