@@ -55,6 +55,12 @@ export const router = createRouter({
       meta: { title: '我的关注', appArea: 'user', permissions: ['WATCHLIST_SELF_READ'] },
     },
     {
+      path: '/watchlist/prediction-1d',
+      name: 'direction-1d',
+      component: () => import('@/views/Direction1dPage.vue'),
+      meta: { title: '下一交易日实验', appArea: 'user', permissions: ['FUND_READ', 'WATCHLIST_SELF_READ'] },
+    },
+    {
       path: '/watchlist/:fundCode',
       name: 'watchlist-fund-detail',
       component: () => import('@/views/WatchlistFundDetailPage.vue'),

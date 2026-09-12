@@ -71,6 +71,9 @@ function formatCreatedAt(value: string): string {
     <h1 id="watchlist-title">
       关注列表
     </h1>
+    <RouterLink :to="{ name: 'direction-1d' }">
+      下一交易日实验：全部关注覆盖、真实留档与到期核对 →
+    </RouterLink>
     <p class="lead">
       已关注基金会按类型归类显示，方便查看最近已同步净值计算的阶段涨跌率。
     </p>

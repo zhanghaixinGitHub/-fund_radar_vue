@@ -7,6 +7,7 @@ import FieldHelpTooltip from '@/components/FieldHelpTooltip.vue'
 import FundNavHistoryChart from '@/components/FundNavHistoryChart.vue'
 import FundShareHistoryChart from '@/components/FundShareHistoryChart.vue'
 import WatchlistPredictionCard from '@/components/WatchlistPredictionCard.vue'
+import Direction1dPanel from '@/components/Direction1dPanel.vue'
 import { usePageNavigation } from '@/composables/usePageNavigation'
 import { getFundNavHistory } from '@/api/funds'
 import { getWatchlistFundDetail, getWatchlistFundShareHistory } from '@/api/watchlist'
@@ -280,6 +281,11 @@ watch(selectedNavRange, () => {
       <WatchlistPredictionCard
         v-if="section === 'research' && basic.fundCode === fundCode"
         :key="basic.fundCode"
+        :fund-code="basic.fundCode"
+      />
+      <Direction1dPanel
+        v-if="(section === 'research' || section === 'overview') && basic.fundCode === fundCode"
+        :key="`1d-${basic.fundCode}`"
         :fund-code="basic.fundCode"
       />
 

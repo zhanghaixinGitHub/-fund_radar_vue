@@ -16,6 +16,10 @@
 
 ## 文档从哪里看
 
+- 继续1日预测：读[1交易日完整实施与交接文档第16节](docs_zhx/implementation/fund-direction-1d-implementation-2026-09-11.md#16-实际实施与验收记录由新对话填写)。三端本地实验、43只覆盖、29只适用基金训练及9月14日真实预测留档已完成，真实核对待到期；[统一模型对照](docs_zhx/reviews/fund-direction-1d-universal-study-2026-09-12.md)未显示改善，仍属实验观察。
+
+- 后期继续20交易日预测：先读[20日完整进度与恢复入口](docs_zhx/implementation/fund-direction-20d-resume-2026-09-11.md)。已汇总从初期到ETF实验的成绩、失败原因、不同训练人口、模型与归档、核验命令和恢复提示。20日成果保留；时间衰减仅提出，1日实验独立实施，未改20日预测。滚动/ETF代码文档已推送Python `33be278`、Vue `dcde214`，下文各轮“尚未提交”为历史写作状态。
+
 - 2026-09-11 已完成[持仓操作建议与每日留档](docs_zhx/design/portfolio-advice-history.md)：持仓卡片展示继续持有/卖出及理由，详情支持完整依据、每日历史与效果回看。当前使用已有三只基金的实验模型，新闻政策分析和长期实际效果仍未完成。
 
 - 想知道项目做到了哪一步：先读 [完成情况检查](docs_zhx/reviews/project-status-2026-09-09.md)。
