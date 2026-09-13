@@ -278,14 +278,15 @@ watch(selectedNavRange, () => {
         </div>
       </section>
 
-      <WatchlistPredictionCard
-        v-if="section === 'research' && basic.fundCode === fundCode"
-        :key="basic.fundCode"
-        :fund-code="basic.fundCode"
-      />
+      <!-- 模型分析按预测周期从短到长展示：一日预测在前，二十日预测在后。 -->
       <Direction1dPanel
         v-if="(section === 'research' || section === 'overview') && basic.fundCode === fundCode"
         :key="`1d-${basic.fundCode}`"
+        :fund-code="basic.fundCode"
+      />
+      <WatchlistPredictionCard
+        v-if="section === 'research' && basic.fundCode === fundCode"
+        :key="basic.fundCode"
         :fund-code="basic.fundCode"
       />
 
