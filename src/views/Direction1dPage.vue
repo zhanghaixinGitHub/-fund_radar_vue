@@ -142,8 +142,8 @@ const branchName = (value: string) => ({ FIXED: '固定模型', WEEKLY: '每周�
                 </RouterLink><small>{{ fund.fundCode }} · {{ fund.shareClass }}</small>
               </td>
               <td>
-                {{ ({ CN_EQUITY: '境内股票', CN_MIXED: '境内混合', CN_BOND: '境内债券' })[fund.groupId ?? ''] ?? '待独立方案' }}<details v-if="fund.groupEvidence">
-                  <summary>分组依据</summary><small>{{ fund.groupEvidence.benchmark ?? '来源未提供可核验基准' }}；采用当前公开档案，不证明历年分类均相同。</small>
+                {{ ({ CN_EQUITY: '境内股票', CN_MIXED: '境内混合', CN_BOND: '境内债券' })[fund.groupId ?? ''] ?? '暂未适配' }}<details v-if="fund.groupEvidence">
+                  <summary>基金资料参考</summary><small>业绩比较基准：{{ fund.groupEvidence.benchmark || '来源暂未提供' }}。缺少基准文字不再单独阻止预测；按已核实档案选择现有模型。</small>
                 </details>
               </td>
               <td>

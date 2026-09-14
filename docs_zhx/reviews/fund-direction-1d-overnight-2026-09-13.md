@@ -1,10 +1,10 @@
 # 一日隔夜自动留档与历史对照结果（2026-09-13）
 
-自动采集已安装并实际触发成功；原12项研究树与加入SPX隔夜累计涨跌的13项树已完成4次主拟合、唯一4次复现和完整复核。**本轮固定配方未提高准确率：54.62%→53.24%，同6,025题少答对83题，结论NO_STABLE_GAIN。** 页面在用模型未替换。
+上午自动采集已安装并实际触发成功；**同日后续按用户要求停用该任务，改为数据同步中心手动触发**，当前入口与验收见[统一进度记录](../implementation/fund-direction-1d-progress-2026-09-13.md)。原12项研究树与加入SPX隔夜累计涨跌的13项树已完成4次主拟合、唯一4次复现和完整复核。**本轮固定配方未提高准确率：54.62%→53.24%，同6,025题少答对83题，结论NO_STABLE_GAIN。** 页面在用模型未替换。
 
 本轮历史研究明确采用“U日08:00已可用”的假设，用户已授权按这一口径探索；原2026-09-12严格时间审计仍为BLOCKED_HISTORICAL_TIMING。自动留档记录的是实际未来到达时间，两类证据分开保存。这些历史百分比不能作为已验证的未来命中率。
 
-## 1. 自动采集现在如何运行
+## 1. 上午安装时的自动采集记录（后续已停用）
 
 - Windows任务：`FundRadar-Direction1d-SPX-Overnight`。每天北京时间07:30、07:50、07:58尝试采集，08:05记录最终/晚到情况；登录时检查当前状态。Python按中国交易日历跳过非交易日，错过时点不回放，也不倒填为准时。
 - 09:50:30建立独立个人研究契约，09:51:08通过计划任务实际启动pythonw，09:51:09落下NON_TRADING_DAY记录，任务退出码0。下一次计划触发为**2026-09-14 07:30**。今天的现场证明了任务调用链和非交易日分支，尚未证明未来早间准时采集。
@@ -94,7 +94,7 @@ Set-Location C:\pythonProject\workSpace06
 & .\.venv\Scripts\python.exe -B scripts\direction_1d_overnight_collect.py status --run-dir .local-runs\direction-1d-overnight-live-20260913
 ```
 
-需要暂停时，安装脚本提供`-Mode Disable`，不会删除已留档资料。本轮任务目前为启用状态。
+同日后续已使用`-Mode Disable`停用，系统状态为Disabled，旧触发配置及已留档资料保留。当前手动入口为`/admin/sync?section=spxManual`，不再依赖原计划任务自动采集。
 
 历史研究只读复核（4+4次拟合额度已经使用，不能再次训练覆盖）：
 
@@ -108,4 +108,4 @@ Set-Location $env:PYTHONPATH
 & C:\pythonProject\workSpace06\.venv\Scripts\python.exe -B scripts\direction_1d_overnight_study.py verify --run-dir C:\pythonProject\workSpace06\.local-runs\direction-1d-overnight-study-20260913
 ```
 
-本轮交付完成自动采集和有限历史对照。采用决定是保留原模型，SPX候选暂不接入页面；自动留档继续积累可核验的真实到达记录。结论仅针对这一套固定SPX配方，未来准确率仍需新日期的实际预测结果验证。
+上午交付完成自动采集和有限历史对照；同日后续运行方式已改为手动。采用决定仍是保留原模型，SPX候选不接入页面预测；手动采集按实际发生时间另存记录，非交易日或晚到不能冒充早间合格输入。结论仅针对这一套固定SPX配方，未来准确率仍需新日期的实际预测结果验证。

@@ -3,6 +3,14 @@
 > 关联需求：`docs_zhx/requirements/sync-center-tasks.md`
 > 关联设计：`docs_zhx/design/sync-center-tasks.md`
 
+## SPX手动与一键同步补充验收（2026-09-13）
+
+当日晚间新增用例：第5次和第6次可按间隔手动执行；失败仍受60秒间隔保护；三个真实阶段可被并发只读查询观察且不会增加来源请求；成功与间隔状态不混淆；超时、网络、来源拒绝、数据异常展示安全原因。前端定时器测试覆盖进度查询、到期自动恢复、旧GET不覆盖POST完成结果、未知连接结果不重试、拒绝新执行时标明旧记录、卸载清理。最新实际验收见[进度第8节](../implementation/fund-direction-1d-progress-2026-09-13.md)，下列121项及20:14取数为首轮历史证据。
+
+- 一键批次现为五阶段，SPX先执行；测试覆盖各阶段失败后继续、总进度5/5、全部失败、跨阶段互斥、SPX限额后不能借旧成功记录通过、晚到资料同步与时间资格区分。
+- SPX单独按钮覆盖实际08:00边界、接收及时但保存晚到、非交易日、缺日、文件篡改、服务中断恢复、次数限制、并发及错误脱敏；服务令牌/浏览器Origin与Java权限分别校验。
+- Python本轮121项相关测试通过；Java新增4项及已有同步/认证测试通过；Vue类型、ESLint、构建通过。浏览器真实点击单独按钮于20:14:37取得2条SPX日线，状态资料参考；一键批次的其余基金来源使用合成测试，没有额外触发真实全市场写库。完整证据见[本轮进度第7节](../implementation/fund-direction-1d-progress-2026-09-13.md)。
+
 ## 一键同步验收（2026-09-10）
 
 - Python：`pytest tests/test_sync_jobs.py tests/test_sync_all_jobs.py tests/test_health.py tests/test_tushare_fund_sync.py -q`，45 项通过；新增 9 项用例覆盖固定串行顺序、四阶段各执行一次、各阶段失败和全部失败、跨阶段互斥、资源清理、最近批次查询、服务令牌和浏览器 Origin 拒绝。Ruff 通过。

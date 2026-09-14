@@ -6,6 +6,10 @@
 > 日期：2026-09-09
 > 变更等级：L2
 
+> 2026-09-13新增SPX：一键批次固定顺序为SPX → 完整资料 → 免费数据补齐 → 净值增量 → 特征快照。`LocalSyncJobManager`增加`SPX_MANUAL`阶段，原四项保持原实现；SPX失败后继续其余项。独立按钮经Java `/api/v1/sync-jobs/spx-manual` → Python `/internal/v1/spx-manual`，与批次共用采集、互斥和60秒间隔。SPX资料持久化到本机独立目录，不新增数据库表，完整批次仍沿用当前进程状态且不支持服务重启断点续跑。原SPX Windows自动任务停用；[详细契约与当前验收](../implementation/fund-direction-1d-progress-2026-09-13.md)。
+
+> 当日晚间反馈修正：手动接口取消每日4次预算，`maxAttemptsPerDay=null`；旧1—4号记录继续可读。增加`availability`，与上次采集结果分离；Attempt增加`stage/stageLabel/completedSteps/totalSteps/errorCode`。阶段文件仅说明实际执行到了哪里，不把步骤比例当成时间完成百分比。Vue的`useSpxManualSync`每秒只GET运行状态，间隔倒计时到0再次核实服务端可用性；POST结果使旧GET失效，卸载停止轮询，未知结果不自动重发。异常仅公开固定原因码/说明，内部保留脱敏定位栈。
+
 ## 1. 链路
 
 ```text

@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { usePageNavigation } from '@/composables/usePageNavigation'
 import { useAuthStore } from '@/stores/auth'
+import SpxManualSyncPanel from '@/components/SpxManualSyncPanel.vue'
+import { getSpxManualStatus } from '@/api/spxManual'
+import type { SpxManualStatus } from '@/types/spxManual'
 
 import {
   getLastSuccessfulSyncTimes,
@@ -98,14 +101,21 @@ const lastSuccessfulAt = ref<Record<string, string | null>>({
 const loading = ref(true)
 const stateReady = ref(false)
 const allJob = ref<SyncJobStatus | null>(null)
+const spxStatus = ref<SpxManualStatus | null>(null)
+const spxActive = computed(() => spxStatus.value?.lastAttempt?.state === 'RUNNING')
 const startingAll = ref(false)
 const allActive = computed(() => allJob.value?.status === 'QUEUED' || allJob.value?.status === 'RUNNING')
 const anyStarting = computed(() => startingAll.value || Object.values(starting.value).some(Boolean))
 const canStart = computed(() => auth.hasPermission('SYNC_JOB_START') && stateReady.value
   && !loading.value && !anyStarting.value && !hasActiveJob.value)
 const visibleTasks = computed(() => tasks.filter((task) => task.key === section.value))
-const runningCount = computed(() => Object.values(jobs.value).filter((job) => job?.status === 'RUNNING' || job?.status === 'QUEUED').length)
-const attentionCount = computed(() => Object.values(jobs.value).filter((job) => job?.status === 'FAILED' || job?.status === 'PARTIAL_SUCCESS').length)
+const runningCount = computed(() => Object.values(jobs.value).filter((job) => job?.status === 'RUNNING' || job?.status === 'QUEUED').length + Number(spxActive.value))
+const attentionCount = computed(() => Object.values(jobs.value).filter((job) => job?.status === 'FAILED' || job?.status === 'PARTIAL_SUCCESS').length
+  + Number(['FAILED', 'INCOMPLETE', 'INTERRUPTED', 'EXPIRED'].includes(spxStatus.value?.lastAttempt?.state ?? '')))
+const spxStateLabel = computed(() => ({ ON_TIME: '8点前已保存', LATE: '已同步·晚到', REFERENCE_ONLY: '已同步·资料参考',
+  INCOMPLETE: '数据未齐', RUNNING: '正在同步', INTERRUPTED: '同步中断', FAILED: '同步失败', EXPIRED: '资料过期' })[spxStatus.value?.lastAttempt?.state ?? ''] ?? '尚未运行')
+const spxSuccessAt = computed(() => ['ON_TIME', 'LATE', 'REFERENCE_ONLY'].includes(spxStatus.value?.lastAttempt?.state ?? '')
+  ? spxStatus.value?.lastAttempt?.persistedAt ?? null : null)
 const errorMessage = ref('')
 const actionError = ref('')
 const actionMessage = ref('')
@@ -175,12 +185,14 @@ function stopPolling(): void {
 
 /** 读取最近批次与各子任务，可恢复刷新页面后或其他管理员创建的任务。 */
 async function refreshJobStates(): Promise<void> {
-  const [latestJobs, latestAll] = await Promise.all([
+  const [latestJobs, latestAll, latestSpx] = await Promise.all([
     Promise.all(tasks.map((task) => task.loadLatest())),
     getLatestAllSync(),
+    getSpxManualStatus(),
   ])
   if (disposed) return
   allJob.value = latestAll
+  spxStatus.value = latestSpx
   tasks.forEach((task, index) => {
     jobs.value[task.key] = latestJobs[index]
     if (latestJobs[index]) updateLastSuccessfulTime(latestJobs[index])
@@ -191,7 +203,7 @@ async function refreshJobStates(): Promise<void> {
 /** 批次由后端推进；页面只读取状态，读失败时保留任务并继续重试。 */
 function schedulePolling(): void {
   stopPolling()
-  if (disposed || (!hasActiveJob.value && stateReady.value)) {
+  if (disposed || section.value === 'spxManual' || (!hasActiveJob.value && stateReady.value)) {
     return
   }
   pollingTimer = globalThis.setTimeout(async () => {
@@ -262,7 +274,7 @@ async function startAll(): Promise<void> {
   actionMessage.value = ''
   try {
     allJob.value = await startAllSync()
-    actionMessage.value = '一键同步已创建，四类任务将在后台依次执行。关闭或刷新页面不影响执行。'
+    actionMessage.value = '一键同步已创建，标普500及原四类任务将在后台依次执行。关闭或刷新页面不影响执行。'
   } catch (error) {
     actionError.value = error instanceof Error ? error.message : '未能确认批次是否创建，请查看最新状态。'
   } finally {
@@ -271,10 +283,16 @@ async function startAll(): Promise<void> {
   }
 }
 
-const hasActiveJob = computed(() => allActive.value || tasks.some((task) => isActive(task)))
+const hasActiveJob = computed(() => allActive.value || spxActive.value || tasks.some((task) => isActive(task)))
 
 onMounted(() => {
-  void loadSyncCenter()
+  if (section.value !== 'spxManual') void loadSyncCenter()
+})
+
+// 独立手动页面不依赖四类批量任务的可用性，也不继续它们的页面轮询。
+watch(section, (current, previous) => {
+  if (current === 'spxManual') stopPolling()
+  else if (previous === 'spxManual') void loadSyncCenter()
 })
 
 onBeforeUnmount(() => {
@@ -298,6 +316,8 @@ onBeforeUnmount(() => {
       集中发起和跟踪基金市场同步任务；所有进度均来自服务端实际执行状态，不涉及买卖或交易。
     </p>
 
+    <SpxManualSyncPanel v-if="section === 'spxManual'" />
+
     <section
       v-if="section === 'overview'"
       class="sync-task-card"
@@ -308,7 +328,7 @@ onBeforeUnmount(() => {
           <h2 id="sync-all-title">
             一键同步全部
           </h2>
-          <p>依次执行：完整资料 → 免费数据补齐 → 净值增量 → 特征快照。某项失败会记录原因，并继续尝试其余任务。</p>
+          <p>依次执行：标普500 → 完整资料 → 免费数据补齐 → 净值增量 → 特征快照。某项失败会记录原因，并继续尝试其余任务。</p>
         </div>
         <span
           v-if="allJob"
@@ -370,13 +390,13 @@ onBeforeUnmount(() => {
     </section>
 
     <p
-      v-if="loading"
+      v-if="loading && section !== 'spxManual'"
       class="state-message"
     >
       正在读取同步任务…
     </p>
     <p
-      v-else-if="errorMessage"
+      v-else-if="errorMessage && section !== 'spxManual'"
       class="state-message error-message"
       role="alert"
     >
@@ -395,7 +415,7 @@ onBeforeUnmount(() => {
         <article class="detail-overview-card">
           <p class="detail-overview-label">
             已配置任务
-          </p><strong class="detail-overview-value">{{ tasks.length }} 类</strong>
+          </p><strong class="detail-overview-value">{{ tasks.length + 1 }} 类</strong>
         </article>
         <article class="detail-overview-card">
           <p class="detail-overview-label">
@@ -442,6 +462,19 @@ onBeforeUnmount(() => {
                   <RouterLink
                     class="secondary-link"
                     :to="sectionTarget(task.key)"
+                  >
+                    查看详情 →
+                  </RouterLink>
+                </td>
+              </tr>
+              <tr>
+                <td><strong>美国标普500手动同步</strong><span>一键同步首先执行，也可单独手动获取；共用每日次数。</span></td>
+                <td>{{ loading ? '读取中…' : errorMessage ? '状态暂不可用' : spxStateLabel }}</td>
+                <td>{{ loading || errorMessage ? '—' : spxSuccessAt ? formatTime(spxSuccessAt) : '最近一次无成功记录' }}</td>
+                <td>
+                  <RouterLink
+                    class="secondary-link"
+                    :to="sectionTarget('spxManual')"
                   >
                     查看详情 →
                   </RouterLink>
@@ -562,7 +595,7 @@ onBeforeUnmount(() => {
         运行说明
       </h2>
       <ul>
-        <li>一键同步覆盖本页四类任务，串行执行并统一在末尾生成一次特征快照；各项仍保留独立进度和结果。</li>
+        <li>一键同步先获取标普500，再依次执行原四类任务，末尾生成一次特征快照；SPX失败或次数受限会单列未完成，其余任务继续。</li>
         <li>某项失败仍尝试后续任务；批次部分成功不代表所有数据均已补齐，可查看对应任务并单独重试。</li>
         <li>批次与单项任务共用互斥限制。关闭网页不影响执行；Python 服务重启后不会自动续跑，实时批次状态也会清空。</li>
         <li>净值增量任务保留工作日 20:00 的定时同步；本页按钮用于随时手动补齐。</li>

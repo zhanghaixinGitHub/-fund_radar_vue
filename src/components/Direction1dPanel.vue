@@ -3,8 +3,10 @@ import { onBeforeUnmount, ref, watch } from 'vue'
 import { generateDirection1d, getDirection1dCurrent } from '@/api/direction1d'
 import type { Direction1dCurrent } from '@/types/direction1d'
 import { assertDirection1dForecast, direction1dDirection, direction1dReason, direction1dTime } from '@/utils/direction1d'
+import { usePageNavigation } from '@/composables/usePageNavigation'
 
 const props = defineProps<{ fundCode: string }>()
+const { sectionTarget } = usePageNavigation()
 const value = ref<Direction1dCurrent | null>(null)
 const busy = ref(false)
 const error = ref('')
@@ -85,7 +87,7 @@ onBeforeUnmount(() => { sequence++ })
             v-for="branch in record.forecast.branches"
             :key="branch.branchId"
           >
-            {{ branch.branchId }}：{{ direction1dDirection(branch.predictedDirection) }}
+            {{ branch.branchId === 'FIXED' ? '固定模型' : '每周更新模型' }}：{{ direction1dDirection(branch.predictedDirection) }}
           </p>
           <p>{{ record.outcomes.length ? `真实结果：${direction1dDirection(record.outcomes[0]?.actualDirection)}` : '待到期或等待官方净值；尚未计对错。' }}</p>
           <details><summary>原始模型依据</summary><pre>{{ record.forecast.branches }}</pre></details>
@@ -99,8 +101,8 @@ onBeforeUnmount(() => { sequence++ })
         请求本期预测 / 重试
       </button>
     </template>
-    <RouterLink :to="{ name: 'direction-1d' }">
-      全部关注覆盖、启停与真实历史 →
+    <RouterLink :to="sectionTarget('prediction-history')">
+      查看本基金预测历史 →
     </RouterLink>
   </section>
 </template>

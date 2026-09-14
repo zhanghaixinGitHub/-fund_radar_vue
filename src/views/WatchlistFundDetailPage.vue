@@ -8,6 +8,7 @@ import FundNavHistoryChart from '@/components/FundNavHistoryChart.vue'
 import FundShareHistoryChart from '@/components/FundShareHistoryChart.vue'
 import WatchlistPredictionCard from '@/components/WatchlistPredictionCard.vue'
 import Direction1dPanel from '@/components/Direction1dPanel.vue'
+import Direction1dFundHistory from '@/components/Direction1dFundHistory.vue'
 import { usePageNavigation } from '@/composables/usePageNavigation'
 import { getFundNavHistory } from '@/api/funds'
 import { getWatchlistFundDetail, getWatchlistFundShareHistory } from '@/api/watchlist'
@@ -278,15 +279,20 @@ watch(selectedNavRange, () => {
         </div>
       </section>
 
-      <!-- 模型分析按预测周期从短到长展示：一日预测在前，二十日预测在后。 -->
+      <!-- 预测仅在模型分析中展示，资料概览不重复加载；一日预测在前，二十日预测在后。 -->
       <Direction1dPanel
-        v-if="(section === 'research' || section === 'overview') && basic.fundCode === fundCode"
+        v-if="section === 'research' && basic.fundCode === fundCode"
         :key="`1d-${basic.fundCode}`"
         :fund-code="basic.fundCode"
       />
       <WatchlistPredictionCard
         v-if="section === 'research' && basic.fundCode === fundCode"
         :key="basic.fundCode"
+        :fund-code="basic.fundCode"
+      />
+      <Direction1dFundHistory
+        v-if="section === 'prediction-history' && basic.fundCode === fundCode"
+        :key="`1d-history-${basic.fundCode}`"
         :fund-code="basic.fundCode"
       />
 

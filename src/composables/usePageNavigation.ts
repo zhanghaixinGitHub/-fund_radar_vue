@@ -25,6 +25,7 @@ const pageSections: Record<string, PageSection[]> = {
     { key: 'share', label: '份额规模' },
     { key: 'dividend', label: '分红记录' },
     { key: 'research', label: '模型分析', group: '研究参考' },
+    { key: 'prediction-history', label: '预测历史' },
   ],
   'fund-detail': [
     { key: 'overview', label: '基金概览', group: '基金资料' },
@@ -61,6 +62,7 @@ const pageSections: Record<string, PageSection[]> = {
     { key: 'marketDetail', label: '完整资料同步' },
     { key: 'freeDataCompletion', label: '免费数据补齐' },
     { key: 'featureSnapshot', label: '特征快照同步' },
+    { key: 'spxManual', label: '标普500手动同步' },
     { key: 'notes', label: '运行说明', group: '帮助' },
   ],
   'admin-users': [
