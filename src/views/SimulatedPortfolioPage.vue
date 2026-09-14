@@ -291,12 +291,10 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
           </RouterLink>
         </p>
         <div class="sim-status">
-          <span :class="jobStale || overview.job?.status === 'FAILED' ? 'sim-warning' : ''">{{ jobStale ? '后台运行状态待确认' : overview.job?.message }}</span><span>最近完成：{{ simTime(overview.job?.completedAt) }}</span><RouterLink to="/portfolio/confirmed-snapshot">
-            查看历史确认快照
-          </RouterLink>
+          <span :class="jobStale || overview.job?.status === 'FAILED' ? 'sim-warning' : ''">{{ jobStale ? '后台运行状态待确认' : overview.job?.message }}</span><span>最近完成：{{ simTime(overview.job?.completedAt) }}</span>
         </div>
         <details class="sim-rules">
-          <summary>模拟规则与数据说明</summary><p>{{ overview.rules }}</p><p>未公布净值时保持待更新。新增投入不算收益，卖出和现金分红记录为转出，不模拟钱包余额。旧确认快照独立保存。全部卖出后累计收益及历史交易保留。</p>
+          <summary>模拟规则与数据说明</summary><p>{{ overview.rules }}</p><p>未公布净值时保持待更新。新增投入不算收益，卖出和现金分红记录为转出，不模拟钱包余额。全部卖出后累计收益及历史交易保留。</p>
         </details>
       </template>
       <label

@@ -11,7 +11,11 @@ const route = useRoute()
 <template>
   <section
     class="holding-advice"
-    :class="{ 'holding-advice-sell': report?.decision === 'SELL' }"
+    :class="{
+      'holding-advice-hold': report?.decision === 'HOLD',
+      'holding-advice-sell': report?.decision === 'SELL',
+      'holding-advice-buy': report?.decision === 'BUY',
+    }"
     aria-label="操作建议"
   >
     <div class="holding-advice-heading">
@@ -48,8 +52,10 @@ const route = useRoute()
 </template>
 
 <style scoped>
-.holding-advice { padding: 16px 18px; margin: 12px 0 18px; border: 1px solid #d7e8e1; border-left: 3px solid #13796e; border-radius: 8px; background: #f1f8f5; }
-.holding-advice-sell { border-color: #e8ddce; border-left-color: #99652f; background: #fbf7f0; }
+/* 暂无建议和未加载记录用浅灰色；卖出沿用原浅绿，持有保持原色，明确买入时使用浅红。 */
+.holding-advice { padding: 16px 18px; margin: 12px 0 18px; border: 1px solid #e0e0e0; border-left: 3px solid #9ca3af; border-radius: 8px; background: #f5f5f5; }
+.holding-advice-hold, .holding-advice-sell { border-color: #d7e8e1; border-left-color: #13796e; background: #f1f8f5; }
+.holding-advice-buy { border-color: #eccaca; border-left-color: #bc4444; background: #fff1f0; }
 .holding-advice-heading, .holding-advice-footer { display: flex; gap: 12px; flex-wrap: wrap; justify-content: space-between; align-items: center; }
 .holding-advice-heading strong { color: #24463b; font-size: 15px; }
 .holding-advice-time, .holding-advice-footer > span { color: #586e65; font-size: 12px; }

@@ -1,8 +1,8 @@
 import type { DirectionExperiment } from '@/types/directionExperiment'
 import type { DecimalValue, SimOverview, SimPage, SimPosition } from '@/types/simulation'
 
-/** 操作建议与依据分开；概率/分数只能出现在依据正文，卡片没有预测指标。 */
-export type AdviceDecision = 'HOLD' | 'SELL' | 'UNAVAILABLE'
+/** 操作建议与依据分开；BUY 仅展示明确的买入建议，HOLD 仍为继续持有，概率/分数只出现在依据正文。 */
+export type AdviceDecision = 'BUY' | 'HOLD' | 'SELL' | 'UNAVAILABLE'
 export interface AdviceEvidence {
   type: 'MODEL' | 'RULE' | 'DATA_STATUS' | 'NEWS' | 'ANNOUNCEMENT' | 'POLICY'
   relation: 'SUPPORT' | 'AGAINST' | 'CONTEXT'

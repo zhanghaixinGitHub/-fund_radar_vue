@@ -1,6 +1,6 @@
 import type { AdviceDecision, AdviceSummary } from '@/types/advice'
 
-export const adviceLabel = (decision?: AdviceDecision) => decision === 'HOLD' ? '建议继续持有'
+export const adviceLabel = (decision?: AdviceDecision) => decision === 'BUY' ? '建议买入' : decision === 'HOLD' ? '建议继续持有'
   : decision === 'SELL' ? '建议卖出' : '暂无操作建议'
 export function reviewLabel(report: AdviceSummary): string {
   if (report.reviewStatus === 'NOT_APPLICABLE') return '未形成建议'

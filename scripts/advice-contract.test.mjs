@@ -17,7 +17,11 @@ test('return links preserve only the portfolio filters and never leave the app',
   assert.equal(evidenceUrl('https://example.com/notice'), 'https://example.com/notice')
 })
 test('unavailable data does not silently become hold or successful advice', () => {
+  assert.equal(adviceLabel(undefined), '暂无操作建议')
   assert.equal(adviceLabel('UNAVAILABLE'), '暂无操作建议')
+  assert.equal(adviceLabel('HOLD'), '建议继续持有')
+  assert.equal(adviceLabel('SELL'), '建议卖出')
+  assert.equal(adviceLabel('BUY'), '建议买入')
   assert.equal(reviewLabel({ reviewStatus: 'DATA_INSUFFICIENT' }), '等待资料核验')
   assert.equal(reviewLabel({ reviewStatus: 'ASSESSED', support: 'UNSUPPORTED' }), '后续表现不支持')
   assert.equal(reviewLabel({ reviewStatus: 'ASSESSED', support: 'FLAT' }), '区间持平')

@@ -3,10 +3,8 @@ import { onBeforeUnmount, ref, watch } from 'vue'
 import { generateDirection1d, getDirection1dCurrent } from '@/api/direction1d'
 import type { Direction1dCurrent } from '@/types/direction1d'
 import { assertDirection1dForecast, direction1dDirection, direction1dReason, direction1dTime } from '@/utils/direction1d'
-import { usePageNavigation } from '@/composables/usePageNavigation'
 
 const props = defineProps<{ fundCode: string }>()
-const { sectionTarget } = usePageNavigation()
 const value = ref<Direction1dCurrent | null>(null)
 const busy = ref(false)
 const error = ref('')
@@ -101,16 +99,13 @@ onBeforeUnmount(() => { sequence++ })
         请求本期预测 / 重试
       </button>
     </template>
-    <RouterLink :to="sectionTarget('prediction-history')">
-      查看本基金预测历史 →
-    </RouterLink>
   </section>
 </template>
 
 <style scoped>
 .direction-1d-panel { padding: 24px; margin: 24px 0; background: #f5f8fc; border: 1px solid #d8e2ef; border-radius: 16px; }
 .badge { color: #805a19; font-size: 12px; background: #fff0c9; border-radius: 5px; padding: 4px 8px; }
-h2 { margin: 14px 0; } p { color: #46576c; line-height: 1.7; } a { display: inline-block; margin: 12px; }
+h2 { margin: 14px 0; } p { color: #46576c; line-height: 1.7; }
 button { padding: 10px 14px; border: 1px solid #b5c5d8; border-radius: 8px; background: white; cursor: pointer; }
 button:disabled { opacity: .5; cursor: default; } pre { white-space: pre-wrap; overflow-wrap: anywhere; }
 </style>
