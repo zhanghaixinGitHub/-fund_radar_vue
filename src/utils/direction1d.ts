@@ -25,6 +25,52 @@ export const direction1dReason = (code: string) => reasons[code] ?? code
 export const direction1dDirection = (direction: string | null | undefined) => ({ UP: '上涨', NON_UP: '非上涨（下跌或持平）', DOWN: '下跌', FLAT: '持平' })[direction ?? ''] ?? '暂无方向'
 export const direction1dTime = (time?: string | null) => time ? new Date(time).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false }) : '尚无记录'
 
+/**
+ * 将同一次预测归纳成用户可读的方向和依据，不重新打分，也不选择性隐藏相反意见。
+ * NON_UP 包含下跌和持平；分支分数不作为概率、置信度或收益展示。
+ */
+export function direction1dSummary(forecast: Direction1dForecast) {
+  const available = forecast.branches.filter(branch => branch.status === 'AVAILABLE' && branch.predictedDirection)
+  const directions = new Set(available.map(branch => branch.predictedDirection))
+  const direction = directions.size === 1 ? available[0]?.predictedDirection : null
+  const agreement = available.length === 0 ? '当前没有可用的模型判断。'
+    : directions.size > 1 ? '模型判断不一致，暂时无法给出统一方向。'
+      : available.length === 1 ? '当前仅一个模型可用。' : '现有模型判断一致。'
+
+  return {
+    direction: direction === 'UP' ? '上涨' : direction === 'NON_UP' ? '下跌或持平'
+      : available.length ? '方向不明确' : '暂无预测',
+    tone: direction === 'UP' ? 'up' : direction === 'NON_UP' ? 'non-up' : 'neutral',
+    evidence: available.length
+      ? `参考近60个交易日的净值涨跌、波动和回撤。${agreement}` : agreement,
+    history: available.length ? direction1dInputSummary(forecast) : '',
+  }
+}
+
+/**
+ * 只用生成预测时保存的61条官方单位净值解释输入，避免用后来的行情解释旧预测。
+ * 5/20交易日涨跌沿用模型的末值/期初值-1口径；它们是历史输入摘要，不是特征贡献或未来收益。
+ * 缺失、日期错位或非法净值时不补值、不拼接当前行情，也不编造具体涨跌原因。
+ */
+function direction1dInputSummary(forecast: Direction1dForecast): string {
+  const values = forecast.input?.values
+  if (!values || values.length !== 61
+    || values.some((row, index) => !/^\d{4}-\d{2}-\d{2}$/.test(row.navDate)
+      || (index > 0 && row.navDate <= values[index - 1]!.navDate)
+      || !Number.isFinite(Number(row.unitNav)) || Number(row.unitNav) <= 0)
+    || values[60]?.navDate !== forecast.baseNavDate) return '本次预测的净值明细暂不可用。'
+
+  const last = Number(values[60].unitNav)
+  const change = (sessions: number) => {
+    const ratio = last / Number(values[60 - sessions]!.unitNav) - 1
+    if (ratio === 0) return `近${sessions}个交易日持平`
+    const percent = Math.abs(ratio) * 100
+    const amount = percent < .01 ? '不足0.01%' : `${percent.toFixed(2)}%`
+    return `近${sessions}个交易日${ratio > 0 ? '上涨' : '下跌'}${amount}`
+  }
+  return `净值截至 ${forecast.baseNavDate}：${change(5)}，${change(20)}。`
+}
+
 /** 单基金接口固定数据范围；异常时不退回全账号查询，也不展示其他基金的记录。 */
 export function assertDirection1dFundHistory(fundCode: string, records: Direction1dRecord[]): void {
   if (!/^\d{6}$/.test(fundCode)) throw new Error('基金代码无效，无法读取本基金预测历史。')

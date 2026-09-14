@@ -6,7 +6,7 @@ import { Buffer } from 'node:buffer'
 import test from 'node:test'
 
 const code = stripTypeScriptTypes(readFileSync(new URL('../src/utils/direction1d.ts', import.meta.url), 'utf8'))
-const { assertDirection1dForecast, direction1dDirection } = await import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`)
+const { assertDirection1dForecast, direction1dDirection, direction1dSummary } = await import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`)
 const example = () => ({ schemaVersion: 'DIRECTION_1D_EXPERIMENT_V1', horizonTradingDays: 1, targetDefinition: 'UNIT_NAV_DIRECTION_V1', modelReleased: false, upProbability: null,
   branches: ['FIXED', 'WEEKLY'].map(branchId => ({ branchId, status: 'AVAILABLE', score: .5, predictedDirection: 'NON_UP' })) })
 
@@ -28,4 +28,54 @@ test('不可用分支不显示分数；任一分支不可用仍保留另一分�
   assert.throws(() => assertDirection1dForecast(value))
   value.branches[1] = { branchId: 'WEEKLY', status: 'AVAILABLE', score: Number.NaN, predictedDirection: 'UP' }
   assert.throws(() => assertDirection1dForecast(value))
+})
+
+test('统一展示方向时保留持平含义，模型分歧不能被合并为上涨或下跌', () => {
+  const value = example()
+  assert.equal(direction1dSummary(value).direction, '下跌或持平')
+  value.branches[0] = { branchId: 'FIXED', status: 'AVAILABLE', score: .8, predictedDirection: 'UP' }
+  assert.equal(direction1dSummary(value).direction, '方向不明确')
+  assert.equal(direction1dSummary(value).tone, 'neutral')
+  value.branches[1] = { ...value.branches[0], branchId: 'WEEKLY' }
+  assert.equal(direction1dSummary(value).direction, '上涨')
+})
+
+test('仅一个分支可用时如实说明，两个都不可用时不展示方向或历史依据', () => {
+  const value = example()
+  value.branches[1] = { branchId: 'WEEKLY', status: 'MODEL_UNAVAILABLE', predictedDirection: null, score: null }
+  assert.equal(direction1dSummary(value).direction, '下跌或持平')
+  assert.match(direction1dSummary(value).evidence, /仅一个模型可用/)
+  value.branches[0] = { ...value.branches[1], branchId: 'FIXED' }
+  assert.equal(direction1dSummary(value).direction, '暂无预测')
+  assert.equal(direction1dSummary(value).history, '')
+})
+
+// 固定一份输入快照核对5/20交易日窗口，避免把条数和间隔搞混，或用当日数据解释旧预测。
+const withInput = () => ({ ...example(), baseNavDate: '2026-09-11', input: { values: Array.from({ length: 61 }, (_, i) => ({
+  navDate: new Date(Date.UTC(2026, 8, 11 - (60 - i))).toISOString().slice(0, 10),
+  unitNav: String(i === 55 ? 100 : i === 40 ? 120 : 110),
+})) } })
+
+test('依据使用预测快照的期初和期末单位净值，保留真实截止日期', () => {
+  const value = withInput()
+  assert.equal(direction1dSummary(value).history, '净值截至 2026-09-11：近5个交易日上涨10.00%，近20个交易日下跌8.33%。')
+  value.input.values[55].unitNav = '110'
+  assert.match(direction1dSummary(value).history, /近5个交易日持平/)
+  value.input.values[55].unitNav = '110.00001'
+  assert.match(direction1dSummary(value).history, /下跌不足0.01%/)
+})
+
+test('输入缺失、零净值、乱序或截止日期错位时不编造涨跌依据', () => {
+  const changes = [
+    value => { delete value.input },
+    value => { value.input.values.pop() },
+    value => { value.input.values[60].unitNav = '0' },
+    value => { value.input.values[20].unitNav = 'NaN' },
+    value => { value.input.values.reverse() },
+    value => { value.baseNavDate = '2026-09-14' },
+  ]
+  for (const change of changes) {
+    const value = withInput(); change(value)
+    assert.equal(direction1dSummary(value).history, '本次预测的净值明细暂不可用。')
+  }
 })
