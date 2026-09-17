@@ -1,5 +1,5 @@
 import { get, post } from '@/api/http'
-import type { AdviceDetail, AdviceHistory, AdviceSummary } from '@/types/advice'
+import type { AdviceDetail, AdviceHistory, AdviceSummary, DiagnosisHistory, DiagnosisSummary } from '@/types/advice'
 
 const base = '/api/v1/sim-portfolios/current/advice'
 export const getLatestAdvice = () => get<AdviceSummary[]>(base)
@@ -11,4 +11,13 @@ export function getAdviceHistory(code: string, page = 1, start = '', end = '') {
   if (start) params.set('startDate', start)
   if (end) params.set('endDate', end)
   return get<AdviceHistory>(`${base}/${encodeURIComponent(code)}?${params}`)
+}
+
+const diagnosisBase = '/api/v1/sim-portfolios/current/diagnosis'
+/** 批量读取本人各持仓基金的最新诊断摘要；失败时由调用方降级展示，不伪造「正常」结论。 */
+export const fetchCurrentDiagnosis = () => get<DiagnosisSummary[]>(diagnosisBase)
+/** 单基金诊断：返回分页历史与最新报告的逐项明细（结论、证据、来源、数据截至日）。 */
+export function fetchFundDiagnosis(code: string, options: { page?: number; pageSize?: number } = {}) {
+  const params = new URLSearchParams({ page: String(options.page ?? 1), pageSize: String(options.pageSize ?? 20) })
+  return get<DiagnosisHistory>(`${diagnosisBase}/${encodeURIComponent(code)}?${params}`)
 }

@@ -1,4 +1,4 @@
-import type { AdviceDecision, AdviceSummary } from '@/types/advice'
+import type { AdviceDecision, AdviceSummary, DiagnosisItemKey, DiagnosisVerdict } from '@/types/advice'
 
 export const adviceLabel = (decision?: AdviceDecision) => decision === 'BUY' ? '建议买入' : decision === 'HOLD' ? '建议继续持有'
   : decision === 'SELL' ? '建议卖出' : '暂无操作建议'
@@ -37,4 +37,35 @@ export function takePortfolioScroll(path: string): number | null {
   const result = savedScroll?.path === path ? savedScroll.top : null
   savedScroll = null
   return result
+}
+
+/** 服务端之外的值一律不当作已知结论，避免把异常数据展示成「成立」。 */
+export function isDiagnosisVerdict(value: unknown): value is DiagnosisVerdict {
+  return value === 'VALID' || value === 'CHANGED' || value === 'INSUFFICIENT'
+}
+/** 诊断结论中文标签；未知结论如实显示待确认，不折叠成「一切正常」。 */
+export function diagnosisVerdictLabel(value: unknown): string {
+  return value === 'VALID' ? '成立' : value === 'CHANGED' ? '已改变' : value === 'INSUFFICIENT' ? '数据不足' : '结论待确认'
+}
+/** 结论配色的类名：成立沿用持有绿，已改变用提示红，数据不足用琥珀色，未知保持中性灰。 */
+export function diagnosisVerdictTone(value: unknown): string {
+  return value === 'VALID' ? 'diagnosis-valid' : value === 'CHANGED' ? 'diagnosis-changed'
+    : value === 'INSUFFICIENT' ? 'diagnosis-insufficient' : 'diagnosis-unknown'
+}
+/** 七个诊断项的固定展示顺序，页面不依赖接口返回顺序。 */
+export const diagnosisItemOrder: readonly DiagnosisItemKey[] = ['MANAGER', 'SCALE', 'SAME_TYPE_RANK', 'BENCHMARK', 'DRAWDOWN', 'FEE', 'DIVIDEND']
+const diagnosisItemLabels: Record<DiagnosisItemKey, string> = {
+  MANAGER: '基金经理', SCALE: '规模变化', SAME_TYPE_RANK: '同类排名', BENCHMARK: '业绩基准',
+  DRAWDOWN: '当前回撤', FEE: '费用', DIVIDEND: '分红',
+}
+export function diagnosisItemLabel(key: unknown): string {
+  return typeof key === 'string' && key in diagnosisItemLabels ? diagnosisItemLabels[key as DiagnosisItemKey] : '诊断项目待确认'
+}
+/** 无数据截至日或截至日早于参考日 7 天以上视为陈旧，页面必须显著标示。 */
+export function diagnosisStale(cutoffDate: string | null | undefined, today: string): boolean {
+  if (!cutoffDate || !/^\d{4}-\d{2}-\d{2}$/.test(cutoffDate)) return true
+  const cutoff = Date.parse(`${cutoffDate}T00:00:00Z`)
+  const reference = Date.parse(`${today}T00:00:00Z`)
+  if (!Number.isFinite(cutoff) || !Number.isFinite(reference)) return true
+  return reference - cutoff > 7 * 86400000
 }

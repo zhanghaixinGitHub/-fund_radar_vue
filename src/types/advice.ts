@@ -33,3 +33,21 @@ export interface AdviceStats {
 export interface AdviceHistory {
   fundCode: string; fundName: string; reports: SimPage<AdviceSummary>; stats: AdviceStats; job: SimOverview['job']
 }
+
+/** 持仓诊断是逐项事实核对，结论只表达「持有理由是否仍成立」，不是涨跌预测。 */
+export type DiagnosisVerdict = 'VALID' | 'CHANGED' | 'INSUFFICIENT'
+export type DiagnosisItemKey = 'MANAGER' | 'SCALE' | 'SAME_TYPE_RANK' | 'BENCHMARK' | 'DRAWDOWN' | 'FEE' | 'DIVIDEND'
+export interface DiagnosisSummary {
+  reportId: string; fundCode: string; fundName: string; reportDate: string; generatedAt: string
+  verdict: DiagnosisVerdict; cutoffDate: string | null
+}
+export interface DiagnosisItem {
+  item: DiagnosisItemKey; verdict: DiagnosisVerdict; evidence: string; source: string
+  dataAsOfDate: string | null; facts: Record<string, unknown> | null
+}
+export interface DiagnosisReportDetail { report: DiagnosisSummary; items: DiagnosisItem[] }
+/** 尚无持仓或首份报告未生成时 latest 为空，页面如实展示而不是伪造「全部成立」。 */
+export interface DiagnosisHistory {
+  fundCode: string; fundName: string; reports: SimPage<DiagnosisSummary>
+  latest: DiagnosisReportDetail | null; job: SimOverview['job']
+}

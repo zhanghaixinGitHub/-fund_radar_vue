@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { generateAdvice, getAdviceHistory, getAdviceReport } from '@/api/advice'
+import { generateAdvice, getAdviceHistory, getAdviceReport, fetchFundDiagnosis } from '@/api/advice'
 import { usePageNavigation } from '@/composables/usePageNavigation'
 import { useAuthStore } from '@/stores/auth'
-import type { AdviceDetail, AdviceHistory } from '@/types/advice'
-import { adviceLabel, evidenceUrl, reviewLabel } from '@/utils/advice'
+import type { AdviceDetail, AdviceHistory, DiagnosisHistory } from '@/types/advice'
+import { adviceLabel, diagnosisItemLabel, diagnosisItemOrder, diagnosisStale, diagnosisVerdictLabel, diagnosisVerdictTone, evidenceUrl, reviewLabel } from '@/utils/advice'
 import { shanghaiDate, simMoney, simPercent, simShares, simTime, simTone } from '@/utils/simulation'
 
 const route = useRoute()
@@ -15,6 +15,9 @@ const { section } = usePageNavigation()
 const code = computed(() => String(route.params.fundCode ?? ''))
 const history = ref<AdviceHistory | null>(null)
 const detail = ref<AdviceDetail | null>(null)
+const diagnosis = ref<DiagnosisHistory | null>(null)
+const expandedDiagnosisId = ref('')
+const today = shanghaiDate()
 const loading = ref(false)
 const generating = ref(false)
 const error = ref('')
@@ -26,17 +29,29 @@ const reportId = computed(() => typeof route.query.report === 'string' ? route.q
 const showReport = computed(() => section.value === 'latest' || !!reportId.value)
 const canGenerate = computed(() => auth.hasPermission('SIM_PORTFOLIO_SELF_WRITE'))
 const stats = computed(() => history.value?.stats)
+/** 逐项明细按固定顺序展示，不依赖接口返回顺序；证据为空时如实提示而不是留空。 */
+const diagnosisItems = computed(() => [...(diagnosis.value?.latest?.items ?? [])]
+  .sort((a, b) => diagnosisItemOrder.indexOf(a.item) - diagnosisItemOrder.indexOf(b.item)))
+const diagnosisLatestId = computed(() => diagnosis.value?.latest?.report.reportId ?? '')
+function toggleDiagnosisReport(id: string) { expandedDiagnosisId.value = expandedDiagnosisId.value === id ? '' : id }
 let generation = 0
 let alive = true
 
 /** 切基金、翻页或选日期时丢弃旧请求，避免把上一只基金的报告显示到当前页面。 */
 async function load() {
   const current = ++generation
-  loading.value = true; error.value = ''; detail.value = null; history.value = null
+  loading.value = true; error.value = ''; detail.value = null; history.value = null; diagnosis.value = null
   const fund = code.value
   start.value = typeof route.query.start === 'string' ? route.query.start : ''
   end.value = typeof route.query.end === 'string' ? route.query.end : ''
   try {
+    if (section.value === 'diagnosis') {
+      const result = await fetchFundDiagnosis(fund, { page: page.value })
+      if (!alive || current !== generation) return
+      diagnosis.value = result
+      expandedDiagnosisId.value = ''
+      return
+    }
     const result = await getAdviceHistory(fund, section.value === 'latest' ? 1 : page.value,
       section.value === 'latest' ? '' : start.value, section.value === 'latest' ? '' : end.value)
     if (!alive || current !== generation) return
@@ -129,6 +144,13 @@ onBeforeUnmount(() => { alive = false; generation++ })
       {{ history.job.message }} 上次检查：{{ simTime(history.job.attemptedAt) }}
     </p>
     <p
+      v-if="diagnosis?.job && ['FAILED', 'PARTIAL'].includes(diagnosis.job.status)"
+      class="notice-banner"
+      role="status"
+    >
+      {{ diagnosis.job.message }} 上次检查：{{ simTime(diagnosis.job.attemptedAt) }}
+    </p>
+    <p
       v-if="loading"
       class="sim-muted"
       role="status"
@@ -136,7 +158,168 @@ onBeforeUnmount(() => { alive = false; generation++ })
       正在读取已保存的建议记录…
     </p>
 
-    <template v-if="!showReport">
+    <template v-if="section === 'diagnosis'">
+      <template v-if="diagnosis && !loading">
+        <template v-if="diagnosis.latest">
+          <p
+            v-if="diagnosisStale(diagnosis.latest.report.cutoffDate, today)"
+            class="notice-banner"
+            role="status"
+          >
+            诊断数据截至 {{ diagnosis.latest.report.cutoffDate ?? '未知日期' }}，距今较久，结论可能未反映最新情况。
+          </p>
+          <article
+            class="advice-conclusion"
+            :class="{ 'advice-conclusion-sell': diagnosis.latest.report.verdict !== 'VALID' }"
+          >
+            <span class="advice-kicker">最新诊断总体结论 · {{ diagnosis.latest.report.reportDate }}</span>
+            <h2>
+              <span
+                class="diagnosis-verdict"
+                :class="diagnosisVerdictTone(diagnosis.latest.report.verdict)"
+              >{{ diagnosisVerdictLabel(diagnosis.latest.report.verdict) }}</span>
+            </h2>
+            <p>逐项核对「持有理由是否仍成立」。诊断是事实核对，不是涨跌预测；结论供复核参考，不构成投资建议。</p>
+            <div class="advice-meta">
+              <span>实际留档：{{ simTime(diagnosis.latest.report.generatedAt) }}</span><span v-if="diagnosis.latest.report.cutoffDate">数据截至：{{ diagnosis.latest.report.cutoffDate }}</span>
+            </div>
+          </article>
+          <section
+            class="sim-detail-panel"
+            aria-labelledby="diagnosis-items-title"
+          >
+            <h2 id="diagnosis-items-title">
+              逐项核对
+            </h2>
+            <ol class="advice-evidence">
+              <li
+                v-for="item in diagnosisItems"
+                :key="item.item"
+                :class="{ 'diagnosis-item-changed': item.verdict === 'CHANGED' }"
+              >
+                <div class="advice-evidence-heading">
+                  <h3>{{ diagnosisItemLabel(item.item) }}</h3><span
+                    class="diagnosis-verdict"
+                    :class="diagnosisVerdictTone(item.verdict)"
+                  >{{ diagnosisVerdictLabel(item.verdict) }}</span>
+                </div>
+                <p>{{ item.evidence || '未提供具体说明，请以数据来源为准。' }}</p>
+                <div class="sim-muted">
+                  来源：{{ item.source }}<template v-if="item.dataAsOfDate">
+                    · 数据截至：{{ item.dataAsOfDate }}
+                  </template>
+                </div>
+              </li>
+            </ol>
+          </section>
+        </template>
+        <div
+          v-else-if="!diagnosis.reports.items.length"
+          class="sim-empty"
+        >
+          <strong>还没有诊断报告</strong><p>后台每日对持仓逐项核对并留档；首份报告没有可比基线，多数项会如实标记为「数据不足」。</p>
+        </div>
+        <div
+          v-if="diagnosis.reports.items.length"
+          class="advice-table-wrap diagnosis-history"
+        >
+          <table class="advice-table">
+            <thead>
+              <tr>
+                <th scope="col">
+                  报告日期
+                </th><th scope="col">
+                  总体结论
+                </th><th scope="col">
+                  数据截至
+                </th><th scope="col">
+                  详情
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <template
+                v-for="item in diagnosis.reports.items"
+                :key="item.reportId"
+              >
+                <tr>
+                  <td>{{ item.reportDate }}<small>{{ simTime(item.generatedAt) }} 留档</small></td>
+                  <td>
+                    <span
+                      class="diagnosis-verdict"
+                      :class="diagnosisVerdictTone(item.verdict)"
+                    >{{ diagnosisVerdictLabel(item.verdict) }}</span>
+                  </td>
+                  <td>{{ item.cutoffDate ?? '未提供' }}</td>
+                  <td>
+                    <button
+                      type="button"
+                      class="advice-text-button"
+                      :aria-expanded="expandedDiagnosisId === item.reportId"
+                      @click="toggleDiagnosisReport(item.reportId)"
+                    >
+                      {{ expandedDiagnosisId === item.reportId ? '收起' : '查看详情' }}
+                    </button>
+                  </td>
+                </tr>
+                <tr v-if="expandedDiagnosisId === item.reportId">
+                  <td colspan="4">
+                    <dl class="diagnosis-expanded">
+                      <div><dt>报告日期</dt><dd>{{ item.reportDate }}</dd></div>
+                      <div><dt>留档时间</dt><dd>{{ simTime(item.generatedAt) }}</dd></div>
+                      <div><dt>数据截至</dt><dd>{{ item.cutoffDate ?? '未提供' }}</dd></div>
+                      <div><dt>报告编号</dt><dd>{{ item.reportId }}</dd></div>
+                    </dl>
+                    <p
+                      v-if="item.reportId === diagnosisLatestId"
+                      class="sim-muted"
+                    >
+                      这是最新报告，逐项核对明细见上方区块。
+                    </p>
+                    <p
+                      v-else
+                      class="sim-muted"
+                    >
+                      历史报告保留总体结论与留档信息；逐项明细仅最新报告可查。
+                    </p>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+        <div
+          v-if="diagnosis.reports.totalCount > 20"
+          class="sim-pagination"
+        >
+          <button
+            class="secondary-button"
+            type="button"
+            :disabled="loading || page <= 1"
+            @click="changePage(page - 1)"
+          >
+            上一页
+          </button>
+          <span>第 {{ page }} / {{ Math.ceil(diagnosis.reports.totalCount / 20) }} 页</span>
+          <button
+            class="secondary-button"
+            type="button"
+            :disabled="loading || page * 20 >= diagnosis.reports.totalCount"
+            @click="changePage(page + 1)"
+          >
+            下一页
+          </button>
+        </div>
+      </template>
+      <div
+        v-else-if="!loading && !error"
+        class="sim-empty"
+      >
+        <strong>诊断记录暂时无法展示</strong><p>请刷新记录重试；接口异常时不会以「一切正常」代替真实状态。</p>
+      </div>
+    </template>
+
+    <template v-else-if="!showReport">
       <form
         class="advice-filter"
         @submit.prevent="filter"
@@ -397,6 +580,11 @@ onBeforeUnmount(() => { alive = false; generation++ })
 .advice-stats { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; }.advice-stats article { padding: 20px; background: #fff; border: 1px solid #dfe8e3; border-radius: 10px; }.advice-stats strong { display: block; font-size: 30px; margin: 10px 0; font-variant-numeric: tabular-nums; }.advice-stats span, .advice-stats small { color: #5b7264; }.advice-stats small { display: block; }
 .advice-review-note { color: #51695b; line-height: 1.9; font-size: 14px; }.advice-outcome { display: flex; align-items: center; gap: 18px; margin: 18px 0; }.advice-outcome strong { font-size: 30px; font-variant-numeric: tabular-nums; }
 .advice-archive summary { cursor: pointer; }.advice-archive dl { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 16px; }.advice-archive dt { color: #657a6e; font-size: 13px; }.advice-archive dd { margin: 8px 0; }.advice-archive p { overflow-wrap: anywhere; }.advice-schedule { margin-top: 24px; }
-@media(max-width: 800px) { .advice-table { min-width: 680px; }.advice-archive dl { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+.diagnosis-verdict { display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 14px; }
+h2 > .diagnosis-verdict { font-size: 22px; padding: 6px 14px; }
+.diagnosis-valid { color: #326a56; background: #edf5ef; }.diagnosis-changed { color: #9a3b3b; background: #fbeaea; }.diagnosis-insufficient { color: #825621; background: #fbf1df; }.diagnosis-unknown { color: #5b6b62; background: #eef1ee; }
+.diagnosis-item-changed { background: #fdf6f0; margin: 0 -12px; padding-left: 12px !important; padding-right: 12px; border-radius: 8px; }
+.diagnosis-history { margin-top: 22px; }.diagnosis-expanded { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 16px; margin: 0 0 12px; }.diagnosis-expanded dt { color: #657a6e; font-size: 13px; }.diagnosis-expanded dd { margin: 8px 0; overflow-wrap: anywhere; }
+@media(max-width: 800px) { .advice-table { min-width: 680px; }.advice-archive dl, .diagnosis-expanded { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media(max-width: 580px) { .advice-stats { grid-template-columns: 1fr; }.advice-conclusion { padding: 18px; }.advice-conclusion h2 { font-size: 23px; }.advice-filter { align-items: stretch; }.advice-filter label { flex: 1; min-width: 130px; }.advice-filter input { font-size: 16px; width: 100%; box-sizing: border-box; }.advice-text-button { min-height: 44px; } }
 </style>

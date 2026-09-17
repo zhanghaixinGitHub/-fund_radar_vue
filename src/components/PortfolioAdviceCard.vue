@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { useRoute } from 'vue-router'
-import type { AdviceSummary } from '@/types/advice'
-import { adviceLabel } from '@/utils/advice'
+import type { AdviceSummary, DiagnosisSummary } from '@/types/advice'
+import { adviceLabel, diagnosisStale, diagnosisVerdictLabel, diagnosisVerdictTone } from '@/utils/advice'
 import { shanghaiDate, simTime } from '@/utils/simulation'
 
-defineProps<{ fundCode: string; report?: AdviceSummary; error?: string; loading?: boolean }>()
+defineProps<{ fundCode: string; report?: AdviceSummary; diagnosis?: DiagnosisSummary; diagnosisError?: string; error?: string; loading?: boolean }>()
 const route = useRoute()
 </script>
 
@@ -37,11 +37,35 @@ const route = useRoute()
     <p v-else-if="!loading">
       还没有保存的建议。可进入完整依据，生成当前建议；后台也会每天检查并留档。
     </p>
+    <div class="holding-diagnosis">
+      <template v-if="diagnosis">
+        <span
+          class="diagnosis-verdict"
+          :class="diagnosisVerdictTone(diagnosis.verdict)"
+        >诊断：{{ diagnosisVerdictLabel(diagnosis.verdict) }} · {{ diagnosis.reportDate }}</span>
+        <span
+          v-if="diagnosisStale(diagnosis.cutoffDate, shanghaiDate())"
+          class="holding-diagnosis-stale"
+        >数据截至 {{ diagnosis.cutoffDate ?? '未知' }}，可能陈旧</span>
+      </template>
+      <span
+        v-else-if="diagnosisError"
+        class="diagnosis-verdict diagnosis-unknown"
+        role="alert"
+      >{{ diagnosisError }}</span>
+      <span
+        v-else-if="!loading && !error"
+        class="diagnosis-verdict diagnosis-unknown"
+      >尚无诊断报告，后台每日核对后留档</span>
+    </div>
     <div class="holding-advice-footer">
       <span v-if="report">{{ simTime(report.generatedAt) }}<template v-if="report.originalReportId"> · 沿用已有判断</template></span>
       <div class="holding-advice-links">
         <RouterLink :to="{ name: 'portfolio-advice', params: { fundCode }, query: { from: route.fullPath } }">
           查看完整依据 →
+        </RouterLink>
+        <RouterLink :to="{ name: 'portfolio-advice', params: { fundCode }, query: { from: route.fullPath, section: 'diagnosis' } }">
+          诊断详情
         </RouterLink>
         <RouterLink :to="{ name: 'portfolio-advice', params: { fundCode }, query: { from: route.fullPath, section: 'history' } }">
           历史建议
@@ -62,5 +86,9 @@ const route = useRoute()
 .holding-advice p { margin: 10px 0 12px; color: #3d574c; line-height: 1.75; font-size: 14px; }
 .holding-advice-links { display: flex; gap: 18px; flex-wrap: wrap; }
 .holding-advice-links a { color: #086b62; font-size: 13px; min-height: 30px; display: inline-flex; align-items: center; }
+.holding-diagnosis { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin: 4px 0 12px; }
+.diagnosis-verdict { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 13px; }
+.diagnosis-valid { color: #326a56; background: #e4f0e9; }.diagnosis-changed { color: #9a3b3b; background: #fbeaea; }.diagnosis-insufficient { color: #825621; background: #fbf1df; }.diagnosis-unknown { color: #5b6b62; background: #ecefee; }
+.holding-diagnosis-stale { color: #825621; font-size: 12px; }
 @media (max-width: 580px) { .holding-advice { padding: 14px; }.holding-advice-links a { min-height: 44px; } }
 </style>
