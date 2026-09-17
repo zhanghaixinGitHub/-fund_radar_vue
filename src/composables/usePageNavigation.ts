@@ -15,6 +15,7 @@ const pageSections: Record<string, PageSection[]> = {
   'portfolio-advice': [
     { key: 'latest', label: '最新建议', group: '持仓分析' },
     { key: 'diagnosis', label: '诊断详情' },
+    { key: 'rules', label: '规则草案' },
     { key: 'history', label: '历史记录' },
     { key: 'review', label: '效果回看' },
   ],

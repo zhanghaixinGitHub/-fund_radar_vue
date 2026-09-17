@@ -1,4 +1,4 @@
-import type { AdviceDecision, AdviceSummary, DiagnosisItemKey, DiagnosisVerdict } from '@/types/advice'
+import type { AdviceDecision, AdviceSummary, DiagnosisItemKey, DiagnosisVerdict, RuleTriggerStats } from '@/types/advice'
 
 export const adviceLabel = (decision?: AdviceDecision) => decision === 'BUY' ? '建议买入' : decision === 'HOLD' ? '建议继续持有'
   : decision === 'SELL' ? '建议卖出' : '暂无操作建议'
@@ -68,4 +68,68 @@ export function diagnosisStale(cutoffDate: string | null | undefined, today: str
   const reference = Date.parse(`${today}T00:00:00Z`)
   if (!Number.isFinite(cutoff) || !Number.isFinite(reference)) return true
   return reference - cutoff > 7 * 86400000
+}
+
+/** 阈值以小数字符串传输（如 "-0.0710"）；负值读作「跌」，正值读作「涨」，缺失不补零。 */
+export function rulePctText(value: string | number | null | undefined): string {
+  const numeric = Number(value)
+  if (value === null || value === undefined || value === '' || !Number.isFinite(numeric)) return '—'
+  const pct = (Math.abs(numeric) * 100).toFixed(2)
+  if (numeric > 0) return `涨 ${pct}%`
+  if (numeric < 0) return `跌 ${pct}%`
+  return '0.00%'
+}
+export function ruleTierLabel(value: unknown): string {
+  return value === 'CONSERVATIVE' ? '保守' : value === 'BALANCED' ? '适中' : value === 'LOOSE' ? '宽松'
+    : value === 'CUSTOM' ? '自定义' : '档位待确认'
+}
+/** 生效中/已撤销/已被取代三种状态分开表述，取代保留 supersededAt 留痕。 */
+export function ruleStatusLabel(rule: { status: string; supersededAt: string | null }): string {
+  if (rule.status === 'REVOKED') return '已撤销'
+  if (rule.supersededAt) return '已被新规则取代'
+  return rule.status === 'ACTIVE' ? '生效中' : '状态待确认'
+}
+/** 触发统计正文；中位数缺失如实写统计不足，末端未完整观察的触发单独计数说明。 */
+export function ruleTriggerText(stats: RuleTriggerStats | null | undefined): string {
+  if (!stats) return '暂无历史触发统计。'
+  const decline = stats.medianFurtherDecline === null ? '续跌幅度统计不足' : `触发后中位续跌 ${rulePctText(stats.medianFurtherDecline)}`
+  const days = stats.medianRecoveryDays === null ? NaN : Number(stats.medianRecoveryDays)
+  const recovery = Number.isFinite(days) ? `中位修复 ${Number.isInteger(days) ? days : days.toFixed(1)} 天` : '修复天数统计不足'
+  const censored = stats.censoredCount > 0 ? `；其中 ${stats.censoredCount} 次处于历史末端，未完整观察` : ''
+  return `历史触发 ${stats.triggerCount} 次 · ${decline} · ${recovery}${censored}。`
+}
+/** 草案统计更新只提示徽标：已确认规则来源草案与当前草案不是同一份即视为已更新。 */
+export function ruleStatsUpdated(
+  rule: { sourceDraftId: string | null } | null | undefined,
+  draft: { draftId: string | null } | null | undefined,
+): boolean {
+  return !!(rule?.sourceDraftId && draft?.draftId && rule.sourceDraftId !== draft.draftId)
+}
+
+/** 微调步进以万分之一为最小单位做整数运算，避免浮点误差越过 ±20% 边界。 */
+const RULE_STEP_SCALE = 10000
+function ruleDraftUnits(value: string | null | undefined): number | null {
+  if (value === null || value === undefined || !/^-?\d+(\.\d+)?$/.test(value.trim())) return null
+  const units = Math.round(Number(value) * RULE_STEP_SCALE)
+  return Number.isFinite(units) ? units : null
+}
+function ruleStepSize(units: number): number {
+  return Math.max(1, Math.round(Math.abs(units) * 0.05))
+}
+function ruleStepDelta(units: number): number {
+  return Math.floor(Math.abs(units) * 0.2)
+}
+/** 单个方向允许的最大步数；草案值为零或非法时不允许微调。 */
+export function ruleAdjustMaxSteps(value: string | null | undefined): number {
+  const units = ruleDraftUnits(value)
+  if (units === null) return 0
+  return Math.floor(ruleStepDelta(units) / ruleStepSize(units))
+}
+/** 按步数计算微调后的阈值（4 位小数字符串）， clamp 在草案值 ±20% 以内且不越过边界。 */
+export function ruleAdjustedValue(value: string | null | undefined, steps: number): string | null {
+  const units = ruleDraftUnits(value)
+  if (units === null) return null
+  const max = ruleAdjustMaxSteps(value)
+  const clamped = Math.max(-max, Math.min(max, Math.trunc(steps)))
+  return ((units + clamped * ruleStepSize(units)) / RULE_STEP_SCALE).toFixed(4)
 }

@@ -1,11 +1,20 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { generateAdvice, getAdviceHistory, getAdviceReport, fetchFundDiagnosis } from '@/api/advice'
+import {
+  confirmHoldingRule, fetchFundDiagnosis, fetchHoldingRules, fetchRuleDraft, generateAdvice, generateRuleDraft,
+  getAdviceHistory, getAdviceReport, revokeHoldingRule,
+} from '@/api/advice'
+import { getSimOverview } from '@/api/simulation'
 import { usePageNavigation } from '@/composables/usePageNavigation'
 import { useAuthStore } from '@/stores/auth'
-import type { AdviceDetail, AdviceHistory, DiagnosisHistory } from '@/types/advice'
-import { adviceLabel, diagnosisItemLabel, diagnosisItemOrder, diagnosisStale, diagnosisVerdictLabel, diagnosisVerdictTone, evidenceUrl, reviewLabel } from '@/utils/advice'
+import type { AdviceDetail, AdviceHistory, DiagnosisHistory, HoldingRulesView, RuleDraftTier, RuleDraftView } from '@/types/advice'
+import type { SimPosition } from '@/types/simulation'
+import {
+  adviceLabel, diagnosisItemLabel, diagnosisItemOrder, diagnosisStale, diagnosisVerdictLabel, diagnosisVerdictTone,
+  evidenceUrl, reviewLabel, ruleAdjustedValue, ruleAdjustMaxSteps, rulePctText, ruleStatsUpdated, ruleStatusLabel,
+  ruleTierLabel, ruleTriggerText,
+} from '@/utils/advice'
 import { shanghaiDate, simMoney, simPercent, simShares, simTime, simTone } from '@/utils/simulation'
 
 const route = useRoute()
@@ -34,6 +43,94 @@ const diagnosisItems = computed(() => [...(diagnosis.value?.latest?.items ?? [])
   .sort((a, b) => diagnosisItemOrder.indexOf(a.item) - diagnosisItemOrder.indexOf(b.item)))
 const diagnosisLatestId = computed(() => diagnosis.value?.latest?.report.reportId ?? '')
 function toggleDiagnosisReport(id: string) { expandedDiagnosisId.value = expandedDiagnosisId.value === id ? '' : id }
+
+const draft = ref<RuleDraftView | null>(null)
+const holdingRules = ref<HoldingRulesView | null>(null)
+const rulePosition = ref<SimPosition | null>(null)
+const selectedTier = ref<RuleDraftTier['tier'] | ''>('')
+const adjustProfit = ref(0)
+const adjustReduce = ref(0)
+const confirming = ref(false)
+const revoking = ref(false)
+const revokeArmed = ref(false)
+const generatingDraft = ref(false)
+const draftAvailable = computed(() => draft.value?.status === 'AVAILABLE')
+const selectedTierDraft = computed(() => draft.value?.tiers.find(item => item.tier === selectedTier.value) ?? null)
+/** 未做微调时不提交阈值字段，服务端按草案值处理；有微调即会被记为 CUSTOM 档。 */
+const adjustedProfit = computed(() => selectedTierDraft.value ? ruleAdjustedValue(selectedTierDraft.value.takeProfitPct, adjustProfit.value) : null)
+const adjustedReduce = computed(() => selectedTierDraft.value ? ruleAdjustedValue(selectedTierDraft.value.reduceDrawdownPct, adjustReduce.value) : null)
+const profitAdjusted = computed(() => adjustedProfit.value !== null && selectedTierDraft.value !== null
+  && Number(adjustedProfit.value) !== Number(selectedTierDraft.value.takeProfitPct))
+const reduceAdjusted = computed(() => adjustedReduce.value !== null && selectedTierDraft.value !== null
+  && Number(adjustedReduce.value) !== Number(selectedTierDraft.value.reduceDrawdownPct))
+const activeRule = computed(() => holdingRules.value?.active ?? null)
+const statsUpdated = computed(() => ruleStatsUpdated(activeRule.value, draft.value))
+/** 规则只能由本人对已确认份额显式确认；份额缺失或有核对问题时只展示原因。 */
+const ruleBlockReason = computed(() => {
+  if (!canGenerate.value) return '当前账户没有确认持仓规则的权限。'
+  if (!rulePosition.value) return '该基金当前没有持仓记录，规则草案仅供参考。'
+  if (rulePosition.value.issue) return `持仓核对尚未通过：${rulePosition.value.issue}。核对完成前不能确认规则。`
+  if (Number(rulePosition.value.shares) <= 0) return '份额尚未确认或已清仓，规则草案仅供参考。'
+  return ''
+})
+const canConfirmRule = computed(() => draftAvailable.value && !ruleBlockReason.value)
+function selectTier(tier: RuleDraftTier['tier']) {
+  if (!canConfirmRule.value) return
+  if (selectedTier.value === tier) return
+  selectedTier.value = tier
+  adjustProfit.value = 0
+  adjustReduce.value = 0
+}
+function stepProfit(delta: number) { adjustProfit.value += delta }
+function stepReduce(delta: number) { adjustReduce.value += delta }
+function resetAdjust() { adjustProfit.value = 0; adjustReduce.value = 0 }
+async function confirmRule() {
+  const tier = selectedTierDraft.value
+  if (!tier || confirming.value || !canConfirmRule.value) return
+  confirming.value = true; error.value = ''; message.value = ''
+  const fund = code.value
+  try {
+    const request: { tier: string; takeProfitPct?: string; reduceDrawdownPct?: string } = { tier: tier.tier }
+    if (profitAdjusted.value && adjustedProfit.value) request.takeProfitPct = adjustedProfit.value
+    if (reduceAdjusted.value && adjustedReduce.value) request.reduceDrawdownPct = adjustedReduce.value
+    const result = await confirmHoldingRule(fund, request)
+    if (!alive || fund !== code.value) return
+    holdingRules.value = result
+    selectedTier.value = ''; adjustProfit.value = 0; adjustReduce.value = 0
+    message.value = '规则已确认并生效，可随时撤销；触发只产生复核提示。'
+  } catch (reason) {
+    if (alive && fund === code.value) error.value = reason instanceof Error ? reason.message : '规则确认失败，请稍后重试。'
+  } finally { if (alive) confirming.value = false }
+}
+async function revokeRule() {
+  if (!revokeArmed.value) { revokeArmed.value = true; return }
+  if (revoking.value) return
+  revoking.value = true; error.value = ''; message.value = ''
+  const fund = code.value
+  try {
+    const result = await revokeHoldingRule(fund)
+    if (!alive || fund !== code.value) return
+    holdingRules.value = result
+    revokeArmed.value = false
+    message.value = '规则已撤销并留痕，相关建议随之降级。'
+  } catch (reason) {
+    if (alive && fund === code.value) error.value = reason instanceof Error ? reason.message : '撤销结果暂时无法确认，请刷新查看。'
+  } finally { if (alive) revoking.value = false }
+}
+async function regenerateDraft() {
+  if (generatingDraft.value) return
+  generatingDraft.value = true; error.value = ''; message.value = ''
+  const fund = code.value
+  try {
+    const result = await generateRuleDraft(fund)
+    if (!alive || fund !== code.value) return
+    draft.value = result
+    selectedTier.value = ''; adjustProfit.value = 0; adjustReduce.value = 0
+    message.value = '已检查最新统计；统计未变时沿用现有草案，已确认规则不受影响。'
+  } catch (reason) {
+    if (alive && fund === code.value) error.value = reason instanceof Error ? reason.message : '草案生成失败，请稍后重试。'
+  } finally { if (alive) generatingDraft.value = false }
+}
 let generation = 0
 let alive = true
 
@@ -41,6 +138,8 @@ let alive = true
 async function load() {
   const current = ++generation
   loading.value = true; error.value = ''; detail.value = null; history.value = null; diagnosis.value = null
+  draft.value = null; holdingRules.value = null; rulePosition.value = null
+  selectedTier.value = ''; adjustProfit.value = 0; adjustReduce.value = 0; revokeArmed.value = false
   const fund = code.value
   start.value = typeof route.query.start === 'string' ? route.query.start : ''
   end.value = typeof route.query.end === 'string' ? route.query.end : ''
@@ -50,6 +149,14 @@ async function load() {
       if (!alive || current !== generation) return
       diagnosis.value = result
       expandedDiagnosisId.value = ''
+      return
+    }
+    if (section.value === 'rules') {
+      const [draftResult, rulesResult, overview] = await Promise.all([fetchRuleDraft(fund), fetchHoldingRules(fund), getSimOverview()])
+      if (!alive || current !== generation) return
+      draft.value = draftResult
+      holdingRules.value = rulesResult
+      rulePosition.value = overview.positions.find(item => item.fundCode === fund) ?? null
       return
     }
     const result = await getAdviceHistory(fund, section.value === 'latest' ? 1 : page.value,
@@ -319,6 +426,279 @@ onBeforeUnmount(() => { alive = false; generation++ })
       </div>
     </template>
 
+    <template v-else-if="section === 'rules'">
+      <template v-if="draft && holdingRules && !loading">
+        <section
+          v-if="activeRule"
+          class="sim-detail-panel"
+          aria-labelledby="rule-active-title"
+        >
+          <h2 id="rule-active-title">
+            当前生效规则
+            <span
+              v-if="statsUpdated"
+              class="diagnosis-verdict diagnosis-insufficient rule-badge"
+            >统计已更新</span>
+          </h2>
+          <p
+            v-if="statsUpdated"
+            class="sim-muted"
+          >
+            草案统计已有新版本（当前统计截至 {{ draft.statsCutoffDate ?? '未知' }}），已确认的阈值不会自动替换；可在下方重新确认。
+          </p>
+          <dl class="rule-active-detail">
+            <div><dt>档位</dt><dd>{{ ruleTierLabel(activeRule.tier) }}</dd></div>
+            <div><dt>减仓线（回撤触发）</dt><dd>{{ rulePctText(activeRule.reduceDrawdownPct) }}</dd></div>
+            <div><dt>止盈线（收益触发）</dt><dd>{{ rulePctText(activeRule.takeProfitPct) }}</dd></div>
+            <div><dt>确认时间</dt><dd>{{ simTime(activeRule.confirmedAt) }}</dd></div>
+          </dl>
+          <p class="sim-muted">
+            规则版本：{{ activeRule.ruleVersion }}<template v-if="!statsUpdated && draft.statsCutoffDate">
+              · 来源草案统计截止：{{ draft.statsCutoffDate }}
+            </template>
+          </p>
+          <div class="sim-actions">
+            <button
+              class="secondary-button"
+              type="button"
+              :disabled="revoking"
+              @click="revokeRule"
+            >
+              {{ revokeArmed ? '确认撤销？撤销后立即失效并留痕' : '撤销规则' }}
+            </button>
+            <button
+              v-if="revokeArmed"
+              class="secondary-button"
+              type="button"
+              :disabled="revoking"
+              @click="revokeArmed = false"
+            >
+              取消
+            </button>
+          </div>
+        </section>
+
+        <section
+          class="sim-detail-panel"
+          aria-labelledby="rule-draft-title"
+        >
+          <h2 id="rule-draft-title">
+            规则草案
+          </h2>
+          <template v-if="draftAvailable">
+            <p class="sim-muted">
+              依据 {{ draft.historyDays ?? '—' }} 个交易日、{{ draft.windowCount ?? '—' }} 个滚动窗口统计 · 统计截止 {{ draft.statsCutoffDate ?? '未知' }}<template v-if="draft.navBasis">
+                · 净值口径：{{ draft.navBasis }}
+              </template>
+            </p>
+            <p
+              v-if="draft.assumption"
+              class="sim-muted"
+            >
+              {{ draft.assumption }}
+            </p>
+            <p
+              v-if="ruleBlockReason"
+              class="notice-banner"
+              role="status"
+            >
+              {{ ruleBlockReason }}
+            </p>
+            <div class="rule-tier-grid">
+              <article
+                v-for="tier in draft.tiers"
+                :key="tier.tier"
+                class="rule-tier-card"
+                :class="{ 'rule-tier-selected': selectedTier === tier.tier, 'rule-tier-disabled': !canConfirmRule }"
+              >
+                <h3>{{ ruleTierLabel(tier.tier) }}</h3>
+                <dl>
+                  <div><dt>减仓线</dt><dd>{{ rulePctText(tier.reduceDrawdownPct) }}</dd></div>
+                  <div><dt>止盈线</dt><dd>{{ rulePctText(tier.takeProfitPct) }}</dd></div>
+                </dl>
+                <p class="rule-tier-stats">
+                  减仓线：{{ ruleTriggerText(tier.reduceTrigger) }}
+                </p>
+                <p class="rule-tier-stats">
+                  止盈线：{{ ruleTriggerText(tier.takeProfitTrigger) }}
+                </p>
+                <button
+                  class="secondary-button"
+                  type="button"
+                  :disabled="!canConfirmRule"
+                  @click="selectTier(tier.tier)"
+                >
+                  {{ selectedTier === tier.tier ? '已选中' : '选择此档' }}
+                </button>
+              </article>
+            </div>
+            <div
+              v-if="selectedTier && selectedTierDraft"
+              class="rule-adjust"
+            >
+              <h3>微调「{{ ruleTierLabel(selectedTier) }}」档阈值（限草案值 ±20% 步进）</h3>
+              <div class="rule-stepper">
+                <span>减仓线</span>
+                <button
+                  class="secondary-button"
+                  type="button"
+                  :disabled="-adjustReduce >= ruleAdjustMaxSteps(selectedTierDraft.reduceDrawdownPct)"
+                  @click="stepReduce(-1)"
+                >
+                  更深
+                </button>
+                <strong>{{ rulePctText(adjustedReduce) }}</strong>
+                <button
+                  class="secondary-button"
+                  type="button"
+                  :disabled="adjustReduce >= ruleAdjustMaxSteps(selectedTierDraft.reduceDrawdownPct)"
+                  @click="stepReduce(1)"
+                >
+                  更浅
+                </button>
+              </div>
+              <div class="rule-stepper">
+                <span>止盈线</span>
+                <button
+                  class="secondary-button"
+                  type="button"
+                  :disabled="adjustProfit >= ruleAdjustMaxSteps(selectedTierDraft.takeProfitPct)"
+                  @click="stepProfit(-1)"
+                >
+                  更低
+                </button>
+                <strong>{{ rulePctText(adjustedProfit) }}</strong>
+                <button
+                  class="secondary-button"
+                  type="button"
+                  :disabled="adjustProfit >= ruleAdjustMaxSteps(selectedTierDraft.takeProfitPct)"
+                  @click="stepProfit(1)"
+                >
+                  更高
+                </button>
+              </div>
+              <p
+                v-if="profitAdjusted || reduceAdjusted"
+                class="sim-muted"
+              >
+                已微调草案值，确认后记为「自定义」档。<button
+                  type="button"
+                  class="advice-text-button"
+                  @click="resetAdjust"
+                >
+                  恢复草案值
+                </button>
+              </p>
+              <div class="sim-actions">
+                <button
+                  class="primary-button"
+                  type="button"
+                  :disabled="confirming"
+                  @click="confirmRule"
+                >
+                  {{ confirming ? '正在确认…' : '确认此规则' }}
+                </button>
+                <button
+                  class="secondary-button"
+                  type="button"
+                  :disabled="confirming"
+                  @click="selectedTier = ''"
+                >
+                  取消选择
+                </button>
+              </div>
+              <p class="sim-muted">
+                规则由本人确认后生效，可随时撤销；确认前草案只是参考数字，不参与任何建议。
+              </p>
+            </div>
+            <div
+              v-if="canGenerate"
+              class="sim-actions"
+            >
+              <button
+                class="secondary-button"
+                type="button"
+                :disabled="generatingDraft"
+                @click="regenerateDraft"
+              >
+                {{ generatingDraft ? '正在检查统计…' : '重新生成草案' }}
+              </button>
+            </div>
+          </template>
+          <template v-else>
+            <p class="notice-banner">
+              {{ draft.status === 'NOT_APPLICABLE' ? '该类别暂不适用此类规则。' : '草案数据不足。' }}{{ draft.reason || '未提供具体原因。' }}
+            </p>
+            <p class="sim-muted">
+              数据不足时不提供阈值数字，也不建议凭感觉填写。
+            </p>
+            <div
+              v-if="canGenerate"
+              class="sim-actions"
+            >
+              <button
+                class="secondary-button"
+                type="button"
+                :disabled="generatingDraft"
+                @click="regenerateDraft"
+              >
+                {{ generatingDraft ? '正在检查统计…' : '重新检查数据' }}
+              </button>
+            </div>
+          </template>
+        </section>
+
+        <section
+          v-if="holdingRules.history.length"
+          class="sim-detail-panel"
+          aria-labelledby="rule-history-title"
+        >
+          <h2 id="rule-history-title">
+            确认历史
+          </h2>
+          <div class="advice-table-wrap">
+            <table class="advice-table">
+              <thead>
+                <tr>
+                  <th scope="col">
+                    确认时间
+                  </th><th scope="col">
+                    档位与阈值
+                  </th><th scope="col">
+                    状态
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="item in holdingRules.history"
+                  :key="item.ruleId"
+                >
+                  <td>{{ simTime(item.confirmedAt) }}</td>
+                  <td>
+                    <strong>{{ ruleTierLabel(item.tier) }}</strong>
+                    <p>减仓线 {{ rulePctText(item.reduceDrawdownPct) }} · 止盈线 {{ rulePctText(item.takeProfitPct) }}</p>
+                  </td>
+                  <td>
+                    {{ ruleStatusLabel(item) }}<small v-if="item.supersededAt">{{ simTime(item.supersededAt) }}</small>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <p class="sim-muted">
+          止盈线、减仓线触发只产生复核提示，不构成投资建议，是否操作由本人决定。
+        </p>
+      </template>
+      <div
+        v-else-if="!loading && !error"
+        class="sim-empty"
+      >
+        <strong>规则草案暂时无法展示</strong><p>请刷新记录重试；数据不足时会如实显示原因，不会给出伪造的阈值。</p>
+      </div>
+    </template>
+
     <template v-else-if="!showReport">
       <form
         class="advice-filter"
@@ -585,6 +965,17 @@ h2 > .diagnosis-verdict { font-size: 22px; padding: 6px 14px; }
 .diagnosis-valid { color: #326a56; background: #edf5ef; }.diagnosis-changed { color: #9a3b3b; background: #fbeaea; }.diagnosis-insufficient { color: #825621; background: #fbf1df; }.diagnosis-unknown { color: #5b6b62; background: #eef1ee; }
 .diagnosis-item-changed { background: #fdf6f0; margin: 0 -12px; padding-left: 12px !important; padding-right: 12px; border-radius: 8px; }
 .diagnosis-history { margin-top: 22px; }.diagnosis-expanded { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 16px; margin: 0 0 12px; }.diagnosis-expanded dt { color: #657a6e; font-size: 13px; }.diagnosis-expanded dd { margin: 8px 0; overflow-wrap: anywhere; }
-@media(max-width: 800px) { .advice-table { min-width: 680px; }.advice-archive dl, .diagnosis-expanded { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+.rule-badge { margin-left: 12px; font-size: 13px; vertical-align: middle; }
+.rule-active-detail { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 16px; margin: 12px 0; }.rule-active-detail dt { color: #657a6e; font-size: 13px; }.rule-active-detail dd { margin: 8px 0; font-variant-numeric: tabular-nums; }
+.rule-tier-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; margin: 16px 0; }
+.rule-tier-card { padding: 20px; background: #fff; border: 1px solid #dfe8e3; border-radius: 10px; display: flex; flex-direction: column; gap: 10px; }
+.rule-tier-selected { border-color: #13796e; box-shadow: 0 0 0 1px #13796e; }
+.rule-tier-disabled { opacity: 0.75; }
+.rule-tier-card h3 { margin: 0; }.rule-tier-card dl { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; margin: 0; }.rule-tier-card dt { color: #657a6e; font-size: 13px; }.rule-tier-card dd { margin: 6px 0 0; font-size: 18px; font-variant-numeric: tabular-nums; }
+.rule-tier-stats { margin: 0; color: #546c5e; line-height: 1.7; font-size: 13px; }
+.rule-tier-card .secondary-button { margin-top: auto; }
+.rule-adjust { border-top: 1px solid #dfe8e3; padding-top: 16px; margin-top: 4px; }
+.rule-stepper { display: flex; align-items: center; gap: 14px; margin: 12px 0; flex-wrap: wrap; }.rule-stepper > span { color: #53695e; min-width: 60px; }.rule-stepper strong { min-width: 110px; text-align: center; font-variant-numeric: tabular-nums; }
+@media(max-width: 800px) { .advice-table { min-width: 680px; }.advice-archive dl, .diagnosis-expanded, .rule-active-detail { grid-template-columns: repeat(2,minmax(0,1fr)); }.rule-tier-grid { grid-template-columns: 1fr; } }
 @media(max-width: 580px) { .advice-stats { grid-template-columns: 1fr; }.advice-conclusion { padding: 18px; }.advice-conclusion h2 { font-size: 23px; }.advice-filter { align-items: stretch; }.advice-filter label { flex: 1; min-width: 130px; }.advice-filter input { font-size: 16px; width: 100%; box-sizing: border-box; }.advice-text-button { min-height: 44px; } }
 </style>

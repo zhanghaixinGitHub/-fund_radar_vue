@@ -1,5 +1,7 @@
 import { get, post } from '@/api/http'
-import type { AdviceDetail, AdviceHistory, AdviceSummary, DiagnosisHistory, DiagnosisSummary } from '@/types/advice'
+import type {
+  AdviceDetail, AdviceHistory, AdviceSummary, DiagnosisHistory, DiagnosisSummary, HoldingRulesView, RuleDraftView,
+} from '@/types/advice'
 
 const base = '/api/v1/sim-portfolios/current/advice'
 export const getLatestAdvice = () => get<AdviceSummary[]>(base)
@@ -21,3 +23,16 @@ export function fetchFundDiagnosis(code: string, options: { page?: number; pageS
   const params = new URLSearchParams({ page: String(options.page ?? 1), pageSize: String(options.pageSize ?? 20) })
   return get<DiagnosisHistory>(`${diagnosisBase}/${encodeURIComponent(code)}?${params}`)
 }
+
+const ruleBase = '/api/v1/sim-portfolios/current'
+/** 读取当前草案；数据不足或不适用时返回明确状态与原因，不返回阈值数字。 */
+export const fetchRuleDraft = (code: string) => get<RuleDraftView>(`${ruleBase}/rule-drafts/${encodeURIComponent(code)}`)
+/** 重新生成草案；统计未变时幂等沿用，不覆盖已确认规则。 */
+export const generateRuleDraft = (code: string) => post<RuleDraftView>(`${ruleBase}/rule-drafts/${encodeURIComponent(code)}/generate`)
+export const fetchHoldingRules = (code: string) => get<HoldingRulesView>(`${ruleBase}/rules/${encodeURIComponent(code)}`)
+/** 显式确认所选档位或微调值；同一参数重复确认不生成新版本。 */
+export function confirmHoldingRule(code: string, request: { tier: string; takeProfitPct?: string; reduceDrawdownPct?: string }) {
+  return post<HoldingRulesView>(`${ruleBase}/rules/${encodeURIComponent(code)}/confirm`, request)
+}
+/** 撤销本人规则；撤销留痕，重复撤销幂等。 */
+export const revokeHoldingRule = (code: string) => post<HoldingRulesView>(`${ruleBase}/rules/${encodeURIComponent(code)}/revoke`)

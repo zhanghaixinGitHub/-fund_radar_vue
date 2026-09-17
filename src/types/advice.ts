@@ -51,3 +51,27 @@ export interface DiagnosisHistory {
   fundCode: string; fundName: string; reports: SimPage<DiagnosisSummary>
   latest: DiagnosisReportDetail | null; job: SimOverview['job']
 }
+
+/** 规则草案只是参考数字，止盈/减仓线触发只产生复核提示，不构成投资建议。 */
+export type RuleTier = 'CONSERVATIVE' | 'BALANCED' | 'LOOSE' | 'CUSTOM'
+export type RuleDraftStatus = 'AVAILABLE' | 'DATA_INSUFFICIENT' | 'NOT_APPLICABLE'
+/** 末端无法完整观察的触发记 censored，不补造数值。 */
+export interface RuleTriggerStats {
+  triggerCount: number; medianFurtherDecline: DecimalValue | null; medianRecoveryDays: DecimalValue | null; censoredCount: number
+}
+export interface RuleDraftTier {
+  tier: Exclude<RuleTier, 'CUSTOM'>; reduceDrawdownPct: DecimalValue; takeProfitPct: DecimalValue
+  reduceTrigger: RuleTriggerStats | null; takeProfitTrigger: RuleTriggerStats | null
+}
+/** 数据不足或不适用时只有 status 与 reason，不给阈值数字；未归档结果 draftId/generatedAt 为空。 */
+export interface RuleDraftView {
+  draftId: string | null; fundCode: string | null; status: RuleDraftStatus; reason: string | null
+  statsCutoffDate: string | null; generatedAt: string | null; historyDays: number | null; windowCount: number | null
+  navBasis: string | null; stats: Record<string, unknown> | null; tiers: RuleDraftTier[]; assumption: string | null
+}
+export interface HoldingRule {
+  ruleId: string; fundCode: string; tier: RuleTier; takeProfitPct: DecimalValue; reduceDrawdownPct: DecimalValue
+  ruleParams: Record<string, unknown> | null; sourceDraftId: string | null; ruleVersion: string
+  status: 'ACTIVE' | 'REVOKED'; confirmedAt: string; supersededAt: string | null
+}
+export interface HoldingRulesView { fundCode: string; active: HoldingRule | null; history: HoldingRule[] }
