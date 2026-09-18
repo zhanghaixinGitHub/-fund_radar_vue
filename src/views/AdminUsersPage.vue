@@ -468,7 +468,7 @@ onMounted(() => {
     </p>
 
     <div
-      v-if="selectedUser"
+      v-if="selectedUser && !isUserPickerSection"
       class="workspace-detail-navigation"
     >
       <RouterLink
