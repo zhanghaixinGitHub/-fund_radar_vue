@@ -5,18 +5,20 @@ import { usePageNavigation } from '@/composables/usePageNavigation'
 
 import {
   grantAdminUserWatchlistCredits,
+  getAdminUserSimPortfolio,
   getAdminUserWatchlistCreditLedger,
-  getAdminUserPortfolio,
   getAdminUsers,
   resetAdminUserPassword,
   transferLegacyWatchlist,
   updateAdminUserRole,
   updateAdminUserStatus,
 } from '@/api/adminUsers'
+import { ApiRequestError } from '@/api/http'
 import type { AccountRole } from '@/types/auth'
 import type { AdminUser, WatchlistCreditLedgerPage } from '@/types/adminUser'
-import type { PortfolioSnapshot } from '@/types/portfolio'
+import type { SimOverview } from '@/types/simulation'
 import { ACCOUNT_ROLE_OPTIONS, accountDisplayLabel, accountRoleLabel } from '@/utils/accountPresentation'
+import { simMoney, simPercent, simShares, simTone } from '@/utils/simulation'
 
 const route = useRoute()
 const router = useRouter()
@@ -40,7 +42,7 @@ const creditAmount = ref(1)
 const creditReason = ref('')
 const transferTargetUserId = ref('')
 const portfolioUser = ref<AdminUser | null>(null)
-const portfolio = ref<PortfolioSnapshot | null>(null)
+const simPortfolio = ref<SimOverview | null>(null)
 const creditLedgerUser = ref<AdminUser | null>(null)
 const creditLedger = ref<WatchlistCreditLedgerPage | null>(null)
 const creditLedgerPage = ref(0)
@@ -175,21 +177,22 @@ async function submitLegacyTransfer(): Promise<void> {
   })
 }
 
-/** 管理员按需查看指定用户的已确认持仓，不把财务数据写入全局状态。 */
-async function viewPortfolio(user: AdminUser): Promise<void> {
+/** 管理员按需查看指定用户的模拟账本持仓，不把财务数据写入全局状态。 */
+async function viewSimPortfolio(user: AdminUser): Promise<void> {
   const sequence = ++detailRequest
   actionUserId.value = user.userId
   errorMessage.value = ''
   try {
     portfolioUser.value = user
-    const response = await getAdminUserPortfolio(user.userId)
+    const response = await getAdminUserSimPortfolio(user.userId)
     if (sequence !== detailRequest) return
-    portfolio.value = response
+    simPortfolio.value = response
   } catch (error) {
     if (sequence !== detailRequest) return
+    simPortfolio.value = null
+    if (error instanceof ApiRequestError && error.status === 404) return
     portfolioUser.value = null
-    portfolio.value = null
-    errorMessage.value = error instanceof Error ? error.message : '持仓快照暂时不可用。'
+    errorMessage.value = error instanceof Error ? error.message : '模拟持仓暂时不可用。'
   } finally {
     if (sequence === detailRequest) actionUserId.value = null
   }
@@ -263,13 +266,7 @@ function formatTime(value: string): string {
   return new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 }
 
-function formatAmount(value: number | string): string {
-  const numeric = typeof value === 'number' ? value : Number(value)
-  return new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY', currencyDisplay: 'narrowSymbol' })
-    .format(Number.isFinite(numeric) ? numeric : 0)
-}
-
-function closePortfolio(): void {
+function closeSimPortfolio(): void {
   void setUserTab('account')
 }
 
@@ -341,7 +338,7 @@ watch(() => `${selectedUser.value?.userId ?? ''}:${section.value}:${detailTab.va
   ++detailRequest
   if (portfolioUser.value || creditLedgerUser.value) actionUserId.value = null
   portfolioUser.value = null
-  portfolio.value = null
+  simPortfolio.value = null
   creditLedgerUser.value = null
   creditLedger.value = null
   creditLedgerLoading.value = false
@@ -354,7 +351,7 @@ watch(() => `${selectedUser.value?.userId ?? ''}:${section.value}:${detailTab.va
   if (!user) return
   if (section.value === 'credits') creditTarget.value = user
   else if (detailTab.value === 'ledger') void viewCreditLedger(user)
-  else if (detailTab.value === 'portfolio') void viewPortfolio(user)
+  else if (detailTab.value === 'portfolio') void viewSimPortfolio(user)
 }, { immediate: true })
 
 onBeforeUnmount(() => { ++detailRequest; ++usersRequest; resetPasswordValue.value = '' })
@@ -410,7 +407,7 @@ onMounted(() => {
         aria-label="用户详情分类"
       >
         <button
-          v-for="tab in [{ key: 'account', label: '账户信息' }, { key: 'ledger', label: '积分流水' }, { key: 'portfolio', label: '确认持仓' }]"
+          v-for="tab in [{ key: 'account', label: '账户信息' }, { key: 'ledger', label: '积分流水' }, { key: 'portfolio', label: '模拟持仓' }]"
           :key="tab.key"
           type="button"
           :aria-pressed="detailTab === tab.key"
@@ -835,14 +832,14 @@ onMounted(() => {
       <header>
         <div>
           <h2 id="admin-portfolio-title">
-            {{ accountDisplayLabel(portfolioUser) }} 的确认持仓
+            {{ accountDisplayLabel(portfolioUser) }} 的模拟持仓
           </h2>
-          <p>仅展示该用户已确认并入库的快照；不是实时资产，也不会修改原数据。</p>
+          <p>展示该用户模拟账本的当前持仓，收益按最新已公布净值计算；只读，不会修改数据。</p>
         </div>
         <button
           class="text-button"
           type="button"
-          @click="closePortfolio"
+          @click="closeSimPortfolio"
         >
           关闭
         </button>
@@ -852,30 +849,39 @@ onMounted(() => {
         class="state-message"
         role="status"
       >
-        正在加载确认持仓…
+        正在加载模拟持仓…
       </p>
       <p
-        v-else-if="!portfolio?.available"
+        v-else-if="!simPortfolio?.positions.length"
         class="state-message"
       >
-        该用户尚无可展示的确认持仓快照。
+        该用户暂无模拟持仓。
       </p>
       <div
         v-else
         class="admin-table-wrap"
       >
         <table>
-          <thead><tr><th>基金</th><th>截图金额</th><th>占比</th><th>日收益</th><th>持有收益</th></tr></thead>
+          <thead><tr><th>基金</th><th>市值</th><th>持有收益</th><th>最近一期收益</th><th>累计收益</th><th>持有份额</th><th>可卖份额</th><th>冻结份额</th></tr></thead>
           <tbody>
             <tr
-              v-for="holding in portfolio?.holdings"
-              :key="holding.fundCode"
+              v-for="position in simPortfolio?.positions"
+              :key="position.fundCode"
             >
-              <td><strong>{{ holding.fundName }}</strong><span>{{ holding.fundCode }}</span></td>
-              <td>{{ formatAmount(holding.reportedAmount) }}</td>
-              <td>{{ holding.reportedWeightPct }}%</td>
-              <td>{{ formatAmount(holding.reportedDailyGainAmount) }}</td>
-              <td>{{ formatAmount(holding.reportedHoldingGainAmount) }}</td>
+              <td><strong>{{ position.fundName }}</strong><span>{{ position.fundCode }}</span></td>
+              <td>{{ simMoney(position.marketValue) }}</td>
+              <td :class="simTone(position.holdingGain)">
+                {{ simMoney(position.holdingGain) }}<span>{{ simPercent(position.holdingGainRate) }}</span>
+              </td>
+              <td :class="simTone(position.dailyGain)">
+                {{ simMoney(position.dailyGain) }}<span>{{ position.navDate ?? '待更新' }}</span>
+              </td>
+              <td :class="simTone(position.cumulativeGain)">
+                {{ simMoney(position.cumulativeGain) }}
+              </td>
+              <td>{{ simShares(position.shares) }}</td>
+              <td>{{ simShares(position.availableShares) }}</td>
+              <td>{{ simShares(position.frozenShares) }}</td>
             </tr>
           </tbody>
         </table>

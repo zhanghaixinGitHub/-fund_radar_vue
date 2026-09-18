@@ -91,38 +91,6 @@
 
 只删除当前本机用户的对应关注项。重复删除同样返回成功并写入审计日志。请求体或路径参数不合法时返回 HTTP 400 和 `VALIDATION_ERROR`。
 
-### `GET /api/v1/portfolio/current`（M4 本机确认快照）
-
-返回当前本机用户最新的确认快照。该接口只读，不提供截图上传、支付宝登录、份额交易或买卖操作。无快照时返回 `available=false` 与空 `holdings`；有快照时，`dataAsOfStatus=UNKNOWN` 必须同时满足 `dataAsOfDate=null`。
-
-```json
-{
-  "success": true,
-  "code": "OK",
-  "data": {
-    "available": true,
-    "sourceKind": "USER_CONFIRMED_SCREENSHOT",
-    "dataAsOfStatus": "UNKNOWN",
-    "dataAsOfDate": null,
-    "importedAt": "2026-08-26T10:01:13Z",
-    "holdings": [
-      {
-        "fundCode": "010710",
-        "fundName": "安信医药健康主题股票C",
-        "reportedAmount": 100.00,
-        "reportedWeightPct": 1.00,
-        "reportedDailyGainAmount": 1.00,
-        "reportedHoldingGainAmount": 2.00,
-        "reportedHoldingGainPct": 2.00,
-        "reportedCumulativeGainAmount": 10.00
-      }
-    ]
-  }
-}
-```
-
-这些字段是用户确认的截图展示值，不是基金份额、成本、累计净值或实时行情；页面必须同时展示日期状态和非实时说明。
-
 ### `GET /api/v1/funds/{fundCode}/events`（M2 部分）
 
 返回与该基金代码关联、已审核且仍在授权保留期内的事件游标页。每项包含来源名称、原始链接、发布时间、可信度、相关性与关联依据；关联依据仅说明可能相关，不宣称因果。AI 服务不可用但 Redis 存在最后成功页时，返回 `stale=true` 与 `cachedAt`；无缓存时返回 `503/AI_SERVICE_UNAVAILABLE`。当前未登记授权来源时正常返回空 `items`，不回退到 Mock 事件。
@@ -198,7 +166,7 @@
 | --- | --- | --- |
 | 来源同步、资讯采集和事件审核 | 每个来源已确认书面授权范围、访问方式、限频和保留期限 | 未确认不得登记、探测或访问第三方 |
 | 特征构建、评分、滚动回测和提醒生成 | 有合规的类别化历史数据、模型准入标准和基线 | 不足数据不产生方向性信号；提醒不含交易指令 |
-| M4 完整持仓分析与多人数据隔离 | 已有登录认证、本人授权、删除/导出策略，以及用户确认的日期/份额/成本 | 当前仅支持本机确认快照；禁止支付宝登录、凭证采集或未确认 OCR 入库 |
+| M4 完整持仓分析与多人数据隔离 | 已有登录认证、本人授权、删除/导出策略，以及用户确认的日期/份额/成本 | 本机确认快照接口（`GET /api/v1/portfolio/current`、`GET /api/v1/admin/users/{id}/portfolio/current`）已随前端快照功能一并下线，历史数据保留；禁止支付宝登录、凭证采集或未确认 OCR 入库 |
 
 禁止出现支付宝登录、持仓抓取、申购、赎回、买入、卖出或自动交易接口。
 
@@ -215,7 +183,7 @@
 | `PUT /api/v1/admin/users/{id}/role` | `USER_ACCOUNT_MANAGE` | 调整角色并撤销目标会话 |
 | `PUT /api/v1/admin/users/{id}/status` | `USER_ACCOUNT_MANAGE` | 启停账户；不得移除最后一个启用系统管理员 |
 | `POST /api/v1/admin/users/{id}/reset-password` | `USER_ACCOUNT_MANAGE` | 人工重置密码并撤销目标会话 |
-| `GET /api/v1/admin/users/{id}/portfolio/current` | `PORTFOLIO_USER_READ` | 仅系统管理员受控读取指定用户确认快照 |
+| `GET /api/v1/admin/users/{id}/sim-portfolio/current` | `PORTFOLIO_USER_READ` | 受控读取指定用户模拟账本持仓，结构与自助接口 `GET /api/v1/sim-portfolios/current` 同构；目标用户无持仓时返回空 `positions` |
 | `POST /api/v1/admin/legacy-watchlist/transfer` | `LEGACY_WATCHLIST_TRANSFER` | 必须 `confirmed=true`；不迁移提醒/持仓 |
 
 除注册、登录和 CORS 预检外，所有 `/api/v1/**` 都必须有有效会话；写请求还必须带正确的 CSRF Header。未登录返回 `401/AUTHENTICATION_REQUIRED`，权限不足返回 `403/ACCESS_DENIED`。

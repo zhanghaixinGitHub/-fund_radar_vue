@@ -85,12 +85,6 @@ export const router = createRouter({
       redirect: (to) => ({ name: 'portfolio-advice', query: { ...to.query, fund: to.params.fundCode } }),
     },
     {
-      path: '/portfolio/confirmed-snapshot',
-      name: 'portfolio-confirmed-snapshot',
-      component: () => import('@/views/PortfolioSnapshotPage.vue'),
-      meta: { title: '历史确认快照', appArea: 'user', permissions: ['PORTFOLIO_SELF_READ'] },
-    },
-    {
       path: '/notifications',
       name: 'notifications',
       component: () => import('@/views/NotificationsPage.vue'),

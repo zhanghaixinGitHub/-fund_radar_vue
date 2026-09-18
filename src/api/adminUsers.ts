@@ -1,7 +1,7 @@
 import { get, post, put } from '@/api/http'
 import type { AccountRole } from '@/types/auth'
 import type { AdminUserPage, WatchlistCreditLedgerPage } from '@/types/adminUser'
-import type { PortfolioSnapshot } from '@/types/portfolio'
+import type { SimOverview } from '@/types/simulation'
 import type { WatchlistQuota } from '@/types/watchlist'
 
 /** 分页读取脱敏用户账户及关注数；仅管理员可用。 */
@@ -52,7 +52,7 @@ export function transferLegacyWatchlist(targetUserId: string): Promise<{ transfe
   })
 }
 
-/** 受控读取指定用户的已确认持仓快照；仅管理员可用。 */
-export function getAdminUserPortfolio(userId: string): Promise<PortfolioSnapshot> {
-  return get<PortfolioSnapshot>(`/api/v1/admin/users/${encodeURIComponent(userId)}/portfolio/current`)
+/** 受控读取指定用户的当前模拟账本持仓；仅管理员可用，响应结构与自助模拟持仓接口一致。 */
+export function getAdminUserSimPortfolio(userId: string): Promise<SimOverview> {
+  return get<SimOverview>(`/api/v1/admin/users/${encodeURIComponent(userId)}/sim-portfolio/current`)
 }

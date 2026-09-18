@@ -197,7 +197,7 @@ Java 路径均相对于 `C:/ideaProject/workSpace12/src/main/java/com/fundradar/
 
 已注册 `/api/v1/sim-portfolios/current` 组合概览（含持仓）、`preview/{fundCode}`、`orders`、`ledger`、`recurring-plans` 与 `performance/{fundCode}`。订单提交、撤销、计划修改/暂停/恢复/结束采用明确写操作；详细路由以 Java `SimulationController` 为准。
 
-原 `GET /api/v1/portfolio/current` 保持快照语义，避免同一返回字段有时表示截图展示值、有时表示模拟结算值。
+原 `GET /api/v1/portfolio/current` 已于 2026-09 随前端快照功能下线（数据表保留），持仓读取以模拟账本接口为准；不再存在同一返回字段混用截图展示值与模拟结算值的风险。
 
 - 用户编号只取自当前认证上下文；订单、计划、持仓及流水的读写均校验归属。新增明确的本人模拟交易和计划操作权限，不能仅靠前端隐藏按钮。
 - 用户重复点击使用请求幂等键；卖出按组合/基金在事务中锁定和校验可用份额，防止两个卖单重复消费。
@@ -241,7 +241,7 @@ Java 路径均相对于 `C:/ideaProject/workSpace12/src/main/java/com/fundradar/
 
 ### 实际落点
 
-- Vue `src/views/SimulatedPortfolioPage.vue` 接管 `/portfolio`，含持仓、计划、订单和流水；`SimulationTradeDialog` 共用于关注列表、两种详情页和持仓。旧确认快照保留在 `/portfolio/confirmed-snapshot`，原快照 API 不变。
+- Vue `src/views/SimulatedPortfolioPage.vue` 接管 `/portfolio`，含持仓、计划、订单和流水；`SimulationTradeDialog` 共用于关注列表、两种详情页和持仓。旧确认快照页面 `/portfolio/confirmed-snapshot` 与快照 API（`GET /api/v1/portfolio/current`、`GET /api/v1/admin/users/{id}/portfolio/current`）已于 2026-09 一并下线，快照数据表保留；管理员查看用户持仓改用 `GET /api/v1/admin/users/{id}/sim-portfolio/current`（结构与自助接口同构）。
 - Java `com.fundradar.core.simulation` 负责本人授权、交易、定投、账务重放与后台任务。`V13__create_simulated_portfolio.sql` 创建 `sim_account`、`sim_order`、`sim_position`、`sim_plan`、`sim_plan_execution`、`sim_ledger_entry`、`sim_daily_valuation`、`sim_job_state`，并授予两项本人写权限；所有新表及字段有中文注释。
 - FIFO 批次由确认订单在内存重放，未新增独立批次物理表。订单保存当前结算版本，流水追加原版本及更正证据；同时间的更正按数据库序号排序。历史曲线按日期批量更新。
 - Python `/internal/v1/simulation` 使用既有服务 Token，拒绝浏览器 Origin；仅接收基金代码及日期。`20260910_20_simulation_market_refresh.py` 跟随原迁移 `20260909_19`，保存逐基金净值和分红刷新水位。
