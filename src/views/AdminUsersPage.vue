@@ -328,6 +328,7 @@ async function openUserInsight(userId: string): Promise<void> {
     errorMessage.value = '未找到所选用户，请按姓名或手机号重新查询。'
     return
   }
+  searchKeyword.value = user.displayName
   if (isLedgerSection.value) await viewCreditLedger(user)
   else if (isPortfolioSection.value) await viewSimPortfolio(user)
 }
@@ -759,6 +760,14 @@ onMounted(() => {
                     @click="openUser(user)"
                   >
                     查看详情
+                  </button>
+                  <button
+                    class="text-button"
+                    :disabled="actionUserId === user.userId"
+                    type="button"
+                    @click="goUserInsight('sim-portfolio', user.userId)"
+                  >
+                    持仓详情
                   </button>
                   <button
                     v-if="section === 'credits'"
