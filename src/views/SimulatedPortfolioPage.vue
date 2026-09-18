@@ -151,6 +151,20 @@ async function loadDetails() {
   } catch (reason) { if (alive && current === detailGeneration) detailError.value = reason instanceof Error ? reason.message : '记录加载失败。' }
 }
 function selectCode(code: string) { void router.replace({ path: route.path, query: { ...route.query, fundCode: code || undefined, page: undefined } }) }
+// 定投与交易记录共用基金搜索：关键词解析为唯一持仓基金后沿用 fundCode 精确过滤，空关键词恢复全部基金。
+const scopeKeyword = ref('')
+const scopeHint = ref('')
+function searchScope() {
+  const value = scopeKeyword.value.trim()
+  scopeHint.value = ''
+  if (!value) { selectCode(''); return }
+  if (/^\d{6}$/.test(value)) { selectCode(value); return }
+  const query = value.toLocaleLowerCase()
+  const matches = (overview.value?.positions ?? []).filter(p => p.fundCode.includes(value) || p.fundName.toLocaleLowerCase().includes(query))
+  if (matches.length === 1) selectCode(matches[0].fundCode)
+  else if (matches.length > 1) scopeHint.value = `匹配到多只基金：${matches.slice(0, 5).map(p => `${p.fundName}·${p.fundCode}`).join('、')}，请输入完整的 6 位基金代码。`
+  else scopeHint.value = '未找到匹配的持仓基金，可输入完整的 6 位基金代码。'
+}
 /** 切换定投状态筛选时回到第一页，避免停留在旧筛选的中间页。 */
 function changePlanStatus(value: string) {
   if (loading.value || value === planStatus.value) return
@@ -232,6 +246,10 @@ watch([section, selectedCode], () => {
 })
 watch([orderPage, ledgerPage, recordMode, days], () => void loadDetails())
 watch(appliedKeyword, value => { keyword.value = value })
+watch(selectedCode, code => {
+  scopeKeyword.value = code ? (selectedPosition.value ? `${selectedPosition.value.fundName} · ${code}` : code) : ''
+  scopeHint.value = ''
+}, { immediate: true })
 watch(holdingPage, value => { holdingPageInput.value = String(value) })
 watch(planPage, value => { planPageInput.value = String(value) })
 // 等持仓实际加载后才修正越界页码，避免刷新或详情返回时被尚未加载的空列表重置到第一页。
@@ -376,37 +394,50 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
           <summary>模拟规则与数据说明</summary><p>{{ overview.rules }}</p><p>未公布净值时保持待更新。新增投入不算收益，卖出和现金分红记录为转出，不模拟钱包余额。全部卖出后累计收益及历史交易保留。</p>
         </details>
       </template>
-      <div
-        v-if="section === 'plans' || (section === 'orders' && (overview.positions.length || selectedCode))"
-        class="sim-filter-row"
+      <form
+        v-if="section === 'plans' || section === 'orders'"
+        class="search-panel"
+        @submit.prevent="searchScope"
       >
-        <label
-          v-if="(section === 'plans' || section === 'orders') && (overview.positions.length || selectedCode)"
-          class="sim-filter"
-        >基金范围<select
-          :value="selectedCode"
-          @change="selectCode(($event.target as HTMLSelectElement).value)"
-        ><option value="">全部基金</option><option
-          v-for="p in overview.positions"
-          :key="p.fundCode"
-          :value="p.fundCode"
-        >{{ p.fundName }} · {{ p.fundCode }}</option><option
-          v-if="selectedCode && !selectedPosition"
-          :value="selectedCode"
-        >{{ selectedCode }}</option></select></label>
-        <label
-          v-if="section === 'plans'"
-          class="sim-filter"
-        >计划状态<select
-          :value="planStatus"
-          :disabled="loading"
-          @change="changePlanStatus(($event.target as HTMLSelectElement).value)"
-        ><option
-          v-for="option in planStatusOptions"
-          :key="option.value"
-          :value="option.value"
-        >{{ option.label }}</option></select></label>
-      </div>
+        <label for="scope-keyword">基金代码或名称</label>
+        <div class="sim-search-line">
+          <div class="search-row">
+            <input
+              id="scope-keyword"
+              v-model="scopeKeyword"
+              maxlength="50"
+              placeholder="例如：000001"
+              type="search"
+            >
+            <button
+              class="primary-button"
+              :disabled="loading"
+              type="submit"
+            >
+              {{ loading ? '查询中…' : '查询基金' }}
+            </button>
+          </div>
+          <label
+            v-if="section === 'plans'"
+            class="sim-sort"
+          >计划状态 <select
+            :value="planStatus"
+            :disabled="loading"
+            @change="changePlanStatus(($event.target as HTMLSelectElement).value)"
+          ><option
+            v-for="option in planStatusOptions"
+            :key="option.value"
+            :value="option.value"
+          >{{ option.label }}</option></select></label>
+        </div>
+      </form>
+      <p
+        v-if="scopeHint && (section === 'plans' || section === 'orders')"
+        class="state-message"
+        role="status"
+      >
+        {{ scopeHint }}
+      </p>
       <p
         v-if="detailError"
         class="error-message"
@@ -658,7 +689,7 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
           v-else-if="!filteredPlans.length"
           class="sim-empty"
         >
-          没有符合条件的定投计划，可调整基金范围或计划状态后查看。
+          没有符合条件的定投计划，可调整搜索关键词或计划状态后查看。
         </p>
         <div class="sim-position-list">
           <article
