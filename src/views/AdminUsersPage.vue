@@ -477,32 +477,6 @@ onMounted(() => {
       >
         ← 返回{{ sectionLabel }}
       </RouterLink>
-      <nav
-        v-if="section === 'accounts'"
-        class="workspace-tabs"
-        aria-label="用户详情分类"
-      >
-        <button
-          type="button"
-          aria-pressed="true"
-        >
-          账户信息
-        </button>
-        <button
-          type="button"
-          :aria-pressed="false"
-          @click="goUserInsight('ledger')"
-        >
-          积分流水
-        </button>
-        <button
-          type="button"
-          :aria-pressed="false"
-          @click="goUserInsight('sim-portfolio')"
-        >
-          模拟持仓
-        </button>
-      </nav>
     </div>
 
     <section
