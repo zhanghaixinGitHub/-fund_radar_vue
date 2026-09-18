@@ -14,6 +14,7 @@
 .sim-warning { color: #855710; }.sim-muted { color: #647b72; font-size: 13px; line-height: 1.7; }
 .sim-status { display: flex; flex-wrap: wrap; gap: 10px 20px; font-size: 13px; color: #647b72; margin: 16px 0; }
 .sim-filter { display: flex; align-items: center; gap: 12px; margin: 20px 0; }.sim-filter select { max-width: 100%; min-width: 180px; }
+.sim-filter-row { display: flex; align-items: center; flex-wrap: wrap; gap: 0 32px; }.sim-filter-row .sim-filter { flex: 0 1 auto; }
 .sim-search-line { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .sim-search-line .search-row { flex: 1; min-width: 0; }
 .search-panel label.sim-sort { font-weight: 400; }.sim-sort { display: flex; align-items: center; }.sim-sort select { margin-left: 8px; min-width: 140px; }

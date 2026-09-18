@@ -82,7 +82,16 @@ const pagedPositions = computed(() => {
 // 定投计划沿用持仓的 URL 页码与每页条数规则；切换基金范围时由 selectCode 重置页码。
 const planPageSizeOptions = [10, 20, 50]
 const planPageSize = computed(() => listLocation.value.size)
-const filteredPlans = computed(() => plans.value.filter(p => !selectedCode.value || p.fundCode === selectedCode.value))
+// 状态筛选进入 URL；进行中包含执行中与已暂停，已结束对应 ENDED。
+const planStatusOptions = [
+  { value: '', label: '全部状态' },
+  { value: 'active', label: '进行中' },
+  { value: 'ended', label: '已结束' },
+] as const
+const planStatus = computed(() => planStatusOptions.find(o => o.value === route.query.status)?.value ?? '')
+const filteredPlans = computed(() => plans.value.filter(p =>
+  (!selectedCode.value || p.fundCode === selectedCode.value) &&
+  (!planStatus.value || (planStatus.value === 'ended' ? p.status === 'ENDED' : p.status !== 'ENDED'))))
 const planTotalPages = computed(() => Math.max(1, Math.ceil(filteredPlans.value.length / planPageSize.value)))
 const planPage = computed(() => Math.min(listLocation.value.page, planTotalPages.value))
 const planPageInput = ref(String(planPage.value))
@@ -142,6 +151,11 @@ async function loadDetails() {
   } catch (reason) { if (alive && current === detailGeneration) detailError.value = reason instanceof Error ? reason.message : '记录加载失败。' }
 }
 function selectCode(code: string) { void router.replace({ path: route.path, query: { ...route.query, fundCode: code || undefined, page: undefined } }) }
+/** 切换定投状态筛选时回到第一页，避免停留在旧筛选的中间页。 */
+function changePlanStatus(value: string) {
+  if (loading.value || value === planStatus.value) return
+  void router.push({ path: route.path, query: { ...route.query, status: value || undefined, page: undefined } })
+}
 /** 查询时回到完整持仓列表，清除单基金详情限定，避免隐藏条件影响搜索；空关键词恢复全部持仓。 */
 function searchHoldings() {
   if (loading.value) return
@@ -362,20 +376,37 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
           <summary>模拟规则与数据说明</summary><p>{{ overview.rules }}</p><p>未公布净值时保持待更新。新增投入不算收益，卖出和现金分红记录为转出，不模拟钱包余额。全部卖出后累计收益及历史交易保留。</p>
         </details>
       </template>
-      <label
-        v-if="(section === 'plans' || section === 'orders') && (overview.positions.length || selectedCode)"
-        class="sim-filter"
-      >基金范围<select
-        :value="selectedCode"
-        @change="selectCode(($event.target as HTMLSelectElement).value)"
-      ><option value="">全部基金</option><option
-        v-for="p in overview.positions"
-        :key="p.fundCode"
-        :value="p.fundCode"
-      >{{ p.fundName }} · {{ p.fundCode }}</option><option
-        v-if="selectedCode && !selectedPosition"
-        :value="selectedCode"
-      >{{ selectedCode }}</option></select></label>
+      <div
+        v-if="section === 'plans' || (section === 'orders' && (overview.positions.length || selectedCode))"
+        class="sim-filter-row"
+      >
+        <label
+          v-if="(section === 'plans' || section === 'orders') && (overview.positions.length || selectedCode)"
+          class="sim-filter"
+        >基金范围<select
+          :value="selectedCode"
+          @change="selectCode(($event.target as HTMLSelectElement).value)"
+        ><option value="">全部基金</option><option
+          v-for="p in overview.positions"
+          :key="p.fundCode"
+          :value="p.fundCode"
+        >{{ p.fundName }} · {{ p.fundCode }}</option><option
+          v-if="selectedCode && !selectedPosition"
+          :value="selectedCode"
+        >{{ selectedCode }}</option></select></label>
+        <label
+          v-if="section === 'plans'"
+          class="sim-filter"
+        >计划状态<select
+          :value="planStatus"
+          :disabled="loading"
+          @change="changePlanStatus(($event.target as HTMLSelectElement).value)"
+        ><option
+          v-for="option in planStatusOptions"
+          :key="option.value"
+          :value="option.value"
+        >{{ option.label }}</option></select></label>
+      </div>
       <p
         v-if="detailError"
         class="error-message"
@@ -622,6 +653,12 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
           class="sim-empty"
         >
           还没有定投计划。无需先买入，也可以直接设置第一期定投。
+        </p>
+        <p
+          v-else-if="!filteredPlans.length"
+          class="sim-empty"
+        >
+          没有符合条件的定投计划，可调整基金范围或计划状态后查看。
         </p>
         <div class="sim-position-list">
           <article
