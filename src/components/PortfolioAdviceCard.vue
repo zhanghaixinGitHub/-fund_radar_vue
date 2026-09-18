@@ -61,14 +61,8 @@ const route = useRoute()
     <div class="holding-advice-footer">
       <span v-if="report">{{ simTime(report.generatedAt) }}<template v-if="report.originalReportId"> · 沿用已有判断</template></span>
       <div class="holding-advice-links">
-        <RouterLink :to="{ name: 'portfolio-advice', params: { fundCode }, query: { from: route.fullPath } }">
-          查看完整依据 →
-        </RouterLink>
-        <RouterLink :to="{ name: 'portfolio-advice', params: { fundCode }, query: { from: route.fullPath, section: 'diagnosis' } }">
-          诊断详情
-        </RouterLink>
-        <RouterLink :to="{ name: 'portfolio-advice', params: { fundCode }, query: { from: route.fullPath, section: 'history' } }">
-          历史建议
+        <RouterLink :to="{ name: 'portfolio-advice', query: { fund: fundCode, from: route.fullPath } }">
+          持仓分析 →
         </RouterLink>
       </div>
     </div>

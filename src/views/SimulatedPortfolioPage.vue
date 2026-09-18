@@ -60,6 +60,15 @@ const positions = computed(() => {
     (showHistory.value || selectedCode.value || Number(p.shares) > 0 || (Number(p.totalBuy) === 0 && Number(p.totalSell) === 0)) &&
     (!query || p.fundCode.includes(query) || p.fundName.toLocaleLowerCase().includes(query)))
 })
+// 排序状态进入 URL，查看建议后返回持仓仍保持所选排序；均按数值降序。
+const holdingSortOptions = [
+  { value: 'marketValue', label: '持有金额' },
+  { value: 'holdingGain', label: '持有收益' },
+  { value: 'cumulativeGain', label: '累计收益' },
+] as const
+type HoldingSort = (typeof holdingSortOptions)[number]['value']
+const holdingSort = computed<HoldingSort>(() => holdingSortOptions.find(o => o.value === route.query.sort)?.value ?? 'marketValue')
+const sortedPositions = computed(() => [...positions.value].sort((a, b) => Number(b[holdingSort.value]) - Number(a[holdingSort.value])))
 // 先按当前搜索与持仓状态筛选，再分页展示；沿用市场和关注页的 URL 页码、每页条数规则。
 const holdingPageSizeOptions = [10, 20, 50]
 const holdingPageSize = computed(() => listLocation.value.size)
@@ -68,7 +77,7 @@ const holdingPage = computed(() => Math.min(listLocation.value.page, holdingTota
 const holdingPageInput = ref(String(holdingPage.value))
 const pagedPositions = computed(() => {
   const start = (holdingPage.value - 1) * holdingPageSize.value
-  return positions.value.slice(start, start + holdingPageSize.value)
+  return sortedPositions.value.slice(start, start + holdingPageSize.value)
 })
 const canWrite = computed(() => auth.hasPermission('SIM_PORTFOLIO_SELF_WRITE'))
 const canPlan = computed(() => auth.hasPermission('SIM_PLAN_SELF_WRITE'))
@@ -132,6 +141,11 @@ function searchHoldings() {
 function changeHoldingHistory(checked: boolean) {
   if (loading.value) return
   void router.push({ path: route.path, query: { ...route.query, showHistory: checked ? '1' : undefined, page: undefined } })
+}
+/** 切换排序时回到第一页，避免停留在旧排序的中间页。 */
+function changeHoldingSort(value: string) {
+  if (loading.value || value === holdingSort.value) return
+  void router.push({ path: route.path, query: { ...route.query, sort: value === 'marketValue' ? undefined : value, page: undefined } })
 }
 /** 在已有筛选结果内翻页；切换每页条数时由调用方传入第一页，避免跳过持仓。 */
 function changeHoldingPage(page: number, size = holdingPageSize.value) {
@@ -243,21 +257,35 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
       @submit.prevent="searchHoldings"
     >
       <label for="portfolio-keyword">基金代码或名称</label>
-      <div class="search-row">
-        <input
-          id="portfolio-keyword"
-          v-model="keyword"
-          maxlength="50"
-          placeholder="例如：000001"
-          type="search"
-        >
-        <button
-          class="primary-button"
+      <div class="sim-search-line">
+        <div class="search-row">
+          <input
+            id="portfolio-keyword"
+            v-model="keyword"
+            maxlength="50"
+            placeholder="例如：000001"
+            type="search"
+          >
+          <button
+            class="primary-button"
+            :disabled="loading"
+            type="submit"
+          >
+            {{ loading ? '查询中…' : '查询基金' }}
+          </button>
+        </div>
+        <label
+          v-if="section === 'holdings'"
+          class="sim-sort"
+        >排序方式 <select
+          :value="holdingSort"
           :disabled="loading"
-          type="submit"
-        >
-          {{ loading ? '查询中…' : '查询基金' }}
-        </button>
+          @change="changeHoldingSort(($event.target as HTMLSelectElement).value)"
+        ><option
+          v-for="option in holdingSortOptions"
+          :key="option.value"
+          :value="option.value"
+        >{{ option.label }}</option></select></label>
       </div>
     </form>
     <p

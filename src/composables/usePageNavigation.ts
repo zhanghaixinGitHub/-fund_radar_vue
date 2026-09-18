@@ -78,8 +78,15 @@ const moduleNames: Record<string, string> = {
   'fund-market': '基金市场', 'fund-detail': '基金市场',
   watchlist: '我的关注', 'watchlist-fund-detail': '我的关注',
   'portfolio-snapshot': '我的持仓', notifications: '站内提醒', profile: '个人信息',
-  'portfolio-advice': '我的持仓',
+  'portfolio-advice': '持仓分析',
   'admin-dashboard': '工作台', 'admin-sync-center': '数据同步', 'admin-users': '用户管理',
+}
+
+/** 返回链接指向的模块名称；持仓分析从持仓卡片进入，返回到「我的持仓」。 */
+const returnLabels: Record<string, string> = {
+  'portfolio-advice': '我的持仓',
+  'watchlist-fund-detail': '我的关注',
+  'fund-detail': '基金市场',
 }
 
 /** 返回路径只接受本模块的列表地址及已知筛选字段，不能成为站外跳转入口。 */
@@ -114,11 +121,15 @@ export function usePageNavigation() {
   const sectionLabel = computed(() => sections.value.find((item) => item.key === section.value)?.label ?? '')
   const moduleLabel = computed(() => moduleNames[routeName.value] ?? String(route.meta.title ?? '基金雷达'))
   const returnTarget = computed(() => {
-    if (routeName.value === 'portfolio-advice') return portfolioReturnPath(route.query.from)
+    // 从顶栏直接进入持仓分析时没有来源页，不显示返回链接。
+    if (routeName.value === 'portfolio-advice') {
+      return typeof route.query.from === 'string' ? portfolioReturnPath(route.query.from) : null
+    }
     if (routeName.value === 'watchlist-fund-detail') return listReturnTarget(route.query.from, '/watchlist')
     if (routeName.value === 'fund-detail') return listReturnTarget(route.query.from, '/funds')
     return null
   })
+  const returnLabel = computed(() => returnLabels[routeName.value] ?? moduleLabel.value)
   function sectionTarget(key: string): RouteLocationRaw {
     const query: LocationQuery = { ...route.query }
     if (isList.value) {
@@ -141,5 +152,5 @@ export function usePageNavigation() {
     }
     return { path: route.path, query }
   }
-  return { sections, section, sectionLabel, moduleLabel, returnTarget, sectionTarget }
+  return { sections, section, sectionLabel, moduleLabel, returnTarget, returnLabel, sectionTarget }
 }

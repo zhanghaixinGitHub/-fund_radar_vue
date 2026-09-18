@@ -15,7 +15,7 @@ const isAdminArea = computed(() => route.meta.appArea === 'admin')
 const accountMenuOpen = ref(false)
 const accountMenuElement = ref<globalThis.HTMLElement | null>(null)
 const sidebarOpen = ref(false)
-const { sections, section, sectionLabel, moduleLabel, returnTarget, sectionTarget } = usePageNavigation()
+const { sections, section, sectionLabel, moduleLabel, returnTarget, returnLabel, sectionTarget } = usePageNavigation()
 const adminEntryPermissions: PermissionCode[] = [
   'ADMIN_DASHBOARD_VIEW',
   'SYNC_JOB_READ',
@@ -23,6 +23,9 @@ const adminEntryPermissions: PermissionCode[] = [
 ]
 const hasAdminAccess = computed(() => adminEntryPermissions.some((permission) => can(permission)))
 const brandTarget = computed(() => (isAdminArea.value ? '/admin' : '/funds'))
+// 持仓分析页的基金在 query.fund 里，其他详情页在路径参数里；面包屑与侧栏上下文共用。
+const fundContext = computed(() => String(route.params.fundCode ?? '') ||
+  (route.name === 'portfolio-advice' ? String(route.query.fund ?? '') : ''))
 
 /** 菜单只反映已授予权限，接口本身仍由 Java 服务端校验。 */
 function can(permission: PermissionCode): boolean {
@@ -141,6 +144,13 @@ async function signOut(): Promise<void> {
           我的持仓
         </RouterLink>
         <RouterLink
+          v-if="can('PORTFOLIO_SELF_READ')"
+          :class="{ 'is-active-module': moduleLabel === '持仓分析' }"
+          to="/portfolio/advice"
+        >
+          持仓分析
+        </RouterLink>
+        <RouterLink
           v-if="can('NOTIFICATION_SELF_READ')"
           to="/notifications"
         >
@@ -251,13 +261,13 @@ async function signOut(): Promise<void> {
           class="sidebar-back"
           :to="returnTarget"
         >
-          ← 返回{{ moduleLabel }}
+          ← 返回{{ returnLabel }}
         </RouterLink>
         <p
-          v-if="route.params.fundCode"
+          v-if="fundContext"
           class="sidebar-context"
         >
-          当前基金 · {{ route.params.fundCode }}
+          当前基金 · {{ fundContext }}
         </p>
         <nav
           class="sidebar-nav"
@@ -311,7 +321,7 @@ async function signOut(): Promise<void> {
               {{ moduleLabel }}
             </RouterLink>
             <span v-else>{{ moduleLabel }}</span>
-            <span v-if="route.params.fundCode"> / {{ route.params.fundCode }}</span>
+            <span v-if="fundContext"> / {{ fundContext }}</span>
             <span v-if="sectionLabel"> / {{ sectionLabel }}</span>
           </nav>
         </div>

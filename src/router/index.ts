@@ -73,10 +73,16 @@ export const router = createRouter({
       meta: { title: '我的持仓', appArea: 'user', permissions: ['PORTFOLIO_SELF_READ'] },
     },
     {
-      path: '/portfolio/:fundCode/advice',
+      path: '/portfolio/advice',
       name: 'portfolio-advice',
       component: () => import('@/views/PortfolioAdvicePage.vue'),
-      meta: { title: '持仓建议与回看', appArea: 'user', permissions: ['PORTFOLIO_SELF_READ'] },
+      meta: { title: '持仓分析', appArea: 'user', permissions: ['PORTFOLIO_SELF_READ'] },
+    },
+    // 旧的单基金建议地址保留并转发到新地址，外部书签与历史消息中的链接不失效。
+    {
+      path: '/portfolio/:fundCode/advice',
+      name: 'portfolio-advice-legacy',
+      redirect: (to) => ({ name: 'portfolio-advice', query: { ...to.query, fund: to.params.fundCode } }),
     },
     {
       path: '/portfolio/confirmed-snapshot',
