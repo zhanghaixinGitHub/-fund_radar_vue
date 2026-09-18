@@ -1,4 +1,5 @@
 import type { ApiResponse } from '@/types/api'
+import { createUUID } from '@/utils/uuid'
 
 /** Java 核心服务要求浏览器携带的请求关联标识请求头。 */
 const REQUEST_ID_HEADER = 'X-Request-Id'
@@ -9,7 +10,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
 /** 为每次浏览器请求生成可追踪的唯一标识。 */
 function createRequestId(): string {
-  return crypto.randomUUID()
+  return createUUID()
 }
 
 /** 包含稳定 HTTP 状态和业务码的请求异常，供登录态与路由层识别 401/403。 */

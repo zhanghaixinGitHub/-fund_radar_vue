@@ -20,11 +20,16 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
+      host: '127.0.0.1',
       port: 5173,
+      allowedHosts: ['.natappfree.cc'],
       proxy: {
         '/api': {
           target: apiBaseUrl,
           changeOrigin: true,
+          // 经 HTTP 隧道访问时浏览器 Origin 为外部域名，Java 服务 CORS 校验会拒绝；
+          // 代理转发时统一改写为本机开发来源。
+          headers: { origin: 'http://localhost:5173' },
         },
       },
     },

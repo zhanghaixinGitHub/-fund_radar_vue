@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { getSimPreview, placeSimOrder, previewSimPlan, saveSimPlan } from '@/api/simulation'
 import type { SimPlan, SimPlanRequest, SimPreview } from '@/types/simulation'
 import { fractionShares, shanghaiDate, simMoney, simShares } from '@/utils/simulation'
+import { createUUID } from '@/utils/uuid'
 
 const props = defineProps<{ fundCode: string; mode: 'BUY' | 'SELL' | 'PLAN'; plan?: SimPlan }>()
 const emit = defineEmits<{ close: []; saved: [message: string] }>()
@@ -23,7 +24,7 @@ const firstExecution = ref('')
 const planPreviewError = ref('')
 const previewing = ref(false)
 const heading = computed(() => props.mode === 'PLAN' ? props.plan ? '修改定投计划' : '设置定投' : props.mode === 'SELL' ? '模拟卖出' : '模拟买入 / 加仓')
-let requestKey = globalThis.crypto.randomUUID()
+let requestKey = createUUID()
 let submittedPayload = ''
 let timer: ReturnType<typeof globalThis.setTimeout> | undefined
 let generation = 0
@@ -68,7 +69,7 @@ async function submit() {
   }
   // 网络结果不明时沿用原请求键；用户改变委托内容后才换键。
   const comparable = JSON.stringify({ ...payload, requestKey: '' })
-  if (submittedPayload && submittedPayload !== comparable) requestKey = globalThis.crypto.randomUUID()
+  if (submittedPayload && submittedPayload !== comparable) requestKey = createUUID()
   payload.requestKey = requestKey; submittedPayload = comparable
   saving.value = true
   try {
