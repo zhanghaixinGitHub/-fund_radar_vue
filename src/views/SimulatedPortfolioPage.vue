@@ -79,6 +79,17 @@ const pagedPositions = computed(() => {
   const start = (holdingPage.value - 1) * holdingPageSize.value
   return sortedPositions.value.slice(start, start + holdingPageSize.value)
 })
+// 定投计划沿用持仓的 URL 页码与每页条数规则；切换基金范围时由 selectCode 重置页码。
+const planPageSizeOptions = [10, 20, 50]
+const planPageSize = computed(() => listLocation.value.size)
+const filteredPlans = computed(() => plans.value.filter(p => !selectedCode.value || p.fundCode === selectedCode.value))
+const planTotalPages = computed(() => Math.max(1, Math.ceil(filteredPlans.value.length / planPageSize.value)))
+const planPage = computed(() => Math.min(listLocation.value.page, planTotalPages.value))
+const planPageInput = ref(String(planPage.value))
+const pagedPlans = computed(() => {
+  const start = (planPage.value - 1) * planPageSize.value
+  return filteredPlans.value.slice(start, start + planPageSize.value)
+})
 const canWrite = computed(() => auth.hasPermission('SIM_PORTFOLIO_SELF_WRITE'))
 const canPlan = computed(() => auth.hasPermission('SIM_PLAN_SELF_WRITE'))
 const jobStale = computed(() => !overview.value?.job?.completedAt || Date.now() - Date.parse(overview.value.job.completedAt) > 5 * 60_000)
@@ -159,6 +170,18 @@ function goToHoldingPage() {
   const page = Number(holdingPageInput.value)
   changeHoldingPage(Number.isInteger(page) ? page : holdingPage.value)
 }
+/** 定投翻页只更新页码与每页条数，保留基金范围等其余查询参数。 */
+function changePlanPage(page: number, size = planPageSize.value) {
+  if (loading.value || !Number.isInteger(page) || !planPageSizeOptions.includes(size)) return
+  const total = Math.max(1, Math.ceil(filteredPlans.value.length / size))
+  const target = Math.min(Math.max(1, page), total)
+  planPageInput.value = String(target)
+  void router.push({ path: route.path, query: { ...route.query, page: target > 1 ? String(target) : undefined, size: size !== 10 ? String(size) : undefined } })
+}
+function goToPlanPage() {
+  const page = Number(planPageInput.value)
+  changePlanPage(Number.isInteger(page) ? page : planPage.value)
+}
 function openPicker(mode: 'BUY' | 'PLAN') { pickerMode.value = mode; picker.value = true }
 function picked(code: string) { picker.value = false; trade.value = { fundCode: code, mode: pickerMode.value } }
 function saved(value: string) { trade.value = null; message.value = value; void load() }
@@ -196,11 +219,19 @@ watch([section, selectedCode], () => {
 watch([orderPage, ledgerPage, recordMode, days], () => void loadDetails())
 watch(appliedKeyword, value => { keyword.value = value })
 watch(holdingPage, value => { holdingPageInput.value = String(value) })
+watch(planPage, value => { planPageInput.value = String(value) })
 // 等持仓实际加载后才修正越界页码，避免刷新或详情返回时被尚未加载的空列表重置到第一页。
 watch([() => listLocation.value.page, holdingPage, section, overview], () => {
   if (!isCurrent.value || section.value !== 'holdings' || !overview.value) return
   if (listLocation.value.page !== holdingPage.value) {
     void router.replace({ path: route.path, query: { ...route.query, page: holdingPage.value > 1 ? String(holdingPage.value) : undefined } })
+  }
+})
+// 定投列表同样等数据加载后再修正越界页码；计划与持仓在同一次请求中返回，复用 overview 作为就绪信号。
+watch([() => listLocation.value.page, planPage, section, overview], () => {
+  if (!isCurrent.value || section.value !== 'plans' || !overview.value) return
+  if (listLocation.value.page !== planPage.value) {
+    void router.replace({ path: route.path, query: { ...route.query, page: planPage.value > 1 ? String(planPage.value) : undefined } })
   }
 })
 onMounted(() => {
@@ -594,7 +625,7 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
         </p>
         <div class="sim-position-list">
           <article
-            v-for="plan in plans.filter(p => !selectedCode || p.fundCode === selectedCode)"
+            v-for="plan in pagedPlans"
             :key="plan.planId"
             class="sim-position-card"
           >
@@ -657,6 +688,81 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
             </div>
           </article>
         </div>
+        <nav
+          v-if="filteredPlans.length > 0"
+          class="pagination"
+          aria-label="定投计划分页"
+        >
+          <p
+            class="pagination-summary"
+            aria-live="polite"
+          >
+            共 {{ filteredPlans.length }} 条
+          </p>
+          <div class="pagination-controls">
+            <label
+              class="page-size-control"
+              for="plan-page-size"
+            >
+              每页
+              <select
+                id="plan-page-size"
+                :value="planPageSize"
+                :disabled="loading"
+                @change="changePlanPage(1, Number(($event.target as HTMLSelectElement).value))"
+              >
+                <option
+                  v-for="option in planPageSizeOptions"
+                  :key="option"
+                  :value="option"
+                >
+                  {{ option }}
+                </option>
+              </select>
+              条
+            </label>
+            <button
+              :disabled="loading || planPage <= 1"
+              type="button"
+              @click="changePlanPage(planPage - 1)"
+            >
+              上一页
+            </button>
+            <span class="page-position">第 {{ planPage }} / {{ planTotalPages }} 页</span>
+            <button
+              :disabled="loading || planPage >= planTotalPages"
+              type="button"
+              @click="changePlanPage(planPage + 1)"
+            >
+              下一页
+            </button>
+            <label
+              class="page-jump-control"
+              for="plan-page-jump"
+            >
+              跳至
+              <input
+                id="plan-page-jump"
+                v-model="planPageInput"
+                :disabled="loading"
+                inputmode="numeric"
+                min="1"
+                :max="planTotalPages"
+                step="1"
+                type="number"
+                @keyup.enter="goToPlanPage"
+              >
+              页
+            </label>
+            <button
+              :disabled="loading"
+              type="button"
+              @click="goToPlanPage"
+            >
+              跳转
+            </button>
+          </div>
+        </nav>
         <section
           v-if="periodPlan"
           class="sim-detail-panel"
