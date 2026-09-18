@@ -65,6 +65,8 @@ const pageSections: Record<string, PageSection[]> = {
   'admin-users': [
     { key: 'accounts', label: '账户列表' },
     { key: 'credits', label: '关注积分' },
+    { key: 'ledger', label: '积分流水' },
+    { key: 'sim-portfolio', label: '模拟持仓' },
     { key: 'migration', label: '历史关注迁移' },
   ],
 }

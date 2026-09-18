@@ -4,10 +4,11 @@ import { useRoute, useRouter } from 'vue-router'
 import { usePageNavigation } from '@/composables/usePageNavigation'
 
 import {
-  grantAdminUserWatchlistCredits,
+  getAdminUser,
+  getAdminUsers,
   getAdminUserSimPortfolio,
   getAdminUserWatchlistCreditLedger,
-  getAdminUsers,
+  grantAdminUserWatchlistCredits,
   resetAdminUserPassword,
   transferLegacyWatchlist,
   updateAdminUserRole,
@@ -25,9 +26,9 @@ const router = useRouter()
 const { section, sectionLabel, sectionTarget } = usePageNavigation()
 const users = ref<AdminUser[]>([])
 const selectedUser = computed(() => users.value.find((user) => user.userId === route.query.user) ?? null)
-const detailTab = computed(() => ['ledger', 'portfolio'].includes(String(route.query.tab)) ? String(route.query.tab) : 'account')
 let detailRequest = 0
 let usersRequest = 0
+let searchRequest = 0
 const total = ref(0)
 const page = ref(Math.max(0, Number.isInteger(Number(route.query.page)) ? Number(route.query.page) - 1 : 0))
 const pageSize = 20
@@ -48,12 +49,26 @@ const creditLedger = ref<WatchlistCreditLedgerPage | null>(null)
 const creditLedgerPage = ref(0)
 const creditLedgerLoading = ref(false)
 const creditLedgerPageSize = 10
+const searchKeyword = ref('')
+const searchResults = ref<AdminUser[]>([])
+const searchLoading = ref(false)
+const searchMessage = ref('')
 
 const roleOptions = ACCOUNT_ROLE_OPTIONS
 
 const activeUsers = computed(() => users.value.filter((user) => !user.legacyRecord && user.status === 'ACTIVE'))
 const hasPreviousPage = computed(() => page.value > 0)
 const hasNextPage = computed(() => (page.value + 1) * pageSize < total.value)
+const isLedgerSection = computed(() => section.value === 'ledger')
+const isPortfolioSection = computed(() => section.value === 'sim-portfolio')
+const isUserPickerSection = computed(() => isLedgerSection.value || isPortfolioSection.value)
+const pickedUserId = computed(() => creditLedgerUser.value?.userId ?? portfolioUser.value?.userId ?? '')
+const headerLead = computed(() => {
+  if (isLedgerSection.value) return '按姓名或手机号查询用户后查看其积分流水；手机号与内部标识不会展示。'
+  if (isPortfolioSection.value) return '按姓名或手机号查询用户后查看其模拟持仓；只读，不会修改数据。'
+  if (selectedUser.value) return '查看所选账户资料及已授权操作。'
+  return '选择账户后查看详情，或从左侧管理关注积分和历史关注归属。'
+})
 
 /** 读取脱敏账户列表；服务端已完成权限和数据范围判断。 */
 async function loadUsers(): Promise<void> {
@@ -211,7 +226,7 @@ async function viewCreditLedger(user: AdminUser): Promise<void> {
     creditLedger.value = null
     errorMessage.value = error instanceof Error ? error.message : '积分流水暂时不可用。'
   } finally {
-    if (creditLedgerUser.value?.userId === user.userId && detailTab.value === 'ledger') actionUserId.value = null
+    if (creditLedgerUser.value?.userId === user.userId && isLedgerSection.value) actionUserId.value = null
   }
 }
 
@@ -266,12 +281,55 @@ function formatTime(value: string): string {
   return new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 }
 
-function closeSimPortfolio(): void {
-  void setUserTab('account')
+function closeUserInsight(): void {
+  void router.push({ path: route.path, query: { ...route.query, user: undefined } })
 }
 
-function closeCreditLedger(): void {
-  void setUserTab('account')
+/** 按姓名或手机号查询脱敏账户；关键字匹配由服务端完成，浏览器不接触原始手机号。 */
+async function searchUsers(): Promise<void> {
+  const keyword = searchKeyword.value.trim()
+  const sequence = ++searchRequest
+  if (!keyword) {
+    searchResults.value = []
+    searchMessage.value = '请输入姓名或手机号后再查询。'
+    return
+  }
+  searchLoading.value = true
+  searchMessage.value = ''
+  try {
+    const response = await getAdminUsers(0, pageSize, keyword)
+    if (sequence !== searchRequest) return
+    searchResults.value = response.items
+    if (!response.items.length) searchMessage.value = '未找到匹配的账户，请更换姓名或手机号。'
+  } catch (error) {
+    if (sequence !== searchRequest) return
+    searchResults.value = []
+    searchMessage.value = error instanceof Error ? error.message : '账户查询暂时不可用。'
+  } finally {
+    if (sequence === searchRequest) searchLoading.value = false
+  }
+}
+
+/** 直接跳转或刷新时按用户标识补全脱敏账户，再加载对应的积分流水或模拟持仓。 */
+async function openUserInsight(userId: string): Promise<void> {
+  const sequence = ++detailRequest
+  let user = users.value.find((item) => item.userId === userId)
+    ?? searchResults.value.find((item) => item.userId === userId)
+    ?? null
+  if (!user) {
+    try {
+      user = await getAdminUser(userId)
+    } catch {
+      user = null
+    }
+  }
+  if (sequence !== detailRequest) return
+  if (!user) {
+    errorMessage.value = '未找到所选用户，请按姓名或手机号重新查询。'
+    return
+  }
+  if (isLedgerSection.value) await viewCreditLedger(user)
+  else if (isPortfolioSection.value) await viewSimPortfolio(user)
 }
 
 function previousCreditLedgerPage(): void {
@@ -319,12 +377,16 @@ function nextPage(): void {
   }
 }
 
-function openUser(user: AdminUser, tab = 'account'): void {
-  void router.push({ path: route.path, query: { ...route.query, section: 'accounts', user: user.userId, tab } })
+function openUser(user: AdminUser): void {
+  void router.push({ path: route.path, query: { ...route.query, section: 'accounts', user: user.userId, tab: undefined } })
 }
 
-async function setUserTab(tab: string): Promise<void> {
-  await router.push({ path: route.path, query: { ...route.query, tab } })
+/** 用户详情和关注积分页跳转到独立的积分流水/模拟持仓菜单页，保留已选用户。 */
+function goUserInsight(target: 'ledger' | 'sim-portfolio', userId?: string): void {
+  void router.push({
+    path: route.path,
+    query: { ...route.query, section: target, user: userId ?? route.query.user, tab: undefined },
+  })
 }
 
 watch(() => route.query.page, () => {
@@ -334,7 +396,10 @@ watch(() => route.query.page, () => {
 })
 
 /** 切换用户或子页立即清空敏感表单与旧明细，慢响应不能覆盖新选择。 */
-watch(() => `${selectedUser.value?.userId ?? ''}:${section.value}:${detailTab.value}`, () => {
+watch(() => `${selectedUser.value?.userId ?? ''}:${String(route.query.user ?? '')}:${section.value}:${String(route.query.tab ?? '')}`, () => {
+  // 账户列表异步就绪会再次触发本监听；明细已加载（或加载中）的用户不重复请求、也不清空。
+  const requestedUserId = String(route.query.user ?? '')
+  if (isUserPickerSection.value && requestedUserId && pickedUserId.value === requestedUserId) return
   ++detailRequest
   if (portfolioUser.value || creditLedgerUser.value) actionUserId.value = null
   portfolioUser.value = null
@@ -347,14 +412,25 @@ watch(() => `${selectedUser.value?.userId ?? ''}:${section.value}:${detailTab.va
   creditTarget.value = null
   creditAmount.value = 1
   creditReason.value = ''
-  const user = selectedUser.value
-  if (!user) return
-  if (section.value === 'credits') creditTarget.value = user
-  else if (detailTab.value === 'ledger') void viewCreditLedger(user)
-  else if (detailTab.value === 'portfolio') void viewSimPortfolio(user)
+  // 兼容旧的用户详情子页链接：积分流水和模拟持仓已独立为左侧菜单页。
+  const legacyTab = String(route.query.tab ?? '')
+  if (section.value === 'accounts' && route.query.user && (legacyTab === 'ledger' || legacyTab === 'portfolio')) {
+    void router.replace({
+      path: route.path,
+      query: { ...route.query, section: legacyTab === 'ledger' ? 'ledger' : 'sim-portfolio', tab: undefined },
+    })
+    return
+  }
+  if (section.value === 'credits') {
+    if (selectedUser.value) creditTarget.value = selectedUser.value
+    return
+  }
+  if (!isUserPickerSection.value) return
+  if (!requestedUserId) return
+  void openUserInsight(requestedUserId)
 }, { immediate: true })
 
-onBeforeUnmount(() => { ++detailRequest; ++usersRequest; resetPasswordValue.value = '' })
+onBeforeUnmount(() => { ++detailRequest; ++usersRequest; ++searchRequest; resetPasswordValue.value = '' })
 
 onMounted(() => {
   void loadUsers()
@@ -373,7 +449,7 @@ onMounted(() => {
       {{ selectedUser ? accountDisplayLabel(selectedUser) : sectionLabel }}
     </h1>
     <p class="lead">
-      {{ selectedUser ? '查看所选账户资料及已授权操作。' : '选择账户后查看详情，或从左侧管理关注积分和历史关注归属。' }}
+      {{ headerLead }}
     </p>
 
     <p
@@ -407,19 +483,30 @@ onMounted(() => {
         aria-label="用户详情分类"
       >
         <button
-          v-for="tab in [{ key: 'account', label: '账户信息' }, { key: 'ledger', label: '积分流水' }, { key: 'portfolio', label: '模拟持仓' }]"
-          :key="tab.key"
           type="button"
-          :aria-pressed="detailTab === tab.key"
-          @click="setUserTab(tab.key)"
+          aria-pressed="true"
         >
-          {{ tab.label }}
+          账户信息
+        </button>
+        <button
+          type="button"
+          :aria-pressed="false"
+          @click="goUserInsight('ledger')"
+        >
+          积分流水
+        </button>
+        <button
+          type="button"
+          :aria-pressed="false"
+          @click="goUserInsight('sim-portfolio')"
+        >
+          模拟持仓
         </button>
       </nav>
     </div>
 
     <section
-      v-if="selectedUser && section === 'accounts' && detailTab === 'account'"
+      v-if="selectedUser && section === 'accounts'"
       class="admin-summary-card"
       aria-labelledby="selected-user-title"
     >
@@ -536,7 +623,7 @@ onMounted(() => {
     </section>
 
     <section
-      v-if="section === 'accounts' && detailTab === 'account' && resetTarget"
+      v-if="section === 'accounts' && resetTarget"
       class="admin-operation-card password-reset-card"
       aria-labelledby="password-reset-title"
     >
@@ -628,7 +715,7 @@ onMounted(() => {
     </section>
 
     <section
-      v-if="section !== 'migration' && !selectedUser"
+      v-if="(section === 'accounts' || section === 'credits') && !selectedUser"
       class="admin-table-card"
       aria-labelledby="user-list-title"
     >
@@ -713,7 +800,7 @@ onMounted(() => {
                     class="text-button"
                     :disabled="actionUserId === user.userId"
                     type="button"
-                    @click="openUser(user, 'ledger')"
+                    @click="goUserInsight('ledger', user.userId)"
                   >
                     查看积分流水
                   </button>
@@ -746,6 +833,79 @@ onMounted(() => {
     </section>
 
     <section
+      v-if="isUserPickerSection"
+      class="admin-operation-card admin-user-picker-card"
+      aria-labelledby="user-picker-title"
+    >
+      <div>
+        <h2 id="user-picker-title">
+          {{ isLedgerSection ? '查询积分流水' : '查询模拟持仓' }}
+        </h2>
+        <p>输入姓名或手机号查询账户，选择后{{ isLedgerSection ? '查看其积分流水。' : '查看其模拟持仓。' }}</p>
+      </div>
+      <div>
+        <form
+          class="admin-inline-form"
+          @submit.prevent="searchUsers"
+        >
+          <label for="user-picker-keyword">姓名或手机号</label>
+          <input
+            id="user-picker-keyword"
+            v-model="searchKeyword"
+            maxlength="50"
+            placeholder="请输入姓名或手机号"
+            type="search"
+          >
+          <button
+            class="primary-button"
+            :disabled="searchLoading"
+            type="submit"
+          >
+            {{ searchLoading ? '正在查询…' : '查询' }}
+          </button>
+        </form>
+        <p
+          v-if="searchMessage"
+          class="state-message"
+          role="status"
+        >
+          {{ searchMessage }}
+        </p>
+        <ul
+          v-if="searchResults.length"
+          class="admin-user-picker-results"
+        >
+          <li
+            v-for="user in searchResults"
+            :key="user.userId"
+          >
+            <button
+              class="text-button"
+              :aria-pressed="pickedUserId === user.userId"
+              type="button"
+              @click="goUserInsight(isLedgerSection ? 'ledger' : 'sim-portfolio', user.userId)"
+            >
+              {{ accountDisplayLabel(user) }}（{{ user.mobileMasked }}）
+            </button>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <p
+      v-if="isLedgerSection && !creditLedgerUser"
+      class="state-message admin-picker-hint"
+    >
+      请选择要查看积分流水的用户。
+    </p>
+    <p
+      v-if="isPortfolioSection && !portfolioUser"
+      class="state-message admin-picker-hint"
+    >
+      请选择要查看模拟持仓的用户。
+    </p>
+
+    <section
       v-if="creditLedgerUser"
       class="admin-credit-ledger-card"
       aria-labelledby="credit-ledger-title"
@@ -760,7 +920,7 @@ onMounted(() => {
         <button
           class="text-button"
           type="button"
-          @click="closeCreditLedger"
+          @click="closeUserInsight"
         >
           关闭
         </button>
@@ -839,7 +999,7 @@ onMounted(() => {
         <button
           class="text-button"
           type="button"
-          @click="closeSimPortfolio"
+          @click="closeUserInsight"
         >
           关闭
         </button>

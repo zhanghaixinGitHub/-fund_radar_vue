@@ -179,7 +179,8 @@
 | `GET /api/v1/auth/me` | 已登录 | 返回角色和权限集合，不含 Cookie、密码或完整手机号 |
 | `PUT /api/v1/auth/me/profile` | 已登录 + CSRF | `{displayName}`；仅更新当前会话账户的姓名，返回更新后的公开账户资料；不接受账户 ID、手机号、角色或权限 |
 | `POST /api/v1/auth/logout` | 已登录 + CSRF | 撤销当前会话并清理 Cookie |
-| `GET /api/v1/admin/users` | `USER_ACCOUNT_READ` | 脱敏账户分页、关注数和历史标识 |
+| `GET /api/v1/admin/users` | `USER_ACCOUNT_READ` | 脱敏账户分页、关注数和历史标识；可选 `keyword`（最多 50 字符，去首尾空白）按姓名或完整手机号匹配，响应仍只返回脱敏字段 |
+| `GET /api/v1/admin/users/{id}` | `USER_ACCOUNT_READ` | 按用户标识读取单个脱敏账户；用于积分流水/模拟持仓页的直接跳转与刷新恢复，不存在返回 `404` |
 | `PUT /api/v1/admin/users/{id}/role` | `USER_ACCOUNT_MANAGE` | 调整角色并撤销目标会话 |
 | `PUT /api/v1/admin/users/{id}/status` | `USER_ACCOUNT_MANAGE` | 启停账户；不得移除最后一个启用系统管理员 |
 | `POST /api/v1/admin/users/{id}/reset-password` | `USER_ACCOUNT_MANAGE` | 人工重置密码并撤销目标会话 |

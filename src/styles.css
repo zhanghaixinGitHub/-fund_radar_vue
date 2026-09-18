@@ -2176,6 +2176,28 @@ h2 {
   justify-self: start;
 }
 
+.admin-user-picker-results {
+  display: grid;
+  gap: 4px;
+  padding: 0;
+  margin: 12px 0 0;
+  list-style: none;
+}
+
+.admin-user-picker-results .text-button {
+  justify-self: start;
+  text-align: left;
+}
+
+.admin-user-picker-results .text-button[aria-pressed="true"] {
+  color: #0f766e;
+  font-weight: 800;
+}
+
+.admin-picker-hint {
+  margin: 0 0 22px;
+}
+
 .admin-table-header,
 .admin-portfolio-card header,
 .admin-credit-ledger-card header,

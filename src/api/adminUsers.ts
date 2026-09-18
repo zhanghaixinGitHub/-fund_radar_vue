@@ -1,12 +1,20 @@
 import { get, post, put } from '@/api/http'
 import type { AccountRole } from '@/types/auth'
-import type { AdminUserPage, WatchlistCreditLedgerPage } from '@/types/adminUser'
+import type { AdminUser, AdminUserPage, WatchlistCreditLedgerPage } from '@/types/adminUser'
 import type { SimOverview } from '@/types/simulation'
 import type { WatchlistQuota } from '@/types/watchlist'
 
-/** 分页读取脱敏用户账户及关注数；仅管理员可用。 */
-export function getAdminUsers(page = 0, pageSize = 20): Promise<AdminUserPage> {
-  return get<AdminUserPage>(`/api/v1/admin/users?page=${page}&pageSize=${pageSize}`)
+/** 分页读取脱敏用户账户及关注数；仅管理员可用。keyword 由服务端按姓名或完整手机号匹配，浏览器不接触原始手机号。 */
+export function getAdminUsers(page = 0, pageSize = 20, keyword?: string): Promise<AdminUserPage> {
+  const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) })
+  const trimmed = keyword?.trim()
+  if (trimmed) params.set('keyword', trimmed)
+  return get<AdminUserPage>(`/api/v1/admin/users?${params.toString()}`)
+}
+
+/** 按用户标识读取单个脱敏账户；用于积分流水和模拟持仓页的直接跳转或刷新恢复。 */
+export function getAdminUser(userId: string): Promise<AdminUser> {
+  return get<AdminUser>(`/api/v1/admin/users/${encodeURIComponent(userId)}`)
 }
 
 /** 调整指定用户角色；服务端会撤销其会话，令新权限下次登录生效。 */
