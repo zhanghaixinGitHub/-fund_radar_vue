@@ -60,6 +60,7 @@ const pageSections: Record<string, PageSection[]> = {
     { key: 'freeDataCompletion', label: '免费数据补齐' },
     { key: 'featureSnapshot', label: '特征快照同步' },
     { key: 'spxManual', label: '标普500手动同步' },
+    { key: 'simRecurring', label: '定投手动执行' },
     { key: 'notes', label: '运行说明', group: '帮助' },
   ],
   'admin-users': [

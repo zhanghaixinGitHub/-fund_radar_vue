@@ -52,3 +52,7 @@ export interface SimPlanRequest {
   requestKey: string; fundCode: string; amount: string; frequency: SimPlan['frequency']; dayValue: number
   startDate: string; endDate: string | null; maxPeriods: number | null; version: number
 }
+/** 管理员手动补录定投的执行结果；与定时任务共用同一执行与结算链路。 */
+export interface SimRecurringRunResult {
+  ranAt: string; plansChecked: number; ordersCreated: number; plansSkipped: number; message: string
+}

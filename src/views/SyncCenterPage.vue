@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { usePageNavigation } from '@/composables/usePageNavigation'
 import { useAuthStore } from '@/stores/auth'
 import SpxManualSyncPanel from '@/components/SpxManualSyncPanel.vue'
+import SimRecurringRunPanel from '@/components/SimRecurringRunPanel.vue'
 import { getSpxManualStatus } from '@/api/spxManual'
 import type { SpxManualStatus } from '@/types/spxManual'
 
@@ -103,6 +104,8 @@ const stateReady = ref(false)
 const allJob = ref<SyncJobStatus | null>(null)
 const spxStatus = ref<SpxManualStatus | null>(null)
 const spxActive = computed(() => spxStatus.value?.lastAttempt?.state === 'RUNNING')
+/** 独立面板页（SPX、定投手动执行）不依赖批量任务状态，也不参与同步任务轮询。 */
+const ownPanel = computed(() => section.value === 'spxManual' || section.value === 'simRecurring')
 const startingAll = ref(false)
 const allActive = computed(() => allJob.value?.status === 'QUEUED' || allJob.value?.status === 'RUNNING')
 const anyStarting = computed(() => startingAll.value || Object.values(starting.value).some(Boolean))
@@ -203,7 +206,7 @@ async function refreshJobStates(): Promise<void> {
 /** 批次由后端推进；页面只读取状态，读失败时保留任务并继续重试。 */
 function schedulePolling(): void {
   stopPolling()
-  if (disposed || section.value === 'spxManual' || (!hasActiveJob.value && stateReady.value)) {
+  if (disposed || ownPanel.value || (!hasActiveJob.value && stateReady.value)) {
     return
   }
   pollingTimer = globalThis.setTimeout(async () => {
@@ -286,13 +289,14 @@ async function startAll(): Promise<void> {
 const hasActiveJob = computed(() => allActive.value || spxActive.value || tasks.some((task) => isActive(task)))
 
 onMounted(() => {
-  if (section.value !== 'spxManual') void loadSyncCenter()
+  if (!ownPanel.value) void loadSyncCenter()
 })
 
 // 独立手动页面不依赖四类批量任务的可用性，也不继续它们的页面轮询。
 watch(section, (current, previous) => {
-  if (current === 'spxManual') stopPolling()
-  else if (previous === 'spxManual') void loadSyncCenter()
+  const own = (key: string) => key === 'spxManual' || key === 'simRecurring'
+  if (own(current)) stopPolling()
+  else if (own(previous)) void loadSyncCenter()
 })
 
 onBeforeUnmount(() => {
@@ -317,6 +321,7 @@ onBeforeUnmount(() => {
     </p>
 
     <SpxManualSyncPanel v-if="section === 'spxManual'" />
+    <SimRecurringRunPanel v-if="section === 'simRecurring'" />
 
     <section
       v-if="section === 'overview'"
@@ -390,13 +395,13 @@ onBeforeUnmount(() => {
     </section>
 
     <p
-      v-if="loading && section !== 'spxManual'"
+      v-if="loading && !ownPanel"
       class="state-message"
     >
       正在读取同步任务…
     </p>
     <p
-      v-else-if="errorMessage && section !== 'spxManual'"
+      v-else-if="errorMessage && !ownPanel"
       class="state-message error-message"
       role="alert"
     >
@@ -602,6 +607,7 @@ onBeforeUnmount(() => {
         <li>净值增量成功后会在同一后台任务内自动生成股票型基金特征快照；若该阶段失败，会保留来源成功记录并提供独立手动重试。</li>
         <li>完整资料和免费数据补齐任务会调用多类 Tushare 接口，当前仅支持管理员手动发起；不自动读取基金持仓、新闻或公告。</li>
         <li>任意时刻只允许一个市场同步任务运行；页面每秒读取一次服务端进度，不会重复触发数据源调用。</li>
+        <li>定投计划由后台在每个交易日上午 10:00 自动执行；左侧“定投手动执行”可为每个进行中的计划按前一交易日净值立即补入一期并确认，用于补齐持仓，同一天重复点击不会重复买入，也不属于一键同步全部。</li>
       </ul>
     </section>
   </section>

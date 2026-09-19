@@ -1,6 +1,7 @@
 import { get, post, put } from '@/api/http'
 import type {
   SimDaily, SimLedger, SimOrder, SimOrderRequest, SimOverview, SimPage, SimPeriod, SimPlan, SimPlanRequest, SimPreview,
+  SimRecurringRunResult,
 } from '@/types/simulation'
 
 const base = '/api/v1/sim-portfolios/current'
@@ -28,3 +29,5 @@ export const getSimPeriods = (id: string, page = 1) => get<SimPage<SimPeriod>>(`
 export const getSimPerformance = (code: string, start: string, end: string) => get<SimDaily[]>(
   `${base}/performance/${codePath(code)}?${new URLSearchParams({ startDate: start, endDate: end })}`,
 )
+/** 管理员为所有进行中定投按前一交易日净值手动补入一期；同一天重复触发不会重复买入。 */
+export const runSimRecurringDue = () => post<SimRecurringRunResult>('/api/v1/admin/sim-recurring-plans/run-due')
