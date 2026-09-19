@@ -115,6 +115,12 @@ export const router = createRouter({
       meta: { title: '用户管理', appArea: 'admin', permissions: ['USER_ACCOUNT_READ'] },
     },
     {
+      path: '/admin/sim-fee-rules',
+      name: 'admin-sim-fee-rules',
+      component: () => import('@/views/SimFeeRulesPage.vue'),
+      meta: { title: '费率维护', appArea: 'admin', permissions: ['SIM_FEE_RULE_ADMIN'] },
+    },
+    {
       path: '/not-authorized',
       name: 'not-authorized',
       component: () => import('@/views/NotAuthorizedPage.vue'),

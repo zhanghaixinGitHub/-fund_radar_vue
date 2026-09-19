@@ -78,6 +78,7 @@ const moduleNames: Record<string, string> = {
   'portfolio-snapshot': '我的持仓', notifications: '站内提醒', profile: '个人信息',
   'portfolio-advice': '持仓分析',
   'admin-dashboard': '工作台', 'admin-sync-center': '数据同步', 'admin-users': '用户管理',
+  'admin-sim-fee-rules': '费率维护',
 }
 
 /** 返回链接指向的模块名称；持仓分析从持仓卡片进入，返回到「我的持仓」。 */

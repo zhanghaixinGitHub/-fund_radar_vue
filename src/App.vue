@@ -20,6 +20,7 @@ const adminEntryPermissions: PermissionCode[] = [
   'ADMIN_DASHBOARD_VIEW',
   'SYNC_JOB_READ',
   'USER_ACCOUNT_READ',
+  'SIM_FEE_RULE_ADMIN',
 ]
 const hasAdminAccess = computed(() => adminEntryPermissions.some((permission) => can(permission)))
 const brandTarget = computed(() => (isAdminArea.value ? '/admin' : '/funds'))
@@ -179,6 +180,12 @@ async function signOut(): Promise<void> {
           to="/admin/users"
         >
           用户管理
+        </RouterLink>
+        <RouterLink
+          v-if="can('SIM_FEE_RULE_ADMIN')"
+          to="/admin/sim-fee-rules"
+        >
+          费率维护
         </RouterLink>
       </nav>
       <div

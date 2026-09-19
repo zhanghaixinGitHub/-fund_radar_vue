@@ -21,6 +21,7 @@ export type PermissionCode =
   | 'USER_ACCOUNT_MANAGE'
   | 'LEGACY_WATCHLIST_TRANSFER'
   | 'PORTFOLIO_USER_READ'
+  | 'SIM_FEE_RULE_ADMIN'
 
 /** 登录成功或刷新会话后返回的非敏感账户资料。 */
 export interface CurrentUser {

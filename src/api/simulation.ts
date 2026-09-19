@@ -1,7 +1,7 @@
 import { get, post, put } from '@/api/http'
 import type {
-  SimDaily, SimLedger, SimOrder, SimOrderRequest, SimOverview, SimPage, SimPeriod, SimPlan, SimPlanRequest, SimPreview,
-  SimRecurringRunResult,
+  SimDaily, SimFeeInitResult, SimFeeRuleRow, SimLedger, SimOrder, SimOrderRequest, SimOverview, SimPage, SimPeriod,
+  SimPlan, SimPlanRequest, SimPreview, SimRecurringRunResult,
 } from '@/types/simulation'
 
 const base = '/api/v1/sim-portfolios/current'
@@ -31,3 +31,14 @@ export const getSimPerformance = (code: string, start: string, end: string) => g
 )
 /** 管理员为所有进行中定投按前一交易日净值手动补入一期；同一天重复触发不会重复买入。 */
 export const runSimRecurringDue = () => post<SimRecurringRunResult>('/api/v1/admin/sim-recurring-plans/run-due')
+/** 费率配置维护；费率用十进制小数（0.0015 表示 0.15%），更新走乐观锁版本校验。 */
+const feeBase = '/api/v1/admin/sim-fee-rules'
+export const getSimFeeRules = (page = 1, fundCode?: string) => {
+  const params = new URLSearchParams({ page: String(page), pageSize: '20' })
+  if (fundCode) params.set('fundCode', fundCode)
+  return get<SimPage<SimFeeRuleRow>>(`${feeBase}?${params}`)
+}
+export const updateSimFeeRule = (ruleId: number, rate: string, version: number) =>
+  put<SimFeeRuleRow>(`${feeBase}/${ruleId}`, { rate, version })
+export const refreshSimFundFee = (fundCode: string) => post<SimFeeRuleRow[]>(`${feeBase}/refresh/${codePath(fundCode)}`)
+export const initAllSimFees = () => post<SimFeeInitResult>(`${feeBase}/init-all`)

@@ -10,7 +10,7 @@ export interface SimPosition {
 }
 export interface SimOverview {
   positions: SimPosition[]; marketValue: DecimalValue; holdingGain: DecimalValue; cumulativeGain: DecimalValue
-  pendingBuyAmount: DecimalValue; pendingOrders: number; complete: boolean; rules: string
+  dailyGain: DecimalValue | null; pendingBuyAmount: DecimalValue; pendingOrders: number; complete: boolean; rules: string
   job: { status: string; attemptedAt: string; completedAt: string | null; message: string | null } | null
 }
 export interface SimPreview {
@@ -21,6 +21,8 @@ export interface SimPreview {
 export interface SimExecution {
   shares: DecimalValue; unitNav: DecimalValue; grossAmount: DecimalValue
   cost: DecimalValue; realizedGain: DecimalValue; navRevision: string; source: string
+  /** V2 计费口径订单才有：费用与净金额；V1 历史订单为空。 */
+  fee: DecimalValue | null; netAmount: DecimalValue | null; ruleVersion: string | null
 }
 export interface SimOrder {
   orderId: string; fundCode: string; fundName: string; side: 'BUY' | 'SELL'
@@ -56,3 +58,12 @@ export interface SimPlanRequest {
 export interface SimRecurringRunResult {
   ranAt: string; plansChecked: number; ordersCreated: number; plansSkipped: number; message: string
 }
+/** sim_fee_rule 管理列表行；含已终止的历史版本，effectiveTo 为空表示生效中。 */
+export interface SimFeeRuleRow {
+  ruleId: number; fundCode: string; fundName: string; feeType: 'PURCHASE' | 'REDEEM'
+  minDays: number | null; maxDays: number | null; rate: DecimalValue
+  discountInfo: string | null; dataSource: string
+  effectiveFrom: string; effectiveTo: string | null; version: number; updatedAt: string | null
+}
+/** 全量费率初始化结果；失败项只记录基金与原因。 */
+export interface SimFeeInitResult { total: number; updated: number; failures: string[] }

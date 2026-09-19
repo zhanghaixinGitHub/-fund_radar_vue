@@ -101,6 +101,8 @@ const pagedPlans = computed(() => {
 })
 const canWrite = computed(() => auth.hasPermission('SIM_PORTFOLIO_SELF_WRITE'))
 const canPlan = computed(() => auth.hasPermission('SIM_PLAN_SELF_WRITE'))
+// 账户级最近一期收益由后端按已公布净值的持仓合计；仍有份额但净值未更新的持仓不含在内，需要提示合计不完整。
+const dailyGainPending = computed(() => (overview.value?.positions ?? []).some(p => Number(p.shares) > 0 && p.dailyGain === null))
 const jobStale = computed(() => !overview.value?.job?.completedAt || Date.now() - Date.parse(overview.value.job.completedAt) > 5 * 60_000)
 const planLabels = { ACTIVE: '执行中', PAUSED: '已暂停', ENDED: '已结束' }
 const orderLabels = { PENDING: '待确认', CONFIRMED: '已确认', CANCELLED: '已撤销' }
@@ -376,6 +378,7 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
       <template v-if="section === 'overview'">
         <div class="sim-metrics">
           <article><span>持仓市值（元）</span><strong>{{ simMoney(overview.marketValue) }}</strong><small>{{ overview.complete ? '按已公布净值计算' : '部分数据待核对，汇总含上次估值' }}</small></article>
+          <article><span>最近一期收益（元）</span><strong :class="simTone(overview.dailyGain)">{{ simMoney(overview.dailyGain) }}</strong><small>{{ dailyGainPending ? '部分基金净值待更新，暂未计入合计' : '各基金最新净值日的收益合计' }}</small></article>
           <article><span>持有收益（元）</span><strong :class="simTone(overview.holdingGain)">{{ simMoney(overview.holdingGain) }}</strong><small>当前剩余份额的浮动盈亏</small></article>
           <article><span>累计收益（元）</span><strong :class="simTone(overview.cumulativeGain)">{{ simMoney(overview.cumulativeGain) }}</strong><small>包含卖出盈亏与现金分红</small></article>
         </div>
@@ -905,7 +908,7 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
               <header><strong>{{ order.fundName }}</strong><span class="sim-badge">{{ orderLabels[order.status] }}</span></header><p>{{ order.sourceKind === 'RECURRING' ? '定投买入' : order.side === 'BUY' ? '手动买入' : '卖出' }} · {{ order.side === 'BUY' ? `${simMoney(order.amount)} 元` : `${simShares(order.shares ?? 0)} 份` }}</p><p class="sim-muted">
                 提交 {{ simTime(order.createdAt) }} · 净值归属 {{ order.tradeDate }} · 最早确认 {{ order.eligibleDate }}
               </p><p v-if="order.execution">
-                确认 {{ simShares(order.execution.shares) }} 份 · 成交净值 {{ order.execution.unitNav }} · {{ order.side === 'SELL' ? '卖出收入' : '投入' }} {{ simMoney(order.execution.grossAmount) }} 元{{ order.side === 'SELL' ? ` · 已实现收益 ${simMoney(order.execution.realizedGain)} 元` : '' }}
+                确认 {{ simShares(order.execution.shares) }} 份 · 成交净值 {{ order.execution.unitNav }} · {{ order.side === 'SELL' ? '卖出收入' : '投入' }} {{ simMoney(order.execution.netAmount ?? order.execution.grossAmount) }} 元{{ order.execution.fee != null ? ` · 费用 ${simMoney(order.execution.fee)} 元` : '' }}{{ order.side === 'SELL' ? ` · 已实现收益 ${simMoney(order.execution.realizedGain)} 元` : '' }}
               </p><p v-if="order.status === 'PENDING'">
                 {{ Date.now() < Date.parse(`${order.eligibleDate}T00:00:00+08:00`) ? '等待确认日期。' : '等待对应净值、分红核验及后台确认。' }}
               </p><details>
