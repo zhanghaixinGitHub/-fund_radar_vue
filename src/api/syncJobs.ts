@@ -1,6 +1,16 @@
 import { get, post } from '@/api/http'
 import type { SyncJobLastSuccess, SyncJobStatus } from '@/types/syncJob'
 
+/** 费率同步进入后台任务；无代码时沿用模拟持仓及定投范围全量初始化。 */
+export function startSimulationFeeSync(fundCode?: string): Promise<SyncJobStatus> {
+  const query = fundCode ? `?${new URLSearchParams({ fundCode })}` : ''
+  return post<SyncJobStatus>(`/api/v1/sync-jobs/simulation-fees${query}`)
+}
+
+export function getLatestSimulationFeeSync(): Promise<SyncJobStatus | null> {
+  return get<SyncJobStatus | null>('/api/v1/sync-jobs/simulation-fees/latest')
+}
+
 /** 一次创建全部同步的后台串行批次；后续调度不依赖当前页面。 */
 export function startAllSync(): Promise<SyncJobStatus> {
   return post<SyncJobStatus>('/api/v1/sync-jobs/all')

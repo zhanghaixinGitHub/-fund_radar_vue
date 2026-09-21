@@ -65,5 +65,3 @@ export interface SimFeeRuleRow {
   discountInfo: string | null; dataSource: string
   effectiveFrom: string; effectiveTo: string | null; version: number; updatedAt: string | null
 }
-/** 全量费率初始化结果；失败项只记录基金与原因。 */
-export interface SimFeeInitResult { total: number; updated: number; failures: string[] }
