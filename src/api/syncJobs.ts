@@ -1,6 +1,15 @@
 import { get, post } from '@/api/http'
 import type { SyncJobLastSuccess, SyncJobStatus } from '@/types/syncJob'
 
+/** 批量处理全部有效关注基金；日期、数据完整性和留档由后端检查。 */
+export function startDirection1dPredictionSync(): Promise<SyncJobStatus> {
+  return post<SyncJobStatus>('/api/v1/sync-jobs/direction-1d-predictions')
+}
+
+export function getLatestDirection1dPredictionSync(): Promise<SyncJobStatus | null> {
+  return get<SyncJobStatus | null>('/api/v1/sync-jobs/direction-1d-predictions/latest')
+}
+
 /** 费率同步进入后台任务；无代码时沿用模拟持仓及定投范围全量初始化。 */
 export function startSimulationFeeSync(fundCode?: string): Promise<SyncJobStatus> {
   const query = fundCode ? `?${new URLSearchParams({ fundCode })}` : ''

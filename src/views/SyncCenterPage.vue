@@ -9,6 +9,8 @@ import type { SpxManualStatus } from '@/types/spxManual'
 
 import {
   getLastSuccessfulSyncTimes,
+  getLatestDirection1dPredictionSync,
+  startDirection1dPredictionSync,
   getLatestAllSync,
   getLatestMarketFreeDataCompletionSync,
   getLatestMarketNavIncrementalSync,
@@ -22,13 +24,13 @@ import {
 } from '@/api/syncJobs'
 import type { SyncJobStatus } from '@/types/syncJob'
 
-type SyncTaskKey = 'marketNav' | 'freeDataCompletion' | 'featureSnapshot' | 'simulationFees'
+type SyncTaskKey = 'marketNav' | 'freeDataCompletion' | 'featureSnapshot' | 'direction1dPrediction' | 'simulationFees'
 const { section, sectionLabel, sectionTarget } = usePageNavigation()
 const auth = useAuthStore()
 
 interface SyncTaskDefinition {
   key: SyncTaskKey
-  jobType: 'MARKET_NAV_INCREMENTAL' | 'MARKET_FREE_DATA_COMPLETION' | 'STOCK_FEATURE_SNAPSHOT' | 'SIMULATION_FEES'
+  jobType: 'MARKET_NAV_INCREMENTAL' | 'MARKET_FREE_DATA_COMPLETION' | 'STOCK_FEATURE_SNAPSHOT' | 'DIRECTION_1D_PREDICTIONS' | 'SIMULATION_FEES'
   title: string
   description: string
   scheduleNote: string
@@ -70,11 +72,21 @@ const tasks: readonly SyncTaskDefinition[] = [
     loadLatest: getLatestStockFeatureSnapshotSync,
   },
   {
+    key: 'direction1dPrediction',
+    jobType: 'DIRECTION_1D_PREDICTIONS',
+    title: '全部关注基金预测生成',
+    description: '检查全部有效账号关注的基金，按基金去重生成下一交易日预测，并保存到各自的预测历史。范围是关注列表；暂不支持或数据不齐的基金会列出原因。',
+    scheduleNote: '后台每轮检查结束30分钟后自动检查；可单独手动生成。一键同步在净值与历史指标更新后执行，仍遵守上一交易日18:00至目标交易日08:30前的生成时间。',
+    actionLabel: '生成全部关注基金预测',
+    start: startDirection1dPredictionSync,
+    loadLatest: getLatestDirection1dPredictionSync,
+  },
+  {
     key: 'simulationFees',
     jobType: 'SIMULATION_FEES',
     title: '模拟组合申赎费率同步',
     description: '从天天基金抓取申购费率与赎回分档；可刷新单只基金，全量初始化覆盖模拟持仓和定投计划涉及的基金。',
-    scheduleNote: '按需手动执行，也作为一键同步的第五项；单只失败会保留原因，其余基金继续。',
+    scheduleNote: '按需手动执行，也作为一键同步的第六项；单只失败会保留原因，其余基金继续。',
     actionLabel: '全量初始化',
     start: startSimulationFeeSync,
     loadLatest: getLatestSimulationFeeSync,
@@ -85,18 +97,21 @@ const jobs = ref<Record<SyncTaskKey, SyncJobStatus | null>>({
   marketNav: null,
   freeDataCompletion: null,
   featureSnapshot: null,
+  direction1dPrediction: null,
   simulationFees: null,
 })
 const starting = ref<Record<SyncTaskKey, boolean>>({
   marketNav: false,
   freeDataCompletion: false,
   featureSnapshot: false,
+  direction1dPrediction: false,
   simulationFees: false,
 })
 const lastSuccessfulAt = ref<Record<string, string | null>>({
   MARKET_NAV_INCREMENTAL: null,
   MARKET_FREE_DATA_COMPLETION: null,
   STOCK_FEATURE_SNAPSHOT: null,
+  DIRECTION_1D_PREDICTIONS: null,
   SIMULATION_FEES: null,
 })
 const loading = ref(true)
@@ -150,7 +165,11 @@ function progressPercent(job: SyncJobStatus | null): number {
 }
 
 /** 将服务端任务状态映射为清晰的中文业务含义。 */
-function statusLabel(status: SyncJobStatus['status'] | undefined, isBatch = false, isFee = false, isCalculation = false): string {
+function statusLabel(status: SyncJobStatus['status'] | undefined, isBatch = false, isFee = false, isCalculation = false, isPrediction = false): string {
+  if (isPrediction) return {
+    QUEUED: '等待生成', RUNNING: '正在生成预测', SUCCEEDED: '预测已齐备',
+    PARTIAL_SUCCESS: '部分基金未生成', FAILED: '预测未生成',
+  }[status ?? 'QUEUED']
   return {
     QUEUED: '等待执行',
     RUNNING: isCalculation ? '正在计算' : '正在同步',
@@ -262,7 +281,7 @@ async function startSync(task: SyncTaskDefinition, fundCode?: string): Promise<v
   try {
     const job = await task.start(fundCode)
     jobs.value[task.key] = job
-    actionMessage.value = `${task.title}任务已创建，正在读取服务端进度。`
+    actionMessage.value = `${task.title}任务已创建，执行结果见上方任务状态。`
   } catch (error) {
     actionError.value = error instanceof Error ? error.message : '未能确认任务是否创建，请查看最新状态。'
   } finally {
@@ -290,7 +309,7 @@ async function startAll(): Promise<void> {
   actionMessage.value = ''
   try {
     allJob.value = await startAllSync()
-    actionMessage.value = '一键同步已创建，包含模拟费率的五项任务将在后台依次执行。关闭或刷新页面不影响执行。'
+    actionMessage.value = '一键同步已创建，包含关注基金预测和模拟费率的六项任务将在后台依次执行。关闭或刷新页面不影响执行。'
   } catch (error) {
     actionError.value = error instanceof Error ? error.message : '未能确认批次是否创建，请查看最新状态。'
   } finally {
@@ -305,7 +324,7 @@ onMounted(() => {
   if (!ownPanel.value) void loadSyncCenter()
 })
 
-// 独立手动页面不依赖四类批量任务的可用性，也不继续它们的页面轮询。
+// 独立手动页面不依赖批量任务的可用性，也不继续它们的页面轮询。
 watch(section, (current, previous) => {
   const own = (key: string) => key === 'spxManual' || key === 'simRecurring'
   if (own(current)) stopPolling()
@@ -346,7 +365,7 @@ onBeforeUnmount(() => {
           <h2 id="sync-all-title">
             一键同步全部
           </h2>
-          <p>依次执行：标普500 → 基金资料与市场数据更新 → 净值增量 → 历史指标计算 → 模拟费率。某项失败会记录原因，并继续尝试其余任务。</p>
+          <p>依次执行：标普500 → 基金资料与市场数据更新 → 净值增量 → 历史指标计算 → 全部关注基金预测 → 模拟费率。某项失败会记录原因，并继续尝试其余任务。</p>
         </div>
         <span
           v-if="allJob"
@@ -473,7 +492,7 @@ onBeforeUnmount(() => {
                   <span
                     class="sync-status"
                     :class="jobs[task.key] ? `is-${jobs[task.key]!.status.toLowerCase()}` : 'is-idle'"
-                  >{{ loading ? '读取中…' : errorMessage ? '状态暂不可用' : jobs[task.key] ? statusLabel(jobs[task.key]!.status, false, task.key === 'simulationFees', task.key === 'featureSnapshot') : '尚未运行' }}</span>
+                  >{{ loading ? '读取中…' : errorMessage ? '状态暂不可用' : jobs[task.key] ? statusLabel(jobs[task.key]!.status, false, task.key === 'simulationFees', task.key === 'featureSnapshot', task.key === 'direction1dPrediction') : '尚未运行' }}</span>
                 </td>
                 <td>{{ loading || errorMessage ? '—' : formatTime(lastSuccessfulAt[task.jobType]) }}</td>
                 <td>
@@ -524,7 +543,7 @@ onBeforeUnmount(() => {
           class="sync-status"
           :class="jobs[task.key] ? `is-${jobs[task.key]!.status.toLowerCase()}` : 'is-idle'"
         >
-          {{ jobs[task.key] ? statusLabel(jobs[task.key]!.status, false, task.key === 'simulationFees', task.key === 'featureSnapshot') : '尚未运行' }}
+          {{ jobs[task.key] ? statusLabel(jobs[task.key]!.status, false, task.key === 'simulationFees', task.key === 'featureSnapshot', task.key === 'direction1dPrediction') : '尚未运行' }}
         </span>
       </div>
 
@@ -538,7 +557,7 @@ onBeforeUnmount(() => {
       >
         <div class="sync-progress-meta">
           <strong>{{ jobs[task.key]!.progressMessage }}</strong>
-          <span>{{ jobs[task.key]!.progressCurrent }} / {{ jobs[task.key]!.progressTotal }} 步</span>
+          <span>{{ jobs[task.key]!.progressCurrent }} / {{ jobs[task.key]!.progressTotal }} {{ task.key === 'direction1dPrediction' ? '只' : '步' }}</span>
         </div>
         <div
           class="sync-progress-track"
@@ -558,6 +577,12 @@ onBeforeUnmount(() => {
           同步范围：{{ jobs[task.key]!.fundCodes.length ? jobs[task.key]!.fundCodes.join('、') : '模拟持仓与定投涉及的全部基金' }}
         </p>
         <p
+          v-else-if="task.key === 'direction1dPrediction'"
+          class="sync-progress-note"
+        >
+          {{ isActive(task) ? '正在按本期目标日检查关注基金，具体进度见上方。' : `本期检查已结束，预测目标日：${jobs[task.key]!.requestedNavDate}` }}
+        </p>
+        <p
           v-else
           class="sync-progress-note"
         >
@@ -571,9 +596,12 @@ onBeforeUnmount(() => {
       >
         <div><dt>开始时间</dt><dd>{{ formatTime(jobs[task.key]!.startedAt) }}</dd></div>
         <div><dt>结束时间</dt><dd>{{ formatTime(jobs[task.key]!.finishedAt) }}</dd></div>
-        <div><dt>{{ task.key === 'simulationFees' ? '处理基金数' : '读取条数' }}</dt><dd>{{ jobs[task.key]!.fetchedCount }}</dd></div>
+        <div><dt>{{ task.key === 'simulationFees' || task.key === 'direction1dPrediction' ? '检查基金数' : '读取条数' }}</dt><dd>{{ jobs[task.key]!.fetchedCount }}</dd></div>
         <div v-if="task.key === 'simulationFees'">
           <dt>保存成功 / 失败</dt><dd>{{ jobs[task.key]!.updatedCount }} / {{ jobs[task.key]!.fetchedCount - jobs[task.key]!.updatedCount }}</dd>
+        </div>
+        <div v-else-if="task.key === 'direction1dPrediction'">
+          <dt>新生成 / 本期已有 / 未生成</dt><dd>{{ jobs[task.key]!.createdCount }} / {{ jobs[task.key]!.updatedCount }} / {{ jobs[task.key]!.skippedCount }}</dd>
         </div>
         <div v-else>
           <dt>新增 / 更新 / 跳过</dt><dd>{{ jobs[task.key]!.createdCount }} / {{ jobs[task.key]!.updatedCount }} / {{ jobs[task.key]!.skippedCount }}</dd>
@@ -593,7 +621,7 @@ onBeforeUnmount(() => {
         class="state-message sync-job-message"
         aria-live="polite"
       >
-        <template v-if="task.key === 'simulationFees' || task.key === 'featureSnapshot'">
+        <template v-if="task.key === 'simulationFees' || task.key === 'featureSnapshot' || task.key === 'direction1dPrediction'">
           {{ jobs[task.key]!.progressMessage }}
         </template>
         <template v-else>
@@ -632,7 +660,7 @@ onBeforeUnmount(() => {
           type="button"
           @click="startSync(task)"
         >
-          {{ starting[task.key] ? '正在创建任务…' : isActive(task) ? (task.key === 'featureSnapshot' ? '正在计算…' : '同步任务进行中…') : task.actionLabel }}
+          {{ starting[task.key] ? '正在创建任务…' : isActive(task) ? (task.key === 'direction1dPrediction' ? '正在生成预测…' : task.key === 'featureSnapshot' ? '正在计算…' : '同步任务进行中…') : task.actionLabel }}
         </button>
       </div>
     </section>
@@ -654,7 +682,8 @@ onBeforeUnmount(() => {
         运行说明
       </h2>
       <ul>
-        <li>一键同步依次执行标普500、基金资料与市场数据更新、净值增量、历史指标计算、模拟费率，共五项；某项失败会单列未完成，其余任务继续。</li>
+        <li>一键同步依次执行标普500、基金资料与市场数据更新、净值增量、历史指标计算、全部关注基金预测、模拟费率，共六项；某项失败会单列未完成，其余任务继续。</li>
+        <li>预测无需系统或个人实验开关。每只基金每个目标日复用已有预测；不支持、缺数据或不在生成时间段时列出原因，不能用历史补算冒充提前预测。</li>
         <li>模拟费率支持单只刷新和全量初始化；全量范围为模拟持仓与定投计划涉及的基金。同步成功后可在“费率维护”中查询和编辑规则。</li>
         <li>某项失败仍尝试后续任务；批次部分成功不代表所有数据均已补齐，可查看对应任务并单独重试。</li>
         <li>批次与单项任务共用互斥限制。关闭网页不影响执行；Python 服务重启后不会自动续跑，实时批次状态也会清空。</li>

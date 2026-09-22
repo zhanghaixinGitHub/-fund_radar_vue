@@ -16,8 +16,17 @@ const latest = computed(() => value.value?.history.items[0])
 const forecast = computed(() => latest.value && !latest.value.status ? latest.value.forecast : null)
 const summary = computed(() => forecast.value ? direction1dSummary(forecast.value) : null)
 const isPrevious = computed(() => forecast.value && forecast.value.targetNavDate !== value.value?.window.targetNavDate)
-const canGenerate = computed(() => value.value?.enabled && value.value.window.status === 'OPEN'
-  && (!forecast.value || isPrevious.value))
+const canGenerate = computed(() => value.value?.window.status === 'OPEN'
+  && value.value.coverage.status === 'READY_EXPERIMENTAL' && (!forecast.value || isPrevious.value))
+/** 手动入口常驻；不能生成时说明真实原因，避免把隐藏按钮误解为不支持手动预测。 */
+const generateHint = computed(() => {
+  const current = value.value
+  if (!current) return ''
+  if (forecast.value && !isPrevious.value) return '本期预测已生成，无需重复执行。'
+  if (current.coverage.status !== 'READY_EXPERIMENTAL') return direction1dReason(current.coverage.status)
+  if (current.window.status !== 'OPEN') return '当前不在生成时间段：上一交易日18:00至目标交易日08:30前，等待下一期。'
+  return `本期预测目标为 ${current.window.targetNavDate}，点击后使用已保存净值生成。`
+})
 
 /** 没有预测时只说明阻止当前判断的原因，不向用户罗列内部检查状态。 */
 const emptyReason = computed(() => {
@@ -25,7 +34,6 @@ const emptyReason = computed(() => {
   const current = value.value
   if (!current) return ''
   if (current.coverage.status !== 'READY_EXPERIMENTAL') return direction1dReason(current.coverage.status)
-  if (!current.enabled) return '尚未开启预测。'
   return current.window.status === 'OPEN' ? '本期预测尚未生成。' : '本期暂无预测，等待下一期更新。'
 })
 
@@ -132,14 +140,16 @@ onBeforeUnmount(() => { sequence++ })
         </div>
       </dl>
       <button
-        v-if="canGenerate"
         class="generate-button"
         type="button"
-        :disabled="busy"
+        :disabled="busy || !canGenerate"
         @click="generate"
       >
         {{ busy ? '正在生成…' : '生成本期预测' }}
       </button>
+      <p class="prediction-notice">
+        {{ generateHint }}
+      </p>
     </template>
   </section>
 </template>

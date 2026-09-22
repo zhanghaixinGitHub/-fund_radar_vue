@@ -1,10 +1,9 @@
-import { get, post, put } from '@/api/http'
+import { get, post } from '@/api/http'
 import type { Direction1dCoverage, Direction1dCurrent, Direction1dPage, Direction1dRecord, Direction1dStatus, Direction1dCursor, Direction1dMetrics } from '@/types/direction1d'
 import { assertDirection1dFundHistory } from '@/utils/direction1d'
 
 const base = '/api/v1/watchlist/prediction-1d'
 export const getDirection1dStatus = () => get<Direction1dStatus>(`${base}/status`)
-export const setDirection1dSubscription = (enabled: boolean) => put<Direction1dStatus>(`${base}/subscription`, { enabled })
 export const getDirection1dCoverage = (page: number, keyword = '') => get<Direction1dPage<Direction1dCoverage> & {
   checkedCount: number; statusCounts: Record<string, number>
 }>(`${base}/coverage?${new URLSearchParams({ page: String(page), pageSize: '20', keyword })}`)

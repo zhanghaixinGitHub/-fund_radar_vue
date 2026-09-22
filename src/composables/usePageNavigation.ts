@@ -58,6 +58,7 @@ const pageSections: Record<string, PageSection[]> = {
     { key: 'marketNav', label: '净值增量同步', group: '任务分类' },
     { key: 'freeDataCompletion', label: '基金资料与市场数据更新' },
     { key: 'featureSnapshot', label: '历史指标计算' },
+    { key: 'direction1dPrediction', label: '全部关注基金预测' },
     { key: 'simulationFees', label: '模拟费率同步' },
     { key: 'spxManual', label: '标普500手动同步' },
     { key: 'simRecurring', label: '定投手动执行' },

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-import { getDirection1dCoverage, getDirection1dHistory, getDirection1dMetrics, getDirection1dStatus, setDirection1dSubscription } from '@/api/direction1d'
+import { getDirection1dCoverage, getDirection1dHistory, getDirection1dMetrics, getDirection1dStatus } from '@/api/direction1d'
 import type { Direction1dCoverage, Direction1dPage, Direction1dRecord, Direction1dStatus, Direction1dCursor } from '@/types/direction1d'
 import { assertDirection1dForecast, direction1dDirection, direction1dReason, direction1dTime } from '@/utils/direction1d'
 
@@ -33,13 +33,6 @@ async function load() {
     status.value = s; coverage.value = c; history.value = h; metrics.value = m
   } catch (e) { if (request === sequence) error.value = e instanceof Error ? e.message : '读取失败。' }
   finally { if (request === sequence) busy.value = false }
-}
-async function toggle() {
-  if (!status.value) return
-  busy.value = true
-  try { await setDirection1dSubscription(!status.value.enabled); await load() }
-  catch (e) { error.value = e instanceof Error ? e.message : '设置失败。' }
-  finally { busy.value = false }
 }
 function conclusion(record: Direction1dRecord, direction: string | null) {
   if (record.receiptStatus !== 'VERIFIED') return '未满足提前留档条件'
@@ -84,13 +77,7 @@ const branchName = (value: string) => ({ FIXED: '固定模型', WEEKLY: '每周�
       v-if="status"
       class="summary"
     >
-      <div><strong>每日实验{{ status.enabled ? '已启用' : '已暂停' }}</strong><p>关闭网页后由本地服务继续；电脑或服务离线时不会补造预测。</p></div>
-      <button
-        :disabled="busy || !status.backendEnabled"
-        @click="toggle"
-      >
-        {{ status.enabled ? '暂停新预测' : '启用每日实验' }}
-      </button>
+      <div><strong>每日自动检查全部关注基金</strong><p>无需开启实验开关；本地服务运行时自动检查，也可在数据同步中心手动生成。电脑或服务离线时不会补造预测。</p></div>
       <div>本期预测目标 <strong>{{ status.python.window.targetNavDate }}</strong><p>留档截止 {{ direction1dTime(status.python.window.deadlineAt) }}；是否已生成请看下方真实留档。</p></div>
       <div>下一期开始 <strong>{{ direction1dTime(status.python.window.nextWindowOpenAt) }}</strong><p>本期截止前，已训练并登记的模型即可生成预测；生成后保留原文。</p></div>
       <p>{{ status.python.trainingPolicyNote }}</p>

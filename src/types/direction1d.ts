@@ -84,9 +84,6 @@ export interface Direction1dMetrics {
   coverage: { checked_fund_days: number; applicable_fund_days: number; missed_deadline_count: number; failed_count: number; verified_forecast_count: number }
 }
 export interface Direction1dStatus {
-  enabled: boolean
-  backendEnabled: boolean
-  forecastEnabled: boolean
   modelReleased: false
   upProbability: null
   python: { window: Direction1dWindow; serverTime: string; trainingPolicyNote: string; recentJobs: { kind: string; state: string; reason: string | null }[] }
@@ -96,5 +93,4 @@ export interface Direction1dCurrent {
   coverage: Direction1dCoverage
   window: Direction1dWindow
   history: Direction1dPage<Direction1dRecord>
-  enabled: boolean
 }
