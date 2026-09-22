@@ -26,17 +26,12 @@ export function startMarketNavIncrementalSync(): Promise<SyncJobStatus> {
   return post<SyncJobStatus>('/api/v1/sync-jobs/market-nav-incremental')
 }
 
-/** 创建基金市场完整资料同步任务；只允许管理员主动发起。 */
-export function startMarketDetailSync(): Promise<SyncJobStatus> {
-  return post<SyncJobStatus>('/api/v1/sync-jobs/market-details')
-}
-
-/** 手工补齐当前 2000 积分已验权的免费基金与市场参考数据；不会读取持仓、新闻或公告。 */
+/** 更新基金资料与市场数据；覆盖完整资料，仅使用当前已验权能力。 */
 export function startMarketFreeDataCompletionSync(): Promise<SyncJobStatus> {
   return post<SyncJobStatus>('/api/v1/sync-jobs/market-free-data-completion')
 }
 
-/** 从已落库、已授权净值生成特征快照；不触发外部市场数据调用。 */
+/** 从已保存的净值计算历史指标；沿用后台任务标识，不触发外部市场数据调用。 */
 export function startStockFeatureSnapshotSync(): Promise<SyncJobStatus> {
   return post<SyncJobStatus>('/api/v1/sync-jobs/stock-feature-snapshots')
 }
@@ -51,17 +46,12 @@ export function getLatestMarketNavIncrementalSync(): Promise<SyncJobStatus | nul
   return get<SyncJobStatus | null>('/api/v1/sync-jobs/market-nav-incremental/latest')
 }
 
-/** 查询当前 Python 进程最近一次完整资料同步任务。 */
-export function getLatestMarketDetailSync(): Promise<SyncJobStatus | null> {
-  return get<SyncJobStatus | null>('/api/v1/sync-jobs/market-details/latest')
-}
-
-/** 查询当前 Python 进程最近一次免费数据补齐任务，不会重新发起同步。 */
+/** 查询当前 Python 进程最近一次基金资料与市场数据更新任务，不会重新发起同步。 */
 export function getLatestMarketFreeDataCompletionSync(): Promise<SyncJobStatus | null> {
   return get<SyncJobStatus | null>('/api/v1/sync-jobs/market-free-data-completion/latest')
 }
 
-/** 查询当前 Python 进程最近一次特征快照任务。 */
+/** 查询当前 Python 进程最近一次历史指标计算任务。 */
 export function getLatestStockFeatureSnapshotSync(): Promise<SyncJobStatus | null> {
   return get<SyncJobStatus | null>('/api/v1/sync-jobs/stock-feature-snapshots/latest')
 }

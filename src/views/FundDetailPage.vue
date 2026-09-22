@@ -242,15 +242,15 @@ function signalStatusLabel(signal: FundSignal): string {
 /** 将特征状态转为用户文案，强调它是模型输入统计而不是预测输出。 */
 function featureStatusLabel(status: FundFeatureStatus): string {
   if (status.status === 'NOT_AVAILABLE') {
-    return '暂无特征快照'
+    return '暂无历史指标'
   }
   if (status.eligibilityStatus === 'DATA_INSUFFICIENT') {
-    return '数据不足，暂不评分'
+    return '数据不足，暂不能计算历史指标'
   }
   if (status.eligibilityStatus === 'NOT_APPLICABLE') {
-    return '该基金类型暂不适用特征口径'
+    return '该基金类型暂不支持历史指标计算'
   }
-  return '历史统计输入已就绪'
+  return '历史指标已计算'
 }
 
 /** 显示本次特征计算统一采用的净值口径，不将缺失口径臆测为实时净值。 */
@@ -823,10 +823,10 @@ watch(selectedNavRange, () => {
         <div class="section-heading">
           <div>
             <p class="eyebrow">
-              特征数据
+              历史数据
             </p>
             <h2 id="feature-title">
-              历史统计输入
+              历史指标
             </h2>
           </div>
           <span class="section-note">历史统计，不构成预测</span>
@@ -836,13 +836,13 @@ watch(selectedNavRange, () => {
           class="notice-banner"
           role="status"
         >
-          特征服务暂不可用，当前展示缓存内容（缓存时间：{{ featureStatus.cachedAt || '未知' }}）。
+          历史指标服务暂不可用，当前展示缓存内容（缓存时间：{{ featureStatus.cachedAt || '未知' }}）。
         </p>
         <template v-if="featureStatus?.status === 'AVAILABLE'">
           <div class="feature-status-card">
             <strong>{{ featureStatusLabel(featureStatus) }}</strong>
             <p>
-              数据截至 {{ featureStatus.asOfDate || '未知' }} · 特征 {{ featureStatus.featureVersion || '未知' }} ·
+              数据截至 {{ featureStatus.asOfDate || '未知' }} · 计算版本 {{ featureStatus.featureVersion || '未知' }} ·
               完整度 {{ formatPercent(featureStatus.completeness) }}
             </p>
             <p>
@@ -887,14 +887,14 @@ watch(selectedNavRange, () => {
             v-else
             class="empty-analysis"
           >
-            {{ featureStatus.unavailableReason || '当前特征输入尚不完整，不展示统计指标。' }}
+            {{ featureStatus.unavailableReason || '历史净值数据尚不完整，暂不展示统计指标。' }}
           </p>
         </template>
         <p
           v-else-if="!analysisMessage"
           class="empty-analysis"
         >
-          {{ featureStatus ? featureStatusLabel(featureStatus) : '特征状态暂时不可用。' }}
+          {{ featureStatus ? featureStatusLabel(featureStatus) : '历史指标暂时不可用。' }}
         </p>
       </section>
       <section

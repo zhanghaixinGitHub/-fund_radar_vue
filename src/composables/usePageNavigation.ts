@@ -56,9 +56,8 @@ const pageSections: Record<string, PageSection[]> = {
   'admin-sync-center': [
     { key: 'overview', label: '任务总览' },
     { key: 'marketNav', label: '净值增量同步', group: '任务分类' },
-    { key: 'marketDetail', label: '完整资料同步' },
-    { key: 'freeDataCompletion', label: '免费数据补齐' },
-    { key: 'featureSnapshot', label: '特征快照同步' },
+    { key: 'freeDataCompletion', label: '基金资料与市场数据更新' },
+    { key: 'featureSnapshot', label: '历史指标计算' },
     { key: 'simulationFees', label: '模拟费率同步' },
     { key: 'spxManual', label: '标普500手动同步' },
     { key: 'simRecurring', label: '定投手动执行' },
