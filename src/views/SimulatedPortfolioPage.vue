@@ -525,12 +525,12 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
             </p>
             <dl class="sim-position-values">
               <div><dt>市值</dt><dd>{{ simMoney(p.marketValue) }}</dd></div><div>
-                <dt>持有收益 / 收益率</dt><dd :class="simTone(p.holdingGain)">
-                  {{ simMoney(p.holdingGain) }} <small>{{ simPercent(p.holdingGainRate) }}</small>
-                </dd>
-              </div><div>
                 <dt>最近一期收益 · {{ p.navDate ?? '待更新' }}</dt><dd :class="simTone(p.dailyGain)">
                   {{ simMoney(p.dailyGain) }}
+                </dd>
+              </div><div>
+                <dt>持有收益 / 收益率</dt><dd :class="simTone(p.holdingGain)">
+                  {{ simMoney(p.holdingGain) }} <small>{{ simPercent(p.holdingGainRate) }}</small>
                 </dd>
               </div><div>
                 <dt>累计收益</dt><dd :class="simTone(p.cumulativeGain)">
