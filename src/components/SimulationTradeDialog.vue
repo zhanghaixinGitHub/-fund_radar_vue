@@ -78,7 +78,7 @@ async function submit() {
       emit('saved', `定投计划已保存，下一期 ${result.executionDate} 执行。`)
     } else {
       const result = await placeSimOrder(payload as Parameters<typeof placeSimOrder>[0])
-      emit('saved', `模拟${props.mode === 'BUY' ? '买入' : '卖出'}已提交，采用 ${result.tradeDate} 净值，最早 ${result.eligibleDate} 确认。`)
+      emit('saved', `模拟${props.mode === 'BUY' ? '买入' : '卖出'}已提交，等待 ${result.tradeDate} 正式净值及分红资料核验后确认。`)
     }
   } catch (reason) { if (alive) error.value = reason instanceof Error ? reason.message : '提交失败，可重试。' }
   finally { if (alive) saving.value = false }
@@ -273,10 +273,10 @@ onBeforeUnmount(() => { alive = false; generation++; globalThis.clearTimeout(tim
         v-else
         class="notice-banner"
       >
-        采用 {{ preview.tradeDate }} 当日正式净值，最早 {{ preview.eligibleDate }} 确认；净值未到则继续等待。
+        采用 {{ preview.tradeDate }} 当日正式净值，净值和分红资料核验后确认；买入份额最早 {{ preview.eligibleDate }} 可卖，净值未到则继续等待。
       </p>
       <p class="sim-muted">
-        本次仅记录模拟金额，不涉及真实资金。未计申赎手续费；现金分红。{{ mode === 'PLAN' ? '定投增加投入，收益随净值涨跌。' : '参考净值和预计金额不代表最终成交结果。' }}
+        所有基金类型统一按净值模拟，不校验真实开放日、持有期或限购条件，不涉及真实资金。申赎费按已配置费率模拟，未配置时按零计费；现金分红。{{ mode === 'PLAN' ? '定投增加投入，收益随净值涨跌。' : '参考净值和预计金额不代表最终成交结果。' }}
       </p>
       <details class="sim-muted">
         <summary>查看模拟规则</summary>
