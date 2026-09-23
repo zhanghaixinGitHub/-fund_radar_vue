@@ -11,6 +11,7 @@ import type { WatchlistItem } from '@/types/watchlist'
 import { usePageNavigation } from '@/composables/usePageNavigation'
 import { useAuthStore } from '@/stores/auth'
 import DecisionPanelV2 from '@/components/DecisionPanelV2.vue'
+import AutomaticEffectsPanel from '@/components/AutomaticEffectsPanel.vue'
 import type { AdviceDetail, AdviceHistory, DiagnosisHistory, HoldingRulesView, RuleDraftTier, RuleDraftView } from '@/types/advice'
 import type { SimPosition } from '@/types/simulation'
 import {
@@ -210,7 +211,7 @@ async function load() {
       rulePosition.value = overview.positions.find(item => item.fundCode === fund) ?? null
       return
     }
-    if (section.value === 'latest') return // V2组件独立读取，旧建议只在旧历史页面查询。
+    if (section.value === 'latest' || section.value === 'review') return // 结果与效果组件独立读取，不依赖旧V1历史接口。
     const result = await getAdviceHistory(fund, section.value === 'latest' ? 1 : page.value,
       section.value === 'latest' ? '' : start.value, section.value === 'latest' ? '' : end.value)
     if (!alive || current !== generation) return
@@ -365,6 +366,10 @@ onBeforeUnmount(() => { alive = false; generation++ })
 
       <DecisionPanelV2
         v-if="section === 'latest'"
+        :fund-code="code"
+      />
+      <AutomaticEffectsPanel
+        v-else-if="section === 'review'"
         :fund-code="code"
       />
       <template v-else-if="section === 'diagnosis'">

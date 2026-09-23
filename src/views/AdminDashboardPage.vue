@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useAuthStore } from '@/stores/auth'
 import { accountDisplayLabel, accountRoleLabel } from '@/utils/accountPresentation'
+import AutomaticModelDiagnostics from '@/components/AutomaticModelDiagnostics.vue'
 
 const authStore = useAuthStore()
 </script>
@@ -46,5 +47,6 @@ const authStore = useAuthStore()
         <p>查看和发起已授权的基金净值同步任务，不涉及交易操作。</p>
       </RouterLink>
     </div>
+    <AutomaticModelDiagnostics />
   </section>
 </template>

@@ -4,8 +4,6 @@ import { usePageNavigation } from '@/composables/usePageNavigation'
 import { useAuthStore } from '@/stores/auth'
 import SpxManualSyncPanel from '@/components/SpxManualSyncPanel.vue'
 import SimRecurringRunPanel from '@/components/SimRecurringRunPanel.vue'
-import ModelRoutesPanel from '@/components/ModelRoutesPanel.vue'
-import PredictionResearchPanel from '@/components/PredictionResearchPanel.vue'
 import { getSpxManualStatus } from '@/api/spxManual'
 import type { SpxManualStatus } from '@/types/spxManual'
 
@@ -356,8 +354,6 @@ onBeforeUnmount(() => {
 
     <SpxManualSyncPanel v-if="section === 'spxManual'" />
     <SimRecurringRunPanel v-if="section === 'simRecurring'" />
-    <ModelRoutesPanel v-if="section === 'direction1dPrediction' && auth.hasPermission('MODEL_EXPERIMENT_ADMIN')" />
-    <PredictionResearchPanel v-if="section === 'direction1dPrediction' && auth.hasPermission('RESEARCH_RUN_ADMIN')" />
 
     <section
       v-if="section === 'overview'"

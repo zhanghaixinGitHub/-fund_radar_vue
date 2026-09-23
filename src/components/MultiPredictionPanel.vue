@@ -171,9 +171,11 @@ onBeforeUnmount(() => { ++sequence; globalThis.clearTimeout(timer) })
           <details>
             <summary>数据、模型与实验边界</summary>
             <p>生成于 {{ time(card.prediction.generatedAt) }}；净值截至 {{ card.prediction.dataAsOf }}</p>
-            <p>实际模型：{{ card.prediction.modelId }}；采用版本 {{ card.prediction.activationRevision }}</p>
-            <p>训练标签截止：{{ card.prediction.modelManifest.labelEndMax ?? '基础方法无训练；旧模型未提供则保持未知' }}</p>
-            <p>模型指纹：{{ card.prediction.modelHash }}</p>
+            <template v-if="auth.hasPermission('RESEARCH_RUN_ADMIN')">
+              <p>实际模型：{{ card.prediction.modelId }}；采用版本 {{ card.prediction.activationRevision }}</p>
+              <p>训练标签截止：{{ card.prediction.modelManifest.labelEndMax ?? '基础方法无训练；旧模型未提供则保持未知' }}</p>
+              <p>模型指纹：{{ card.prediction.modelHash }}</p>
+            </template>
             <p v-if="card.prediction.fallbackReason">
               本次发生回退：{{ card.prediction.fallbackReason.map(e => e.summary).join('；') }}
             </p>
