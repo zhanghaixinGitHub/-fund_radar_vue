@@ -2,17 +2,19 @@
 
 基金雷达的 Vue 前端。项目当前定位为**基金预测与持仓决策辅助**：关注页提供基金多周期预测，持仓页综合模型、基金事实、市场事件和个人持仓形成明确操作建议。测试阶段允许实验模型参与，并保留结果、依据与版本供后续核验；按固定比较规则更好的可运行模型应进入实际实验预测，不因尚未证明长期有效而永久停留在研究目录。
 
-这是当前产品目标，不代表全部能力已经实现。2026-09-22 的最新边界、当前代码核对、模型采用流程和分阶段验收以[多周期预测与持仓综合决策实施方案](docs_zhx/implementation/fund-prediction-holding-decision-plan-2026-09-22.md)为准；[原需求说明](docs_zhx/requirements/fund-radar.md#current-positioning)保留历史背景，与本轮要求冲突的实验使用限制按新方案调整。系统不承诺确定涨跌，不替用户执行交易。前端只调用 Java 核心服务的 `/api/v1/*`，不直接访问 FastAPI AI 服务，也不保存外部数据源或支付凭证。
+这是当前产品目标，不代表全部能力已经实现。2026-09-23 下一轮以[后台自动选用模型与结果展示实施方案](docs_zhx/implementation/fund-auto-model-selection-plan-2026-09-23.md)为准：后台负责训练、比较与选用，日常页面聚焦预测、建议、效果和运行状态。[多周期预测与持仓综合决策实施方案](docs_zhx/implementation/fund-prediction-holding-decision-plan-2026-09-22.md)保留上一轮实现依据；[原需求说明](docs_zhx/requirements/fund-radar.md#current-positioning)保留历史背景，与本轮要求冲突的实验使用限制按新方案调整。系统不承诺确定涨跌，不替用户执行交易。前端只调用 Java 核心服务的 `/api/v1/*`，不直接访问 FastAPI AI 服务，也不保存外部数据源或支付凭证。
 
 ## 项目现状
 
-- **2026-09-22 本轮工程交付：**[多周期预测与综合持仓建议交付记录](docs_zhx/implementation/fund-prediction-holding-decision-delivery-2026-09-22.md)。35步实施、22项工程验收的证据见进度页；真实44只关注全部进入任务，37只成功、7只具体日历失败。历史候选未胜，策略回放跑输一直持有；真实到期效果继续单列观察，不能称为模型优化成功。
+- **2026-09-23 下一轮实施入口：**[实施方案](docs_zhx/implementation/fund-auto-model-selection-plan-2026-09-23.md)、[当前进度](docs_zhx/implementation/fund-auto-model-selection-progress-2026-09-23.md)、[新窗口接手说明](docs_zhx/implementation/fund-auto-model-selection-handoff-2026-09-23.md)。文档已准备，功能实施 **0/30**、验收 **0/24**；下一步 **S0-01**。每步状态、证据、时间与下一步统一更新新进度页，不沿用上一轮完成数量。
 
-- **查看做到哪一步：**[实施进度与每步完成标志](docs_zhx/implementation/fund-prediction-holding-decision-progress-2026-09-22.md)。统一维护文档准备、35 个实施步骤、22 项验收和真实效果观察的状态、证据与下一步。
+- **2026-09-22 上一轮工程交付：**[多周期预测与综合持仓建议交付记录](docs_zhx/implementation/fund-prediction-holding-decision-delivery-2026-09-22.md)。35步实施、22项工程验收的证据见进度页；真实44只关注全部进入任务，37只成功、7只具体日历失败。历史候选未胜，策略回放跑输一直持有；真实到期效果继续单列观察，不能称为模型优化成功。
+
+- **上一轮进度归档：**[实施进度与每步完成标志](docs_zhx/implementation/fund-prediction-holding-decision-progress-2026-09-22.md)。保留上一轮35个实施步骤、22项验收和真实效果观察的状态、证据与下一步。
 
 - 阅读方案时可先看[白话版：页面会有什么、模型如何更新、怎样验证效果](docs_zhx/implementation/fund-prediction-holding-decision-plain-guide-2026-09-22.md)，再按需查阅下面完整方案的技术细节。
 
-- **2026-09-22 新实施入口：**[基金多周期预测与持仓综合决策实施方案](docs_zhx/implementation/fund-prediction-holding-decision-plan-2026-09-22.md)。涵盖全部关注基金、多周期预测、综合建议、历史训练与回放、真实前向记录、优秀候选实际采用及具体失败原因。各阶段实际状态统一查看上方进度页；下列各轮数字和采用结论均保留原记录时点含义。
+- **2026-09-22 上一轮实施方案：**[基金多周期预测与持仓综合决策实施方案](docs_zhx/implementation/fund-prediction-holding-decision-plan-2026-09-22.md)。涵盖全部关注基金、多周期预测、综合建议、历史训练与回放、真实前向记录、优秀候选实际采用及具体失败原因。各阶段实际状态查看对应的上一轮进度页；下列各轮数字和采用结论均保留原记录时点含义。
 
 - **一日模型当前统一入口：**[进度、使用方法与下一步](docs_zhx/implementation/fund-direction-1d-progress-2026-09-13.md)。实验预测已实现，原29份9月14日预测待到期，尚未证明优化成功；12项候选的独立对照尚未启动。SPX早间自动任务按用户要求停用，新增单独手动按钮，并加入“一键同步全部”第一项；实际接收时间留档，晚到不补为提前取得。单独按钮已真实取得2条SPX日线。
 

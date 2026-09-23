@@ -1,5 +1,7 @@
 # 基金预测与持仓建议：实施进度
 
+> 本页保留2026-09-22方案的实施与观察记录。2026-09-23新方向请从[后台自动选用模型与结果展示进度](fund-auto-model-selection-progress-2026-09-23.md)的S0-01开始，新方案单独统计30步/24项，不继承本页完成数量。
+
 最后更新：2026-09-23。对应[完整实施方案](fund-prediction-holding-decision-plan-2026-09-22.md)和[白话阅读版](fund-prediction-holding-decision-plain-guide-2026-09-22.md)。
 
 ## 现在做到哪里
