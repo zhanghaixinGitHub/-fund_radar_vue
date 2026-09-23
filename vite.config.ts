@@ -10,7 +10,9 @@ import { defineConfig, loadEnv } from 'vite'
  */
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const apiBaseUrl = process.env.VITE_API_BASE_URL || env.VITE_API_BASE_URL || 'http://localhost:8080'
+  // 后端验证端口只影响开发代理，不把浏览器请求改为跨域；默认仍沿用8080。
+  const apiBaseUrl = process.env.FUND_CORE_PROXY_TARGET || env.FUND_CORE_PROXY_TARGET ||
+    process.env.VITE_API_BASE_URL || env.VITE_API_BASE_URL || 'http://localhost:8080'
 
   return {
     plugins: [vue()],

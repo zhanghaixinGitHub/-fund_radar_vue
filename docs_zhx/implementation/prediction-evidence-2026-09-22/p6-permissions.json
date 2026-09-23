@@ -1,0 +1,13 @@
+{
+  "GET /api/v1/portfolio/funds/006730/decision/reports": 404,
+  "GET /api/v1/watchlist/predictions/tasks": 404,
+  "POST /api/v1/watchlist/predictions/tasks/72786647-382f-4b4e-aebf-96dd54769c09": 404,
+  "GET /api/v1/admin": 403,
+  "POST /api/v1/admin": 403,
+  "ownFundRead": 200,
+  "internalNoToken18001": 403,
+  "internalNoToken18081": 403,
+  "temporaryAccountDisabled": true,
+  "sameFundPublicDataAllowedButPrivateReportsDenied": true,
+  "checkedAt": "2026-09-22T12:09:41.509991+00:00"
+}

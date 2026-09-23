@@ -1,0 +1,1720 @@
+{
+  "run_id": "86028a04-881f-4512-b540-109cd0282eab",
+  "status": "SUCCEEDED",
+  "spec": {
+    "seed": 42,
+    "routes": {
+      "NEXT_EXECUTABLE_CASH_REINVESTED_DIRECTION_V1:M6_V1:ALL": {
+        "model_id": "MP-cf4bd2c8ccdf61f6d448a7c005448597",
+        "revision": 1,
+        "route_key": "NEXT_EXECUTABLE_CASH_REINVESTED_DIRECTION_V1:M6_V1:ALL",
+        "shadow_ids": [
+          "MP-38c039ef746968faac5766e967e69e4b"
+        ],
+        "updated_at": "2026-09-22 10:44:32.797215+00:00",
+        "previous_model_id": null
+      },
+      "NEXT_EXECUTABLE_CASH_REINVESTED_DIRECTION_V1:T5_V1:ALL": {
+        "model_id": "MP-1f9b94e1d4d31e3f46775c650a650448",
+        "revision": 1,
+        "route_key": "NEXT_EXECUTABLE_CASH_REINVESTED_DIRECTION_V1:T5_V1:ALL",
+        "shadow_ids": [
+          "MP-b34769d7e565581964c631d2e2131875"
+        ],
+        "updated_at": "2026-09-22 10:44:32.759257+00:00",
+        "previous_model_id": null
+      },
+      "NEXT_EXECUTABLE_CASH_REINVESTED_DIRECTION_V1:T20_V1:ALL": {
+        "model_id": "MP-c83bb2ba6f88e03347378e46d453a89b",
+        "revision": 1,
+        "route_key": "NEXT_EXECUTABLE_CASH_REINVESTED_DIRECTION_V1:T20_V1:ALL",
+        "shadow_ids": [
+          "MP-eb1bb411f8199165eb4e123510c1238a"
+        ],
+        "updated_at": "2026-09-22 10:44:32.779296+00:00",
+        "previous_model_id": null
+      }
+    },
+    "stride": 5,
+    "trainEnd": "2023-12-29",
+    "fundCodes": [
+      "001021",
+      "001632",
+      "002112",
+      "002170",
+      "004237",
+      "004605",
+      "005187",
+      "005284",
+      "005312",
+      "006038",
+      "006476",
+      "006730",
+      "007045",
+      "007356",
+      "007509",
+      "007832",
+      "007950",
+      "008164",
+      "008603",
+      "008764",
+      "008888",
+      "008960",
+      "010710",
+      "010737",
+      "011036",
+      "011066",
+      "011103",
+      "013180",
+      "013275",
+      "013330",
+      "013472",
+      "013853",
+      "014156",
+      "014978",
+      "015596",
+      "016008",
+      "017145",
+      "017493",
+      "018125",
+      "018156",
+      "018853",
+      "019449",
+      "021740",
+      "160323"
+    ],
+    "scopeNote": "按当前关注集合回看历史，不代表全市场；历史版本存在可得性假设",
+    "candidates": [
+      "NAV_MOMENTUM_BASELINE_V1",
+      "TOTAL_RETURN_LOGISTIC_V1"
+    ],
+    "horizonIds": [
+      "T5_V1",
+      "T20_V1",
+      "M6_V1"
+    ],
+    "policyHash": "217968837283f728cd0324b1dca0cbaf061766f730c83db5b7d8223a2658aa8a",
+    "trainStart": "2022-01-04",
+    "selectionEnd": "2025-12-31",
+    "evidenceLevel": "DEVELOPMENT_ONLY",
+    "validationEnd": "2024-06-28",
+    "protocolVersion": "EXPERIMENT_SELECTION_V1"
+  },
+  "checkpoint": {
+    "lastHorizon": "M6_V1",
+    "completedHorizons": [
+      "T5_V1",
+      "T20_V1",
+      "M6_V1"
+    ]
+  },
+  "horizons": {
+    "M6_V1": {
+      "note": "当前重建历史可得性；模型实际训练发生在今天，历史模拟拟合只用当时成熟标签",
+      "models": [
+        {
+          "cost": 1.0,
+          "recipe": "NAV_MOMENTUM_BASELINE_V1",
+          "metrics": {
+            "accuracy": 0.5249150622876557,
+            "coverage": 0.549813200498132,
+            "breakdown": {
+              "type:BOND": {
+                "count": 96,
+                "correct": 61
+              },
+              "type:MIXED": {
+                "count": 720,
+                "correct": 398
+              },
+              "type:OTHER": {
+                "count": 38,
+                "correct": 38
+              },
+              "type:STOCK": {
+                "count": 912,
+                "correct": 430
+              },
+              "fund:001021": {
+                "count": 48,
+                "correct": 35
+              },
+              "fund:001632": {
+                "count": 48,
+                "correct": 8
+              },
+              "fund:002112": {
+                "count": 48,
+                "correct": 16
+              },
+              "fund:002170": {
+                "count": 48,
+                "correct": 21
+              },
+              "fund:004237": {
+                "count": 48,
+                "correct": 12
+              },
+              "fund:004605": {
+                "count": 48,
+                "correct": 31
+              },
+              "fund:005187": {
+                "count": 48,
+                "correct": 23
+              },
+              "fund:005284": {
+                "count": 48,
+                "correct": 26
+              },
+              "fund:005312": {
+                "count": 48,
+                "correct": 30
+              },
+              "fund:006038": {
+                "count": 48,
+                "correct": 34
+              },
+              "fund:006730": {
+                "count": 48,
+                "correct": 22
+              },
+              "fund:007045": {
+                "count": 48,
+                "correct": 23
+              },
+              "fund:007356": {
+                "count": 48,
+                "correct": 31
+              },
+              "fund:007509": {
+                "count": 48,
+                "correct": 28
+              },
+              "fund:007832": {
+                "count": 48,
+                "correct": 35
+              },
+              "fund:007950": {
+                "count": 48,
+                "correct": 30
+              },
+              "fund:008164": {
+                "count": 48,
+                "correct": 32
+              },
+              "fund:008603": {
+                "count": 48,
+                "correct": 20
+              },
+              "fund:008888": {
+                "count": 48,
+                "correct": 25
+              },
+              "fund:008960": {
+                "count": 48,
+                "correct": 27
+              },
+              "fund:010710": {
+                "count": 48,
+                "correct": 29
+              },
+              "fund:010737": {
+                "count": 48,
+                "correct": 13
+              },
+              "fund:011036": {
+                "count": 48,
+                "correct": 24
+              },
+              "fund:011066": {
+                "count": 48,
+                "correct": 37
+              },
+              "fund:011103": {
+                "count": 48,
+                "correct": 3
+              },
+              "fund:013180": {
+                "count": 48,
+                "correct": 11
+              },
+              "fund:013275": {
+                "count": 48,
+                "correct": 15
+              },
+              "fund:013330": {
+                "count": 48,
+                "correct": 42
+              },
+              "fund:013472": {
+                "count": 48,
+                "correct": 22
+              },
+              "fund:013853": {
+                "count": 48,
+                "correct": 36
+              },
+              "fund:014156": {
+                "count": 48,
+                "correct": 22
+              },
+              "fund:015596": {
+                "count": 48,
+                "correct": 19
+              },
+              "fund:016008": {
+                "count": 48,
+                "correct": 18
+              },
+              "fund:017493": {
+                "count": 48,
+                "correct": 22
+              },
+              "fund:018125": {
+                "count": 48,
+                "correct": 30
+              },
+              "fund:021740": {
+                "count": 38,
+                "correct": 38
+              },
+              "fund:160323": {
+                "count": 48,
+                "correct": 37
+              },
+              "period:2024-07": {
+                "count": 144,
+                "correct": 60
+              },
+              "period:2024-08": {
+                "count": 180,
+                "correct": 26
+              },
+              "period:2024-09": {
+                "count": 110,
+                "correct": 11
+              },
+              "period:2024-10": {
+                "count": 148,
+                "correct": 81
+              },
+              "period:2024-11": {
+                "count": 148,
+                "correct": 89
+              },
+              "period:2024-12": {
+                "count": 185,
+                "correct": 143
+              },
+              "period:2025-01": {
+                "count": 111,
+                "correct": 64
+              },
+              "period:2025-02": {
+                "count": 148,
+                "correct": 96
+              },
+              "period:2025-03": {
+                "count": 148,
+                "correct": 125
+              },
+              "period:2025-04": {
+                "count": 148,
+                "correct": 91
+              },
+              "period:2025-05": {
+                "count": 148,
+                "correct": 78
+              },
+              "period:2025-06": {
+                "count": 148,
+                "correct": 63
+              }
+            },
+            "dateCount": 73,
+            "fundCount": 44,
+            "classRecall": {
+              "UP": 0.5750487329434698,
+              "NON_UP": 0.18502202643171806
+            },
+            "plannedItems": 3212,
+            "primaryScore": 0.5233514764764765,
+            "balancedAccuracy": 0.38003537968759393,
+            "successfulMatureItems": 1766,
+            "failedOrUnmaturedItems": 1446
+          },
+          "modelId": "MP-cf4bd2c8ccdf61f6d448a7c005448597",
+          "runnable": true,
+          "timeValid": true,
+          "sampleHash": "8de8481185e7d70196082fd6aae54be77c8571a5bb6883c0866bf8ff7ebb0016",
+          "labelEndMax": null,
+          "protocolHash": "abe0a0080e58fa8db98a623adc3e641f665a4162c193aa2b77e00930fd415415",
+          "activationRevision": 1
+        },
+        {
+          "cost": 2.0,
+          "recipe": "TOTAL_RETURN_LOGISTIC_V1",
+          "metrics": {
+            "accuracy": 0.23556058890147225,
+            "coverage": 0.549813200498132,
+            "breakdown": {
+              "type:BOND": {
+                "count": 96,
+                "correct": 46
+              },
+              "type:MIXED": {
+                "count": 720,
+                "correct": 125
+              },
+              "type:OTHER": {
+                "count": 38,
+                "correct": 5
+              },
+              "type:STOCK": {
+                "count": 912,
+                "correct": 240
+              },
+              "fund:001021": {
+                "count": 48,
+                "correct": 30
+              },
+              "fund:001632": {
+                "count": 48,
+                "correct": 26
+              },
+              "fund:002112": {
+                "count": 48,
+                "correct": 14
+              },
+              "fund:002170": {
+                "count": 48,
+                "correct": 9
+              },
+              "fund:004237": {
+                "count": 48,
+                "correct": 17
+              },
+              "fund:004605": {
+                "count": 48,
+                "correct": 2
+              },
+              "fund:005187": {
+                "count": 48,
+                "correct": 3
+              },
+              "fund:005284": {
+                "count": 48,
+                "correct": 16
+              },
+              "fund:005312": {
+                "count": 48,
+                "correct": 3
+              },
+              "fund:006038": {
+                "count": 48,
+                "correct": 3
+              },
+              "fund:006730": {
+                "count": 48,
+                "correct": 9
+              },
+              "fund:007045": {
+                "count": 48,
+                "correct": 13
+              },
+              "fund:007356": {
+                "count": 48,
+                "correct": 3
+              },
+              "fund:007509": {
+                "count": 48,
+                "correct": 1
+              },
+              "fund:007832": {
+                "count": 48,
+                "correct": 2
+              },
+              "fund:007950": {
+                "count": 48,
+                "correct": 3
+              },
+              "fund:008164": {
+                "count": 48,
+                "correct": 14
+              },
+              "fund:008603": {
+                "count": 48,
+                "correct": 7
+              },
+              "fund:008888": {
+                "count": 48,
+                "correct": 10
+              },
+              "fund:008960": {
+                "count": 48,
+                "correct": 7
+              },
+              "fund:010710": {
+                "count": 48,
+                "correct": 11
+              },
+              "fund:010737": {
+                "count": 48,
+                "correct": 14
+              },
+              "fund:011036": {
+                "count": 48,
+                "correct": 5
+              },
+              "fund:011066": {
+                "count": 48,
+                "correct": 12
+              },
+              "fund:011103": {
+                "count": 48,
+                "correct": 21
+              },
+              "fund:013180": {
+                "count": 48,
+                "correct": 14
+              },
+              "fund:013275": {
+                "count": 48,
+                "correct": 27
+              },
+              "fund:013330": {
+                "count": 48,
+                "correct": 11
+              },
+              "fund:013472": {
+                "count": 48,
+                "correct": 16
+              },
+              "fund:013853": {
+                "count": 48,
+                "correct": 15
+              },
+              "fund:014156": {
+                "count": 48,
+                "correct": 8
+              },
+              "fund:015596": {
+                "count": 48,
+                "correct": 12
+              },
+              "fund:016008": {
+                "count": 48,
+                "correct": 12
+              },
+              "fund:017493": {
+                "count": 48,
+                "correct": 8
+              },
+              "fund:018125": {
+                "count": 48,
+                "correct": 7
+              },
+              "fund:021740": {
+                "count": 38,
+                "correct": 5
+              },
+              "fund:160323": {
+                "count": 48,
+                "correct": 26
+              },
+              "period:2024-07": {
+                "count": 144,
+                "correct": 27
+              },
+              "period:2024-08": {
+                "count": 180,
+                "correct": 52
+              },
+              "period:2024-09": {
+                "count": 110,
+                "correct": 23
+              },
+              "period:2024-10": {
+                "count": 148,
+                "correct": 70
+              },
+              "period:2024-11": {
+                "count": 148,
+                "correct": 63
+              },
+              "period:2024-12": {
+                "count": 185,
+                "correct": 45
+              },
+              "period:2025-01": {
+                "count": 111,
+                "correct": 20
+              },
+              "period:2025-02": {
+                "count": 148,
+                "correct": 19
+              },
+              "period:2025-03": {
+                "count": 148,
+                "correct": 21
+              },
+              "period:2025-04": {
+                "count": 148,
+                "correct": 30
+              },
+              "period:2025-05": {
+                "count": 148,
+                "correct": 13
+              },
+              "period:2025-06": {
+                "count": 148,
+                "correct": 33
+              }
+            },
+            "dateCount": 73,
+            "fundCount": 44,
+            "classRecall": {
+              "UP": 0.13385315139701104,
+              "NON_UP": 0.9251101321585903
+            },
+            "plannedItems": 3212,
+            "primaryScore": 0.23565753253253255,
+            "balancedAccuracy": 0.5294816417778007,
+            "successfulMatureItems": 1766,
+            "failedOrUnmaturedItems": 1446
+          },
+          "modelId": "MP-c86ed134ed008b021a9b1256b35f2cd3",
+          "runnable": true,
+          "timeValid": true,
+          "sampleHash": "8de8481185e7d70196082fd6aae54be77c8571a5bb6883c0866bf8ff7ebb0016",
+          "labelEndMax": "2023-12-27T00:00:00+08:00",
+          "protocolHash": "abe0a0080e58fa8db98a623adc3e641f665a4162c193aa2b77e00930fd415415",
+          "activationRevision": 1
+        }
+      ],
+      "selection": {
+        "winner": "MP-cf4bd2c8ccdf61f6d448a7c005448597",
+        "shadows": [
+          "MP-c86ed134ed008b021a9b1256b35f2cd3"
+        ],
+        "decision": "KEEP_CURRENT",
+        "decisions": [
+          {
+            "reason": "保留同题对照；最终胜者按冻结协议确定",
+            "modelId": "MP-c86ed134ed008b021a9b1256b35f2cd3",
+            "decision": "RUN_AS_SHADOW"
+          }
+        ],
+        "sampleHash": "8de8481185e7d70196082fd6aae54be77c8571a5bb6883c0866bf8ff7ebb0016",
+        "protocolHash": "abe0a0080e58fa8db98a623adc3e641f665a4162c193aa2b77e00930fd415415"
+      },
+      "evidenceLevel": "DEVELOPMENT_ONLY",
+      "trainingSamples": 1908,
+      "evaluationSamples": 1766,
+      "historicalQuality": "ASSUMED_AVAILABILITY",
+      "failureCount": 559
+    },
+    "T5_V1": {
+      "note": "当前重建历史可得性；模型实际训练发生在今天，历史模拟拟合只用当时成熟标签",
+      "models": [
+        {
+          "cost": 1.0,
+          "recipe": "NAV_MOMENTUM_BASELINE_V1",
+          "metrics": {
+            "accuracy": 0.5259984928409948,
+            "coverage": 0.8262764632627646,
+            "breakdown": {
+              "type:BOND": {
+                "count": 144,
+                "correct": 69
+              },
+              "type:MIXED": {
+                "count": 1080,
+                "correct": 575
+              },
+              "type:OTHER": {
+                "count": 62,
+                "correct": 34
+              },
+              "type:STOCK": {
+                "count": 1368,
+                "correct": 718
+              },
+              "fund:001021": {
+                "count": 72,
+                "correct": 31
+              },
+              "fund:001632": {
+                "count": 72,
+                "correct": 35
+              },
+              "fund:002112": {
+                "count": 72,
+                "correct": 36
+              },
+              "fund:002170": {
+                "count": 72,
+                "correct": 37
+              },
+              "fund:004237": {
+                "count": 72,
+                "correct": 40
+              },
+              "fund:004605": {
+                "count": 72,
+                "correct": 40
+              },
+              "fund:005187": {
+                "count": 72,
+                "correct": 48
+              },
+              "fund:005284": {
+                "count": 72,
+                "correct": 38
+              },
+              "fund:005312": {
+                "count": 72,
+                "correct": 36
+              },
+              "fund:006038": {
+                "count": 72,
+                "correct": 37
+              },
+              "fund:006730": {
+                "count": 72,
+                "correct": 36
+              },
+              "fund:007045": {
+                "count": 72,
+                "correct": 32
+              },
+              "fund:007356": {
+                "count": 72,
+                "correct": 41
+              },
+              "fund:007509": {
+                "count": 72,
+                "correct": 39
+              },
+              "fund:007832": {
+                "count": 72,
+                "correct": 40
+              },
+              "fund:007950": {
+                "count": 72,
+                "correct": 40
+              },
+              "fund:008164": {
+                "count": 72,
+                "correct": 40
+              },
+              "fund:008603": {
+                "count": 72,
+                "correct": 39
+              },
+              "fund:008888": {
+                "count": 72,
+                "correct": 35
+              },
+              "fund:008960": {
+                "count": 72,
+                "correct": 35
+              },
+              "fund:010710": {
+                "count": 72,
+                "correct": 38
+              },
+              "fund:010737": {
+                "count": 72,
+                "correct": 36
+              },
+              "fund:011036": {
+                "count": 72,
+                "correct": 43
+              },
+              "fund:011066": {
+                "count": 72,
+                "correct": 35
+              },
+              "fund:011103": {
+                "count": 72,
+                "correct": 39
+              },
+              "fund:013180": {
+                "count": 72,
+                "correct": 44
+              },
+              "fund:013275": {
+                "count": 72,
+                "correct": 42
+              },
+              "fund:013330": {
+                "count": 72,
+                "correct": 33
+              },
+              "fund:013472": {
+                "count": 72,
+                "correct": 35
+              },
+              "fund:013853": {
+                "count": 72,
+                "correct": 35
+              },
+              "fund:014156": {
+                "count": 72,
+                "correct": 39
+              },
+              "fund:015596": {
+                "count": 72,
+                "correct": 37
+              },
+              "fund:016008": {
+                "count": 72,
+                "correct": 39
+              },
+              "fund:017493": {
+                "count": 72,
+                "correct": 41
+              },
+              "fund:018125": {
+                "count": 72,
+                "correct": 36
+              },
+              "fund:021740": {
+                "count": 62,
+                "correct": 34
+              },
+              "fund:160323": {
+                "count": 72,
+                "correct": 35
+              },
+              "period:2024-07": {
+                "count": 144,
+                "correct": 73
+              },
+              "period:2024-08": {
+                "count": 180,
+                "correct": 99
+              },
+              "period:2024-09": {
+                "count": 110,
+                "correct": 42
+              },
+              "period:2024-10": {
+                "count": 148,
+                "correct": 87
+              },
+              "period:2024-11": {
+                "count": 148,
+                "correct": 58
+              },
+              "period:2024-12": {
+                "count": 185,
+                "correct": 102
+              },
+              "period:2025-01": {
+                "count": 111,
+                "correct": 42
+              },
+              "period:2025-02": {
+                "count": 148,
+                "correct": 96
+              },
+              "period:2025-03": {
+                "count": 148,
+                "correct": 72
+              },
+              "period:2025-04": {
+                "count": 148,
+                "correct": 50
+              },
+              "period:2025-05": {
+                "count": 148,
+                "correct": 55
+              },
+              "period:2025-06": {
+                "count": 148,
+                "correct": 95
+              },
+              "period:2025-07": {
+                "count": 185,
+                "correct": 126
+              },
+              "period:2025-08": {
+                "count": 148,
+                "correct": 108
+              },
+              "period:2025-09": {
+                "count": 148,
+                "correct": 100
+              },
+              "period:2025-10": {
+                "count": 148,
+                "correct": 75
+              },
+              "period:2025-11": {
+                "count": 148,
+                "correct": 61
+              },
+              "period:2025-12": {
+                "count": 111,
+                "correct": 55
+              }
+            },
+            "dateCount": 73,
+            "fundCount": 44,
+            "classRecall": {
+              "UP": 0.6041802743305029,
+              "NON_UP": 0.41941228851291185
+            },
+            "plannedItems": 3212,
+            "primaryScore": 0.5260781614948282,
+            "balancedAccuracy": 0.5117962814217074,
+            "successfulMatureItems": 2654,
+            "failedOrUnmaturedItems": 558
+          },
+          "modelId": "MP-1f9b94e1d4d31e3f46775c650a650448",
+          "runnable": true,
+          "timeValid": true,
+          "sampleHash": "ade315f0cc3fdc7e98dd7dd13d2c838463db0274e6fc202f8ec2b8365a518ecd",
+          "labelEndMax": null,
+          "protocolHash": "ca395563298b9031d60885ba20c145235358a515599e9e46edae16de98070e07",
+          "activationRevision": 1
+        },
+        {
+          "cost": 2.0,
+          "recipe": "TOTAL_RETURN_LOGISTIC_V1",
+          "metrics": {
+            "accuracy": 0.4404672192916353,
+            "coverage": 0.8262764632627646,
+            "breakdown": {
+              "type:BOND": {
+                "count": 144,
+                "correct": 66
+              },
+              "type:MIXED": {
+                "count": 1080,
+                "correct": 472
+              },
+              "type:OTHER": {
+                "count": 62,
+                "correct": 29
+              },
+              "type:STOCK": {
+                "count": 1368,
+                "correct": 602
+              },
+              "fund:001021": {
+                "count": 72,
+                "correct": 35
+              },
+              "fund:001632": {
+                "count": 72,
+                "correct": 27
+              },
+              "fund:002112": {
+                "count": 72,
+                "correct": 38
+              },
+              "fund:002170": {
+                "count": 72,
+                "correct": 42
+              },
+              "fund:004237": {
+                "count": 72,
+                "correct": 30
+              },
+              "fund:004605": {
+                "count": 72,
+                "correct": 32
+              },
+              "fund:005187": {
+                "count": 72,
+                "correct": 31
+              },
+              "fund:005284": {
+                "count": 72,
+                "correct": 31
+              },
+              "fund:005312": {
+                "count": 72,
+                "correct": 32
+              },
+              "fund:006038": {
+                "count": 72,
+                "correct": 28
+              },
+              "fund:006730": {
+                "count": 72,
+                "correct": 31
+              },
+              "fund:007045": {
+                "count": 72,
+                "correct": 33
+              },
+              "fund:007356": {
+                "count": 72,
+                "correct": 30
+              },
+              "fund:007509": {
+                "count": 72,
+                "correct": 35
+              },
+              "fund:007832": {
+                "count": 72,
+                "correct": 30
+              },
+              "fund:007950": {
+                "count": 72,
+                "correct": 31
+              },
+              "fund:008164": {
+                "count": 72,
+                "correct": 31
+              },
+              "fund:008603": {
+                "count": 72,
+                "correct": 31
+              },
+              "fund:008888": {
+                "count": 72,
+                "correct": 33
+              },
+              "fund:008960": {
+                "count": 72,
+                "correct": 27
+              },
+              "fund:010710": {
+                "count": 72,
+                "correct": 37
+              },
+              "fund:010737": {
+                "count": 72,
+                "correct": 33
+              },
+              "fund:011036": {
+                "count": 72,
+                "correct": 32
+              },
+              "fund:011066": {
+                "count": 72,
+                "correct": 26
+              },
+              "fund:011103": {
+                "count": 72,
+                "correct": 35
+              },
+              "fund:013180": {
+                "count": 72,
+                "correct": 27
+              },
+              "fund:013275": {
+                "count": 72,
+                "correct": 36
+              },
+              "fund:013330": {
+                "count": 72,
+                "correct": 37
+              },
+              "fund:013472": {
+                "count": 72,
+                "correct": 30
+              },
+              "fund:013853": {
+                "count": 72,
+                "correct": 24
+              },
+              "fund:014156": {
+                "count": 72,
+                "correct": 28
+              },
+              "fund:015596": {
+                "count": 72,
+                "correct": 31
+              },
+              "fund:016008": {
+                "count": 72,
+                "correct": 34
+              },
+              "fund:017493": {
+                "count": 72,
+                "correct": 29
+              },
+              "fund:018125": {
+                "count": 72,
+                "correct": 33
+              },
+              "fund:021740": {
+                "count": 62,
+                "correct": 29
+              },
+              "fund:160323": {
+                "count": 72,
+                "correct": 30
+              },
+              "period:2024-07": {
+                "count": 144,
+                "correct": 78
+              },
+              "period:2024-08": {
+                "count": 180,
+                "correct": 117
+              },
+              "period:2024-09": {
+                "count": 110,
+                "correct": 43
+              },
+              "period:2024-10": {
+                "count": 148,
+                "correct": 58
+              },
+              "period:2024-11": {
+                "count": 148,
+                "correct": 68
+              },
+              "period:2024-12": {
+                "count": 185,
+                "correct": 67
+              },
+              "period:2025-01": {
+                "count": 111,
+                "correct": 32
+              },
+              "period:2025-02": {
+                "count": 148,
+                "correct": 51
+              },
+              "period:2025-03": {
+                "count": 148,
+                "correct": 101
+              },
+              "period:2025-04": {
+                "count": 148,
+                "correct": 70
+              },
+              "period:2025-05": {
+                "count": 148,
+                "correct": 58
+              },
+              "period:2025-06": {
+                "count": 148,
+                "correct": 93
+              },
+              "period:2025-07": {
+                "count": 185,
+                "correct": 61
+              },
+              "period:2025-08": {
+                "count": 148,
+                "correct": 47
+              },
+              "period:2025-09": {
+                "count": 148,
+                "correct": 41
+              },
+              "period:2025-10": {
+                "count": 148,
+                "correct": 67
+              },
+              "period:2025-11": {
+                "count": 148,
+                "correct": 79
+              },
+              "period:2025-12": {
+                "count": 111,
+                "correct": 38
+              }
+            },
+            "dateCount": 73,
+            "fundCount": 44,
+            "classRecall": {
+              "UP": 0.20705421293272372,
+              "NON_UP": 0.7586821015138023
+            },
+            "plannedItems": 3212,
+            "primaryScore": 0.4410764931598265,
+            "balancedAccuracy": 0.48286815722326304,
+            "successfulMatureItems": 2654,
+            "failedOrUnmaturedItems": 558
+          },
+          "modelId": "MP-4afdc537867cc70521f730c26a1cccbc",
+          "runnable": true,
+          "timeValid": true,
+          "sampleHash": "ade315f0cc3fdc7e98dd7dd13d2c838463db0274e6fc202f8ec2b8365a518ecd",
+          "labelEndMax": "2023-12-27T00:00:00+08:00",
+          "protocolHash": "ca395563298b9031d60885ba20c145235358a515599e9e46edae16de98070e07",
+          "activationRevision": 1
+        }
+      ],
+      "selection": {
+        "winner": "MP-1f9b94e1d4d31e3f46775c650a650448",
+        "shadows": [
+          "MP-4afdc537867cc70521f730c26a1cccbc"
+        ],
+        "decision": "KEEP_CURRENT",
+        "decisions": [
+          {
+            "reason": "保留同题对照；最终胜者按冻结协议确定",
+            "modelId": "MP-4afdc537867cc70521f730c26a1cccbc",
+            "decision": "RUN_AS_SHADOW"
+          }
+        ],
+        "sampleHash": "ade315f0cc3fdc7e98dd7dd13d2c838463db0274e6fc202f8ec2b8365a518ecd",
+        "protocolHash": "ca395563298b9031d60885ba20c145235358a515599e9e46edae16de98070e07"
+      },
+      "evidenceLevel": "DEVELOPMENT_ONLY",
+      "trainingSamples": 2765,
+      "evaluationSamples": 2654,
+      "historicalQuality": "ASSUMED_AVAILABILITY",
+      "failureCount": 559
+    },
+    "T20_V1": {
+      "note": "当前重建历史可得性；模型实际训练发生在今天，历史模拟拟合只用当时成熟标签",
+      "models": [
+        {
+          "cost": 1.0,
+          "recipe": "NAV_MOMENTUM_BASELINE_V1",
+          "metrics": {
+            "accuracy": 0.5340149429807314,
+            "coverage": 0.7917185554171855,
+            "breakdown": {
+              "type:BOND": {
+                "count": 138,
+                "correct": 76
+              },
+              "type:MIXED": {
+                "count": 1035,
+                "correct": 558
+              },
+              "type:OTHER": {
+                "count": 59,
+                "correct": 35
+              },
+              "type:STOCK": {
+                "count": 1311,
+                "correct": 689
+              },
+              "fund:001021": {
+                "count": 69,
+                "correct": 40
+              },
+              "fund:001632": {
+                "count": 69,
+                "correct": 31
+              },
+              "fund:002112": {
+                "count": 69,
+                "correct": 35
+              },
+              "fund:002170": {
+                "count": 69,
+                "correct": 39
+              },
+              "fund:004237": {
+                "count": 69,
+                "correct": 41
+              },
+              "fund:004605": {
+                "count": 69,
+                "correct": 37
+              },
+              "fund:005187": {
+                "count": 69,
+                "correct": 44
+              },
+              "fund:005284": {
+                "count": 69,
+                "correct": 36
+              },
+              "fund:005312": {
+                "count": 69,
+                "correct": 28
+              },
+              "fund:006038": {
+                "count": 69,
+                "correct": 37
+              },
+              "fund:006730": {
+                "count": 69,
+                "correct": 37
+              },
+              "fund:007045": {
+                "count": 69,
+                "correct": 36
+              },
+              "fund:007356": {
+                "count": 69,
+                "correct": 39
+              },
+              "fund:007509": {
+                "count": 69,
+                "correct": 41
+              },
+              "fund:007832": {
+                "count": 69,
+                "correct": 42
+              },
+              "fund:007950": {
+                "count": 69,
+                "correct": 39
+              },
+              "fund:008164": {
+                "count": 69,
+                "correct": 33
+              },
+              "fund:008603": {
+                "count": 69,
+                "correct": 39
+              },
+              "fund:008888": {
+                "count": 69,
+                "correct": 35
+              },
+              "fund:008960": {
+                "count": 69,
+                "correct": 25
+              },
+              "fund:010710": {
+                "count": 69,
+                "correct": 41
+              },
+              "fund:010737": {
+                "count": 69,
+                "correct": 33
+              },
+              "fund:011036": {
+                "count": 69,
+                "correct": 37
+              },
+              "fund:011066": {
+                "count": 69,
+                "correct": 32
+              },
+              "fund:011103": {
+                "count": 69,
+                "correct": 35
+              },
+              "fund:013180": {
+                "count": 69,
+                "correct": 38
+              },
+              "fund:013275": {
+                "count": 69,
+                "correct": 36
+              },
+              "fund:013330": {
+                "count": 69,
+                "correct": 35
+              },
+              "fund:013472": {
+                "count": 69,
+                "correct": 38
+              },
+              "fund:013853": {
+                "count": 69,
+                "correct": 35
+              },
+              "fund:014156": {
+                "count": 69,
+                "correct": 34
+              },
+              "fund:015596": {
+                "count": 69,
+                "correct": 41
+              },
+              "fund:016008": {
+                "count": 69,
+                "correct": 36
+              },
+              "fund:017493": {
+                "count": 69,
+                "correct": 39
+              },
+              "fund:018125": {
+                "count": 69,
+                "correct": 41
+              },
+              "fund:021740": {
+                "count": 59,
+                "correct": 35
+              },
+              "fund:160323": {
+                "count": 69,
+                "correct": 38
+              },
+              "period:2024-07": {
+                "count": 144,
+                "correct": 106
+              },
+              "period:2024-08": {
+                "count": 180,
+                "correct": 88
+              },
+              "period:2024-09": {
+                "count": 110,
+                "correct": 21
+              },
+              "period:2024-10": {
+                "count": 148,
+                "correct": 81
+              },
+              "period:2024-11": {
+                "count": 148,
+                "correct": 58
+              },
+              "period:2024-12": {
+                "count": 185,
+                "correct": 90
+              },
+              "period:2025-01": {
+                "count": 111,
+                "correct": 39
+              },
+              "period:2025-02": {
+                "count": 148,
+                "correct": 84
+              },
+              "period:2025-03": {
+                "count": 148,
+                "correct": 51
+              },
+              "period:2025-04": {
+                "count": 148,
+                "correct": 41
+              },
+              "period:2025-05": {
+                "count": 148,
+                "correct": 85
+              },
+              "period:2025-06": {
+                "count": 148,
+                "correct": 111
+              },
+              "period:2025-07": {
+                "count": 185,
+                "correct": 154
+              },
+              "period:2025-08": {
+                "count": 148,
+                "correct": 131
+              },
+              "period:2025-09": {
+                "count": 148,
+                "correct": 86
+              },
+              "period:2025-10": {
+                "count": 148,
+                "correct": 75
+              },
+              "period:2025-11": {
+                "count": 148,
+                "correct": 57
+              }
+            },
+            "dateCount": 73,
+            "fundCount": 44,
+            "classRecall": {
+              "UP": 0.6151866151866152,
+              "NON_UP": 0.4064711830131446
+            },
+            "plannedItems": 3212,
+            "primaryScore": 0.5340884362623493,
+            "balancedAccuracy": 0.5108288990998799,
+            "successfulMatureItems": 2543,
+            "failedOrUnmaturedItems": 669
+          },
+          "modelId": "MP-c83bb2ba6f88e03347378e46d453a89b",
+          "runnable": true,
+          "timeValid": true,
+          "sampleHash": "33874edacbd2f1baead67ddbb6fbe3d1ea5d67511b17f324cc55a2e80466c694",
+          "labelEndMax": null,
+          "protocolHash": "7249b374c23d7ecb448312efd14f4662b9459a7fdd6dc06cbe06c44b5d8f6b61",
+          "activationRevision": 1
+        },
+        {
+          "cost": 2.0,
+          "recipe": "TOTAL_RETURN_LOGISTIC_V1",
+          "metrics": {
+            "accuracy": 0.4714903657097916,
+            "coverage": 0.7917185554171855,
+            "breakdown": {
+              "type:BOND": {
+                "count": 138,
+                "correct": 64
+              },
+              "type:MIXED": {
+                "count": 1035,
+                "correct": 515
+              },
+              "type:OTHER": {
+                "count": 59,
+                "correct": 19
+              },
+              "type:STOCK": {
+                "count": 1311,
+                "correct": 601
+              },
+              "fund:001021": {
+                "count": 69,
+                "correct": 34
+              },
+              "fund:001632": {
+                "count": 69,
+                "correct": 32
+              },
+              "fund:002112": {
+                "count": 69,
+                "correct": 39
+              },
+              "fund:002170": {
+                "count": 69,
+                "correct": 43
+              },
+              "fund:004237": {
+                "count": 69,
+                "correct": 38
+              },
+              "fund:004605": {
+                "count": 69,
+                "correct": 34
+              },
+              "fund:005187": {
+                "count": 69,
+                "correct": 30
+              },
+              "fund:005284": {
+                "count": 69,
+                "correct": 30
+              },
+              "fund:005312": {
+                "count": 69,
+                "correct": 41
+              },
+              "fund:006038": {
+                "count": 69,
+                "correct": 27
+              },
+              "fund:006730": {
+                "count": 69,
+                "correct": 30
+              },
+              "fund:007045": {
+                "count": 69,
+                "correct": 27
+              },
+              "fund:007356": {
+                "count": 69,
+                "correct": 33
+              },
+              "fund:007509": {
+                "count": 69,
+                "correct": 35
+              },
+              "fund:007832": {
+                "count": 69,
+                "correct": 28
+              },
+              "fund:007950": {
+                "count": 69,
+                "correct": 34
+              },
+              "fund:008164": {
+                "count": 69,
+                "correct": 29
+              },
+              "fund:008603": {
+                "count": 69,
+                "correct": 36
+              },
+              "fund:008888": {
+                "count": 69,
+                "correct": 36
+              },
+              "fund:008960": {
+                "count": 69,
+                "correct": 39
+              },
+              "fund:010710": {
+                "count": 69,
+                "correct": 31
+              },
+              "fund:010737": {
+                "count": 69,
+                "correct": 35
+              },
+              "fund:011036": {
+                "count": 69,
+                "correct": 30
+              },
+              "fund:011066": {
+                "count": 69,
+                "correct": 26
+              },
+              "fund:011103": {
+                "count": 69,
+                "correct": 29
+              },
+              "fund:013180": {
+                "count": 69,
+                "correct": 30
+              },
+              "fund:013275": {
+                "count": 69,
+                "correct": 36
+              },
+              "fund:013330": {
+                "count": 69,
+                "correct": 33
+              },
+              "fund:013472": {
+                "count": 69,
+                "correct": 37
+              },
+              "fund:013853": {
+                "count": 69,
+                "correct": 29
+              },
+              "fund:014156": {
+                "count": 69,
+                "correct": 32
+              },
+              "fund:015596": {
+                "count": 69,
+                "correct": 29
+              },
+              "fund:016008": {
+                "count": 69,
+                "correct": 37
+              },
+              "fund:017493": {
+                "count": 69,
+                "correct": 30
+              },
+              "fund:018125": {
+                "count": 69,
+                "correct": 27
+              },
+              "fund:021740": {
+                "count": 59,
+                "correct": 19
+              },
+              "fund:160323": {
+                "count": 69,
+                "correct": 34
+              },
+              "period:2024-07": {
+                "count": 144,
+                "correct": 101
+              },
+              "period:2024-08": {
+                "count": 180,
+                "correct": 96
+              },
+              "period:2024-09": {
+                "count": 110,
+                "correct": 43
+              },
+              "period:2024-10": {
+                "count": 148,
+                "correct": 64
+              },
+              "period:2024-11": {
+                "count": 148,
+                "correct": 77
+              },
+              "period:2024-12": {
+                "count": 185,
+                "correct": 116
+              },
+              "period:2025-01": {
+                "count": 111,
+                "correct": 29
+              },
+              "period:2025-02": {
+                "count": 148,
+                "correct": 50
+              },
+              "period:2025-03": {
+                "count": 148,
+                "correct": 98
+              },
+              "period:2025-04": {
+                "count": 148,
+                "correct": 52
+              },
+              "period:2025-05": {
+                "count": 148,
+                "correct": 71
+              },
+              "period:2025-06": {
+                "count": 148,
+                "correct": 116
+              },
+              "period:2025-07": {
+                "count": 185,
+                "correct": 45
+              },
+              "period:2025-08": {
+                "count": 148,
+                "correct": 31
+              },
+              "period:2025-09": {
+                "count": 148,
+                "correct": 63
+              },
+              "period:2025-10": {
+                "count": 148,
+                "correct": 83
+              },
+              "period:2025-11": {
+                "count": 148,
+                "correct": 64
+              }
+            },
+            "dateCount": 73,
+            "fundCount": 44,
+            "classRecall": {
+              "UP": 0.26833976833976836,
+              "NON_UP": 0.7906976744186046
+            },
+            "plannedItems": 3212,
+            "primaryScore": 0.47197197197197194,
+            "balancedAccuracy": 0.5295187213791865,
+            "successfulMatureItems": 2543,
+            "failedOrUnmaturedItems": 669
+          },
+          "modelId": "MP-80bc347d4c9a4195489a094c95531075",
+          "runnable": true,
+          "timeValid": true,
+          "sampleHash": "33874edacbd2f1baead67ddbb6fbe3d1ea5d67511b17f324cc55a2e80466c694",
+          "labelEndMax": "2023-12-27T00:00:00+08:00",
+          "protocolHash": "7249b374c23d7ecb448312efd14f4662b9459a7fdd6dc06cbe06c44b5d8f6b61",
+          "activationRevision": 1
+        }
+      ],
+      "selection": {
+        "winner": "MP-c83bb2ba6f88e03347378e46d453a89b",
+        "shadows": [
+          "MP-80bc347d4c9a4195489a094c95531075"
+        ],
+        "decision": "KEEP_CURRENT",
+        "decisions": [
+          {
+            "reason": "保留同题对照；最终胜者按冻结协议确定",
+            "modelId": "MP-80bc347d4c9a4195489a094c95531075",
+            "decision": "RUN_AS_SHADOW"
+          }
+        ],
+        "sampleHash": "33874edacbd2f1baead67ddbb6fbe3d1ea5d67511b17f324cc55a2e80466c694",
+        "protocolHash": "7249b374c23d7ecb448312efd14f4662b9459a7fdd6dc06cbe06c44b5d8f6b61"
+      },
+      "evidenceLevel": "DEVELOPMENT_ONLY",
+      "trainingSamples": 2657,
+      "evaluationSamples": 2543,
+      "historicalQuality": "ASSUMED_AVAILABILITY",
+      "failureCount": 559
+    }
+  },
+  "error": null
+}

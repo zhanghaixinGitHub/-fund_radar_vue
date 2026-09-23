@@ -4,13 +4,15 @@ import { usePageNavigation } from '@/composables/usePageNavigation'
 import { useAuthStore } from '@/stores/auth'
 import SpxManualSyncPanel from '@/components/SpxManualSyncPanel.vue'
 import SimRecurringRunPanel from '@/components/SimRecurringRunPanel.vue'
+import ModelRoutesPanel from '@/components/ModelRoutesPanel.vue'
+import PredictionResearchPanel from '@/components/PredictionResearchPanel.vue'
 import { getSpxManualStatus } from '@/api/spxManual'
 import type { SpxManualStatus } from '@/types/spxManual'
 
 import {
   getLastSuccessfulSyncTimes,
-  getLatestDirection1dPredictionSync,
-  startDirection1dPredictionSync,
+  getLatestMultiPredictionSync,
+  startMultiPredictionSync,
   getLatestAllSync,
   getLatestMarketFreeDataCompletionSync,
   getLatestMarketNavIncrementalSync,
@@ -30,7 +32,7 @@ const auth = useAuthStore()
 
 interface SyncTaskDefinition {
   key: SyncTaskKey
-  jobType: 'MARKET_NAV_INCREMENTAL' | 'MARKET_FREE_DATA_COMPLETION' | 'STOCK_FEATURE_SNAPSHOT' | 'DIRECTION_1D_PREDICTIONS' | 'SIMULATION_FEES'
+  jobType: 'MARKET_NAV_INCREMENTAL' | 'MARKET_FREE_DATA_COMPLETION' | 'STOCK_FEATURE_SNAPSHOT' | 'MULTI_PREDICTIONS' | 'SIMULATION_FEES'
   title: string
   description: string
   scheduleNote: string
@@ -73,20 +75,20 @@ const tasks: readonly SyncTaskDefinition[] = [
   },
   {
     key: 'direction1dPrediction',
-    jobType: 'DIRECTION_1D_PREDICTIONS',
+    jobType: 'MULTI_PREDICTIONS',
     title: '全部关注基金预测生成',
-    description: '检查全部有效账号关注的基金，按基金去重生成下一交易日预测，并保存到各自的预测历史。范围是关注列表；暂不支持或数据不齐的基金会列出原因。',
-    scheduleNote: '后台每轮检查结束30分钟后自动检查；可单独手动生成。一键同步在净值与历史指标更新后执行，仍遵守上一交易日18:00至目标交易日08:30前的生成时间。',
+    description: '检查全部有效账号关注的基金，按基金去重生成五日、二十日和半年实验预测，并保存到各自的预测历史。范围是关注列表；必要数据缺失的基金逐周期列出具体原因。',
+    scheduleNote: '后台每轮结束30分钟后自动检查；手动生成不受旧一日实验窗口限制。一键同步在净值、指标和费率更新后执行；预测起点按生成时刻、估值日历及15:00截止规则确定。此处显示本次服务启动后的手动同步任务，公共预测原文永久留档。',
     actionLabel: '生成全部关注基金预测',
-    start: startDirection1dPredictionSync,
-    loadLatest: getLatestDirection1dPredictionSync,
+    start: startMultiPredictionSync,
+    loadLatest: getLatestMultiPredictionSync,
   },
   {
     key: 'simulationFees',
     jobType: 'SIMULATION_FEES',
     title: '模拟组合申赎费率同步',
     description: '从天天基金抓取申购费率与赎回分档；可刷新单只基金，全量初始化覆盖模拟持仓和定投计划涉及的基金。',
-    scheduleNote: '按需手动执行，也作为一键同步的第六项；单只失败会保留原因，其余基金继续。',
+    scheduleNote: '按需手动执行，也作为一键同步的第五项，在多周期预测前更新；单只失败会保留原因，其余基金继续。',
     actionLabel: '全量初始化',
     start: startSimulationFeeSync,
     loadLatest: getLatestSimulationFeeSync,
@@ -111,7 +113,7 @@ const lastSuccessfulAt = ref<Record<string, string | null>>({
   MARKET_NAV_INCREMENTAL: null,
   MARKET_FREE_DATA_COMPLETION: null,
   STOCK_FEATURE_SNAPSHOT: null,
-  DIRECTION_1D_PREDICTIONS: null,
+  MULTI_PREDICTIONS: null,
   SIMULATION_FEES: null,
 })
 const loading = ref(true)
@@ -354,6 +356,8 @@ onBeforeUnmount(() => {
 
     <SpxManualSyncPanel v-if="section === 'spxManual'" />
     <SimRecurringRunPanel v-if="section === 'simRecurring'" />
+    <ModelRoutesPanel v-if="section === 'direction1dPrediction' && auth.hasPermission('MODEL_EXPERIMENT_ADMIN')" />
+    <PredictionResearchPanel v-if="section === 'direction1dPrediction' && auth.hasPermission('RESEARCH_RUN_ADMIN')" />
 
     <section
       v-if="section === 'overview'"
@@ -365,7 +369,7 @@ onBeforeUnmount(() => {
           <h2 id="sync-all-title">
             一键同步全部
           </h2>
-          <p>依次执行：标普500 → 基金资料与市场数据更新 → 净值增量 → 历史指标计算 → 全部关注基金预测 → 模拟费率。某项失败会记录原因，并继续尝试其余任务。</p>
+          <p>依次执行：标普500 → 基金资料与市场数据更新 → 净值增量 → 历史指标计算 → 模拟费率 → 全部关注多周期预测 → 综合建议 → 到期核验。某项失败会记录原因，并继续尝试其余任务。</p>
         </div>
         <span
           v-if="allJob"
@@ -543,7 +547,7 @@ onBeforeUnmount(() => {
           class="sync-status"
           :class="jobs[task.key] ? `is-${jobs[task.key]!.status.toLowerCase()}` : 'is-idle'"
         >
-          {{ jobs[task.key] ? statusLabel(jobs[task.key]!.status, false, task.key === 'simulationFees', task.key === 'featureSnapshot', task.key === 'direction1dPrediction') : '尚未运行' }}
+          {{ jobs[task.key] ? statusLabel(jobs[task.key]!.status, false, task.key === 'simulationFees', task.key === 'featureSnapshot', task.key === 'direction1dPrediction') : task.key === 'direction1dPrediction' ? '本次服务启动后无手动记录' : '尚未运行' }}
         </span>
       </div>
 
@@ -557,7 +561,7 @@ onBeforeUnmount(() => {
       >
         <div class="sync-progress-meta">
           <strong>{{ jobs[task.key]!.progressMessage }}</strong>
-          <span>{{ jobs[task.key]!.progressCurrent }} / {{ jobs[task.key]!.progressTotal }} {{ task.key === 'direction1dPrediction' ? '只' : '步' }}</span>
+          <span>{{ jobs[task.key]!.progressCurrent }} / {{ jobs[task.key]!.progressTotal }} {{ task.key === 'direction1dPrediction' ? '个基金周期项' : '步' }}</span>
         </div>
         <div
           class="sync-progress-track"
@@ -580,7 +584,7 @@ onBeforeUnmount(() => {
           v-else-if="task.key === 'direction1dPrediction'"
           class="sync-progress-note"
         >
-          {{ isActive(task) ? '正在按本期目标日检查关注基金，具体进度见上方。' : `本期检查已结束，预测目标日：${jobs[task.key]!.requestedNavDate}` }}
+          {{ isActive(task) ? '正在按本期目标日检查关注基金，具体进度见上方。' : `本期检查已结束，任务日期：${jobs[task.key]!.requestedNavDate}；预测起止日见对应周期卡` }}
         </p>
         <p
           v-else
@@ -596,7 +600,7 @@ onBeforeUnmount(() => {
       >
         <div><dt>开始时间</dt><dd>{{ formatTime(jobs[task.key]!.startedAt) }}</dd></div>
         <div><dt>结束时间</dt><dd>{{ formatTime(jobs[task.key]!.finishedAt) }}</dd></div>
-        <div><dt>{{ task.key === 'simulationFees' || task.key === 'direction1dPrediction' ? '检查基金数' : '读取条数' }}</dt><dd>{{ jobs[task.key]!.fetchedCount }}</dd></div>
+        <div><dt>{{ task.key === 'direction1dPrediction' ? '基金周期项数' : task.key === 'simulationFees' ? '检查基金数' : '读取条数' }}</dt><dd>{{ jobs[task.key]!.fetchedCount }}</dd></div>
         <div v-if="task.key === 'simulationFees'">
           <dt>保存成功 / 失败</dt><dd>{{ jobs[task.key]!.updatedCount }} / {{ jobs[task.key]!.fetchedCount - jobs[task.key]!.updatedCount }}</dd>
         </div>
@@ -682,8 +686,8 @@ onBeforeUnmount(() => {
         运行说明
       </h2>
       <ul>
-        <li>一键同步依次执行标普500、基金资料与市场数据更新、净值增量、历史指标计算、全部关注基金预测、模拟费率，共六项；某项失败会单列未完成，其余任务继续。</li>
-        <li>预测无需系统或个人实验开关。每只基金每个目标日复用已有预测；不支持、缺数据或不在生成时间段时列出原因，不能用历史补算冒充提前预测。</li>
+        <li>一键同步依次执行标普500、基金资料与市场数据更新、净值增量、历史指标计算、模拟费率、多周期预测及综合建议核验，共六类任务；某项失败会单列未完成，其余任务继续。</li>
+        <li>预测无需系统或个人实验开关。每只基金每个周期期次复用已有预测；缺数据、日历政策待补或服务失败时列出原因，不能用历史补算冒充提前预测。</li>
         <li>模拟费率支持单只刷新和全量初始化；全量范围为模拟持仓与定投计划涉及的基金。同步成功后可在“费率维护”中查询和编辑规则。</li>
         <li>某项失败仍尝试后续任务；批次部分成功不代表所有数据均已补齐，可查看对应任务并单独重试。</li>
         <li>批次与单项任务共用互斥限制。关闭网页不影响执行；Python 服务重启后不会自动续跑，实时批次状态也会清空。</li>

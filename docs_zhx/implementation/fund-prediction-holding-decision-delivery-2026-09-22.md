@@ -1,0 +1,126 @@
+# 基金多周期预测与综合持仓建议：工程交付
+
+交付日期：2026-09-22。本轮按[35步进度页](fund-prediction-holding-decision-progress-2026-09-22.md)实施；[方案第14节](fund-prediction-holding-decision-plan-2026-09-22.md#14-验收用例与证据)逐项记录22项验收。工程功能、真实运行、测试夹具和等待到期的效果观察分别记录。本轮未创建Git提交或推送；交接时已有三份文档及README修改均保留。
+
+## 1. 已交付的功能
+
+- **我的关注 → 模型分析**：五个交易日、二十个交易日、六个自然月的预测，显示起止日期、方向、依据；不要求持仓或个人实验订阅。单只、全部本人关注、管理员全局批量、失败重试、刷新恢复任务和预测历史已接通。
+- **综合持仓建议**：综合三周期、走势/回撤和实际接入的诊断事实，结合短线/均衡/长线偏好及本人已确认规则，给出买入、加仓、持有、减仓、卖出或不建议买入。小金额不阻断；必要输入失败时保存具体失败，decision为空。
+- **模型采用链**：持久模型包、文件校验、真实适配器、冻结协议比较、版本路由、候选并行、切换CAS、故障回退、实际推理回执；主卡与建议引用同一预测ID、modelId、hash和revision。
+- **历史研究与每天预测并行**：独立研究线程、已成熟标签、按时点重建、时间泄漏校验、研究检查点/恢复；连续买卖回放与在线复用同一决策组件，计算申赎费、在途资金、分红、再次买入及卖后错过上涨/避开下跌。
+- **事实与原文留档**：净值、分红、任职等来源版本保存；真实预测及私人建议不可改写，到期核验、净值修订和远期日历解析独立追加。核验轮转水位避免部分记录长期得不到检查。
+
+本轮P5首批采用现有已授权的分红和经理任职事实，无新闻正文新接入、无新付费数据源；事实缺少明确方向规则时贡献为0，不能从“换经理/分红”凭空推导涨跌。范围和官方字段核对见[来源覆盖](prediction-evidence-2026-09-22/p5-source-coverage.md)。
+
+## 2. 真实运行结果
+
+| 验证 | 实际证据 |
+| --- | --- |
+| 全部关注 | 44只去重基金进入132周期项；37只111项成功/复用，7只21项因跨境估值日历政策未核验失败。全部进入任务，没有通过漏掉失败项宣称全覆盖成功 |
+| 手动全局首次批次 | 同步任务8b1bf8a3-bc7e-4e11-b79d-1318f2ad5406：45新生成+66复用+21失败=132 |
+| 自动闭环 | 94d0e38b-28e1-4da6-9e15-2837c3a3d38b，111复用+21失败；随后24个持仓建议项完成、0处理异常。最终包20:41日志再次验证44/132/21和24/0 |
+| 页面实际操作 | 最终同步b3ba5fc2-80c4-4320-810c-0b5f2429f1fa，同样111复用+21失败；本人两只关注及仅失败重试、桌面/手机/历史/模型看板均实际操作 |
+| 真实历史研究 | dac8d069-94a3-41e5-8a20-baf7ad30f29a：44只范围、三个周期均SUCCEEDED；候选均未胜，保持主模型，候选继续并行。不是“更优模型已上线”的声明 |
+| 策略扣费回放 | 006730、2024-07-01至2025-12-31、368估值日；V2收益14.6971%，一直持有51.1768%，落后36.4797个百分点。V2最大回撤21.5443%，一直持有14.3676%。初资10000元、161笔、费用390.12元，保留负面结论 |
+| 事件增量 | V2与去除公告因素版收益相同，增量0；保留中性事实，不提高事件权重 |
+| 原文 | 首份006730真实预测2026-09-22 18:51:59；原建议e4e76946回读hash一致。新建议保留诊断、个人规则和组合快照，公共服务不接收个人持仓金额 |
+
+主要证据：[现场基线](prediction-evidence-2026-09-22/p0-baseline.md)、[真实采用链](prediction-evidence-2026-09-22/p6-real-chain.json)、[全局同步](prediction-evidence-2026-09-22/p6-global-sync.json)、[自动任务](prediction-evidence-2026-09-22/p6-automatic-run.json)、[最终研究](prediction-evidence-2026-09-22/p3-final-research.json)、[最终接口核对](prediction-evidence-2026-09-22/p6-final-chain.json)、[页面实际验收](prediction-evidence-2026-09-22/p6-ui-verification.md)、[页面任务回读](prediction-evidence-2026-09-22/p6-final-ui-api.json)。
+
+## 3. 版本与规则
+
+公共目标 `NEXT_EXECUTABLE_CASH_REINVESTED_DIRECTION_V1`，周期 `T5_V1/T20_V1/M6_V1`，特征 `NAV_TOTAL_RETURN_V1`，选优 `EXPERIMENT_SELECTION_V1`，策略 `HOLDING_ADVICE_V2_EXPERIMENTAL`，仓位比例 `POSITION_POLICY_V1`。Python `app/data/prediction_policy_v1.json` 与Java `src/main/resources/prediction-policy-v1.json`内容一致；文件校验清单另存 `prediction-evidence-2026-09-22/p6-delivery-manifest.json`。
+
+| 周期 | 实际主模型（revision均为1） | 基线对照得分 / 本轮候选得分 |
+| --- | --- | --- |
+| T5 | MP-1f9b94e1d4d31e3f46775c650a650448 | 52.61% / 44.11% |
+| T20 | MP-c83bb2ba6f88e03347378e46d453a89b | 53.41% / 47.20% |
+| M6 | MP-cf4bd2c8ccdf61f6d448a7c005448597 | 52.34% / 23.57% |
+
+这里是按日期/基金家族等权的开发历史同题得分，覆盖率分别82.63%、79.17%、54.98%，不等于每天真实预测准确率。训练2022—2023、验证2024上半年、比较至2025年底；记录 `DEVELOPMENT_ONLY` 与 `ASSUMED_AVAILABILITY`。历史首次公开时间不完整，不能标为真实提前预测或全新盲测。未来/已知晚修订且无法取到旧版本的样本被拒绝。
+
+权重、阈值、模拟仓位比例及费用是假设组的实验起点，未证明最优。旧一日和固定二十日的目标与新目标不同，保留独立数据，不把不同题目混成新旧模型成绩。回放中的V1为“旧动作规则＋相同基础T20预测”，不冒充旧线上模型当时的交易收益。
+
+## 4. 接口与存储
+
+浏览器只访问Java，Java完成当前用户关注/持仓范围、报告所有者和研究管理员权限校验。Python只接收公共基金、周期、预测ID或研究任务，不接收用户身份和个人金额。
+
+| 用途 | Java接口 |
+| --- | --- |
+| 当前预测、原文历史 | `GET /api/v1/watchlist/{code}/predictions`、`GET .../predictions/history` |
+| 单只/本人全部生成 | `POST /api/v1/watchlist/{code}/predictions/generate`、`POST /api/v1/watchlist/predictions/generate` |
+| 任务、刷新恢复、失败重试 | `GET /api/v1/watchlist/predictions/tasks/{id}`、`GET .../tasks/latest`、`POST .../tasks/{id}/retry` |
+| 全局同步 | `POST /api/v1/sync-jobs/multi-predictions`、`GET .../multi-predictions/latest`；一键同步的最后阶段 |
+| 综合建议 | `/api/v1/portfolio/funds/{code}/decision` 下的GET当前、POST `generate`、GET `history/reports/{id}/outcomes`；批量当前 `GET /api/v1/portfolio/decisions/latest` |
+| 偏好 | `GET/POST /api/v1/portfolio/strategy-preference` |
+| 实际采用 | `GET /api/v1/admin/model-routes` |
+| 模型研究 | `POST /api/v1/admin/prediction-research`、`GET /{id}`、`POST /{id}/cancel`、`POST /{id}/resume` |
+| 策略回放 | `POST /api/v1/admin/prediction-research/strategy`、`GET .../strategy/{id}` |
+
+Python内部前缀 `/internal/v1/multi-predictions`：批次、失败重试、基金当前/历史/到期结果、模型状态、研究、回放输入、维护。两端内部入口均校验服务令牌并拒绝浏览器伪装调用。实际双账户越权测试见[p6-permissions.json](prediction-evidence-2026-09-22/p6-permissions.json)。
+
+已在本机实际应用：Java Flyway **V21**；Python Alembic **20260922_24、25、26**。新增模型/路由/评价、来源版本、输入快照、任务/尝试/租约、不可变预测、目标解析/到期核验/轮转水位、研究使用登记；Java新增本人引用、偏好、不可变建议和独立回放账本。旧表原文保留。没有向模拟交易表自动下单。
+
+## 5. 运行入口与复现
+
+当前可打开 [本地基金雷达](http://localhost:5173)。本轮Vue沿用原5173进程；本地被忽略的 `.env.local` 设置 `FUND_CORE_PROXY_TARGET=http://127.0.0.1:18081`，仅影响Vite服务器代理，不把服务凭据或内部地址注入浏览器。原 `.env` 已按修改前备份恢复，未写入提交。
+
+本轮Java运行最终包 `.local-runs/prediction-verify-5.jar`，端口18081；Python运行最新代码，端口18001。原8080、8000等已有服务未停止，未将本次称为生产切换。本轮15173临时前端已停止，早期18000验证进程不作为交付入口。重启后可按下面命令复现，先确认端口没有已运行的本轮实例，避免重复启动。
+
+```powershell
+# Python仓库；使用已有虚拟环境、配置与本机数据库，不在命令中写密钥。
+$env:CORE_SERVICE_BASE_URL='http://127.0.0.1:18081'
+& .venv/Scripts/python.exe -m alembic upgrade head
+& .venv/Scripts/python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 18001
+```
+
+```powershell
+# Java仓库；包由本轮mvn test package产出，运行副本避免Windows锁定构建目标。
+& '.tools/jdk17/jdk-17.0.20.1+1/bin/java.exe' '-Dfile.encoding=UTF-8' -jar .local-runs/prediction-verify-5.jar --server.port=18081 --ai.service.base-url=http://127.0.0.1:18001 --direction1d.initial-delay=PT24H --prediction.multi.initial-delay=PT5S --simulation.enabled=false
+```
+
+多周期默认每轮结束30分钟再运行；原一日是独立目标。`ai.service.multi-prediction-read-timeout`默认30秒，普通资料读取仍沿用原3秒；最终UI回放未使用全局超时覆盖。历史研究与LIVE线程分离，有基金/日期预算。同步中心的手动任务摘要沿用已有进程内机制，重启后暂时没有手动摘要不代表公共预测消失；持久原文和研究任务可独立读取。
+
+若需将前端接回原服务，只移除 `.env.local` 本轮新增的 `FUND_CORE_PROXY_TARGET` 配置即可恢复默认8080代理；这会显示旧服务能力，不影响新增库表和已保存原文。没有擅自设置开机自启或生产部署。
+
+## 6. 验证与恢复
+
+| 检查层 | 实际结果 |
+| --- | --- |
+| Java | 全量176项测试通过、0失败/错误/跳过；最后独立超时配置修改后，相关客户端/决策/回放/服务集成10项复验并重新打包通过 |
+| Python | 本轮相关检查95通过、1跳过；跳过为原有需显式启用的现场诊断用例。新平台19项含真实隔离PostgreSQL、实际子进程中断恢复、时点/修订和不可变验证；相关Ruff通过，未声称运行全部Python历史测试 |
+| Vue | 全仓 `npm run lint`、包含类型检查的 `npm run build` 通过；有既存ECharts大分块提示，不是构建失败 |
+| 现场 | 真实本机数据库迁移、HTTP身份链、全局手动/自动批次、实际历史数据训练和策略回放、桌面/手机页面、双账户权限均有单独证据 |
+| 恢复演练 | 两库真实pg_dump，恢复到本次新建的两个隔离库，核对原文hash；15个模型包ZIP解压校验一致。只删除本次创建的隔离库，原库和模型未删除 |
+
+备份目录为Python仓库 `.local-runs/prediction-backup-20260922-delivery/`，含两库dump、models.zip和verification.json。备份含本机账户/持仓等数据，留在被忽略目录，交付文档仅保存脱敏校验摘要：[p6-backup-restore.json](prediction-evidence-2026-09-22/p6-backup-restore.json)。最新备份在临时验收关注恢复之后生成。
+
+可重复的隔离恢复命令（输出目录必须是新目录）：
+
+```powershell
+& .venv/Scripts/python.exe -X utf8 scripts/verify_prediction_backup.py --output .local-runs/prediction-backup-next
+```
+
+模型预加载失败、文件丢失/hash错误会保留请求版本、实际回退版本及事件；隔离测试已实际破坏测试包并验证回退。批次冻结模型路由，执行中切换不会混入新版本。不要通过覆盖文件或改写原报告来“修正”历史。
+
+## 7. 尚待数据或时间的事项
+
+| 事项 | 具体边界与处理 |
+| --- | --- |
+| 7只跨境基金 | 006476、008764、014978、017145、018156、018853、019449缺已核验的基金估值及开放日政策，21项明确失败；补充真实政策后重试，不用境内日历猜测 |
+| 首批五日 | S=2026-09-23，E=2026-10-08；等待终点净值及分红资料公开齐备后自动核验，当前未计正确/错误 |
+| 首批二十日 | E=2026-10-29；同样等待到期资料齐备 |
+| 首批半年 | 名义E=2027-03-23，官方2027估值日历尚未确定；公布后追加日期解析，原预测原文不改 |
+| 真实新旧比较 | 按事先固定协议等待同题已成熟的LIVE主模型与候选结果，不用历史回放冒充前向效果 |
+| 数据覆盖 | 新闻正文、完整经理履历、完整底层持仓/行业暴露尚未取得；首批已接来源和中性规则均已记录，不能称为分析了所有外部信息 |
+| 历史限制 | 旧资料实收时点、经理/规模历史版本、渠道历史费率和开放状态不完整；采用明确重建/费用假设。实测策略跑输一直持有，模型尚无长期效果证明 |
+
+这些观察记录在进度页O01—O04，均不提前勾选。工程功能完成不代表预测有效、策略有稳定优势或半年效果已验证。服务只有在本机运行且数据同步可用时继续生成和核验；未新增任何对外通知、自动交易、付费或生产写入。
+
+## 8. 2026-09-23 页面与日期提示补充
+
+模型采用面板改为五日、二十日、半年中文卡片；历史回放先展示“最后账户价值、赚亏金额、与一直持有的差额”，再按需展开回撤、费用和技术记录。每份结果固定显示对应基金和日期；输入已修改时明确提示尚未重新计算，校验或请求失败后清除旧结果。
+
+截图中2026-01-23至2026-09-23的报错实际由“结束日期必须早于当天”触发，并非超过两年。Java拆分代码、日期缺失、先后顺序、当天或未来、超过732天的错误提示，Vue同步限制日期并解释原因。独立18081服务已真实核验错误分支，并完成006730截至2026-09-22的回放及保存后读取一致验证；当前8080的IDEA调试进程未重启，新后端提示需下次启动加载。
+
+提交前复核：Vue lint及类型检查/构建通过；Java相关45项通过；Python相关63项通过、1项未开启显式PG开关的测试跳过，变更文件Ruff通过。桌面与390像素浏览器检查采用真实接口结果快照，异常展示使用明确的UI替身，不将二者混称完整浏览器登录链验证。9月22日源文件hash清单保留当时快照含义，后续源码以Git提交为准；本地配置、验证日志、模型产物及含账户信息的数据库备份继续保留在忽略目录。

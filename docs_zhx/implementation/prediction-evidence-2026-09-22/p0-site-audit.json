@@ -1,0 +1,973 @@
+{
+  "checkedAt": "2026-09-22T10:35:42.419010+00:00",
+  "evidence": "LOCAL_READ_ONLY_DATABASE_AND_HTTP",
+  "watchlist": {
+    "fundCount": 44,
+    "codes": [
+      "001021",
+      "001632",
+      "002112",
+      "002170",
+      "004237",
+      "004605",
+      "005187",
+      "005284",
+      "005312",
+      "006038",
+      "006476",
+      "006730",
+      "007045",
+      "007356",
+      "007509",
+      "007832",
+      "007950",
+      "008164",
+      "008603",
+      "008764",
+      "008888",
+      "008960",
+      "010710",
+      "010737",
+      "011036",
+      "011066",
+      "011103",
+      "013180",
+      "013275",
+      "013330",
+      "013472",
+      "013853",
+      "014156",
+      "014978",
+      "015596",
+      "016008",
+      "017145",
+      "017493",
+      "018125",
+      "018156",
+      "018853",
+      "019449",
+      "021740",
+      "160323"
+    ],
+    "relationCount": 44
+  },
+  "advice": [
+    {
+      "rule_version": "HOLDING_ADVICE_V1",
+      "decision": "SELL",
+      "records": 58,
+      "latest": "2026-09-22 04:06:59.343808+00:00"
+    },
+    {
+      "rule_version": "HOLDING_ADVICE_V1",
+      "decision": "HOLD",
+      "records": 29,
+      "latest": "2026-09-22 04:07:00.568811+00:00"
+    },
+    {
+      "rule_version": "HOLDING_ADVICE_V1",
+      "decision": "UNAVAILABLE",
+      "records": 418,
+      "latest": "2026-09-22 10:08:31.316693+00:00"
+    }
+  ],
+  "coverage": [
+    {
+      "fund_code": "001021",
+      "fund_type": "BOND",
+      "fund_name": "华夏亚债中国债券指数-A",
+      "nav_points": 3727,
+      "first_nav": "2011-05-25",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "001632",
+      "fund_type": "STOCK",
+      "fund_name": "天弘中证食品饮料ETF联接-C",
+      "nav_points": 2723,
+      "first_nav": "2015-07-29",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "002112",
+      "fund_type": "MIXED",
+      "fund_name": "德邦鑫星价值灵活配置混合-C",
+      "nav_points": 2653,
+      "first_nav": "2015-11-16",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "002170",
+      "fund_type": "MIXED",
+      "fund_name": "东吴移动互联灵活配置混合-C",
+      "nav_points": 2645,
+      "first_nav": "2015-11-26",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "004237",
+      "fund_type": "MIXED",
+      "fund_name": "中欧新蓝筹灵活配置混合-C",
+      "nav_points": 2367,
+      "first_nav": "2017-01-12",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "004605",
+      "fund_type": "MIXED",
+      "fund_name": "富国新活力灵活配置混合-C",
+      "nav_points": 2258,
+      "first_nav": "2017-06-01",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "005187",
+      "fund_type": "MIXED",
+      "fund_name": "长安鑫兴灵活配置混合-C",
+      "nav_points": 2147,
+      "first_nav": "2017-11-29",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "005284",
+      "fund_type": "BOND",
+      "fund_name": "华商可转债债券-C",
+      "nav_points": 2132,
+      "first_nav": "2017-12-22",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "005312",
+      "fund_type": "MIXED",
+      "fund_name": "万家经济新动能混合-C",
+      "nav_points": 2090,
+      "first_nav": "2018-02-07",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "006038",
+      "fund_type": "MIXED",
+      "fund_name": "大成景恒混合-C",
+      "nav_points": 2012,
+      "first_nav": "2018-06-26",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "006476",
+      "fund_type": "OTHER",
+      "fund_name": "南方原油(QDII-LOF-FOF)-C",
+      "nav_points": 1939,
+      "first_nav": "2018-10-10",
+      "latest_nav": "2026-09-18"
+    },
+    {
+      "fund_code": "006730",
+      "fund_type": "STOCK",
+      "fund_name": "万家中证500指数增强-C",
+      "nav_points": 1767,
+      "first_nav": "2019-05-23",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "007045",
+      "fund_type": "STOCK",
+      "fund_name": "博道沪深300指数增强-C",
+      "nav_points": 1791,
+      "first_nav": "2019-04-26",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "007356",
+      "fund_type": "MIXED",
+      "fund_name": "汇添富科技创新灵活配置混合-C",
+      "nav_points": 1754,
+      "first_nav": "2019-05-06",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "007509",
+      "fund_type": "MIXED",
+      "fund_name": "华商润丰灵活配置混合-C",
+      "nav_points": 1770,
+      "first_nav": "2019-06-19",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "007832",
+      "fund_type": "STOCK",
+      "fund_name": "博道伍佰智航股票-C",
+      "nav_points": 1654,
+      "first_nav": "2019-09-26",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "007950",
+      "fund_type": "STOCK",
+      "fund_name": "招商量化精选股票-C",
+      "nav_points": 1705,
+      "first_nav": "2019-09-18",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "008164",
+      "fund_type": "STOCK",
+      "fund_name": "南方标普中国A股大盘红利低波50ETF联接-C",
+      "nav_points": 1608,
+      "first_nav": "2020-01-21",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "008603",
+      "fund_type": "MIXED",
+      "fund_name": "方正富邦新兴成长混合-C",
+      "nav_points": 1468,
+      "first_nav": "2020-08-28",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "008764",
+      "fund_type": "STOCK",
+      "fund_name": "天弘越南市场股票(QDII)-C",
+      "nav_points": 1603,
+      "first_nav": "2020-01-20",
+      "latest_nav": "2026-09-18"
+    },
+    {
+      "fund_code": "008888",
+      "fund_type": "STOCK",
+      "fund_name": "华夏国证半导体芯片ETF联接-C",
+      "nav_points": 1535,
+      "first_nav": "2020-06-02",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "008960",
+      "fund_type": "MIXED",
+      "fund_name": "长信国防军工量化灵活配置混合-C",
+      "nav_points": 1605,
+      "first_nav": "2020-02-21",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "010710",
+      "fund_type": "STOCK",
+      "fund_name": "安信医药健康主题股票-C",
+      "nav_points": 1344,
+      "first_nav": "2021-01-12",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "010737",
+      "fund_type": "STOCK",
+      "fund_name": "易方达沪深300指数精选增强-C",
+      "nav_points": 1386,
+      "first_nav": "2020-12-30",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "011036",
+      "fund_type": "STOCK",
+      "fund_name": "嘉实中证稀土产业ETF联接-C",
+      "nav_points": 1249,
+      "first_nav": "2021-08-03",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "011066",
+      "fund_type": "STOCK",
+      "fund_name": "大成高鑫股票-C",
+      "nav_points": 1396,
+      "first_nav": "2020-12-28",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "011103",
+      "fund_type": "STOCK",
+      "fund_name": "天弘中证光伏产业指数-C",
+      "nav_points": 1365,
+      "first_nav": "2021-01-28",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "013180",
+      "fund_type": "STOCK",
+      "fund_name": "广发国证新能源车电池ETF联接-C",
+      "nav_points": 1239,
+      "first_nav": "2021-08-16",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "013275",
+      "fund_type": "STOCK",
+      "fund_name": "富国中证煤炭指数(LOF)-C",
+      "nav_points": 1239,
+      "first_nav": "2021-08-19",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "013330",
+      "fund_type": "STOCK",
+      "fund_name": "富国中证银行指数-C",
+      "nav_points": 1239,
+      "first_nav": "2021-08-19",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "013472",
+      "fund_type": "STOCK",
+      "fund_name": "华宝中证全指农牧渔ETF联接-C",
+      "nav_points": 1166,
+      "first_nav": "2021-12-06",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "013853",
+      "fund_type": "MIXED",
+      "fund_name": "大成匠心卓越三年持有期混合-A",
+      "nav_points": 1000,
+      "first_nav": "2022-06-07",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "014156",
+      "fund_type": "STOCK",
+      "fund_name": "国泰海通中证500指数增强-C",
+      "nav_points": 1158,
+      "first_nav": "2021-12-15",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "014978",
+      "fund_type": "STOCK",
+      "fund_name": "华安纳斯达克100ETF联接(QDII)-C-CNY",
+      "nav_points": 1118,
+      "first_nav": "2022-02-22",
+      "latest_nav": "2026-09-18"
+    },
+    {
+      "fund_code": "015596",
+      "fund_type": "STOCK",
+      "fund_name": "国泰国证有色金属行业指数-C",
+      "nav_points": 1064,
+      "first_nav": "2022-05-17",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "016008",
+      "fund_type": "STOCK",
+      "fund_name": "招商中证消费电子主题ETF联接-C",
+      "nav_points": 879,
+      "first_nav": "2023-02-14",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "017145",
+      "fund_type": "STOCK",
+      "fund_name": "华宝海外新能源汽车股票(QDII)-C",
+      "nav_points": 808,
+      "first_nav": "2023-05-23",
+      "latest_nav": "2026-09-18"
+    },
+    {
+      "fund_code": "017493",
+      "fund_type": "MIXED",
+      "fund_name": "东方红新动力灵活配置混合-C",
+      "nav_points": 927,
+      "first_nav": "2022-12-05",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "018125",
+      "fund_type": "MIXED",
+      "fund_name": "永赢先进制造智选混合-C",
+      "nav_points": 820,
+      "first_nav": "2023-05-04",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "018156",
+      "fund_type": "STOCK",
+      "fund_name": "创金合信全球医药生物股票(QDII)-C",
+      "nav_points": 662,
+      "first_nav": "2023-11-17",
+      "latest_nav": "2026-09-18"
+    },
+    {
+      "fund_code": "018853",
+      "fund_type": "STOCK",
+      "fund_name": "博时标普石油天然气勘探及生产精选行业指数(QDII)-C-CNY",
+      "nav_points": 721,
+      "first_nav": "2023-09-05",
+      "latest_nav": "2026-09-18"
+    },
+    {
+      "fund_code": "019449",
+      "fund_type": "STOCK",
+      "fund_name": "摩根日本精选股票(QDII)-C",
+      "nav_points": 732,
+      "first_nav": "2023-09-08",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "021740",
+      "fund_type": "OTHER",
+      "fund_name": "前海开源黄金ETF联接-C",
+      "nav_points": 552,
+      "first_nav": "2024-06-19",
+      "latest_nav": "2026-09-21"
+    },
+    {
+      "fund_code": "160323",
+      "fund_type": "MIXED",
+      "fund_name": "华夏磐泰混合(LOF)-A",
+      "nav_points": 2343,
+      "first_nav": "2016-12-26",
+      "latest_nav": "2026-09-21"
+    }
+  ],
+  "registeredModels": [
+    {
+      "model_id": "2343cf9d-cb01-487f-ad5b-47c3cac26229",
+      "cohort_id": "D1-96d194eb1e2825faca3eb6c8",
+      "group_id": "CN_BOND",
+      "file_name": "2343cf9d-cb01-487f-ad5b-47c3cac26229.json",
+      "content_hash": "c9d47ea900927b0fe014cbd403e862743721b39859d8926d0c6d0f0a2d7af6ab",
+      "trained_at": "2026-09-11 15:23:23.981113+00:00",
+      "metadata": {
+        "coef": [
+          -0.02125121908687153,
+          -0.0824654535938466,
+          0.011819836668710396,
+          0.03979022975291733,
+          0.031235494418719225,
+          0.19682086601724041,
+          -0.005961633668736984
+        ],
+        "mean": [
+          0.00012967131182102344,
+          0.00047753370561754685,
+          -0.0001772235819250359,
+          0.0037883279862469315,
+          -0.03483542044201944,
+          0.49346196076929094,
+          0.7202380952380952
+        ],
+        "scale": [
+          0.014625770528795056,
+          0.025500602804500856,
+          0.04356708903498835,
+          0.004712863777896114,
+          0.035002106040090644,
+          0.3640485517209396,
+          1.2146212188231464
+        ],
+        "recipe": {
+          "C": 1.0,
+          "tol": 1e-08,
+          "solver": "lbfgs",
+          "max_iter": 1000,
+          "random_state": 0
+        },
+        "classes": {
+          "0": 486,
+          "1": 522
+        },
+        "fit_end": "2024-12-30",
+        "horizon": 1,
+        "features": [
+          "return_5d",
+          "return_20d",
+          "return_60d",
+          "volatility_20d",
+          "max_drawdown_60d",
+          "relative_position_60d",
+          "consecutive_decline_days"
+        ],
+        "fit_hash": "902992ef549ea37b6253144d1df29f59179cf0e91480da0cb4aa5bfc2dca7f23",
+        "group_id": "CN_BOND",
+        "majority": 1,
+        "protocol": "DIRECTION_1D_V1",
+        "cohort_id": "D1-96d194eb1e2825faca3eb6c8",
+        "fit_count": 1008,
+        "fit_start": "2022-12-02",
+        "intercept": 0.07208258263512869,
+        "train_as_of": "2026-09-11T23:23:09.630276+08:00",
+        "weight_hash": "850aad475b587c708d126f7f7695dbcd185c50c068fe749a492412d4ec361179",
+        "family_dates": 1008,
+        "weight_total": 1008.0,
+        "distinct_dates": 504,
+        "feature_version": "UNIT_NAV_7_T_CLOSE_V1",
+        "target_definition": "UNIT_NAV_DIRECTION_V1",
+        "restore_max_score_diff": 1.1102230246251565e-16
+      }
+    },
+    {
+      "model_id": "e0623c2d-88b3-44fc-bf43-2105e03dea46",
+      "cohort_id": "D1-96d194eb1e2825faca3eb6c8",
+      "group_id": "CN_EQUITY",
+      "file_name": "e0623c2d-88b3-44fc-bf43-2105e03dea46.json",
+      "content_hash": "65981569f88c488b02a198cf3cc4c595b184f17ee47b9fa97fa238a5bcbca072",
+      "trained_at": "2026-09-11 15:23:23.981113+00:00",
+      "metadata": {
+        "coef": [
+          0.04038987097004302,
+          -0.12110565585083283,
+          0.008295432167626965,
+          0.0868014202933258,
+          -0.04960429521679959,
+          0.10410802049518753,
+          0.07678868182283193
+        ],
+        "mean": [
+          0.000437349955883506,
+          0.001251050931861829,
+          0.0012514752928321055,
+          0.012931886665975511,
+          -0.11231032611509081,
+          0.46208668260362884,
+          1.0398958739614783
+        ],
+        "scale": [
+          0.03729307855378973,
+          0.07072496578171528,
+          0.11489667317130853,
+          0.006962122447166262,
+          0.05221314420323494,
+          0.33170779457752897,
+          1.3879466436341878
+        ],
+        "recipe": {
+          "C": 1.0,
+          "tol": 1e-08,
+          "solver": "lbfgs",
+          "max_iter": 1000,
+          "random_state": 0
+        },
+        "classes": {
+          "0": 4447,
+          "1": 4012
+        },
+        "fit_end": "2024-12-30",
+        "horizon": 1,
+        "features": [
+          "return_5d",
+          "return_20d",
+          "return_60d",
+          "volatility_20d",
+          "max_drawdown_60d",
+          "relative_position_60d",
+          "consecutive_decline_days"
+        ],
+        "fit_hash": "9a94ee1b351b4104eaa43eb13454e788107db782d90ee6231092d4d959b9cc58",
+        "group_id": "CN_EQUITY",
+        "majority": 0,
+        "protocol": "DIRECTION_1D_V1",
+        "cohort_id": "D1-96d194eb1e2825faca3eb6c8",
+        "fit_count": 8459,
+        "fit_start": "2022-12-02",
+        "intercept": -0.10263850593230948,
+        "train_as_of": "2026-09-11T23:23:09.630276+08:00",
+        "weight_hash": "303404969590588b5fea3d8dc70e833866a4fc4193ec41384e9ffe5dddb476b8",
+        "family_dates": 8459,
+        "weight_total": 8459.000000000002,
+        "distinct_dates": 504,
+        "feature_version": "UNIT_NAV_7_T_CLOSE_V1",
+        "target_definition": "UNIT_NAV_DIRECTION_V1",
+        "restore_max_score_diff": 1.6653345369377348e-16
+      }
+    },
+    {
+      "model_id": "628995cf-12c9-42f3-ada2-06ae3ddd471a",
+      "cohort_id": "D1-96d194eb1e2825faca3eb6c8",
+      "group_id": "CN_MIXED",
+      "file_name": "628995cf-12c9-42f3-ada2-06ae3ddd471a.json",
+      "content_hash": "a712b6eef103cc6188b491f1eb55016623cf8db94047cc30b70c6c0549fd9497",
+      "trained_at": "2026-09-11 15:23:23.981113+00:00",
+      "metadata": {
+        "coef": [
+          -0.02300273035189402,
+          -0.07244815537313304,
+          -0.021302042076848708,
+          0.12530519458082276,
+          -0.043339222080023485,
+          0.12427284641575151,
+          -0.02325790062852082
+        ],
+        "mean": [
+          0.0018435678372018722,
+          0.0072372005166538135,
+          0.019866144286284495,
+          0.012484835286853044,
+          -0.10568025056986799,
+          0.5173795477266399,
+          1.015526353505974
+        ],
+        "scale": [
+          0.039730839405373086,
+          0.08039236428384201,
+          0.13427345348308709,
+          0.008791288582638428,
+          0.06762038555970529,
+          0.3355702819692926,
+          1.4516411017817643
+        ],
+        "recipe": {
+          "C": 1.0,
+          "tol": 1e-08,
+          "solver": "lbfgs",
+          "max_iter": 1000,
+          "random_state": 0
+        },
+        "classes": {
+          "0": 2553,
+          "1": 2426
+        },
+        "fit_end": "2024-12-30",
+        "horizon": 1,
+        "features": [
+          "return_5d",
+          "return_20d",
+          "return_60d",
+          "volatility_20d",
+          "max_drawdown_60d",
+          "relative_position_60d",
+          "consecutive_decline_days"
+        ],
+        "fit_hash": "25491fa667c64e1fc378ed260829f94d0ac977101ef29fb3d38f8be9541944a2",
+        "group_id": "CN_MIXED",
+        "majority": 0,
+        "protocol": "DIRECTION_1D_V1",
+        "cohort_id": "D1-96d194eb1e2825faca3eb6c8",
+        "fit_count": 4979,
+        "fit_start": "2022-12-02",
+        "intercept": -0.05025408324309349,
+        "train_as_of": "2026-09-11T23:23:09.630276+08:00",
+        "weight_hash": "8d43c50a1dca404274947a1508483449dce6adab8f809501f52ce11d1399bcc9",
+        "family_dates": 4979,
+        "weight_total": 4979.000000000001,
+        "distinct_dates": 504,
+        "feature_version": "UNIT_NAV_7_T_CLOSE_V1",
+        "target_definition": "UNIT_NAV_DIRECTION_V1",
+        "restore_max_score_diff": 1.6653345369377348e-16
+      }
+    }
+  ],
+  "sources": [
+    {
+      "source_code": "MANUAL_PUBLISHER_VERIFIED_SAMPLE",
+      "enabled": false,
+      "authorized_api_names": [],
+      "license_scope": "用户确认的一次性手工目录核验样本；未取得自动同步或批量抓取授权。"
+    },
+    {
+      "source_code": "TUSHARE_PRO_FUND",
+      "enabled": true,
+      "authorized_api_names": [
+        "fund_company",
+        "fund_basic",
+        "fund_nav",
+        "fund_manager",
+        "fund_share",
+        "fund_div",
+        "fund_daily",
+        "daily",
+        "daily_basic",
+        "index_basic",
+        "index_classify",
+        "index_daily",
+        "index_weight"
+      ],
+      "license_scope": "已最小验权的个人 Tushare 2000 积分接口：fund_company、fund_basic、fund_nav、fund_manager、fund_share、fund_div、fund_daily、daily、daily_basic、index_basic、index_classify、index_daily、index_weight；仅供本机基金雷达使用，不含 fund_portfolio、fund_adj、新闻或公告。"
+    }
+  ],
+  "events": {
+    "news": 0,
+    "events": 0
+  },
+  "profileCoverage": [
+    {
+      "fund_code": "018853",
+      "count": 1
+    },
+    {
+      "fund_code": "004605",
+      "count": 6
+    },
+    {
+      "fund_code": "010737",
+      "count": 1
+    },
+    {
+      "fund_code": "007950",
+      "count": 1
+    },
+    {
+      "fund_code": "007509",
+      "count": 1
+    },
+    {
+      "fund_code": "002112",
+      "count": 9
+    },
+    {
+      "fund_code": "013180",
+      "count": 1
+    },
+    {
+      "fund_code": "013275",
+      "count": 1
+    },
+    {
+      "fund_code": "011036",
+      "count": 1
+    },
+    {
+      "fund_code": "001021",
+      "count": 5
+    },
+    {
+      "fund_code": "017493",
+      "count": 1
+    },
+    {
+      "fund_code": "011103",
+      "count": 3
+    },
+    {
+      "fund_code": "008960",
+      "count": 1
+    },
+    {
+      "fund_code": "002170",
+      "count": 2
+    },
+    {
+      "fund_code": "011066",
+      "count": 1
+    },
+    {
+      "fund_code": "010710",
+      "count": 1
+    },
+    {
+      "fund_code": "007356",
+      "count": 2
+    },
+    {
+      "fund_code": "017145",
+      "count": 3
+    },
+    {
+      "fund_code": "008764",
+      "count": 1
+    },
+    {
+      "fund_code": "001632",
+      "count": 4
+    },
+    {
+      "fund_code": "013330",
+      "count": 1
+    },
+    {
+      "fund_code": "019449",
+      "count": 1
+    },
+    {
+      "fund_code": "018125",
+      "count": 1
+    },
+    {
+      "fund_code": "016008",
+      "count": 2
+    },
+    {
+      "fund_code": "005284",
+      "count": 1
+    },
+    {
+      "fund_code": "013853",
+      "count": 1
+    },
+    {
+      "fund_code": "008164",
+      "count": 1
+    },
+    {
+      "fund_code": "007832",
+      "count": 2
+    },
+    {
+      "fund_code": "021740",
+      "count": 2
+    },
+    {
+      "fund_code": "015596",
+      "count": 2
+    },
+    {
+      "fund_code": "018156",
+      "count": 3
+    },
+    {
+      "fund_code": "014156",
+      "count": 2
+    },
+    {
+      "fund_code": "006730",
+      "count": 2
+    },
+    {
+      "fund_code": "006476",
+      "count": 2
+    },
+    {
+      "fund_code": "005187",
+      "count": 7
+    },
+    {
+      "fund_code": "008603",
+      "count": 3
+    },
+    {
+      "fund_code": "007045",
+      "count": 1
+    },
+    {
+      "fund_code": "004237",
+      "count": 3
+    },
+    {
+      "fund_code": "014978",
+      "count": 1
+    },
+    {
+      "fund_code": "013472",
+      "count": 1
+    },
+    {
+      "fund_code": "160323",
+      "count": 3
+    },
+    {
+      "fund_code": "008888",
+      "count": 1
+    },
+    {
+      "fund_code": "005312",
+      "count": 2
+    },
+    {
+      "fund_code": "006038",
+      "count": 1
+    }
+  ],
+  "legacy20d": {
+    "fileExists": true,
+    "models": [
+      {
+        "branch": "DROP_60D_GROUP_L2",
+        "hash": "b08efdc7bc8fc04833d0c3d6ed1edcbd7c3caff080e4787db837cef04f17660f",
+        "fit_end": "2024-03-31"
+      },
+      {
+        "branch": "REFERENCE",
+        "hash": "0146d0ff0ac0504d23a428c0f607d16636e457110ac67c6e60d1b7b7dea19789",
+        "fit_end": "2024-03-31"
+      }
+    ]
+  },
+  "http": {
+    "/simulation/calendar": {
+      "status": 200,
+      "traceId": "prediction-p0-audit-20260922",
+      "data": {
+        "version": "CN_A_SHARE_2026_V1",
+        "coverageStart": "2026-01-01",
+        "coverageEnd": "2026-12-31",
+        "assumption": "模拟采用沪深开市日，不代表基金实际申赎开放日；未模拟渠道限购和临时暂停。"
+      }
+    },
+    "/predictions/001632/experiment": {
+      "status": 200,
+      "traceId": "prediction-p0-audit-20260922",
+      "data": {
+        "fund_code": "001632",
+        "version": "DIRECTION_PAGE_TRIAL_V1",
+        "status": "DATA_INSUFFICIENT",
+        "model_released": false,
+        "horizon_trading_days": 20,
+        "research_run_id": "0c0e06a9-725e-4b68-b813-de6ff5124b29",
+        "cutoff_date": "2026-09-21",
+        "latest_nav_date": null,
+        "target_base_date": "2026-09-21",
+        "target_end_date": "2026-10-27",
+        "read_at": "2026-09-22T10:35:43.074413Z",
+        "input_hash": null,
+        "source_revision_id": null,
+        "models": [],
+        "reason_codes": [
+          "SOURCE_UPDATE_NOT_READY"
+        ],
+        "message": "来源最近同步未完成或失败，暂不计算实验结果。"
+      }
+    },
+    "/direction-1d/status": {
+      "status": 200,
+      "traceId": "prediction-p0-audit-20260922",
+      "data": {
+        "server_time": "2026-09-22T18:35:43.239813+08:00",
+        "database_time": "2026-09-22T10:35:43.196036+00:00",
+        "window": {
+          "base_nav_date": "2026-09-22",
+          "target_nav_date": "2026-09-23",
+          "window_open_at": "2026-09-22T18:00:00+08:00",
+          "deadline_at": "2026-09-23T08:30:00+08:00",
+          "calendar_version": "4cb07f1a22092f38dad6f2100edbefb3bdc3dc1f925152afba5bc1fc3fbbffb2",
+          "status": "OPEN",
+          "next_window_open_at": "2026-09-23T18:00:00+08:00"
+        },
+        "model_released": false,
+        "up_probability": null,
+        "recent_jobs": [
+          {
+            "kind": "FORECAST",
+            "state": "FAILED",
+            "finished_at": "2026-09-22T10:08:47.285971+00:00",
+            "result_status": null,
+            "reason": "DATA_PENDING"
+          },
+          {
+            "kind": "FORECAST",
+            "state": "FAILED",
+            "finished_at": "2026-09-22T10:08:46.764305+00:00",
+            "result_status": null,
+            "reason": "DATA_PENDING"
+          },
+          {
+            "kind": "FORECAST",
+            "state": "FAILED",
+            "finished_at": "2026-09-22T10:08:46.210900+00:00",
+            "result_status": null,
+            "reason": "DATA_PENDING"
+          },
+          {
+            "kind": "FORECAST",
+            "state": "FAILED",
+            "finished_at": "2026-09-22T10:08:45.693165+00:00",
+            "result_status": null,
+            "reason": "DATA_PENDING"
+          },
+          {
+            "kind": "FORECAST",
+            "state": "FAILED",
+            "finished_at": "2026-09-22T10:08:45.186086+00:00",
+            "result_status": null,
+            "reason": "DATA_PENDING"
+          }
+        ],
+        "training_policy_note": "每周日12点检查一次；无新增已核对样本则跳过。2025受保护，2026只纳入启动后已核对样本，近504交易日不足252个基准日时沿用旧模型。"
+      }
+    }
+  }
+}

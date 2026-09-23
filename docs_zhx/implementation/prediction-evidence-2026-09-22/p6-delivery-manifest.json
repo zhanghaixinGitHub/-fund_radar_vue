@@ -1,0 +1,130 @@
+{
+  "checkedAt": "2026-09-22T12:52:51.216826+00:00",
+  "deliveryMode": "LOCAL_UNCOMMITTED",
+  "repositories": {
+    "vue": {
+      "path": "C:\\WebStormProject\\workSpace05",
+      "baseHead": "4dabaa7c066927583996af73f5da755ebe042b6f",
+      "branch": "main",
+      "sourceFileHashes": {
+        ".gitignore": "b97a36bae41a9a3224adb5a55edf0616cb36062029628c1c07a2283f67bbbb8c",
+        "eslint.config.ts": "2ad146815e0ef1ca78def4ffd20147f7686bf218620a8782bd8b6b1ad92e638d",
+        "src/api/multiPrediction.ts": "30d4f3e1b3194021b473913dc8f32a712d431c4f253b0b569a3afb4249dbb084",
+        "src/api/syncJobs.ts": "c127cc6bb5a37a50d6cddf41622468cde655817ecfc548b006071c9732553c4b",
+        "src/components/DecisionPanelV2.vue": "7bab561159ccc9aa622ffd26910642d0074326ae983f025fbf04e14e9a776a37",
+        "src/components/ModelRoutesPanel.vue": "85708506bfb3a93186ddd47071dd161a975f480ea9d6fe4db4eb42c039acfb8d",
+        "src/components/MultiPredictionHistory.vue": "37d621293f0e06ea892f25d282674859cc6e8d5c8d269b766ed365746b2bc77f",
+        "src/components/MultiPredictionPanel.vue": "aa3b07caacfb36934c6de5b0703f29bd981cbbeb123d2e23767b9daf9c59fce3",
+        "src/components/PredictionResearchPanel.vue": "62ca9a07e27febd3b33a13f55ce8951f0a9edb21372f2a0308061a122919d45c",
+        "src/types/auth.ts": "99d06dcac1979f7fd1a93498f0e1b83b76ce2e2522975ac37830ebd0d9fce6e7",
+        "src/types/multiPrediction.ts": "0a0491dbed88a70fbc3f4e76718cdf508299ff6d9e47f8787ba74927ec2d1cff",
+        "src/views/PortfolioAdvicePage.vue": "06e329ab5f4a81b6967d747b99e0959bebf5db0eb41a9c96e4be8c12a84199cc",
+        "src/views/SimulatedPortfolioPage.vue": "16ebe0d25d056b0a74d01b0524200b423e9468dbcfb9a6aa1e8148428f534d8b",
+        "src/views/SyncCenterPage.vue": "f8adf7b33172b64d2e17edc3b15de13767dc18093e4def8b21f2ff51be875018",
+        "src/views/WatchlistFundDetailPage.vue": "551b3835348d7bc63f8c6b4604adef51c8279df737a69849b031486a79fe8600",
+        "vite.config.ts": "ad2a879f74046498eff845ba688a6b91c095e29e38998c24189b2aa9dcca680d"
+      },
+      "verificationLogs": {
+        ".local-runs/prediction-final-lint.log": "4e01cc4b33370eb67d01c73786d5ae8a6666fb33972c4ccf2f4927d60bd73573",
+        ".local-runs/prediction-final-build.log": "d78d1067225c05b6b57b0ae540a8879ceccddf14950a148313b4aae1dd19bd77"
+      }
+    },
+    "java": {
+      "path": "C:\\ideaProject\\workSpace12",
+      "baseHead": "3d15d42c1f61284f498b96c39eacc9c0a712519c",
+      "branch": "main",
+      "sourceFileHashes": {
+        "src/main/java/com/fundradar/core/advice/AdviceScheduler.java": "60711c4c290c217148a96c8f6bbaa168017a416e2f3f184b867801add2321fe2",
+        "src/main/java/com/fundradar/core/advice/DecisionControllerV2.java": "443719d0a27bb5ba466a04802ce88b085c963fb45ed4ab0b3aafe619d5f92e82",
+        "src/main/java/com/fundradar/core/advice/DecisionPolicyV2.java": "e804592a571d1183f261bebdfce86779dffb7914d915af380d257ca2013cedae",
+        "src/main/java/com/fundradar/core/advice/DecisionServiceV2.java": "f6dc91f0fd91fb04fd7afe7c4f7df23ed1db4edf6b43ab64f587cfdf46f2ec7e",
+        "src/main/java/com/fundradar/core/advice/StrategyReplayEngine.java": "e94dae89b1f827bde9e9faad0474b29d37729eb57d10a944e71f57b645b6c7cd",
+        "src/main/java/com/fundradar/core/advice/StrategyResearchService.java": "dfb66020680a54e5ba8c1144569766d70ebfdde60858215d353cbe6062cdd134",
+        "src/main/java/com/fundradar/core/auth/PermissionCode.java": "f2ef3aec14dcca24d77ab5a7a17a25e835eb00848b663eadedb621e815572fc7",
+        "src/main/java/com/fundradar/core/integration/ai/AiServiceProperties.java": "9a88124067f0e763f68bb5fd455d35a7a7ce555fa964d404b1b6dca45bbaee70",
+        "src/main/java/com/fundradar/core/integration/ai/AiSyncJobClient.java": "1cfccc314cee3b5645249662b2b7e37fce13174829fa32af6492d065b06808e0",
+        "src/main/java/com/fundradar/core/integration/ai/PublicDataFailure.java": "c75748d7c00f923b971fdc4b917780f8f78585528a61375137a8526476f51e0b",
+        "src/main/java/com/fundradar/core/prediction/InternalMultiPredictionController.java": "e6529630dc351d1cc2ababd7601fd7e5485a189eb50dd04427cc2d8e5852e911",
+        "src/main/java/com/fundradar/core/prediction/MultiPredictionClient.java": "6f3e408036b86c70442c817897f0d33f56161c4773c4a5e22aafbbdd505fbb82",
+        "src/main/java/com/fundradar/core/prediction/MultiPredictionController.java": "8db300c0b9efa417e92514c0ee8d06b668cf31b3d363d13c1cec186ef9292d36",
+        "src/main/java/com/fundradar/core/prediction/MultiPredictionPipeline.java": "fd0b5b27de98597e7c2b816d7dd6516fb787e2035b0e28fa5070fea78d366940",
+        "src/main/java/com/fundradar/core/prediction/MultiPredictionService.java": "66e9444635aeabbc861d5520cb87b8118c49ec5ef519d794094c60771fe59ced",
+        "src/main/java/com/fundradar/core/prediction/PredictionResearchController.java": "a24a60d9e19e595b811c50d64e0049cf95710e1495d33b60db5cf068c50bc5aa",
+        "src/main/java/com/fundradar/core/prediction/PredictionWebData.java": "18a5ed93593a51a7f269ff69cbee500c48bd870936f61549ba2c4b5a57a13d0d",
+        "src/main/java/com/fundradar/core/simulation/SimulationMarketClient.java": "50a23d4eb8316f38f482a88a82c26afc43b3dab38501c9a0eb5391b5711864b7",
+        "src/main/java/com/fundradar/core/sync/controller/SyncJobController.java": "aca80038e1fd2ba0c82a3822347c82467d603f3331763b82c74b520655e558f6",
+        "src/main/java/com/fundradar/core/sync/service/InternalSyncJobService.java": "3cca4a42e760b12d7bba2a75499a26aa29cc33b44b5b0c97917f620d9037a566",
+        "src/main/java/com/fundradar/core/sync/service/SyncJobService.java": "fa018a0bb1a9af1d320f63bb878cca979d31f7967f7a4cf13f310e1c86c900e9",
+        "src/main/resources/db/migration/V21__multi_prediction_and_decision.sql": "9803610270fbfaf2bf85f97231c4a2ba1c68c0f2808334ff58dfcc152f0cfa7b",
+        "src/main/resources/prediction-policy-v1.json": "ec3823213fc449dd7d16890f7ead70d620a9c8be042ab926096afc35f2c60629",
+        "src/test/java/com/fundradar/core/advice/AdviceSchedulerTests.java": "1a4fe0f56d16a6f414ddadc257f14aeb13d05c6fa16ea4bfb515bd121a206022",
+        "src/test/java/com/fundradar/core/advice/DecisionPolicyV2Tests.java": "f99204cf79129dcf215d1a8e31da123946a879f519d05d8f1f1d4b2a783a1956",
+        "src/test/java/com/fundradar/core/advice/DecisionServiceV2IntegrationTests.java": "a2b0de20bb1ff51ff6f6d9da5351477e189902b9426616c3b86be429e07b48c2",
+        "src/test/java/com/fundradar/core/advice/StrategyReplayEngineTests.java": "444b9fc49f65c32609be9c0bedf1ee9b5e2b012db011a1cfe90cf4b78822cce9",
+        "src/test/java/com/fundradar/core/integration/ai/PublicDataFailureTests.java": "cf13e676b3d591ed408dca7b7de17afa362c1c8eb88ed1c4286e120864441e37",
+        "src/test/java/com/fundradar/core/prediction/MultiPredictionClientTests.java": "aa50080c376d25be037f5f1aa32178864577143c5fe888135f1efa57a4b0b24a",
+        "src/test/java/com/fundradar/core/simulation/SimulationIntegrationTests.java": "7d8ca644563e248ec2fffcbcd638165f6f0eda0913f415d5c4784c1a3d8c0415",
+        "src/test/resources/application.properties": "ce892fa63e909cbc28765e36870765cb74a0cd643e81c4b3d7c565beba16532d"
+      },
+      "verificationLogs": {
+        ".local-runs/prediction-final-all-tests.log": "e25467a939933189d8828d99c5a9f6e3439827b4324ede2aaea6f459d650816a",
+        ".local-runs/prediction-final-package.log": "dbf1f367fcea19a4c95348edd92288b77e5184fb32e7607043d293469563ab24"
+      }
+    },
+    "python": {
+      "path": "C:\\pythonProject\\workSpace06",
+      "baseHead": "1761bab3f54baba85c72232b034432c73015a133",
+      "branch": "main",
+      "sourceFileHashes": {
+        ".gitignore": "8a558c10b70c0feeb7fd7dc34233270d6952f0da5af4ae1517443c7490a87232",
+        "alembic/versions/20260922_24_prediction_platform.py": "ae9da3be4bbdeacb28a04b8215c6002a0c8f62190680d9cf62645a1f6ba330b6",
+        "alembic/versions/20260922_25_prediction_recovery.py": "e75be09609bdde8eab4cca752d8fafa186408a23d6d0c7d9beec27a881f67cca",
+        "alembic/versions/20260922_26_prediction_check_state.py": "1d748a41f6d3ff150da9181adfacdae31773e600f8614b7f9b8e94d1aa6798a3",
+        "app/api/router.py": "d0990ec03e3b19f18e95a39940e2d823326677484e97bb8c91f3a7a12f1c38b9",
+        "app/api/routes/funds.py": "36152671a931248133c9ba23bda2ff1760a6c554dba1af8186ed7de2c3e509b8",
+        "app/api/routes/multi_predictions.py": "b1cf6d9536e64523f55e62c9e3e0e14bee1cadf6900426e5c61218fb1535645d",
+        "app/core/config.py": "858e2f32039646ccb7890e56f14b160630c154841dd98df7bd627b56c2df4684",
+        "app/data/prediction_policy_v1.json": "ec3823213fc449dd7d16890f7ead70d620a9c8be042ab926096afc35f2c60629",
+        "app/repositories/prediction_store.py": "6fc1b5e37c3cc1b7beba39be5de72d4b10050c8c47abdafb94d100d79c962af7",
+        "app/services/multi_prediction_sync.py": "a852e6d051f19c3ae1fd9fb6b2a32bb397bf61f19402363a10d735c4fad9ec45",
+        "app/services/portfolio_advice.py": "741cba9357ffafba78cd03c4fd2877fa1ab1b09a8eabdf524a8d4769c89e408f",
+        "app/services/prediction_contract.py": "1b8b7bc328ebfc4e13739b060fcf4f9260fca7c6e2c06d304c15ecaba4d6eeab",
+        "app/services/prediction_features.py": "d40414805dbfb03ec6346f7e2ea374643e95dfc8ebdcec70fc24d3daedbd0b80",
+        "app/services/prediction_generation.py": "8ed8f44baf47c7cc11d8f65ad6d14543c7f8c1496723c1f6ca80d40a32443ec5",
+        "app/services/prediction_models.py": "a85a0b254570dd1557b47d2920da4e9c2de1afe85fe4e011fe6f4338dc0d0b14",
+        "app/services/prediction_replay_inputs.py": "cdcb4c68402a93f9a439263ea295bd5ceadd379f6853f942288d3fdc4bf41480",
+        "app/services/prediction_research.py": "241afde61071859cc2b3e77d65e92256353c4ad21e0115c883d8476843dd39f9",
+        "app/services/prediction_selection.py": "cdb3a0d2f6805235cb568d80ffa96d3f51035be4525f5bfe6ce5e33c79261c52",
+        "app/services/sync_jobs.py": "6aa8f272c24210c455509cde460bec8ba91a726e228676de5e8e514f7bb9b10d",
+        "scripts/prediction_platform.py": "775cc729ad52e0d4e2516b4cab3a8d4d861e85eb9a69e1ecb8ad79ea3d4700fa",
+        "scripts/verify_prediction_backup.py": "3061af79785e5ddd9be5be32a1f22a0298cfc071bd8f4280229a536ea5bd14ea",
+        "tests/test_portfolio_advice_diagnosis.py": "0a20a9ac3d5afc2a03acf054904e32115d08a3d14b07f052f441656a5c0d4a0f",
+        "tests/test_prediction_contract.py": "e4ed5d604b4707ef6f849c5da49a4322448a4b7b28ff994b3a889e51cc0eaf3a",
+        "tests/test_prediction_database.py": "3d38311c90d2cf8395115b6cdc827b7f0011a26709d66acbb35ac1a151845a55",
+        "tests/test_prediction_models.py": "86b6ed6649a54a893a20e3cc22896356da129e25b1ca2c15ffedb454c8624220",
+        "tests/test_prediction_time_boundaries.py": "790f1cae97b263e2dc48fb17495cd1c15ad89b83b4bf3ddb851178e7303c7f01",
+        "tests/test_sync_all_jobs.py": "61013b156259003e421fda0ea6059639ed7907e4cf0f8445fa67e475b396cb5e"
+      },
+      "verificationLogs": {
+        ".local-runs/prediction-final-pytests.log": "b087137c9e40e6e58ed5d6942cf4504d48d54bd8ff46792ac381ae059fa726de"
+      }
+    }
+  },
+  "policy": {
+    "pythonSha256": "ec3823213fc449dd7d16890f7ead70d620a9c8be042ab926096afc35f2c60629",
+    "javaSha256": "ec3823213fc449dd7d16890f7ead70d620a9c8be042ab926096afc35f2c60629",
+    "sameJsonContent": true
+  },
+  "javaTests": {
+    "tests": 176,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "javaRunningPackage": {
+    "path": "C:\\ideaProject\\workSpace12\\.local-runs\\prediction-verify-5.jar",
+    "sha256": "9ad35042099dd0b2604ef03e3f0d4f66f3567f1378c904a3206696c2be94dc2d"
+  },
+  "secretPatternFindings": [],
+  "postPackageSourceChange": "仅两处Java新增文件行尾空格清理；无语义变更"
+}

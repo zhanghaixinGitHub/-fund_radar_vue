@@ -1,0 +1,135 @@
+{
+  "checkedAt": "2026-09-22T12:47:30.429036+00:00",
+  "mode": "REAL_LOCAL_HTTP_AFTER_FINAL_PACKAGE",
+  "syncCenterJob": {
+    "jobId": "b3ba5fc2-80c4-4320-810c-0b5f2429f1fa",
+    "jobType": "MULTI_PREDICTIONS",
+    "status": "PARTIAL_SUCCESS",
+    "requestedNavDate": "2026-09-22",
+    "fundCodes": [],
+    "progressCurrent": 132,
+    "progressTotal": 132,
+    "currentFundCode": null,
+    "progressMessage": "多周期共处理 132 个基金周期项，新生成 0，已有 111，未生成 21",
+    "syncRunId": null,
+    "fetchedCount": 132,
+    "createdCount": 0,
+    "updatedCount": 111,
+    "skippedCount": 21,
+    "errorCode": "PREDICTION_INCOMPLETE",
+    "errorMessage": "006476/M6_V1：该跨境基金的估值及交易截止日历尚未核验；006476/T20_V1：该跨境基金的估值及交易截止日历尚未核验；006476/T5_V1：该跨境基金的估值及交易截止日历尚未核验；008764/M6_V1：该跨境基金的估值及交易截止日历尚未核验；008764/T20_V1：该跨境基金的估值及交易截止日历尚未核验；008764/T5_V1：该跨境基金的估值及交易截止日历尚未核验；014978/M6_V1：该跨境基金的估值及交易截止日历尚未核验；014978/T20_V1：该跨境基金的估值及交易截止日历尚未核验；014978/T5_V1：该跨境基金的估值及交易截止日历尚未核验；017145/M6_V1：该跨境基金的估值及交易截止日历尚未核验；017145/T20_V1：该跨境基金的估值及交易截止日历尚未核验；017145/T5_V1：该跨境基金的估值及交易截止日历尚未核验；018156/M6_V1：该跨境基金的估值及交易截止日历尚未核验；018156/T20_V1：该跨境基金的估值及交易截止日历尚未核验；018156/T5_V1：该跨境基金的估值及交易截止日历尚未核验；018853/M6_V1：该跨境基金的估值及交易截止日历尚未核验；018853/T20_V1：该跨境基金的估值及交易截止日历尚未核验；018853/T5_V1：该跨境基金的估值及交易截止日历尚未核验；019449/M6_V1：该跨境基金的估值及交易截止日历尚未核验；019449/T20_V1：该跨境基金的估值及交易截止日历尚未核验；019449/T5_V1：该跨境基金的估值及交易截止日历尚未核验",
+    "startedAt": "2026-09-22T12:45:36.318040Z",
+    "finishedAt": "2026-09-22T12:45:59.264462Z"
+  },
+  "browserStrategy": {
+    "runId": "68794392-8605-441b-bcaf-23814abd271c",
+    "status": "SUCCEEDED",
+    "resultHash": "f702f93977586023f1d77f3911b92b12e1248c0f81d319115d8298ae3920fb29",
+    "eventIncrement": 0.0,
+    "comparisonProtocol": "STRATEGY_COMPARISON_V1：同基金/日历/初资/费用/到账，净收益主指标；回撤、换手和空仓期同时披露",
+    "excessReturnVsHold": -0.3647970258139823,
+    "eventAdoptionDecision": "KEEP_NEUTRAL_FACTS：本批公告无方向规则，增量为零，保留事实不提高权重",
+    "strategyAdoptionDecision": "本开发区间未超过一直持有；保留失败结论和V2实验身份，不声称策略有效",
+    "comparisons": {
+      "V1": {
+        "fees": 573.9213777731808,
+        "mode": "V1",
+        "version": "POSITION_POLICY_V1_FEE_ASSUMPTION_V1",
+        "turnover": 12.531728918892044,
+        "netReturn": 0.1110362188917895,
+        "assumption": "费用假设下回放：申购0.1%；持有不足7日赎回1.5%，7至29日0.5%，30日起0.1%；T+1可卖/T+2现金到账，不声称恢复真实渠道历史费率",
+        "tradeCount": 27,
+        "finalEquity": 11110.362188917896,
+        "initialCash": 10000,
+        "maxDrawdown": 0.11557665234095904,
+        "executionNotes": [],
+        "strategyVersion": "HOLDING_ADVICE_V2_EXPERIMENTAL",
+        "cashOnlySessions": 141,
+        "investedSessions": 227
+      },
+      "V2": {
+        "fees": 390.12429279962055,
+        "mode": "V2",
+        "version": "POSITION_POLICY_V1_FEE_ASSUMPTION_V1",
+        "turnover": 14.081212918519588,
+        "netReturn": 0.1469712714054836,
+        "assumption": "费用假设下回放：申购0.1%；持有不足7日赎回1.5%，7至29日0.5%，30日起0.1%；T+1可卖/T+2现金到账，不声称恢复真实渠道历史费率",
+        "tradeCount": 161,
+        "finalEquity": 11469.712714054835,
+        "initialCash": 10000,
+        "maxDrawdown": 0.2154426406497666,
+        "executionNotes": [],
+        "strategyVersion": "HOLDING_ADVICE_V2_EXPERIMENTAL",
+        "cashOnlySessions": 100,
+        "investedSessions": 268
+      },
+      "BUY_HOLD": {
+        "fees": 9.99000999000999,
+        "mode": "BUY_HOLD",
+        "version": "POSITION_POLICY_V1_FEE_ASSUMPTION_V1",
+        "turnover": 1.0,
+        "netReturn": 0.5117682972194659,
+        "assumption": "费用假设下回放：申购0.1%；持有不足7日赎回1.5%，7至29日0.5%，30日起0.1%；T+1可卖/T+2现金到账，不声称恢复真实渠道历史费率",
+        "tradeCount": 1,
+        "finalEquity": 15117.68297219466,
+        "initialCash": 10000,
+        "maxDrawdown": 0.14367595905616737,
+        "executionNotes": [],
+        "strategyVersion": "HOLDING_ADVICE_V2_EXPERIMENTAL",
+        "cashOnlySessions": 0,
+        "investedSessions": 368
+      },
+      "V2_WITHOUT_EVENTS": {
+        "fees": 390.12429279962055,
+        "mode": "V2_WITHOUT_EVENTS",
+        "version": "POSITION_POLICY_V1_FEE_ASSUMPTION_V1",
+        "turnover": 14.081212918519588,
+        "netReturn": 0.1469712714054836,
+        "assumption": "费用假设下回放：申购0.1%；持有不足7日赎回1.5%，7至29日0.5%，30日起0.1%；T+1可卖/T+2现金到账，不声称恢复真实渠道历史费率",
+        "tradeCount": 161,
+        "finalEquity": 11469.712714054835,
+        "initialCash": 10000,
+        "maxDrawdown": 0.2154426406497666,
+        "executionNotes": [],
+        "strategyVersion": "HOLDING_ADVICE_V2_EXPERIMENTAL",
+        "cashOnlySessions": 100,
+        "investedSessions": 268
+      }
+    }
+  },
+  "oldReportHashVerified": true,
+  "modelRoutes": [
+    {
+      "route_key": "NEXT_EXECUTABLE_CASH_REINVESTED_DIRECTION_V1:M6_V1:ALL",
+      "model_id": "MP-cf4bd2c8ccdf61f6d448a7c005448597",
+      "previous_model_id": null,
+      "revision": 1,
+      "shadow_ids": [
+        "MP-f5680f525c459fafc217dd5bd6c31409"
+      ],
+      "updated_at": "2026-09-22T10:44:32.797215+00:00"
+    },
+    {
+      "route_key": "NEXT_EXECUTABLE_CASH_REINVESTED_DIRECTION_V1:T20_V1:ALL",
+      "model_id": "MP-c83bb2ba6f88e03347378e46d453a89b",
+      "previous_model_id": null,
+      "revision": 1,
+      "shadow_ids": [
+        "MP-262c4dbd9186bf5349830b44e491f32c"
+      ],
+      "updated_at": "2026-09-22T10:44:32.779296+00:00"
+    },
+    {
+      "route_key": "NEXT_EXECUTABLE_CASH_REINVESTED_DIRECTION_V1:T5_V1:ALL",
+      "model_id": "MP-1f9b94e1d4d31e3f46775c650a650448",
+      "previous_model_id": null,
+      "revision": 1,
+      "shadow_ids": [
+        "MP-db46762f243616434a7f63d971ab351c"
+      ],
+      "updated_at": "2026-09-22T10:44:32.759257+00:00"
+    }
+  ],
+  "temporaryAdminWatchlistRestored": true,
+  "immutableReportsPreserved": true
+}

@@ -1,0 +1,3137 @@
+{
+  "checkedAt": "2026-09-22T12:31:52.674625+00:00",
+  "history": {
+    "items": [
+      {
+        "payload": {
+          "mode": "LIVE",
+          "role": "PRIMARY",
+          "score": null,
+          "reason": "依据截至2026-09-21的总回报历史（60段），本周期预计下跌或持平。使用基础实验方法。",
+          "taskId": "95ce85f5-2f12-42c0-9562-462c229f0aa1",
+          "endDate": null,
+          "modelId": "MP-cf4bd2c8ccdf61f6d448a7c005448597",
+          "baseline": true,
+          "dataAsOf": "2026-09-21",
+          "fundCode": "006730",
+          "direction": "NON_UP",
+          "horizonId": "M6_V1",
+          "modelHash": "cf4bd2c8ccdf61f6d448a7c005448597041b0585f9d5840ab17f77371c7abbef",
+          "startDate": "2026-09-23",
+          "calendarId": "CN_FUND_SSE_ASSUMPTION_V1",
+          "featureHash": "fcd9481b08131c3cae2198232f7a9f2dc6f34fe7b2e37ee3969fa4f80144537e",
+          "generatedAt": "2026-09-22T10:51:59.018156+00:00",
+          "limitations": [
+            "新闻正文未接入",
+            "经理职业履历未取得",
+            "完整底层持仓及行业暴露未取得",
+            "境内基金以沪深估值日及15:00为实验起点；未确认特殊开放限制单独披露",
+            "实验结果可能错误"
+          ],
+          "calendarHash": "4cb07f1a22092f38dad6f2100edbefb3bdc3dc1f925152afba5bc1fc3fbbffb2",
+          "predictionId": "89be204f-5bac-48df-b9f2-a3a600aa97e1",
+          "scoreMeaning": "DETERMINISTIC_RULE_NO_PROBABILITY",
+          "endDateStatus": "PENDING_OFFICIAL_CALENDAR",
+          "modelManifest": {
+            "adapter": "NAV_MOMENTUM_V1",
+            "features": [
+              "momentum"
+            ],
+            "horizonId": "M6_V1",
+            "threshold": 0,
+            "trainedAt": null,
+            "assetGroup": "ALL",
+            "parameters": {
+              "minimumReturns": 20,
+              "lookbackReturns": 60
+            },
+            "codeVersion": "PREDICTION_POLICY_V1",
+            "labelEndMax": null,
+            "dependencies": {},
+            "featureUnits": [
+              "RATIO"
+            ],
+            "evidenceLevel": "DEVELOPMENT_ONLY",
+            "missingPolicy": "FAIL_REQUIRED",
+            "recipeVersion": "NAV_MOMENTUM_BASELINE_V1",
+            "targetDefinitionId": "NEXT_EXECUTABLE_CASH_REINVESTED_DIRECTION_V1",
+            "featureSchemaVersion": "NAV_TOTAL_RETURN_V1"
+          },
+          "fallbackReason": null,
+          "nominalEndDate": "2027-03-23",
+          "featureSnapshot": {
+            "dates": [
+              "2026-06-29",
+              "2026-06-30",
+              "2026-07-01",
+              "2026-07-02",
+              "2026-07-03",
+              "2026-07-06",
+              "2026-07-07",
+              "2026-07-08",
+              "2026-07-09",
+              "2026-07-10",
+              "2026-07-13",
+              "2026-07-14",
+              "2026-07-15",
+              "2026-07-16",
+              "2026-07-17",
+              "2026-07-20",
+              "2026-07-21",
+              "2026-07-22",
+              "2026-07-23",
+              "2026-07-24",
+              "2026-07-27",
+              "2026-07-28",
+              "2026-07-29",
+              "2026-07-30",
+              "2026-07-31",
+              "2026-08-03",
+              "2026-08-04",
+              "2026-08-05",
+              "2026-08-06",
+              "2026-08-07",
+              "2026-08-10",
+              "2026-08-11",
+              "2026-08-12",
+              "2026-08-13",
+              "2026-08-14",
+              "2026-08-17",
+              "2026-08-18",
+              "2026-08-19",
+              "2026-08-20",
+              "2026-08-21",
+              "2026-08-24",
+              "2026-08-25",
+              "2026-08-26",
+              "2026-08-27",
+              "2026-08-28",
+              "2026-08-31",
+              "2026-09-01",
+              "2026-09-02",
+              "2026-09-03",
+              "2026-09-04",
+              "2026-09-07",
+              "2026-09-08",
+              "2026-09-09",
+              "2026-09-10",
+              "2026-09-11",
+              "2026-09-14",
+              "2026-09-15",
+              "2026-09-16",
+              "2026-09-17",
+              "2026-09-18",
+              "2026-09-21"
+            ],
+            "facts": [
+              {
+                "kind": "MANAGER",
+                "title": "在任经理",
+                "value": "乔亮",
+                "factor": 0,
+                "source": "TUSHARE_PRO_FUND",
+                "sourceKey": "fb4bf087c7db90154391acbaeb8113aa04ab375121677583946804e7a1f8b667",
+                "explanation": "记录任职事实；经理姓名或变更本身不预设利好利空",
+                "effectiveDate": "2019-09-06"
+              },
+              {
+                "kind": "FEE",
+                "title": "年管理费率",
+                "value": "1.00000000",
+                "factor": 0,
+                "source": "TUSHARE_PRO_FUND",
+                "sourceKey": "fund_basic:management_fee",
+                "explanation": "来源单位为百分比/年，已体现在净值中，不重复扣费"
+              },
+              {
+                "kind": "FEE",
+                "title": "年托管费率",
+                "value": "0.20000000",
+                "factor": 0,
+                "source": "TUSHARE_PRO_FUND",
+                "sourceKey": "fund_basic:custodian_fee",
+                "explanation": "来源单位为百分比/年，已体现在净值中，不重复扣费"
+              }
+            ],
+            "family": "0f38b2fd-5bde-42fd-9673-0a1c53074812",
+            "series": [
+              "1",
+              "1.030449645017091769655535104",
+              "1.026032079936891927425716540",
+              "0.9902708388114646331843281625",
+              "0.9977386273994215093347357355",
+              "0.9882198264528004207204838293",
+              "0.9718643176439652905600841451",
+              "0.9576650013147515119642387597",
+              "0.9868524848803576124112542740",
+              "0.9702340257691296344990796749",
+              "0.9286878779910596897186431774",
+              "0.9454115172232448067315277422",
+              "0.9293715487772810938732579552",
+              "0.9069681830134104654220352365",
+              "0.8528530107809623981067578238",
+              "0.8387588745727057586116224043",
+              "0.8841440967657112805679726541",
+              "0.8770444386011043912700499613",
+              "0.8765185379963186957665001319",
+              "0.8560610044701551406784117808",
+              "0.8804102024717328424927688672",
+              "0.8459637128582697870102550624",
+              "0.8535892716276623718117275842",
+              "0.8241914278201419931632921385",
+              "0.8479621351564554299237444130",
+              "0.8383381540888772022087825409",
+              "0.8638443334209834341309492516",
+              "0.8889823823297396792006310818",
+              "0.8935577175913752300815145948",
+              "0.9115961083355245858532737326",
+              "0.9140678411780173547199579295",
+              "0.9082829345253747041809098096",
+              "0.9171180646857743886405469382",
+              "0.9087036550092032605837496731",
+              "0.9141730212989744938206678957",
+              "0.9394688403891664475414146747",
+              "0.9383644491191164869839600336",
+              "0.8956087299500394425453589290",
+              "0.9021824875098606363397317927",
+              "0.9065474625295819090191953739",
+              "0.8904023139626610570602156213",
+              "0.8857743886405469366289771254",
+              "0.8905600841440967657112805700",
+              "0.9115961083355245858532737333",
+              "0.9064422824086247699184854084",
+              "0.9143833815408887720220878278",
+              "0.9022350775703392058900867758",
+              "0.8889297922692611096502760999",
+              "0.8928740468051538259268998178",
+              "0.8782014199316329213778595865",
+              "0.8904549040231396266105706042",
+              "0.8918222455955824349198001601",
+              "0.8927688666841966868261898526",
+              "0.8865632395477254798843018697",
+              "0.8709439915855903234288719457",
+              "0.8711543518275046016302918773",
+              "0.8702603207993689192742571681",
+              "0.8854062582171969497764922456",
+              "0.8828293452537470418090980833",
+              "0.8992374441230607415198527509",
+              "0.9051801209571391007099658196"
+            ],
+            "dataAsOf": "2026-09-21",
+            "features": {
+              "momentum": -0.0948198790428609,
+              "return20": 0.01659677514618156,
+              "return_5d": 0.03905826,
+              "return_20d": 0.01659678,
+              "return_60d": -0.09481988,
+              "volatility_20d": 0.01150919,
+              "currentDrawdown": -0.12156782688578135,
+              "trendRiskFactor": 1.0,
+              "degradedLookback": false,
+              "max_drawdown_60d": -0.20016332,
+              "previousDrawdown": -0.13590895171991427,
+              "actualLookbackReturns": 60,
+              "relative_position_60d": 0.39265681,
+              "consecutive_decline_days": 0.0
+            },
+            "fundCode": "006730",
+            "fundType": "STOCK",
+            "snapshotId": "07a64f31-73ba-4c3f-b293-1bd55a06aa52",
+            "sourceHash": "f267b554b8fbf5baf71c7e743066ec3377bee824c7c9c45f954252ef5e5f1f8d",
+            "dataQuality": "OBSERVED_AT_TIME",
+            "featureHash": "fcd9481b08131c3cae2198232f7a9f2dc6f34fe7b2e37ee3969fa4f80144537e",
+            "knowledgeCutoff": "2026-09-22T10:51:59.018156+00:00",
+            "dividendWatermark": "2026-09-21 23:00:29.098520+00:00",
+            "calendarAssumption": "境内基金以沪深估值日及15:00为实验起点；未确认特殊开放限制单独披露",
+            "featureSchemaVersion": "NAV_TOTAL_RETURN_V1",
+            "missingOptionalFactors": [
+              "新闻正文未接入",
+              "经理职业履历未取得",
+              "完整底层持仓及行业暴露未取得"
+            ],
+            "availabilityAssumptions": []
+          },
+          "knowledgeCutoff": "2026-09-22T10:51:59.018156+00:00",
+          "generationStatus": "SUCCEEDED",
+          "requestedModelId": "MP-cf4bd2c8ccdf61f6d448a7c005448597",
+          "activationRevision": 1,
+          "targetDefinitionId": "NEXT_EXECUTABLE_CASH_REINVESTED_DIRECTION_V1"
+        },
+        "resolution": null,
+        "outcomeCheck": {
+          "status": "PENDING_CALENDAR",
+          "details": {
+            "endDate": null,
+            "horizonId": "M6_V1",
+            "startDate": "2026-09-23",
+            "calendarId": "CN_FUND_SSE_ASSUMPTION_V1",
+            "calendarHash": "4cb07f1a22092f38dad6f2100edbefb3bdc3dc1f925152afba5bc1fc3fbbffb2",
+            "endDateStatus": "PENDING_OFFICIAL_CALENDAR",
+            "nominalEndDate": "2027-03-23",
+            "targetDefinitionId": "NEXT_EXECUTABLE_CASH_REINVESTED_DIRECTION_V1"
+          },
+          "lastAttemptAt": "2026-09-22T12:31:33.102286+00:00"
+        },
+        "outcomes": null
+      },
+      {
+        "payload": {
+          "mode": "LIVE",
+          "role": "PRIMARY",
+          "score": null,
+          "reason": "依据截至2026-09-21的总回报历史（20段），本周期预计上涨。使用基础实验方法。",
+          "taskId": "95ce85f5-2f12-42c0-9562-462c229f0aa1",
+          "endDate": "2026-10-08",
+          "modelId": "MP-1f9b94e1d4d31e3f46775c650a650448",
+          "baseline": true,
+          "dataAsOf": "2026-09-21",
+          "fundCode": "006730",
+          "direction": "UP",
+          "horizonId": "T5_V1",
+          "modelHash": "1f9b94e1d4d31e3f46775c650a650448976df322a80be940346817eb91de903f",
+          "startDate": "2026-09-23",
+          "calendarId": "CN_FUND_SSE_ASSUMPTION_V1",
+          "featureHash": "30061dcd9038af0d47327d504601896ed22beac52db399db3e7af021a1231e6f",
+          "generatedAt": "2026-09-22T10:51:59.018156+00:00",
+          "limitations": [
+            "新闻正文未接入",
+            "经理职业履历未取得",
+            "完整底层持仓及行业暴露未取得",
+            "境内基金以沪深估值日及15:00为实验起点；未确认特殊开放限制单独披露",
+            "实验结果可能错误"
+          ],
+          "calendarHash": "4cb07f1a22092f38dad6f2100edbefb3bdc3dc1f925152afba5bc1fc3fbbffb2",
+          "predictionId": "b0500e07-f4e7-4d19-9f19-22a565e7c94a",
+          "scoreMeaning": "DETERMINISTIC_RULE_NO_PROBABILITY",
+          "endDateStatus": "RESOLVED",
+          "modelManifest": {
+            "adapter": "NAV_MOMENTUM_V1",
+            "features": [
+              "momentum"
+            ],
+            "horizonId": "T5_V1",
+            "threshold": 0,
+            "trainedAt": null,
+            "assetGroup": "ALL",
+            "parameters": {
+              "minimumReturns": 20,
+              "lookbackReturns": 20
+            },
+            "codeVersion": "PREDICTION_POLICY_V1",
+            "labelEndMax": null,
+            "dependencies": {},
+            "featureUnits": [
+              "RATIO"
+            ],
+            "evidenceLevel": "DEVELOPMENT_ONLY",
+            "missingPolicy": "FAIL_REQUIRED",
+            "recipeVersion": "NAV_MOMENTUM_BASELINE_V1",
+            "targetDefinitionId": "NEXT_EXECUTABLE_CASH_REINVESTED_DIRECTION_V1",
+            "featureSchemaVersion": "NAV_TOTAL_RETURN_V1"
+          },
+          "fallbackReason": null,
+          "nominalEndDate": null,
+          "featureSnapshot": {
+            "dates": [
+              "2026-06-29",
+              "2026-06-30",
+              "2026-07-01",
+              "2026-07-02",
+              "2026-07-03",
+              "2026-07-06",
+              "2026-07-07",
+              "2026-07-08",
+              "2026-07-09",
+              "2026-07-10",
+              "2026-07-13",
+              "2026-07-14",
+              "2026-07-15",
+              "2026-07-16",
+              "2026-07-17",
+              "2026-07-20",
+              "2026-07-21",
+              "2026-07-22",
+              "2026-07-23",
+              "2026-07-24",
+              "2026-07-27",
+              "2026-07-28",
+              "2026-07-29",
+              "2026-07-30",
+              "2026-07-31",
+              "2026-08-03",
+              "2026-08-04",
+              "2026-08-05",
+              "2026-08-06",
+              "2026-08-07",
+              "2026-08-10",
+              "2026-08-11",
+              "2026-08-12",
+              "2026-08-13",
+              "2026-08-14",
+              "2026-08-17",
+              "2026-08-18",
+              "2026-08-19",
+              "2026-08-20",
+              "2026-08-21",
+              "2026-08-24",
+              "2026-08-25",
+              "2026-08-26",
+              "2026-08-27",
+              "2026-08-28",
+              "2026-08-31",
+              "2026-09-01",
+              "2026-09-02",
+              "2026-09-03",
+              "2026-09-04",
+              "2026-09-07",
+              "2026-09-08",
+              "2026-09-09",
+              "2026-09-10",
+              "2026-09-11",
+              "2026-09-14",
+              "2026-09-15",
+              "2026-09-16",
+              "2026-09-17",
+              "2026-09-18",
+              "2026-09-21"
+            ],
+            "facts": [
+              {
+                "kind": "MANAGER",
+                "title": "在任经理",
+                "value": "乔亮",
+                "factor": 0,
+                "source": "TUSHARE_PRO_FUND",
+                "sourceKey": "fb4bf087c7db90154391acbaeb8113aa04ab375121677583946804e7a1f8b667",
+                "explanation": "记录任职事实；经理姓名或变更本身不预设利好利空",
+                "effectiveDate": "2019-09-06"
+              },
+              {
+                "kind": "FEE",
+                "title": "年管理费率",
+                "value": "1.00000000",
+                "factor": 0,
+                "source": "TUSHARE_PRO_FUND",
+                "sourceKey": "fund_basic:management_fee",
+                "explanation": "来源单位为百分比/年，已体现在净值中，不重复扣费"
+              },
+              {
+                "kind": "FEE",
+                "title": "年托管费率",
+                "value": "0.20000000",
+                "factor": 0,
+                "source": "TUSHARE_PRO_FUND",
+                "sourceKey": "fund_basic:custodian_fee",
+                "explanation": "来源单位为百分比/年，已体现在净值中，不重复扣费"
+              }
+            ],
+            "family": "0f38b2fd-5bde-42fd-9673-0a1c53074812",
+            "series": [
+              "1",
+              "1.030449645017091769655535104",
+              "1.026032079936891927425716540",
+              "0.9902708388114646331843281625",
+              "0.9977386273994215093347357355",
+              "0.9882198264528004207204838293",
+              "0.9718643176439652905600841451",
+              "0.9576650013147515119642387597",
+              "0.9868524848803576124112542740",
+              "0.9702340257691296344990796749",
+              "0.9286878779910596897186431774",
+              "0.9454115172232448067315277422",
+              "0.9293715487772810938732579552",
+              "0.9069681830134104654220352365",
+              "0.8528530107809623981067578238",
+              "0.8387588745727057586116224043",
+              "0.8841440967657112805679726541",
+              "0.8770444386011043912700499613",
+              "0.8765185379963186957665001319",
+              "0.8560610044701551406784117808",
+              "0.8804102024717328424927688672",
+              "0.8459637128582697870102550624",
+              "0.8535892716276623718117275842",
+              "0.8241914278201419931632921385",
+              "0.8479621351564554299237444130",
+              "0.8383381540888772022087825409",
+              "0.8638443334209834341309492516",
+              "0.8889823823297396792006310818",
+              "0.8935577175913752300815145948",
+              "0.9115961083355245858532737326",
+              "0.9140678411780173547199579295",
+              "0.9082829345253747041809098096",
+              "0.9171180646857743886405469382",
+              "0.9087036550092032605837496731",
+              "0.9141730212989744938206678957",
+              "0.9394688403891664475414146747",
+              "0.9383644491191164869839600336",
+              "0.8956087299500394425453589290",
+              "0.9021824875098606363397317927",
+              "0.9065474625295819090191953739",
+              "0.8904023139626610570602156213",
+              "0.8857743886405469366289771254",
+              "0.8905600841440967657112805700",
+              "0.9115961083355245858532737333",
+              "0.9064422824086247699184854084",
+              "0.9143833815408887720220878278",
+              "0.9022350775703392058900867758",
+              "0.8889297922692611096502760999",
+              "0.8928740468051538259268998178",
+              "0.8782014199316329213778595865",
+              "0.8904549040231396266105706042",
+              "0.8918222455955824349198001601",
+              "0.8927688666841966868261898526",
+              "0.8865632395477254798843018697",
+              "0.8709439915855903234288719457",
+              "0.8711543518275046016302918773",
+              "0.8702603207993689192742571681",
+              "0.8854062582171969497764922456",
+              "0.8828293452537470418090980833",
+              "0.8992374441230607415198527509",
+              "0.9051801209571391007099658196"
+            ],
+            "dataAsOf": "2026-09-21",
+            "features": {
+              "momentum": 0.01659677514618156,
+              "return20": 0.01659677514618156,
+              "return_5d": 0.03905826,
+              "return_20d": 0.01659678,
+              "return_60d": -0.09481988,
+              "volatility_20d": 0.01150919,
+              "currentDrawdown": -0.12156782688578135,
+              "trendRiskFactor": 1.0,
+              "degradedLookback": false,
+              "max_drawdown_60d": -0.20016332,
+              "previousDrawdown": -0.13590895171991427,
+              "actualLookbackReturns": 20,
+              "relative_position_60d": 0.39265681,
+              "consecutive_decline_days": 0.0
+            },
+            "fundCode": "006730",
+            "fundType": "STOCK",
+            "snapshotId": "4e7768bb-bdf6-4506-bb71-d0d9f14ba29a",
+            "sourceHash": "f267b554b8fbf5baf71c7e743066ec3377bee824c7c9c45f954252ef5e5f1f8d",
+            "dataQuality": "OBSERVED_AT_TIME",
+            "featureHash": "30061dcd9038af0d47327d504601896ed22beac52db399db3e7af021a1231e6f",
+            "knowledgeCutoff": "2026-09-22T10:51:59.018156+00:00",
+            "dividendWatermark": "2026-09-21 23:00:29.098520+00:00",
+            "calendarAssumption": "境内基金以沪深估值日及15:00为实验起点；未确认特殊开放限制单独披露",
+            "featureSchemaVersion": "NAV_TOTAL_RETURN_V1",
+            "missingOptionalFactors": [
+              "新闻正文未接入",
+              "经理职业履历未取得",
+              "完整底层持仓及行业暴露未取得"
+            ],
+            "availabilityAssumptions": []
+          },
+          "knowledgeCutoff": "2026-09-22T10:51:59.018156+00:00",
+          "generationStatus": "SUCCEEDED",
+          "requestedModelId": "MP-1f9b94e1d4d31e3f46775c650a650448",
+          "activationRevision": 1,
+          "targetDefinitionId": "NEXT_EXECUTABLE_CASH_REINVESTED_DIRECTION_V1"
+        },
+        "resolution": null,
+        "outcomeCheck": null,
+        "outcomes": null
+      },
+      {
+        "payload": {
+          "mode": "LIVE",
+          "role": "PRIMARY",
+          "score": null,
+          "reason": "依据截至2026-09-21的总回报历史（20段），本周期预计上涨。使用基础实验方法。",
+          "taskId": "95ce85f5-2f12-42c0-9562-462c229f0aa1",
+          "endDate": "2026-10-29",
+          "modelId": "MP-c83bb2ba6f88e03347378e46d453a89b",
+          "baseline": true,
+          "dataAsOf": "2026-09-21",
+          "fundCode": "006730",
+          "direction": "UP",
+          "horizonId": "T20_V1",
+          "modelHash": "c83bb2ba6f88e03347378e46d453a89b5d8ab7af68801225305f3f666ddcba0a",
+          "startDate": "2026-09-23",
+          "calendarId": "CN_FUND_SSE_ASSUMPTION_V1",
+          "featureHash": "30061dcd9038af0d47327d504601896ed22beac52db399db3e7af021a1231e6f",
+          "generatedAt": "2026-09-22T10:51:59.018156+00:00",
+          "limitations": [
+            "新闻正文未接入",
+            "经理职业履历未取得",
+            "完整底层持仓及行业暴露未取得",
+            "境内基金以沪深估值日及15:00为实验起点；未确认特殊开放限制单独披露",
+            "实验结果可能错误"
+          ],
+          "calendarHash": "4cb07f1a22092f38dad6f2100edbefb3bdc3dc1f925152afba5bc1fc3fbbffb2",
+          "predictionId": "ea7f3c0f-4a62-47fb-8582-99376a83edaa",
+          "scoreMeaning": "DETERMINISTIC_RULE_NO_PROBABILITY",
+          "endDateStatus": "RESOLVED",
+          "modelManifest": {
+            "adapter": "NAV_MOMENTUM_V1",
+            "features": [
+              "momentum"
+            ],
+            "horizonId": "T20_V1",
+            "threshold": 0,
+            "trainedAt": null,
+            "assetGroup": "ALL",
+            "parameters": {
+              "minimumReturns": 20,
+              "lookbackReturns": 20
+            },
+            "codeVersion": "PREDICTION_POLICY_V1",
+            "labelEndMax": null,
+            "dependencies": {},
+            "featureUnits": [
+              "RATIO"
+            ],
+            "evidenceLevel": "DEVELOPMENT_ONLY",
+            "missingPolicy": "FAIL_REQUIRED",
+            "recipeVersion": "NAV_MOMENTUM_BASELINE_V1",
+            "targetDefinitionId": "NEXT_EXECUTABLE_CASH_REINVESTED_DIRECTION_V1",
+            "featureSchemaVersion": "NAV_TOTAL_RETURN_V1"
+          },
+          "fallbackReason": null,
+          "nominalEndDate": null,
+          "featureSnapshot": {
+            "dates": [
+              "2026-06-29",
+              "2026-06-30",
+              "2026-07-01",
+              "2026-07-02",
+              "2026-07-03",
+              "2026-07-06",
+              "2026-07-07",
+              "2026-07-08",
+              "2026-07-09",
+              "2026-07-10",
+              "2026-07-13",
+              "2026-07-14",
+              "2026-07-15",
+              "2026-07-16",
+              "2026-07-17",
+              "2026-07-20",
+              "2026-07-21",
+              "2026-07-22",
+              "2026-07-23",
+              "2026-07-24",
+              "2026-07-27",
+              "2026-07-28",
+              "2026-07-29",
+              "2026-07-30",
+              "2026-07-31",
+              "2026-08-03",
+              "2026-08-04",
+              "2026-08-05",
+              "2026-08-06",
+              "2026-08-07",
+              "2026-08-10",
+              "2026-08-11",
+              "2026-08-12",
+              "2026-08-13",
+              "2026-08-14",
+              "2026-08-17",
+              "2026-08-18",
+              "2026-08-19",
+              "2026-08-20",
+              "2026-08-21",
+              "2026-08-24",
+              "2026-08-25",
+              "2026-08-26",
+              "2026-08-27",
+              "2026-08-28",
+              "2026-08-31",
+              "2026-09-01",
+              "2026-09-02",
+              "2026-09-03",
+              "2026-09-04",
+              "2026-09-07",
+              "2026-09-08",
+              "2026-09-09",
+              "2026-09-10",
+              "2026-09-11",
+              "2026-09-14",
+              "2026-09-15",
+              "2026-09-16",
+              "2026-09-17",
+              "2026-09-18",
+              "2026-09-21"
+            ],
+            "facts": [
+              {
+                "kind": "MANAGER",
+                "title": "在任经理",
+                "value": "乔亮",
+                "factor": 0,
+                "source": "TUSHARE_PRO_FUND",
+                "sourceKey": "fb4bf087c7db90154391acbaeb8113aa04ab375121677583946804e7a1f8b667",
+                "explanation": "记录任职事实；经理姓名或变更本身不预设利好利空",
+                "effectiveDate": "2019-09-06"
+              },
+              {
+                "kind": "FEE",
+                "title": "年管理费率",
+                "value": "1.00000000",
+                "factor": 0,
+                "source": "TUSHARE_PRO_FUND",
+                "sourceKey": "fund_basic:management_fee",
+                "explanation": "来源单位为百分比/年，已体现在净值中，不重复扣费"
+              },
+              {
+                "kind": "FEE",
+                "title": "年托管费率",
+                "value": "0.20000000",
+                "factor": 0,
+                "source": "TUSHARE_PRO_FUND",
+                "sourceKey": "fund_basic:custodian_fee",
+                "explanation": "来源单位为百分比/年，已体现在净值中，不重复扣费"
+              }
+            ],
+            "family": "0f38b2fd-5bde-42fd-9673-0a1c53074812",
+            "series": [
+              "1",
+              "1.030449645017091769655535104",
+              "1.026032079936891927425716540",
+              "0.9902708388114646331843281625",
+              "0.9977386273994215093347357355",
+              "0.9882198264528004207204838293",
+              "0.9718643176439652905600841451",
+              "0.9576650013147515119642387597",
+              "0.9868524848803576124112542740",
+              "0.9702340257691296344990796749",
+              "0.9286878779910596897186431774",
+              "0.9454115172232448067315277422",
+              "0.9293715487772810938732579552",
+              "0.9069681830134104654220352365",
+              "0.8528530107809623981067578238",
+              "0.8387588745727057586116224043",
+              "0.8841440967657112805679726541",
+              "0.8770444386011043912700499613",
+              "0.8765185379963186957665001319",
+              "0.8560610044701551406784117808",
+              "0.8804102024717328424927688672",
+              "0.8459637128582697870102550624",
+              "0.8535892716276623718117275842",
+              "0.8241914278201419931632921385",
+              "0.8479621351564554299237444130",
+              "0.8383381540888772022087825409",
+              "0.8638443334209834341309492516",
+              "0.8889823823297396792006310818",
+              "0.8935577175913752300815145948",
+              "0.9115961083355245858532737326",
+              "0.9140678411780173547199579295",
+              "0.9082829345253747041809098096",
+              "0.9171180646857743886405469382",
+              "0.9087036550092032605837496731",
+              "0.9141730212989744938206678957",
+              "0.9394688403891664475414146747",
+              "0.9383644491191164869839600336",
+              "0.8956087299500394425453589290",
+              "0.9021824875098606363397317927",
+              "0.9065474625295819090191953739",
+              "0.8904023139626610570602156213",
+              "0.8857743886405469366289771254",
+              "0.8905600841440967657112805700",
+              "0.9115961083355245858532737333",
+              "0.9064422824086247699184854084",
+              "0.9143833815408887720220878278",
+              "0.9022350775703392058900867758",
+              "0.8889297922692611096502760999",
+              "0.8928740468051538259268998178",
+              "0.8782014199316329213778595865",
+              "0.8904549040231396266105706042",
+              "0.8918222455955824349198001601",
+              "0.8927688666841966868261898526",
+              "0.8865632395477254798843018697",
+              "0.8709439915855903234288719457",
+              "0.8711543518275046016302918773",
+              "0.8702603207993689192742571681",
+              "0.8854062582171969497764922456",
+              "0.8828293452537470418090980833",
+              "0.8992374441230607415198527509",
+              "0.9051801209571391007099658196"
+            ],
+            "dataAsOf": "2026-09-21",
+            "features": {
+              "momentum": 0.01659677514618156,
+              "return20": 0.01659677514618156,
+              "return_5d": 0.03905826,
+              "return_20d": 0.01659678,
+              "return_60d": -0.09481988,
+              "volatility_20d": 0.01150919,
+              "currentDrawdown": -0.12156782688578135,
+              "trendRiskFactor": 1.0,
+              "degradedLookback": false,
+              "max_drawdown_60d": -0.20016332,
+              "previousDrawdown": -0.13590895171991427,
+              "actualLookbackReturns": 20,
+              "relative_position_60d": 0.39265681,
+              "consecutive_decline_days": 0.0
+            },
+            "fundCode": "006730",
+            "fundType": "STOCK",
+            "snapshotId": "4e7768bb-bdf6-4506-bb71-d0d9f14ba29a",
+            "sourceHash": "f267b554b8fbf5baf71c7e743066ec3377bee824c7c9c45f954252ef5e5f1f8d",
+            "dataQuality": "OBSERVED_AT_TIME",
+            "featureHash": "30061dcd9038af0d47327d504601896ed22beac52db399db3e7af021a1231e6f",
+            "knowledgeCutoff": "2026-09-22T10:51:59.018156+00:00",
+            "dividendWatermark": "2026-09-21 23:00:29.098520+00:00",
+            "calendarAssumption": "境内基金以沪深估值日及15:00为实验起点；未确认特殊开放限制单独披露",
+            "featureSchemaVersion": "NAV_TOTAL_RETURN_V1",
+            "missingOptionalFactors": [
+              "新闻正文未接入",
+              "经理职业履历未取得",
+              "完整底层持仓及行业暴露未取得"
+            ],
+            "availabilityAssumptions": []
+          },
+          "knowledgeCutoff": "2026-09-22T10:51:59.018156+00:00",
+          "generationStatus": "SUCCEEDED",
+          "requestedModelId": "MP-c83bb2ba6f88e03347378e46d453a89b",
+          "activationRevision": 1,
+          "targetDefinitionId": "NEXT_EXECUTABLE_CASH_REINVESTED_DIRECTION_V1"
+        },
+        "resolution": null,
+        "outcomeCheck": null,
+        "outcomes": null
+      }
+    ]
+  },
+  "outcomes": {
+    "89be204f-5bac-48df-b9f2-a3a600aa97e1": {
+      "prediction_id": "89be204f-5bac-48df-b9f2-a3a600aa97e1",
+      "horizon_id": "M6_V1",
+      "outcomes": null,
+      "check_state": {
+        "endDate": null,
+        "horizonId": "M6_V1",
+        "startDate": "2026-09-23",
+        "calendarId": "CN_FUND_SSE_ASSUMPTION_V1",
+        "calendarHash": "4cb07f1a22092f38dad6f2100edbefb3bdc3dc1f925152afba5bc1fc3fbbffb2",
+        "endDateStatus": "PENDING_OFFICIAL_CALENDAR",
+        "nominalEndDate": "2027-03-23",
+        "targetDefinitionId": "NEXT_EXECUTABLE_CASH_REINVESTED_DIRECTION_V1"
+      }
+    },
+    "ea7f3c0f-4a62-47fb-8582-99376a83edaa": {
+      "prediction_id": "ea7f3c0f-4a62-47fb-8582-99376a83edaa",
+      "horizon_id": "T20_V1",
+      "outcomes": null,
+      "check_state": null
+    },
+    "b0500e07-f4e7-4d19-9f19-22a565e7c94a": {
+      "prediction_id": "b0500e07-f4e7-4d19-9f19-22a565e7c94a",
+      "horizon_id": "T5_V1",
+      "outcomes": null,
+      "check_state": null
+    }
+  },
+  "latestTask": "f7c8cb5b-48b5-4dbf-9f7a-c0e7e74ca259",
+  "decision": {
+    "reportId": "f5479a36-db68-4b24-ba9d-2b4578f8ac18",
+    "generatedAt": "2026-09-22T12:31:53.746894200Z",
+    "decision": "BUY",
+    "strategyVersion": "HOLDING_ADVICE_V2_EXPERIMENTAL",
+    "modelRefs": [
+      {
+        "modelId": "MP-cf4bd2c8ccdf61f6d448a7c005448597",
+        "dataAsOf": "2026-09-21",
+        "direction": "NON_UP",
+        "horizonId": "M6_V1",
+        "modelHash": "cf4bd2c8ccdf61f6d448a7c005448597041b0585f9d5840ab17f77371c7abbef",
+        "predictionId": "89be204f-5bac-48df-b9f2-a3a600aa97e1",
+        "activationRevision": 1
+      },
+      {
+        "modelId": "MP-c83bb2ba6f88e03347378e46d453a89b",
+        "dataAsOf": "2026-09-21",
+        "direction": "UP",
+        "horizonId": "T20_V1",
+        "modelHash": "c83bb2ba6f88e03347378e46d453a89b5d8ab7af68801225305f3f666ddcba0a",
+        "predictionId": "ea7f3c0f-4a62-47fb-8582-99376a83edaa",
+        "activationRevision": 1
+      },
+      {
+        "modelId": "MP-1f9b94e1d4d31e3f46775c650a650448",
+        "dataAsOf": "2026-09-21",
+        "direction": "UP",
+        "horizonId": "T5_V1",
+        "modelHash": "1f9b94e1d4d31e3f46775c650a650448976df322a80be940346817eb91de903f",
+        "predictionId": "b0500e07-f4e7-4d19-9f19-22a565e7c94a",
+        "activationRevision": 1
+      }
+    ]
+  },
+  "newReadbackHashVerified": true,
+  "oldReadbackHashVerified": true,
+  "modelEvaluations": 10,
+  "checkStates": [
+    {
+      "status": "PENDING_CALENDAR",
+      "count": 112
+    }
+  ],
+  "migration": [
+    {
+      "version_num": "20260922_26"
+    }
+  ],
+  "strategy": {
+    "runId": "766069a2-fc0b-43cd-9be2-e15f3e8d3233",
+    "status": "SUCCEEDED",
+    "excessReturnVsHold": -0.3647970258139823,
+    "eventIncrement": 0.0,
+    "eventAdoptionDecision": "KEEP_NEUTRAL_FACTS：本批公告无方向规则，增量为零，保留事实不提高权重",
+    "strategyAdoptionDecision": "本开发区间未超过一直持有；保留失败结论和V2实验身份，不声称策略有效",
+    "comparisonProtocol": "STRATEGY_COMPARISON_V1：同基金/日历/初资/费用/到账，净收益主指标；回撤、换手和空仓期同时披露",
+    "resultHash": "f88828560677b9fc9be84fe6ebb39faebea2dfd9f18bec52893601b87821514e",
+    "comparisons": {
+      "V2": {
+        "version": "POSITION_POLICY_V1_FEE_ASSUMPTION_V1",
+        "strategyVersion": "HOLDING_ADVICE_V2_EXPERIMENTAL",
+        "mode": "V2",
+        "initialCash": 10000.0,
+        "finalEquity": 11469.712714054835,
+        "netReturn": 0.1469712714054836,
+        "maxDrawdown": 0.2154426406497666,
+        "turnover": 14.081212918519588,
+        "tradeCount": 161,
+        "fees": 390.12429279962055,
+        "investedSessions": 268,
+        "cashOnlySessions": 100,
+        "assumption": "费用假设下回放：申购0.1%；持有不足7日赎回1.5%，7至29日0.5%，30日起0.1%；T+1可卖/T+2现金到账，不声称恢复真实渠道历史费率",
+        "executionNotes": [],
+        "exitReviews": [
+          {
+            "soldOn": [
+              2024,
+              11,
+              6
+            ],
+            "boughtBackOn": [
+              2024,
+              11,
+              7
+            ],
+            "assessedUntil": [
+              2024,
+              11,
+              7
+            ],
+            "underlyingTotalReturn": 0.018101801876608814,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.018101801876608814,
+            "exitFee": 5.63883702484079,
+            "reentryFee": 0.029666913109464007
+          },
+          {
+            "soldOn": [
+              2024,
+              11,
+              25
+            ],
+            "boughtBackOn": [
+              2024,
+              12,
+              13
+            ],
+            "assessedUntil": [
+              2024,
+              12,
+              13
+            ],
+            "underlyingTotalReturn": 0.04196420699991177,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.04196420699991177,
+            "exitFee": 5.1895946497052465,
+            "reentryFee": 2.671087749910572
+          },
+          {
+            "soldOn": [
+              2024,
+              11,
+              26
+            ],
+            "boughtBackOn": [
+              2024,
+              12,
+              13
+            ],
+            "assessedUntil": [
+              2024,
+              12,
+              13
+            ],
+            "underlyingTotalReturn": 0.045929203539823105,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.045929203539823105,
+            "exitFee": 12.798962323079037,
+            "reentryFee": 2.671087749910572
+          },
+          {
+            "soldOn": [
+              2024,
+              11,
+              27
+            ],
+            "boughtBackOn": [
+              2024,
+              12,
+              13
+            ],
+            "assessedUntil": [
+              2024,
+              12,
+              13
+            ],
+            "underlyingTotalReturn": 0.026578650221488642,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.026578650221488642,
+            "exitFee": 6.584215287187748,
+            "reentryFee": 2.671087749910572
+          },
+          {
+            "soldOn": [
+              2024,
+              11,
+              28
+            ],
+            "boughtBackOn": [
+              2024,
+              12,
+              13
+            ],
+            "assessedUntil": [
+              2024,
+              12,
+              13
+            ],
+            "underlyingTotalReturn": 0.03466690011380558,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.03466690011380558,
+            "exitFee": 3.2663724149025297,
+            "reentryFee": 2.671087749910572
+          },
+          {
+            "soldOn": [
+              2024,
+              11,
+              29
+            ],
+            "boughtBackOn": [
+              2024,
+              12,
+              13
+            ],
+            "assessedUntil": [
+              2024,
+              12,
+              13
+            ],
+            "underlyingTotalReturn": 0.020198532585239626,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.020198532585239626,
+            "exitFee": 1.6563479132734749,
+            "reentryFee": 2.671087749910572
+          },
+          {
+            "soldOn": [
+              2024,
+              12,
+              4
+            ],
+            "boughtBackOn": [
+              2024,
+              12,
+              13
+            ],
+            "assessedUntil": [
+              2024,
+              12,
+              13
+            ],
+            "underlyingTotalReturn": 0.0195824706694272,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.0195824706694272,
+            "exitFee": 0.8286743638612913,
+            "reentryFee": 2.671087749910572
+          },
+          {
+            "soldOn": [
+              2024,
+              12,
+              5
+            ],
+            "boughtBackOn": [
+              2024,
+              12,
+              13
+            ],
+            "assessedUntil": [
+              2024,
+              12,
+              13
+            ],
+            "underlyingTotalReturn": 0.014767751352279479,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.014767751352279479,
+            "exitFee": 0.4163030674556789,
+            "reentryFee": 2.671087749910572
+          },
+          {
+            "soldOn": [
+              2024,
+              12,
+              6
+            ],
+            "boughtBackOn": [
+              2024,
+              12,
+              13
+            ],
+            "assessedUntil": [
+              2024,
+              12,
+              13
+            ],
+            "underlyingTotalReturn": 0.0024597116200169022,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.0024597116200169022,
+            "exitFee": 0.21070718491038268,
+            "reentryFee": 2.671087749910572
+          },
+          {
+            "soldOn": [
+              2024,
+              12,
+              9
+            ],
+            "boughtBackOn": [
+              2024,
+              12,
+              13
+            ],
+            "assessedUntil": [
+              2024,
+              12,
+              13
+            ],
+            "underlyingTotalReturn": 0.007415615410842236,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.007415615410842236,
+            "exitFee": 0.10483531354404621,
+            "reentryFee": 2.671087749910572
+          },
+          {
+            "soldOn": [
+              2024,
+              12,
+              10
+            ],
+            "boughtBackOn": [
+              2024,
+              12,
+              13
+            ],
+            "assessedUntil": [
+              2024,
+              12,
+              13
+            ],
+            "underlyingTotalReturn": 0.0008468117537472342,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.0008468117537472342,
+            "exitFee": 0.052761686738903926,
+            "reentryFee": 2.671087749910572
+          },
+          {
+            "soldOn": [
+              2024,
+              12,
+              11
+            ],
+            "boughtBackOn": [
+              2024,
+              12,
+              13
+            ],
+            "assessedUntil": [
+              2024,
+              12,
+              13
+            ],
+            "underlyingTotalReturn": -0.009221225584709503,
+            "avoidedDecline": 0.009221225584709503,
+            "missedRise": 0.0,
+            "exitFee": 0.026648918668320136,
+            "reentryFee": 2.671087749910572
+          },
+          {
+            "soldOn": [
+              2024,
+              12,
+              12
+            ],
+            "boughtBackOn": [
+              2024,
+              12,
+              13
+            ],
+            "assessedUntil": [
+              2024,
+              12,
+              13
+            ],
+            "underlyingTotalReturn": -0.018925873661492454,
+            "avoidedDecline": 0.018925873661492454,
+            "missedRise": 0.0,
+            "exitFee": 0.013456263022770252,
+            "reentryFee": 2.671087749910572
+          },
+          {
+            "soldOn": [
+              2024,
+              12,
+              18
+            ],
+            "boughtBackOn": [
+              2024,
+              12,
+              23
+            ],
+            "assessedUntil": [
+              2024,
+              12,
+              23
+            ],
+            "underlyingTotalReturn": -0.010771992818671472,
+            "avoidedDecline": 0.010771992818671472,
+            "missedRise": 0.0,
+            "exitFee": 46.12280140502812,
+            "reentryFee": 2.263921187207685
+          },
+          {
+            "soldOn": [
+              2024,
+              12,
+              19
+            ],
+            "boughtBackOn": [
+              2024,
+              12,
+              23
+            ],
+            "assessedUntil": [
+              2024,
+              12,
+              23
+            ],
+            "underlyingTotalReturn": -0.014395229982964275,
+            "avoidedDecline": 0.014395229982964275,
+            "missedRise": 0.0,
+            "exitFee": 23.159291365554388,
+            "reentryFee": 2.263921187207685
+          },
+          {
+            "soldOn": [
+              2024,
+              12,
+              20
+            ],
+            "boughtBackOn": [
+              2024,
+              12,
+              23
+            ],
+            "assessedUntil": [
+              2024,
+              12,
+              23
+            ],
+            "underlyingTotalReturn": -0.016907391673746774,
+            "avoidedDecline": 0.016907391673746774,
+            "missedRise": 0.0,
+            "exitFee": 11.609235918763849,
+            "reentryFee": 2.263921187207685
+          },
+          {
+            "soldOn": [
+              2025,
+              1,
+              2
+            ],
+            "boughtBackOn": [
+              2025,
+              2,
+              7
+            ],
+            "assessedUntil": [
+              2025,
+              2,
+              7
+            ],
+            "underlyingTotalReturn": 0.048513011801373684,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.048513011801373684,
+            "exitFee": 61.579061608806875,
+            "reentryFee": 5.041077711443932
+          },
+          {
+            "soldOn": [
+              2025,
+              4,
+              7
+            ],
+            "boughtBackOn": [
+              2025,
+              5,
+              9
+            ],
+            "assessedUntil": [
+              2025,
+              5,
+              9
+            ],
+            "underlyingTotalReturn": 0.09274423919253483,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.09274423919253483,
+            "exitFee": 4.564989098938558,
+            "reentryFee": 4.565737729571213
+          },
+          {
+            "soldOn": [
+              2025,
+              4,
+              8
+            ],
+            "boughtBackOn": [
+              2025,
+              5,
+              9
+            ],
+            "assessedUntil": [
+              2025,
+              5,
+              9
+            ],
+            "underlyingTotalReturn": 0.0900455927051671,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.0900455927051671,
+            "exitFee": 5.109204599982455,
+            "reentryFee": 4.565737729571213
+          },
+          {
+            "soldOn": [
+              2025,
+              10,
+              20
+            ],
+            "boughtBackOn": [
+              2025,
+              10,
+              30
+            ],
+            "assessedUntil": [
+              2025,
+              10,
+              30
+            ],
+            "underlyingTotalReturn": 0.039584330347986585,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.039584330347986585,
+            "exitFee": 5.771550731316845,
+            "reentryFee": 2.5422171071939674
+          },
+          {
+            "soldOn": [
+              2025,
+              10,
+              21
+            ],
+            "boughtBackOn": [
+              2025,
+              10,
+              30
+            ],
+            "assessedUntil": [
+              2025,
+              10,
+              30
+            ],
+            "underlyingTotalReturn": 0.02129088588891137,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.02129088588891137,
+            "exitFee": 2.9374656060223048,
+            "reentryFee": 2.5422171071939674
+          },
+          {
+            "soldOn": [
+              2025,
+              10,
+              24
+            ],
+            "boughtBackOn": [
+              2025,
+              10,
+              30
+            ],
+            "assessedUntil": [
+              2025,
+              10,
+              30
+            ],
+            "underlyingTotalReturn": 0.013395534821726063,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.013395534821726063,
+            "exitFee": 1.4801756806489583,
+            "reentryFee": 2.5422171071939674
+          },
+          {
+            "soldOn": [
+              2025,
+              11,
+              6
+            ],
+            "boughtBackOn": [
+              2025,
+              11,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              11,
+              11
+            ],
+            "underlyingTotalReturn": -0.003693444136657398,
+            "avoidedDecline": 0.003693444136657398,
+            "missedRise": 0.0,
+            "exitFee": 4.094297570270078,
+            "reentryFee": 2.6589043766734073
+          },
+          {
+            "soldOn": [
+              2025,
+              11,
+              7
+            ],
+            "boughtBackOn": [
+              2025,
+              11,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              11,
+              11
+            ],
+            "underlyingTotalReturn": -0.001916088536504823,
+            "avoidedDecline": 0.001916088536504823,
+            "missedRise": 0.0,
+            "exitFee": 5.029183197639627,
+            "reentryFee": 2.6589043766734073
+          },
+          {
+            "soldOn": [
+              2025,
+              11,
+              10
+            ],
+            "boughtBackOn": [
+              2025,
+              11,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              11,
+              11
+            ],
+            "underlyingTotalReturn": -0.005988023952095856,
+            "avoidedDecline": 0.005988023952095856,
+            "missedRise": 0.0,
+            "exitFee": 2.5248925356633434,
+            "reentryFee": 2.6589043766734073
+          },
+          {
+            "soldOn": [
+              2025,
+              11,
+              19
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              11
+            ],
+            "underlyingTotalReturn": 0.009442870632672351,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.009442870632672351,
+            "exitFee": 22.055140083684424,
+            "reentryFee": 2.8303396918864667
+          },
+          {
+            "soldOn": [
+              2025,
+              11,
+              21
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              11
+            ],
+            "underlyingTotalReturn": 0.048994182378916395,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.048994182378916395,
+            "exitFee": 10.611786172060086,
+            "reentryFee": 2.8303396918864667
+          },
+          {
+            "soldOn": [
+              2025,
+              11,
+              24
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              11
+            ],
+            "underlyingTotalReturn": 0.039233386570377116,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.039233386570377116,
+            "exitFee": 5.3557276464511565,
+            "reentryFee": 2.8303396918864667
+          },
+          {
+            "soldOn": [
+              2025,
+              11,
+              25
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              11
+            ],
+            "underlyingTotalReturn": 0.02661544793524495,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.02661544793524495,
+            "exitFee": 2.710776947085791,
+            "reentryFee": 2.8303396918864667
+          },
+          {
+            "soldOn": [
+              2025,
+              11,
+              26
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              11
+            ],
+            "underlyingTotalReturn": 0.02612272883099065,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.02612272883099065,
+            "exitFee": 1.3560392980260072,
+            "reentryFee": 2.8303396918864667
+          },
+          {
+            "soldOn": [
+              2025,
+              11,
+              27
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              11
+            ],
+            "underlyingTotalReturn": 0.024647405175955095,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.024647405175955095,
+            "exitFee": 0.6789958857376709,
+            "reentryFee": 2.8303396918864667
+          },
+          {
+            "soldOn": [
+              2025,
+              11,
+              28
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              11
+            ],
+            "underlyingTotalReturn": 0.014575283031658781,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.014575283031658781,
+            "exitFee": 0.34286828394209173,
+            "reentryFee": 2.8303396918864667
+          },
+          {
+            "soldOn": [
+              2025,
+              12,
+              1
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              11
+            ],
+            "underlyingTotalReturn": 0.004834161407277993,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.004834161407277993,
+            "exitFee": 0.17309606877613432,
+            "reentryFee": 2.8303396918864667
+          },
+          {
+            "soldOn": [
+              2025,
+              12,
+              2
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              11
+            ],
+            "underlyingTotalReturn": 0.011079583840021723,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.011079583840021723,
+            "exitFee": 0.08601342856265409,
+            "reentryFee": 2.8303396918864667
+          },
+          {
+            "soldOn": [
+              2025,
+              12,
+              3
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              11
+            ],
+            "underlyingTotalReturn": 0.016297704739915764,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.016297704739915764,
+            "exitFee": 0.04278589883169991,
+            "reentryFee": 2.8303396918864667
+          },
+          {
+            "soldOn": [
+              2025,
+              12,
+              4
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              11
+            ],
+            "underlyingTotalReturn": 0.014644067796610205,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.014644067796610205,
+            "exitFee": 0.021427815013159504,
+            "reentryFee": 2.8303396918864667
+          },
+          {
+            "soldOn": [
+              2025,
+              12,
+              5
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              11
+            ],
+            "underlyingTotalReturn": 0.00040106951871665686,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.00040106951871665686,
+            "exitFee": 0.010866444494809023,
+            "reentryFee": 2.8303396918864667
+          },
+          {
+            "soldOn": [
+              2025,
+              12,
+              8
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              11
+            ],
+            "underlyingTotalReturn": -0.009333421592639168,
+            "avoidedDecline": 0.009333421592639168,
+            "missedRise": 0.0,
+            "exitFee": 0.005486610193284756,
+            "reentryFee": 2.8303396918864667
+          },
+          {
+            "soldOn": [
+              2025,
+              12,
+              9
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              11
+            ],
+            "underlyingTotalReturn": -0.005449229133439704,
+            "avoidedDecline": 0.005449229133439704,
+            "missedRise": 0.0,
+            "exitFee": 0.002732591189135798,
+            "reentryFee": 2.8303396918864667
+          },
+          {
+            "soldOn": [
+              2025,
+              12,
+              10
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              11
+            ],
+            "underlyingTotalReturn": -0.009202250910294585,
+            "avoidedDecline": 0.009202250910294585,
+            "missedRise": 0.0,
+            "exitFee": 0.001371470956668535,
+            "reentryFee": 2.8303396918864667
+          },
+          {
+            "soldOn": [
+              2025,
+              12,
+              12
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              15
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              15
+            ],
+            "underlyingTotalReturn": -0.007083278167615559,
+            "avoidedDecline": 0.007083278167615559,
+            "missedRise": 0.0,
+            "exitFee": 21.425435787497214,
+            "reentryFee": 2.122822931432427
+          },
+          {
+            "soldOn": [
+              2025,
+              12,
+              16
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              18
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              18
+            ],
+            "underlyingTotalReturn": 0.015666148963468185,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.015666148963468185,
+            "exitFee": 26.22292944208269,
+            "reentryFee": 2.3736087549286524
+          },
+          {
+            "soldOn": [
+              2025,
+              12,
+              17
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              18
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              18
+            ],
+            "underlyingTotalReturn": -0.004566512243547316,
+            "avoidedDecline": 0.004566512243547316,
+            "missedRise": 0.0,
+            "exitFee": 13.377961505499004,
+            "reentryFee": 2.3736087549286524
+          }
+        ]
+      },
+      "V1": {
+        "version": "POSITION_POLICY_V1_FEE_ASSUMPTION_V1",
+        "strategyVersion": "HOLDING_ADVICE_V2_EXPERIMENTAL",
+        "mode": "V1",
+        "initialCash": 10000.0,
+        "finalEquity": 11110.362188917896,
+        "netReturn": 0.1110362188917895,
+        "maxDrawdown": 0.11557665234095904,
+        "turnover": 12.531728918892044,
+        "tradeCount": 27,
+        "fees": 573.9213777731808,
+        "investedSessions": 227,
+        "cashOnlySessions": 141,
+        "assumption": "费用假设下回放：申购0.1%；持有不足7日赎回1.5%，7至29日0.5%，30日起0.1%；T+1可卖/T+2现金到账，不声称恢复真实渠道历史费率",
+        "executionNotes": [],
+        "exitReviews": [
+          {
+            "soldOn": [
+              2024,
+              11,
+              6
+            ],
+            "boughtBackOn": [
+              2024,
+              11,
+              7
+            ],
+            "assessedUntil": [
+              2024,
+              11,
+              7
+            ],
+            "underlyingTotalReturn": 0.018101801876608814,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.018101801876608814,
+            "exitFee": 6.188133438416331,
+            "reentryFee": 2.4975024975024973
+          },
+          {
+            "soldOn": [
+              2024,
+              11,
+              25
+            ],
+            "boughtBackOn": [
+              2024,
+              12,
+              2
+            ],
+            "assessedUntil": [
+              2024,
+              12,
+              2
+            ],
+            "underlyingTotalReturn": 0.03473507890328831,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.03473507890328831,
+            "exitFee": 11.552553147855326,
+            "reentryFee": 5.484966723976585
+          },
+          {
+            "soldOn": [
+              2024,
+              12,
+              4
+            ],
+            "boughtBackOn": [
+              2024,
+              12,
+              13
+            ],
+            "assessedUntil": [
+              2024,
+              12,
+              13
+            ],
+            "underlyingTotalReturn": 0.0195824706694272,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.0195824706694272,
+            "exitFee": 81.25807395118419,
+            "reentryFee": 5.40779148193223
+          },
+          {
+            "soldOn": [
+              2024,
+              12,
+              18
+            ],
+            "boughtBackOn": [
+              2024,
+              12,
+              23
+            ],
+            "assessedUntil": [
+              2024,
+              12,
+              23
+            ],
+            "underlyingTotalReturn": -0.010771992818671472,
+            "avoidedDecline": 0.010771992818671472,
+            "missedRise": 0.0,
+            "exitFee": 80.27955448535573,
+            "reentryFee": 5.337107901075186
+          },
+          {
+            "soldOn": [
+              2025,
+              1,
+              2
+            ],
+            "boughtBackOn": [
+              2025,
+              2,
+              7
+            ],
+            "assessedUntil": [
+              2025,
+              2,
+              7
+            ],
+            "underlyingTotalReturn": 0.048513011801373684,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.048513011801373684,
+            "exitFee": 25.59699273789365,
+            "reentryFee": 5.212910371537011
+          },
+          {
+            "soldOn": [
+              2025,
+              4,
+              7
+            ],
+            "boughtBackOn": [
+              2025,
+              5,
+              9
+            ],
+            "assessedUntil": [
+              2025,
+              5,
+              9
+            ],
+            "underlyingTotalReturn": 0.09274423919253483,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.09274423919253483,
+            "exitFee": 4.7675681199931805,
+            "reentryFee": 4.985476440450418
+          },
+          {
+            "soldOn": [
+              2025,
+              10,
+              20
+            ],
+            "boughtBackOn": [
+              2025,
+              10,
+              22
+            ],
+            "assessedUntil": [
+              2025,
+              10,
+              22
+            ],
+            "underlyingTotalReturn": 0.01128050864839003,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.01128050864839003,
+            "exitFee": 6.354353772609643,
+            "reentryFee": 5.663567100763187
+          },
+          {
+            "soldOn": [
+              2025,
+              10,
+              24
+            ],
+            "boughtBackOn": [
+              2025,
+              10,
+              27
+            ],
+            "assessedUntil": [
+              2025,
+              10,
+              27
+            ],
+            "underlyingTotalReturn": 0.012262579140286611,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.012262579140286611,
+            "exitFee": 86.17680943782277,
+            "reentryFee": 2.8317835503815934
+          },
+          {
+            "soldOn": [
+              2025,
+              11,
+              6
+            ],
+            "boughtBackOn": [
+              2025,
+              11,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              11,
+              11
+            ],
+            "underlyingTotalReturn": -0.003693444136657398,
+            "avoidedDecline": 0.003693444136657398,
+            "missedRise": 0.0,
+            "exitFee": 14.13374882839085,
+            "reentryFee": 5.647440145120937
+          },
+          {
+            "soldOn": [
+              2025,
+              11,
+              19
+            ],
+            "boughtBackOn": [
+              2025,
+              11,
+              20
+            ],
+            "assessedUntil": [
+              2025,
+              11,
+              20
+            ],
+            "underlyingTotalReturn": -0.006340213139079953,
+            "avoidedDecline": 0.006340213139079953,
+            "missedRise": 0.0,
+            "exitFee": 27.713804975361782,
+            "reentryFee": 2.8237200725604685
+          },
+          {
+            "soldOn": [
+              2025,
+              11,
+              21
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              11
+            ],
+            "underlyingTotalReturn": 0.048994182378916395,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.048994182378916395,
+            "exitFee": 41.01888502092744,
+            "reentryFee": 5.512070146072723
+          },
+          {
+            "soldOn": [
+              2025,
+              12,
+              12
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              15
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              15
+            ],
+            "underlyingTotalReturn": -0.007083278167615559,
+            "avoidedDecline": 0.007083278167615559,
+            "missedRise": 0.0,
+            "exitFee": 83.45449514891209,
+            "reentryFee": 2.7560350730363616
+          },
+          {
+            "soldOn": [
+              2025,
+              12,
+              16
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              18
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              18
+            ],
+            "underlyingTotalReturn": 0.015666148963468185,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.015666148963468185,
+            "exitFee": 40.816844519563446,
+            "reentryFee": 5.454183689480166
+          }
+        ]
+      },
+      "BUY_HOLD": {
+        "version": "POSITION_POLICY_V1_FEE_ASSUMPTION_V1",
+        "strategyVersion": "HOLDING_ADVICE_V2_EXPERIMENTAL",
+        "mode": "BUY_HOLD",
+        "initialCash": 10000.0,
+        "finalEquity": 15117.68297219466,
+        "netReturn": 0.5117682972194659,
+        "maxDrawdown": 0.14367595905616737,
+        "turnover": 1.0,
+        "tradeCount": 1,
+        "fees": 9.99000999000999,
+        "investedSessions": 368,
+        "cashOnlySessions": 0,
+        "assumption": "费用假设下回放：申购0.1%；持有不足7日赎回1.5%，7至29日0.5%，30日起0.1%；T+1可卖/T+2现金到账，不声称恢复真实渠道历史费率",
+        "executionNotes": [],
+        "exitReviews": []
+      },
+      "V2_WITHOUT_EVENTS": {
+        "version": "POSITION_POLICY_V1_FEE_ASSUMPTION_V1",
+        "strategyVersion": "HOLDING_ADVICE_V2_EXPERIMENTAL",
+        "mode": "V2_WITHOUT_EVENTS",
+        "initialCash": 10000.0,
+        "finalEquity": 11469.712714054835,
+        "netReturn": 0.1469712714054836,
+        "maxDrawdown": 0.2154426406497666,
+        "turnover": 14.081212918519588,
+        "tradeCount": 161,
+        "fees": 390.12429279962055,
+        "investedSessions": 268,
+        "cashOnlySessions": 100,
+        "assumption": "费用假设下回放：申购0.1%；持有不足7日赎回1.5%，7至29日0.5%，30日起0.1%；T+1可卖/T+2现金到账，不声称恢复真实渠道历史费率",
+        "executionNotes": [],
+        "exitReviews": [
+          {
+            "soldOn": [
+              2024,
+              11,
+              6
+            ],
+            "boughtBackOn": [
+              2024,
+              11,
+              7
+            ],
+            "assessedUntil": [
+              2024,
+              11,
+              7
+            ],
+            "underlyingTotalReturn": 0.018101801876608814,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.018101801876608814,
+            "exitFee": 5.63883702484079,
+            "reentryFee": 0.029666913109464007
+          },
+          {
+            "soldOn": [
+              2024,
+              11,
+              25
+            ],
+            "boughtBackOn": [
+              2024,
+              12,
+              13
+            ],
+            "assessedUntil": [
+              2024,
+              12,
+              13
+            ],
+            "underlyingTotalReturn": 0.04196420699991177,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.04196420699991177,
+            "exitFee": 5.1895946497052465,
+            "reentryFee": 2.671087749910572
+          },
+          {
+            "soldOn": [
+              2024,
+              11,
+              26
+            ],
+            "boughtBackOn": [
+              2024,
+              12,
+              13
+            ],
+            "assessedUntil": [
+              2024,
+              12,
+              13
+            ],
+            "underlyingTotalReturn": 0.045929203539823105,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.045929203539823105,
+            "exitFee": 12.798962323079037,
+            "reentryFee": 2.671087749910572
+          },
+          {
+            "soldOn": [
+              2024,
+              11,
+              27
+            ],
+            "boughtBackOn": [
+              2024,
+              12,
+              13
+            ],
+            "assessedUntil": [
+              2024,
+              12,
+              13
+            ],
+            "underlyingTotalReturn": 0.026578650221488642,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.026578650221488642,
+            "exitFee": 6.584215287187748,
+            "reentryFee": 2.671087749910572
+          },
+          {
+            "soldOn": [
+              2024,
+              11,
+              28
+            ],
+            "boughtBackOn": [
+              2024,
+              12,
+              13
+            ],
+            "assessedUntil": [
+              2024,
+              12,
+              13
+            ],
+            "underlyingTotalReturn": 0.03466690011380558,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.03466690011380558,
+            "exitFee": 3.2663724149025297,
+            "reentryFee": 2.671087749910572
+          },
+          {
+            "soldOn": [
+              2024,
+              11,
+              29
+            ],
+            "boughtBackOn": [
+              2024,
+              12,
+              13
+            ],
+            "assessedUntil": [
+              2024,
+              12,
+              13
+            ],
+            "underlyingTotalReturn": 0.020198532585239626,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.020198532585239626,
+            "exitFee": 1.6563479132734749,
+            "reentryFee": 2.671087749910572
+          },
+          {
+            "soldOn": [
+              2024,
+              12,
+              4
+            ],
+            "boughtBackOn": [
+              2024,
+              12,
+              13
+            ],
+            "assessedUntil": [
+              2024,
+              12,
+              13
+            ],
+            "underlyingTotalReturn": 0.0195824706694272,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.0195824706694272,
+            "exitFee": 0.8286743638612913,
+            "reentryFee": 2.671087749910572
+          },
+          {
+            "soldOn": [
+              2024,
+              12,
+              5
+            ],
+            "boughtBackOn": [
+              2024,
+              12,
+              13
+            ],
+            "assessedUntil": [
+              2024,
+              12,
+              13
+            ],
+            "underlyingTotalReturn": 0.014767751352279479,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.014767751352279479,
+            "exitFee": 0.4163030674556789,
+            "reentryFee": 2.671087749910572
+          },
+          {
+            "soldOn": [
+              2024,
+              12,
+              6
+            ],
+            "boughtBackOn": [
+              2024,
+              12,
+              13
+            ],
+            "assessedUntil": [
+              2024,
+              12,
+              13
+            ],
+            "underlyingTotalReturn": 0.0024597116200169022,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.0024597116200169022,
+            "exitFee": 0.21070718491038268,
+            "reentryFee": 2.671087749910572
+          },
+          {
+            "soldOn": [
+              2024,
+              12,
+              9
+            ],
+            "boughtBackOn": [
+              2024,
+              12,
+              13
+            ],
+            "assessedUntil": [
+              2024,
+              12,
+              13
+            ],
+            "underlyingTotalReturn": 0.007415615410842236,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.007415615410842236,
+            "exitFee": 0.10483531354404621,
+            "reentryFee": 2.671087749910572
+          },
+          {
+            "soldOn": [
+              2024,
+              12,
+              10
+            ],
+            "boughtBackOn": [
+              2024,
+              12,
+              13
+            ],
+            "assessedUntil": [
+              2024,
+              12,
+              13
+            ],
+            "underlyingTotalReturn": 0.0008468117537472342,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.0008468117537472342,
+            "exitFee": 0.052761686738903926,
+            "reentryFee": 2.671087749910572
+          },
+          {
+            "soldOn": [
+              2024,
+              12,
+              11
+            ],
+            "boughtBackOn": [
+              2024,
+              12,
+              13
+            ],
+            "assessedUntil": [
+              2024,
+              12,
+              13
+            ],
+            "underlyingTotalReturn": -0.009221225584709503,
+            "avoidedDecline": 0.009221225584709503,
+            "missedRise": 0.0,
+            "exitFee": 0.026648918668320136,
+            "reentryFee": 2.671087749910572
+          },
+          {
+            "soldOn": [
+              2024,
+              12,
+              12
+            ],
+            "boughtBackOn": [
+              2024,
+              12,
+              13
+            ],
+            "assessedUntil": [
+              2024,
+              12,
+              13
+            ],
+            "underlyingTotalReturn": -0.018925873661492454,
+            "avoidedDecline": 0.018925873661492454,
+            "missedRise": 0.0,
+            "exitFee": 0.013456263022770252,
+            "reentryFee": 2.671087749910572
+          },
+          {
+            "soldOn": [
+              2024,
+              12,
+              18
+            ],
+            "boughtBackOn": [
+              2024,
+              12,
+              23
+            ],
+            "assessedUntil": [
+              2024,
+              12,
+              23
+            ],
+            "underlyingTotalReturn": -0.010771992818671472,
+            "avoidedDecline": 0.010771992818671472,
+            "missedRise": 0.0,
+            "exitFee": 46.12280140502812,
+            "reentryFee": 2.263921187207685
+          },
+          {
+            "soldOn": [
+              2024,
+              12,
+              19
+            ],
+            "boughtBackOn": [
+              2024,
+              12,
+              23
+            ],
+            "assessedUntil": [
+              2024,
+              12,
+              23
+            ],
+            "underlyingTotalReturn": -0.014395229982964275,
+            "avoidedDecline": 0.014395229982964275,
+            "missedRise": 0.0,
+            "exitFee": 23.159291365554388,
+            "reentryFee": 2.263921187207685
+          },
+          {
+            "soldOn": [
+              2024,
+              12,
+              20
+            ],
+            "boughtBackOn": [
+              2024,
+              12,
+              23
+            ],
+            "assessedUntil": [
+              2024,
+              12,
+              23
+            ],
+            "underlyingTotalReturn": -0.016907391673746774,
+            "avoidedDecline": 0.016907391673746774,
+            "missedRise": 0.0,
+            "exitFee": 11.609235918763849,
+            "reentryFee": 2.263921187207685
+          },
+          {
+            "soldOn": [
+              2025,
+              1,
+              2
+            ],
+            "boughtBackOn": [
+              2025,
+              2,
+              7
+            ],
+            "assessedUntil": [
+              2025,
+              2,
+              7
+            ],
+            "underlyingTotalReturn": 0.048513011801373684,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.048513011801373684,
+            "exitFee": 61.579061608806875,
+            "reentryFee": 5.041077711443932
+          },
+          {
+            "soldOn": [
+              2025,
+              4,
+              7
+            ],
+            "boughtBackOn": [
+              2025,
+              5,
+              9
+            ],
+            "assessedUntil": [
+              2025,
+              5,
+              9
+            ],
+            "underlyingTotalReturn": 0.09274423919253483,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.09274423919253483,
+            "exitFee": 4.564989098938558,
+            "reentryFee": 4.565737729571213
+          },
+          {
+            "soldOn": [
+              2025,
+              4,
+              8
+            ],
+            "boughtBackOn": [
+              2025,
+              5,
+              9
+            ],
+            "assessedUntil": [
+              2025,
+              5,
+              9
+            ],
+            "underlyingTotalReturn": 0.0900455927051671,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.0900455927051671,
+            "exitFee": 5.109204599982455,
+            "reentryFee": 4.565737729571213
+          },
+          {
+            "soldOn": [
+              2025,
+              10,
+              20
+            ],
+            "boughtBackOn": [
+              2025,
+              10,
+              30
+            ],
+            "assessedUntil": [
+              2025,
+              10,
+              30
+            ],
+            "underlyingTotalReturn": 0.039584330347986585,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.039584330347986585,
+            "exitFee": 5.771550731316845,
+            "reentryFee": 2.5422171071939674
+          },
+          {
+            "soldOn": [
+              2025,
+              10,
+              21
+            ],
+            "boughtBackOn": [
+              2025,
+              10,
+              30
+            ],
+            "assessedUntil": [
+              2025,
+              10,
+              30
+            ],
+            "underlyingTotalReturn": 0.02129088588891137,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.02129088588891137,
+            "exitFee": 2.9374656060223048,
+            "reentryFee": 2.5422171071939674
+          },
+          {
+            "soldOn": [
+              2025,
+              10,
+              24
+            ],
+            "boughtBackOn": [
+              2025,
+              10,
+              30
+            ],
+            "assessedUntil": [
+              2025,
+              10,
+              30
+            ],
+            "underlyingTotalReturn": 0.013395534821726063,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.013395534821726063,
+            "exitFee": 1.4801756806489583,
+            "reentryFee": 2.5422171071939674
+          },
+          {
+            "soldOn": [
+              2025,
+              11,
+              6
+            ],
+            "boughtBackOn": [
+              2025,
+              11,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              11,
+              11
+            ],
+            "underlyingTotalReturn": -0.003693444136657398,
+            "avoidedDecline": 0.003693444136657398,
+            "missedRise": 0.0,
+            "exitFee": 4.094297570270078,
+            "reentryFee": 2.6589043766734073
+          },
+          {
+            "soldOn": [
+              2025,
+              11,
+              7
+            ],
+            "boughtBackOn": [
+              2025,
+              11,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              11,
+              11
+            ],
+            "underlyingTotalReturn": -0.001916088536504823,
+            "avoidedDecline": 0.001916088536504823,
+            "missedRise": 0.0,
+            "exitFee": 5.029183197639627,
+            "reentryFee": 2.6589043766734073
+          },
+          {
+            "soldOn": [
+              2025,
+              11,
+              10
+            ],
+            "boughtBackOn": [
+              2025,
+              11,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              11,
+              11
+            ],
+            "underlyingTotalReturn": -0.005988023952095856,
+            "avoidedDecline": 0.005988023952095856,
+            "missedRise": 0.0,
+            "exitFee": 2.5248925356633434,
+            "reentryFee": 2.6589043766734073
+          },
+          {
+            "soldOn": [
+              2025,
+              11,
+              19
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              11
+            ],
+            "underlyingTotalReturn": 0.009442870632672351,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.009442870632672351,
+            "exitFee": 22.055140083684424,
+            "reentryFee": 2.8303396918864667
+          },
+          {
+            "soldOn": [
+              2025,
+              11,
+              21
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              11
+            ],
+            "underlyingTotalReturn": 0.048994182378916395,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.048994182378916395,
+            "exitFee": 10.611786172060086,
+            "reentryFee": 2.8303396918864667
+          },
+          {
+            "soldOn": [
+              2025,
+              11,
+              24
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              11
+            ],
+            "underlyingTotalReturn": 0.039233386570377116,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.039233386570377116,
+            "exitFee": 5.3557276464511565,
+            "reentryFee": 2.8303396918864667
+          },
+          {
+            "soldOn": [
+              2025,
+              11,
+              25
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              11
+            ],
+            "underlyingTotalReturn": 0.02661544793524495,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.02661544793524495,
+            "exitFee": 2.710776947085791,
+            "reentryFee": 2.8303396918864667
+          },
+          {
+            "soldOn": [
+              2025,
+              11,
+              26
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              11
+            ],
+            "underlyingTotalReturn": 0.02612272883099065,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.02612272883099065,
+            "exitFee": 1.3560392980260072,
+            "reentryFee": 2.8303396918864667
+          },
+          {
+            "soldOn": [
+              2025,
+              11,
+              27
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              11
+            ],
+            "underlyingTotalReturn": 0.024647405175955095,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.024647405175955095,
+            "exitFee": 0.6789958857376709,
+            "reentryFee": 2.8303396918864667
+          },
+          {
+            "soldOn": [
+              2025,
+              11,
+              28
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              11
+            ],
+            "underlyingTotalReturn": 0.014575283031658781,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.014575283031658781,
+            "exitFee": 0.34286828394209173,
+            "reentryFee": 2.8303396918864667
+          },
+          {
+            "soldOn": [
+              2025,
+              12,
+              1
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              11
+            ],
+            "underlyingTotalReturn": 0.004834161407277993,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.004834161407277993,
+            "exitFee": 0.17309606877613432,
+            "reentryFee": 2.8303396918864667
+          },
+          {
+            "soldOn": [
+              2025,
+              12,
+              2
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              11
+            ],
+            "underlyingTotalReturn": 0.011079583840021723,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.011079583840021723,
+            "exitFee": 0.08601342856265409,
+            "reentryFee": 2.8303396918864667
+          },
+          {
+            "soldOn": [
+              2025,
+              12,
+              3
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              11
+            ],
+            "underlyingTotalReturn": 0.016297704739915764,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.016297704739915764,
+            "exitFee": 0.04278589883169991,
+            "reentryFee": 2.8303396918864667
+          },
+          {
+            "soldOn": [
+              2025,
+              12,
+              4
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              11
+            ],
+            "underlyingTotalReturn": 0.014644067796610205,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.014644067796610205,
+            "exitFee": 0.021427815013159504,
+            "reentryFee": 2.8303396918864667
+          },
+          {
+            "soldOn": [
+              2025,
+              12,
+              5
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              11
+            ],
+            "underlyingTotalReturn": 0.00040106951871665686,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.00040106951871665686,
+            "exitFee": 0.010866444494809023,
+            "reentryFee": 2.8303396918864667
+          },
+          {
+            "soldOn": [
+              2025,
+              12,
+              8
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              11
+            ],
+            "underlyingTotalReturn": -0.009333421592639168,
+            "avoidedDecline": 0.009333421592639168,
+            "missedRise": 0.0,
+            "exitFee": 0.005486610193284756,
+            "reentryFee": 2.8303396918864667
+          },
+          {
+            "soldOn": [
+              2025,
+              12,
+              9
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              11
+            ],
+            "underlyingTotalReturn": -0.005449229133439704,
+            "avoidedDecline": 0.005449229133439704,
+            "missedRise": 0.0,
+            "exitFee": 0.002732591189135798,
+            "reentryFee": 2.8303396918864667
+          },
+          {
+            "soldOn": [
+              2025,
+              12,
+              10
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              11
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              11
+            ],
+            "underlyingTotalReturn": -0.009202250910294585,
+            "avoidedDecline": 0.009202250910294585,
+            "missedRise": 0.0,
+            "exitFee": 0.001371470956668535,
+            "reentryFee": 2.8303396918864667
+          },
+          {
+            "soldOn": [
+              2025,
+              12,
+              12
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              15
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              15
+            ],
+            "underlyingTotalReturn": -0.007083278167615559,
+            "avoidedDecline": 0.007083278167615559,
+            "missedRise": 0.0,
+            "exitFee": 21.425435787497214,
+            "reentryFee": 2.122822931432427
+          },
+          {
+            "soldOn": [
+              2025,
+              12,
+              16
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              18
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              18
+            ],
+            "underlyingTotalReturn": 0.015666148963468185,
+            "avoidedDecline": 0.0,
+            "missedRise": 0.015666148963468185,
+            "exitFee": 26.22292944208269,
+            "reentryFee": 2.3736087549286524
+          },
+          {
+            "soldOn": [
+              2025,
+              12,
+              17
+            ],
+            "boughtBackOn": [
+              2025,
+              12,
+              18
+            ],
+            "assessedUntil": [
+              2025,
+              12,
+              18
+            ],
+            "underlyingTotalReturn": -0.004566512243547316,
+            "avoidedDecline": 0.004566512243547316,
+            "missedRise": 0.0,
+            "exitFee": 13.377961505499004,
+            "reentryFee": 2.3736087549286524
+          }
+        ]
+      }
+    }
+  }
+}

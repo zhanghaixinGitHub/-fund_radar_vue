@@ -8,6 +8,8 @@ import FundNavHistoryChart from '@/components/FundNavHistoryChart.vue'
 import FundShareHistoryChart from '@/components/FundShareHistoryChart.vue'
 import WatchlistPredictionCard from '@/components/WatchlistPredictionCard.vue'
 import Direction1dPanel from '@/components/Direction1dPanel.vue'
+import MultiPredictionPanel from '@/components/MultiPredictionPanel.vue'
+import MultiPredictionHistory from '@/components/MultiPredictionHistory.vue'
 import Direction1dFundHistory from '@/components/Direction1dFundHistory.vue'
 import { usePageNavigation } from '@/composables/usePageNavigation'
 import { getFundNavHistory } from '@/api/funds'
@@ -280,21 +282,26 @@ watch(selectedNavRange, () => {
       </section>
 
       <!-- 预测仅在模型分析中展示，资料概览不重复加载；一日预测在前，二十日预测在后。 -->
-      <Direction1dPanel
+      <MultiPredictionPanel
         v-if="section === 'research' && basic.fundCode === fundCode"
-        :key="`1d-${basic.fundCode}`"
+        :key="`multi-${basic.fundCode}`"
         :fund-code="basic.fundCode"
       />
-      <WatchlistPredictionCard
+      <details
         v-if="section === 'research' && basic.fundCode === fundCode"
-        :key="basic.fundCode"
-        :fund-code="basic.fundCode"
-      />
-      <Direction1dFundHistory
-        v-if="section === 'prediction-history' && basic.fundCode === fundCode"
-        :key="`1d-history-${basic.fundCode}`"
-        :fund-code="basic.fundCode"
-      />
+        class="analysis-section"
+      >
+        <summary>查看旧一日与二十日实验（原目标独立保留）</summary>
+        <Direction1dPanel :fund-code="basic.fundCode" />
+        <WatchlistPredictionCard :fund-code="basic.fundCode" />
+      </details>
+      <template v-if="section === 'prediction-history' && basic.fundCode === fundCode">
+        <MultiPredictionHistory :fund-code="basic.fundCode" />
+        <details class="analysis-section">
+          <summary>旧一日预测历史（原目标独立保留）</summary>
+          <Direction1dFundHistory :fund-code="basic.fundCode" />
+        </details>
+      </template>
 
       <section
         v-if="section === 'basic'"

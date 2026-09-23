@@ -1,0 +1,190 @@
+{
+  "checkedAt": "2026-09-22T11:37:51.630329+00:00",
+  "evidence": "REAL_LOCAL_HTTP_DATABASE",
+  "batch": {
+    "taskId": "72786647-382f-4b4e-aebf-96dd54769c09",
+    "status": "PARTIAL_SUCCESS",
+    "createdAt": "2026-09-22 11:37:51.664278+00:00",
+    "finishedAt": "2026-09-22 11:37:52.430382+00:00",
+    "plannedItems": 6,
+    "fundCount": 2,
+    "createdItems": 0,
+    "reusedItems": 3,
+    "failedItems": 3,
+    "cancelledItems": 0,
+    "pendingItems": 0,
+    "fallbackItems": 0,
+    "baselineItems": 3
+  },
+  "failures": [
+    {
+      "fundCode": "006476",
+      "horizonId": "M6_V1",
+      "code": "CALENDAR_POLICY_MISSING"
+    },
+    {
+      "fundCode": "006476",
+      "horizonId": "T20_V1",
+      "code": "CALENDAR_POLICY_MISSING"
+    },
+    {
+      "fundCode": "006476",
+      "horizonId": "T5_V1",
+      "code": "CALENDAR_POLICY_MISSING"
+    }
+  ],
+  "code": "006730",
+  "predictions": [
+    {
+      "predictionId": "89be204f-5bac-48df-b9f2-a3a600aa97e1",
+      "horizonId": "M6_V1",
+      "generatedAt": "2026-09-22T10:51:59.018156+00:00",
+      "startDate": "2026-09-23",
+      "endDate": null,
+      "nominalEndDate": "2027-03-23",
+      "modelId": "MP-cf4bd2c8ccdf61f6d448a7c005448597",
+      "modelHash": "cf4bd2c8ccdf61f6d448a7c005448597041b0585f9d5840ab17f77371c7abbef",
+      "activationRevision": 1,
+      "direction": "NON_UP"
+    },
+    {
+      "predictionId": "ea7f3c0f-4a62-47fb-8582-99376a83edaa",
+      "horizonId": "T20_V1",
+      "generatedAt": "2026-09-22T10:51:59.018156+00:00",
+      "startDate": "2026-09-23",
+      "endDate": "2026-10-29",
+      "nominalEndDate": null,
+      "modelId": "MP-c83bb2ba6f88e03347378e46d453a89b",
+      "modelHash": "c83bb2ba6f88e03347378e46d453a89b5d8ab7af68801225305f3f666ddcba0a",
+      "activationRevision": 1,
+      "direction": "UP"
+    },
+    {
+      "predictionId": "b0500e07-f4e7-4d19-9f19-22a565e7c94a",
+      "horizonId": "T5_V1",
+      "generatedAt": "2026-09-22T10:51:59.018156+00:00",
+      "startDate": "2026-09-23",
+      "endDate": "2026-10-08",
+      "nominalEndDate": null,
+      "modelId": "MP-1f9b94e1d4d31e3f46775c650a650448",
+      "modelHash": "1f9b94e1d4d31e3f46775c650a650448976df322a80be940346817eb91de903f",
+      "activationRevision": 1,
+      "direction": "UP"
+    }
+  ],
+  "historyCount": 3,
+  "decision": {
+    "reportId": "e4e76946-0cd8-4f5f-b6f4-223904cfad04",
+    "generationStatus": "SUCCEEDED",
+    "decision": "BUY",
+    "generatedAt": "2026-09-22T11:37:52.842174100Z",
+    "strategyVersion": "HOLDING_ADVICE_V2_EXPERIMENTAL",
+    "modelRefs": [
+      {
+        "modelId": "MP-cf4bd2c8ccdf61f6d448a7c005448597",
+        "dataAsOf": "2026-09-21",
+        "direction": "NON_UP",
+        "horizonId": "M6_V1",
+        "modelHash": "cf4bd2c8ccdf61f6d448a7c005448597041b0585f9d5840ab17f77371c7abbef",
+        "predictionId": "89be204f-5bac-48df-b9f2-a3a600aa97e1",
+        "activationRevision": 1
+      },
+      {
+        "modelId": "MP-c83bb2ba6f88e03347378e46d453a89b",
+        "dataAsOf": "2026-09-21",
+        "direction": "UP",
+        "horizonId": "T20_V1",
+        "modelHash": "c83bb2ba6f88e03347378e46d453a89b5d8ab7af68801225305f3f666ddcba0a",
+        "predictionId": "ea7f3c0f-4a62-47fb-8582-99376a83edaa",
+        "activationRevision": 1
+      },
+      {
+        "modelId": "MP-1f9b94e1d4d31e3f46775c650a650448",
+        "dataAsOf": "2026-09-21",
+        "direction": "UP",
+        "horizonId": "T5_V1",
+        "modelHash": "1f9b94e1d4d31e3f46775c650a650448976df322a80be940346817eb91de903f",
+        "predictionId": "b0500e07-f4e7-4d19-9f19-22a565e7c94a",
+        "activationRevision": 1
+      }
+    ]
+  },
+  "identityMatches": true,
+  "readbackReportMatches": true,
+  "strategy": {
+    "runId": "e763a279-2d53-4bf1-9aad-eba0ce697fcb",
+    "status": "SUCCEEDED",
+    "excessReturnVsHold": -0.3647970258139823,
+    "eventIncrement": 0.0,
+    "eventAdoptionDecision": "KEEP_NEUTRAL_FACTS：本批公告无方向规则，增量为零，保留事实不提高权重",
+    "strategyAdoptionDecision": "本开发区间未超过一直持有；保留失败结论和V2实验身份，不声称策略有效",
+    "comparisonProtocol": "STRATEGY_COMPARISON_V1：同基金/日历/初资/费用/到账，净收益主指标；回撤、换手和空仓期同时披露",
+    "resultHash": "e9edf64ee3139b6a59d509b07ca683d9dbbfe2aa5a38d08e3cd051c3d5fe8cc1",
+    "comparisons": {
+      "V2": {
+        "version": "POSITION_POLICY_V1_FEE_ASSUMPTION_V1",
+        "strategyVersion": "HOLDING_ADVICE_V2_EXPERIMENTAL",
+        "mode": "V2",
+        "initialCash": 10000.0,
+        "finalEquity": 11469.712714054835,
+        "netReturn": 0.1469712714054836,
+        "maxDrawdown": 0.2154426406497666,
+        "turnover": 14.081212918519588,
+        "tradeCount": 161,
+        "fees": 390.12429279962055,
+        "investedSessions": 268,
+        "cashOnlySessions": 100,
+        "assumption": "费用假设下回放：申购0.1%；持有不足7日赎回1.5%，7至29日0.5%，30日起0.1%；T+1可卖/T+2现金到账，不声称恢复真实渠道历史费率",
+        "executionNotes": []
+      },
+      "V1": {
+        "version": "POSITION_POLICY_V1_FEE_ASSUMPTION_V1",
+        "strategyVersion": "HOLDING_ADVICE_V2_EXPERIMENTAL",
+        "mode": "V1",
+        "initialCash": 10000.0,
+        "finalEquity": 11110.362188917896,
+        "netReturn": 0.1110362188917895,
+        "maxDrawdown": 0.11557665234095904,
+        "turnover": 12.531728918892044,
+        "tradeCount": 27,
+        "fees": 573.9213777731808,
+        "investedSessions": 227,
+        "cashOnlySessions": 141,
+        "assumption": "费用假设下回放：申购0.1%；持有不足7日赎回1.5%，7至29日0.5%，30日起0.1%；T+1可卖/T+2现金到账，不声称恢复真实渠道历史费率",
+        "executionNotes": []
+      },
+      "BUY_HOLD": {
+        "version": "POSITION_POLICY_V1_FEE_ASSUMPTION_V1",
+        "strategyVersion": "HOLDING_ADVICE_V2_EXPERIMENTAL",
+        "mode": "BUY_HOLD",
+        "initialCash": 10000.0,
+        "finalEquity": 15117.68297219466,
+        "netReturn": 0.5117682972194659,
+        "maxDrawdown": 0.14367595905616737,
+        "turnover": 1.0,
+        "tradeCount": 1,
+        "fees": 9.99000999000999,
+        "investedSessions": 368,
+        "cashOnlySessions": 0,
+        "assumption": "费用假设下回放：申购0.1%；持有不足7日赎回1.5%，7至29日0.5%，30日起0.1%；T+1可卖/T+2现金到账，不声称恢复真实渠道历史费率",
+        "executionNotes": []
+      },
+      "V2_WITHOUT_EVENTS": {
+        "version": "POSITION_POLICY_V1_FEE_ASSUMPTION_V1",
+        "strategyVersion": "HOLDING_ADVICE_V2_EXPERIMENTAL",
+        "mode": "V2_WITHOUT_EVENTS",
+        "initialCash": 10000.0,
+        "finalEquity": 11469.712714054835,
+        "netReturn": 0.1469712714054836,
+        "maxDrawdown": 0.2154426406497666,
+        "turnover": 14.081212918519588,
+        "tradeCount": 161,
+        "fees": 390.12429279962055,
+        "investedSessions": 268,
+        "cashOnlySessions": 100,
+        "assumption": "费用假设下回放：申购0.1%；持有不足7日赎回1.5%，7至29日0.5%，30日起0.1%；T+1可卖/T+2现金到账，不声称恢复真实渠道历史费率",
+        "executionNotes": []
+      }
+    }
+  }
+}

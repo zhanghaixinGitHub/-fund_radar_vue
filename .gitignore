@@ -6,3 +6,4 @@ dist/
 
 # 本地验证日志与截图不进入源码仓库。
 /.local-runs/
+/.env.local

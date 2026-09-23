@@ -1,0 +1,40 @@
+{
+  "checkedAt": "2026-09-22T12:47:53.067094+00:00",
+  "mode": "REAL_LOCAL_BACKUP_ISOLATED_RESTORE",
+  "databases": {
+    "fund_core": {
+      "dumpBytes": 2654417,
+      "sha256": "3cd15e35849814b2bd5728c9ced65b9cd1152edba80416b97f9344b396dad6d7",
+      "restoredRecords": 122,
+      "originalHashesMatch": true
+    },
+    "fund_ai": {
+      "dumpBytes": 22111562,
+      "sha256": "b27e61a625641b0ef080f73eb1bdb370076bf14add09a59cd4744e4a54dfc1b6",
+      "restoredRecords": 336,
+      "originalHashesMatch": true
+    }
+  },
+  "models": {
+    "count": 15,
+    "restoredHashesMatch": true,
+    "files": {
+      "MP-1f9b94e1d4d31e3f46775c650a650448.json": "bbea09d96b5c075b33d3c42cc62612c431ace2fb1089d2eadd3a4900661a188e",
+      "MP-262c4dbd9186bf5349830b44e491f32c.json": "2af7477bb19553ba43da09ee50f5926d598c52fda5f95dd0254b5c2006ad829c",
+      "MP-26605d8c87ae1bf3e51df00e249ca907.json": "4611e40feaf4637ac8f92714040621e44125d048f2756631d0eaafa030ee6fa9",
+      "MP-38c039ef746968faac5766e967e69e4b.json": "c071b90fd9e86e749969291324378336cd44190b0a6bca4734751cb8c819144a",
+      "MP-4afdc537867cc70521f730c26a1cccbc.json": "8302be4fb58e030fbb981c694da7830d437a8e66fb86e5d8cc7072895e4e46f2",
+      "MP-80bc347d4c9a4195489a094c95531075.json": "e8ce3b60bc7a1d80afdb2d19f2053603ec48aa2ef6b5f5d85e3bd4ec3b603529",
+      "MP-9e25104e799548bb0666e8cce3ee92e1.json": "4e315c86b4c7e30f8742e1d0603ade16690f9db8de8ea66a2832bfaea2787c58",
+      "MP-b34769d7e565581964c631d2e2131875.json": "7921c851999897ee4547ffb08b349e2dce69ef97390daca5996911e5bef1a569",
+      "MP-c83bb2ba6f88e03347378e46d453a89b.json": "653beca8ee4c74c4aafe0dc5b47cc5de4581b421dcb5ac0e29834390e9214877",
+      "MP-c86ed134ed008b021a9b1256b35f2cd3.json": "c4edd061c91b39f3e664b74147c6e97006b16fc57515c0f3a22424d14d3fb92a",
+      "MP-cf4bd2c8ccdf61f6d448a7c005448597.json": "ed62e8fb3dfc7a29c8cb61c5987470939e01598b7b3ef11b242ad6d5957512b0",
+      "MP-db46762f243616434a7f63d971ab351c.json": "e6927521dd79f70803a0f985706b1eb8ff403d383763a2a5aa300b1a77b493b4",
+      "MP-ea5e7a6509d71bb0a6a4bb92962f1ead.json": "d36378dfcb90d6e8b87c8e7abbef7eab548f076ef53dd0f1c48b291f54428092",
+      "MP-eb1bb411f8199165eb4e123510c1238a.json": "efe520db0c24f1e3ceb53622606dce8fa891d7468c991502db6bd1c6f822de77",
+      "MP-f5680f525c459fafc217dd5bd6c31409.json": "00ba7d87580af42187f45575ae8f75cac87278cca575098ffdfcc090d651a86a"
+    }
+  },
+  "temporaryDatabasesRemoved": true
+}

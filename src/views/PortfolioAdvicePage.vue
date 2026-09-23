@@ -6,8 +6,11 @@ import {
   getAdviceHistory, getAdviceReport, revokeHoldingRule,
 } from '@/api/advice'
 import { getSimOverview } from '@/api/simulation'
+import { getWatchlist } from '@/api/watchlist'
+import type { WatchlistItem } from '@/types/watchlist'
 import { usePageNavigation } from '@/composables/usePageNavigation'
 import { useAuthStore } from '@/stores/auth'
+import DecisionPanelV2 from '@/components/DecisionPanelV2.vue'
 import type { AdviceDetail, AdviceHistory, DiagnosisHistory, HoldingRulesView, RuleDraftTier, RuleDraftView } from '@/types/advice'
 import type { SimPosition } from '@/types/simulation'
 import {
@@ -22,30 +25,34 @@ const router = useRouter()
 const auth = useAuthStore()
 const { section } = usePageNavigation()
 const code = computed(() => String(route.query.fund ?? ''))
-/** 持仓列表用于校验「只能分析当前持仓的基金」；列表读取失败时只影响搜索，不拦截已有 fund 的展示。 */
+/** 当前持仓、已清仓记录和本人关注共同作为综合建议入口；最终范围仍由服务端验证。 */
 const positions = ref<SimPosition[]>([])
+const follows = ref<WatchlistItem[]>([])
+const candidates = computed(() => [...positions.value, ...follows.value.filter(f => !positions.value.some(p => p.fundCode === f.fundCode))])
 const positionsLoaded = ref(false)
 const positionsError = ref(false)
-const positionsReady = getSimOverview()
-  .then((overview) => { positions.value = overview.positions })
+const positionsReady = Promise.all([getSimOverview(), getWatchlist({pageSize:50, ...(code.value ? {keyword:code.value} : {})})])
+  .then(([overview, watchlist]) => { positions.value = overview.positions; follows.value = watchlist.items })
   .catch(() => { positionsError.value = true })
   .finally(() => { positionsLoaded.value = true })
 const fundInvalid = computed(() => !!code.value && positionsLoaded.value && !positionsError.value
-  && !positions.value.some((item) => item.fundCode === code.value))
+  && !candidates.value.some((item) => item.fundCode === code.value))
 const keyword = ref('')
 const searchError = ref('')
-function search() {
+async function search() {
   searchError.value = ''
   const value = keyword.value.trim()
   if (!value) return
   if (positionsError.value) { searchError.value = '持仓列表暂时无法读取，请稍后重试。'; return }
-  const byCode = positions.value.find((item) => item.fundCode === value)
+  try { const result = await getWatchlist({keyword:value,pageSize:50}); follows.value = result.items }
+  catch { searchError.value = '关注范围暂时无法读取，请重试。'; return }
+  const byCode = candidates.value.find((item) => item.fundCode === value)
   if (byCode) { selectFund(byCode.fundCode); return }
-  const byName = positions.value.filter((item) => item.fundName.includes(value))
+  const byName = candidates.value.filter((item) => item.fundName.includes(value))
   if (byName.length === 1 && byName[0]) { selectFund(byName[0].fundCode); return }
   searchError.value = byName.length > 1
     ? `找到 ${byName.length} 只名称包含「${value}」的持仓基金，请输入基金代码精确选择。`
-    : '该基金不在你的持仓中，持仓分析仅支持当前持有的基金。'
+    : '该基金不在本人持仓、已清仓记录或当前关注中。'
 }
 /** 切换基金时保留当前分区，丢弃上一份报告的分页、日期与报告定位参数；搜索框保留用户输入。 */
 let selectingViaSearch = false
@@ -56,7 +63,7 @@ function selectFund(fundCode: string) {
 // 搜索选中的基金保留用户输入；从持仓卡片等入口带基金进入时，搜索框显示当前基金名称。
 watch([code, positionsLoaded], () => {
   if (selectingViaSearch) { selectingViaSearch = false; return }
-  const current = positions.value.find((item) => item.fundCode === code.value)
+  const current = candidates.value.find((item) => item.fundCode === code.value)
   keyword.value = current ? current.fundName : ''
 })
 const history = ref<AdviceHistory | null>(null)
@@ -73,6 +80,8 @@ const end = ref('')
 const page = computed(() => Math.max(1, Math.min(10000, Number(route.query.page) || 1)))
 const reportId = computed(() => typeof route.query.report === 'string' ? route.query.report : '')
 const showReport = computed(() => section.value === 'latest' || !!reportId.value)
+/** 新版历史独立读取；旧版接口的空记录或异常只显示在旧版区域，避免误报新版失败。 */
+const viewingLegacyHistory = computed(() => ['history', 'review'].includes(section.value) && !reportId.value)
 const canGenerate = computed(() => auth.hasPermission('SIM_PORTFOLIO_SELF_WRITE'))
 const stats = computed(() => history.value?.stats)
 /** 逐项明细按固定顺序展示，不依赖接口返回顺序；证据为空时如实提示而不是留空。 */
@@ -181,7 +190,7 @@ async function load() {
   start.value = typeof route.query.start === 'string' ? route.query.start : ''
   end.value = typeof route.query.end === 'string' ? route.query.end : ''
   if (!fund) { loading.value = false; return }
-  // 先等持仓列表就绪：未持仓的基金不请求任何分析数据，页面只显示提示。
+  // 先确认本人持仓或关注范围；未持仓但已关注的基金继续进入V2分析。
   await positionsReady
   if (!alive || current !== generation) return
   if (fundInvalid.value) { loading.value = false; return }
@@ -201,6 +210,7 @@ async function load() {
       rulePosition.value = overview.positions.find(item => item.fundCode === fund) ?? null
       return
     }
+    if (section.value === 'latest') return // V2组件独立读取，旧建议只在旧历史页面查询。
     const result = await getAdviceHistory(fund, section.value === 'latest' ? 1 : page.value,
       section.value === 'latest' ? '' : start.value, section.value === 'latest' ? '' : end.value)
     if (!alive || current !== generation) return
@@ -276,7 +286,7 @@ onBeforeUnmount(() => { alive = false; generation++ })
           {{ code ? `${history?.fundName || code} · 持仓建议` : '持仓分析' }}
         </h1>
         <p class="sim-muted">
-          {{ code ? `${code} · 每天保存当时的建议与依据，日后对照实际表现回看。` : '搜索并选择一只持仓基金，查看它的建议、诊断、规则与回看。' }}
+          {{ code ? `${code} · 每天保存当时的建议与依据，日后对照实际表现回看。` : '搜索并选择一只持仓或关注基金，查看它的建议、诊断、规则与回看。' }}
         </p>
       </div>
       <div
@@ -292,7 +302,7 @@ onBeforeUnmount(() => { alive = false; generation++ })
           刷新记录
         </button>
         <button
-          v-if="canGenerate && section === 'latest'"
+          v-if="canGenerate && section === 'legacy'"
           class="primary-button"
           type="button"
           :disabled="loading || generating"
@@ -306,19 +316,19 @@ onBeforeUnmount(() => { alive = false; generation++ })
       v-if="!code"
       class="sim-empty"
     >
-      <strong>请选择一只持仓基金</strong>
-      <p>在上方输入基金代码或名称并查询；持仓分析仅支持当前持有的基金。</p>
+      <strong>请选择本人持仓或关注的基金</strong>
+      <p>在上方输入基金代码或名称；已清仓或仅关注的基金也能获得买入/不建议买入判断。</p>
     </div>
     <div
       v-else-if="fundInvalid"
       class="sim-empty"
     >
-      <strong>该基金不在你的持仓中</strong>
-      <p>持仓分析仅支持当前持有的基金，请在上方重新搜索。</p>
+      <strong>该基金不在本人的持仓或关注中</strong>
+      <p>请在上方选择本人的持仓或关注基金。</p>
     </div>
     <template v-else>
       <p
-        v-if="error"
+        v-if="error && !viewingLegacyHistory"
         class="error-message"
         role="alert"
       >
@@ -353,7 +363,11 @@ onBeforeUnmount(() => { alive = false; generation++ })
         正在读取已保存的建议记录…
       </p>
 
-      <template v-if="section === 'diagnosis'">
+      <DecisionPanelV2
+        v-if="section === 'latest'"
+        :fund-code="code"
+      />
+      <template v-else-if="section === 'diagnosis'">
         <template v-if="diagnosis && !loading">
           <template v-if="diagnosis.latest">
             <p
@@ -788,6 +802,21 @@ onBeforeUnmount(() => { alive = false; generation++ })
       </template>
 
       <template v-else-if="!showReport">
+        <DecisionPanelV2
+          :fund-code="code"
+          history-only
+        />
+        <h2>旧版二十日建议历史（V1）</h2>
+        <p class="sim-muted">
+          以下日期筛选和统计只针对旧版报告，不计入新综合策略的效果。
+        </p>
+        <p
+          v-if="error"
+          class="notice-banner"
+          role="status"
+        >
+          旧版记录：{{ error }}
+        </p>
         <form
           class="advice-filter"
           @submit.prevent="filter"
