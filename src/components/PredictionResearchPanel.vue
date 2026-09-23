@@ -2,6 +2,7 @@
 import { computed, nextTick, ref } from 'vue'
 import { get, post } from '@/api/http'
 import { shanghaiDate, simMoney } from '@/utils/simulation'
+import { sortPredictionHorizons } from '@/utils/predictionHorizon'
 
 interface Metric {
   /** 来自研究账本的本金和期末资产，不能把收益率当金额，也不能再重复扣手续费。 */
@@ -48,6 +49,7 @@ const result = ref<Replay | null>(null), submitted = ref<Scope | null>(null), re
 const calculationScope = ref<Scope | null>(null)
 const research = ref<Research | null>(null), researchId = ref(''), researchEnd = ref('2025-12-31'), researchError = ref(''), researchBusy = ref(false)
 const busy = computed(() => replayBusy.value || researchBusy.value)
+const researchHorizons = computed(() => sortPredictionHorizons(Object.entries(research.value?.result?.horizons ?? {}), ([horizon]) => horizon))
 const horizons: Record<string, string> = { T5_V1: '五日预测', T20_V1: '二十日预测', M6_V1: '半年预测' }
 const researchStates: Record<string, string> = { PENDING: '等待开始', QUEUED: '等待开始', RUNNING: '正在比较', SUCCEEDED: '比较完成', FAILED: '比较失败', CANCELLED: '已取消', CANCEL_REQUESTED: '正在取消', PARTIAL: '部分完成' }
 const selectionLabels: Record<string, string> = { KEEP_CURRENT: '保留原方法', ACTIVATE: '新方法胜出', NO_ELIGIBLE_MODEL: '没有完成比较的可用方法' }
@@ -435,7 +437,7 @@ async function readResearch(action?: 'cancel' | 'resume') {
         <template v-if="model.modelRefs?.length">
           <h4>{{ model.label }}</h4>
           <p
-            v-for="modelRef in model.modelRefs"
+            v-for="modelRef in sortPredictionHorizons(model.modelRefs, modelRef => modelRef.horizonId)"
             :key="modelRef.horizonId"
           >
             {{ horizons[modelRef.horizonId] ?? modelRef.horizonId }} · 模型 <code>{{ modelRef.modelId }}</code> · 指纹 <code>{{ modelRef.modelHash }}</code>
@@ -495,7 +497,7 @@ async function readResearch(action?: 'cancel' | 'resume') {
           计算需要一些时间，可点击“刷新比较进度”查看最新结果。
         </p>
         <article
-          v-for="(item, horizon) in research.result?.horizons"
+          v-for="[horizon, item] in researchHorizons"
           :key="horizon"
           class="horizon-result"
         >

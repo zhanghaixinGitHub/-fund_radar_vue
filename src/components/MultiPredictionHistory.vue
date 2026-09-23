@@ -1,11 +1,16 @@
 <script setup lang="ts">
-import { ref, watch, onBeforeUnmount } from 'vue'
+import { computed, ref, watch, onBeforeUnmount } from 'vue'
 import { get } from '@/api/http'
 import type { MultiPrediction } from '@/types/multiPrediction'
 import { directionLabel, directionVersion, flatRange } from '@/utils/predictionDirection'
+import { comparePredictionHorizons } from '@/utils/predictionHorizon'
 const props = defineProps<{fundCode:string}>()
 interface Row { payload: MultiPrediction; resolution?: {endDate:string}; outcomeCheck?: {details:{summary?:string}}; outcomes: { correct:boolean; checkedAt:string; totalReturn:string; actualDirection:string }[] | null }
 const rows=ref<Row[]>([]),error=ref(''),busy=ref(false),hasMore=ref(false)
+// 历史仍按预测起始日由新到旧，同一期内周期由短到长；分页游标继续使用未排序的原始 rows。
+const sortedRows = computed(() => [...rows.value].sort((left, right) =>
+  right.payload.startDate.localeCompare(left.payload.startDate)
+  || comparePredictionHorizons(left.payload.horizonId, right.payload.horizonId)))
 let request=0
 async function load(more=false) {
   const current=++request;busy.value=true;error.value=''
@@ -47,7 +52,7 @@ const labels:Record<string,string>={T5_V1:'五日',T20_V1:'二十日',M6_V1:'半
       尚无已保存的真实预测
     </p>
     <article
-      v-for="row in rows"
+      v-for="row in sortedRows"
       :key="row.payload.predictionId"
       class="prediction-history-row"
     >

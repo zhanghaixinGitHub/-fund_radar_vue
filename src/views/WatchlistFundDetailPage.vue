@@ -281,7 +281,12 @@ watch(selectedNavRange, () => {
         </div>
       </section>
 
-      <!-- 预测仅在模型分析中展示，资料概览不重复加载；一日预测在前，二十日预测在后。 -->
+      <!-- 模型分析按一日、五日、二十日、半年展示；一日沿用独立接口和原始预测口径。 -->
+      <Direction1dPanel
+        v-if="section === 'research' && basic.fundCode === fundCode"
+        :key="`daily-${basic.fundCode}`"
+        :fund-code="basic.fundCode"
+      />
       <MultiPredictionPanel
         v-if="section === 'research' && basic.fundCode === fundCode"
         :key="`multi-${basic.fundCode}`"
@@ -291,8 +296,7 @@ watch(selectedNavRange, () => {
         v-if="section === 'research' && basic.fundCode === fundCode"
         class="analysis-section"
       >
-        <summary>查看旧一日与二十日实验（旧版二分类，原目标独立保留）</summary>
-        <Direction1dPanel :fund-code="basic.fundCode" />
+        <summary>查看旧二十日实验（旧版二分类，原目标独立保留）</summary>
         <WatchlistPredictionCard :fund-code="basic.fundCode" />
       </details>
       <template v-if="section === 'prediction-history' && basic.fundCode === fundCode">

@@ -4,6 +4,7 @@ import { generateMultiPrediction, readMultiPrediction, readPredictionTask, readL
 import type { MultiCurrent, PredictionTask } from '@/types/multiPrediction'
 import { useAuthStore } from '@/stores/auth'
 import { directionLabel, flatRange } from '@/utils/predictionDirection'
+import { comparePredictionHorizons, sortPredictionHorizons } from '@/utils/predictionHorizon'
 const props = defineProps<{ fundCode: string }>()
 const auth = useAuthStore()
 const current = ref<MultiCurrent | null>(null), task = ref<PredictionTask | null>(null)
@@ -11,12 +12,13 @@ const busy = ref(false), error = ref('')
 const filterFund = ref(''), filterHorizon = ref(''), filterError = ref('')
 const filteredItems = computed(() => task.value?.items.filter(item => item.fundCode.includes(filterFund.value) &&
   (!filterHorizon.value || item.horizonId === filterHorizon.value) &&
-  (!filterError.value || (item.result?.error?.code ?? '').includes(filterError.value.toUpperCase()))) ?? [])
+  (!filterError.value || (item.result?.error?.code ?? '').includes(filterError.value.toUpperCase())))
+  .sort((left, right) => left.fundCode.localeCompare(right.fundCode) || comparePredictionHorizons(left.horizonId, right.horizonId)) ?? [])
 let sequence = 0, timer: ReturnType<typeof globalThis.setTimeout> | undefined
-const cards = computed(() => current.value?.horizons.map(h => ({ ...h,
+const cards = computed(() => sortPredictionHorizons(current.value?.horizons, h => h.horizon_id).map(h => ({ ...h,
   prediction: current.value?.predictions.find(p => p.horizonId === h.horizon_id),
   attempt: current.value?.latestAttempts.find(a => a.horizon_id === h.horizon_id),
-})) ?? [])
+})))
 const time = (value: string) => new Date(value).toLocaleString('zh-CN', { hour12: false })
 async function load() {
   const run = ++sequence

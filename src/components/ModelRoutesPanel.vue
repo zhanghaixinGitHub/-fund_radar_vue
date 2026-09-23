@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { get } from '@/api/http'
 import { simTime } from '@/utils/simulation'
+import { sortPredictionHorizons } from '@/utils/predictionHorizon'
 
 interface Model {
   model_id: string
@@ -29,10 +30,10 @@ interface ModelStatus { models: Model[]; routes: Route[]; activeRouteKeys: strin
 const value = ref<ModelStatus | null>(null)
 const error = ref('')
 const loading = ref(false)
-const horizons: Record<string, { label: string; description: string; order: number }> = {
-  T5_V1: { label: '五日预测', description: '判断未来五个交易日的整体方向', order: 0 },
-  T20_V1: { label: '二十日预测', description: '判断未来二十个交易日的整体方向', order: 1 },
-  M6_V1: { label: '半年预测', description: '判断未来六个自然月的整体方向', order: 2 },
+const horizons: Record<string, { label: string; description: string }> = {
+  T5_V1: { label: '五日预测', description: '判断未来五个交易日的整体方向' },
+  T20_V1: { label: '二十日预测', description: '判断未来二十个交易日的整体方向' },
+  M6_V1: { label: '半年预测', description: '判断未来六个自然月的整体方向' },
 }
 const recipes: Record<string, { name: string; explanation: string }> = {
   NAV_MOMENTUM_THREE_STATE_V2: { name: '近期走势法（三分类）', explanation: '按近期净值的整体变化，分别判断上涨、持平或下跌；小幅波动归为持平。' },
@@ -51,9 +52,8 @@ const time = (date: string | null | undefined) => date && !Number.isNaN(Date.par
 const count = (id: string) => model(id)?.live_calls == null ? '暂缺统计' : `${model(id)!.live_calls.toLocaleString('zh-CN')} 条`
 const comparedIds = (route: Route) => route.shadow_ids.filter(id => id !== route.model_id)
 const modelIds = (route: Route) => [...new Set([route.model_id, ...route.shadow_ids])]
-const routes = computed(() => [...(value.value?.routes ?? [])].filter(route => value.value?.activeRouteKeys.includes(route.route_key)).sort((a, b) =>
-  (horizons[horizonId(a)]?.order ?? 99) - (horizons[horizonId(b)]?.order ?? 99)))
-const legacyRoutes = computed(() => (value.value?.routes ?? []).filter(route => !value.value?.activeRouteKeys.includes(route.route_key)))
+const routes = computed(() => sortPredictionHorizons((value.value?.routes ?? []).filter(route => value.value?.activeRouteKeys.includes(route.route_key)), horizonId))
+const legacyRoutes = computed(() => sortPredictionHorizons((value.value?.routes ?? []).filter(route => !value.value?.activeRouteKeys.includes(route.route_key)), horizonId))
 
 /** 只用与当前主模型、当前候选都匹配的冻结比较证据，避免拿旧候选成绩解释新版本。 */
 function latestComparison(route: Route) {

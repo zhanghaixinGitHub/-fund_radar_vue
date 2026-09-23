@@ -1,15 +1,21 @@
 <script setup lang="ts">
-import { onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { generateDecision, readDecision, readDecisionHistory, readDecisionOutcomes, readStrategyPreference, saveStrategyPreference } from '@/api/multiPrediction'
 import type { DecisionOutcome } from '@/api/multiPrediction'
 import type { DecisionReport } from '@/types/multiPrediction'
 import { useAuthStore } from '@/stores/auth'
+import { sortPredictionEvidence, sortPredictionHorizons } from '@/utils/predictionHorizon'
 const props = defineProps<{ fundCode: string; compact?: boolean; historyOnly?: boolean; initialReport?: DecisionReport | null }>()
 const auth = useAuthStore()
 const report = ref<DecisionReport | null>(null), history = ref<DecisionReport[]>([])
 const error = ref(''), busy = ref(false), preference = ref('BALANCED'), isDefault = ref(true)
 const page = ref(1), outcomes = ref<Record<string, DecisionOutcome>>({}), outcomeError = ref('')
 const historyVersion = ref('HOLDING_ADVICE_V3_THREE_STATE')
+// 保留摘要原有的每类最多两条依据，合并后统一排序，避免涨跌分类打乱周期顺序。
+const summaryEvidence = computed(() => sortPredictionEvidence([
+  ...(report.value?.supportingEvidence.slice(0, 2) ?? []),
+  ...(report.value?.opposingEvidence.slice(0, 2) ?? []),
+]))
 let sequence = 0
 const labels: Record<string, string> = { BUY: '建议买入', AVOID: '不建议买入', ADD: '建议加仓', HOLD: '继续持有', REDUCE: '建议减仓', SELL: '建议卖出' }
 const time = (value: string) => new Date(value).toLocaleString('zh-CN', { hour12: false })
@@ -79,12 +85,7 @@ onBeforeUnmount(() => { ++sequence })
       </p>
       <ul v-if="!compact">
         <li
-          v-for="reason in report.supportingEvidence.slice(0, 2)"
-          :key="reason"
-        >
-          {{ reason }}
-        </li><li
-          v-for="reason in report.opposingEvidence.slice(0, 2)"
+          v-for="reason in summaryEvidence"
           :key="reason"
         >
           {{ reason }}
@@ -99,7 +100,7 @@ onBeforeUnmount(() => { ++sequence })
           本次没有单独记录的中性因子
         </p><ul>
           <li
-            v-for="item in report.neutralEvidence"
+            v-for="item in sortPredictionEvidence(report.neutralEvidence)"
             :key="item"
           >
             {{ item }}
@@ -109,7 +110,7 @@ onBeforeUnmount(() => { ++sequence })
           本次没有正向因子
         </p><ul>
           <li
-            v-for="item in report.supportingEvidence"
+            v-for="item in sortPredictionEvidence(report.supportingEvidence)"
             :key="item"
           >
             {{ item }}
@@ -119,7 +120,7 @@ onBeforeUnmount(() => { ++sequence })
           本次没有已计算的负向因子，不代表不存在风险
         </p><ul>
           <li
-            v-for="item in report.opposingEvidence"
+            v-for="item in sortPredictionEvidence(report.opposingEvidence)"
             :key="item"
           >
             {{ item }}
@@ -151,7 +152,7 @@ onBeforeUnmount(() => { ++sequence })
         </ul>
         <p>策略：{{ report.strategyVersion }}；报告：{{ report.reportId }}</p>
         <p
-          v-for="model in report.modelRefs"
+          v-for="model in sortPredictionHorizons(report.modelRefs, model => model.horizonId)"
           :key="model.predictionId"
         >
           {{ model.horizonId }} · 实际模型 {{ model.modelId }} · 采用版本 {{ model.activationRevision }} · {{ model.modelHash }}
@@ -204,12 +205,12 @@ onBeforeUnmount(() => { ++sequence })
         <strong>{{ labels[item.decision ?? ''] ?? '生成失败' }}</strong> · {{ time(item.generatedAt) }}<p>{{ item.summary }}</p><small>{{ item.strategyVersion }} · {{ item.reportId }}</small>
         <details>
           <summary>当时依据与预测到期结果</summary><p
-            v-for="reason in [...item.supportingEvidence,...(item.neutralEvidence ?? []),...item.opposingEvidence]"
+            v-for="reason in sortPredictionEvidence([...item.supportingEvidence,...(item.neutralEvidence ?? []),...item.opposingEvidence])"
             :key="reason"
           >
             {{ reason }}
           </p><div
-            v-for="reference in item.modelRefs"
+            v-for="reference in sortPredictionHorizons(item.modelRefs, reference => reference.horizonId)"
             :key="reference.predictionId"
           >
             <p>{{ reference.horizonId }} · {{ reference.modelId }} · 采用版本 {{ reference.activationRevision }}</p><p v-if="!outcomes[reference.predictionId]?.outcomes?.length">

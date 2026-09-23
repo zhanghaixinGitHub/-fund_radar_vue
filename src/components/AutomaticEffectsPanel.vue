@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { readAdviceEffects, readPredictionEffects } from '@/api/automaticPrediction'
 import type { AdviceEffects, PredictionEffects } from '@/api/automaticPrediction'
 import { shanghaiDate } from '@/utils/simulation'
 import { directionVersion, THREE_STATE_TARGET } from '@/utils/predictionDirection'
+import { sortPredictionHorizons } from '@/utils/predictionHorizon'
 const props = defineProps<{ fundCode: string }>()
 const today = shanghaiDate(), start = ref(`${today.slice(0, 4)}-01-01`), end = ref(today)
 const effects = ref<PredictionEffects | null>(null), ledger = ref<AdviceEffects | null>(null)
+const sortedHorizons = computed(() => sortPredictionHorizons(effects.value?.horizons, item => item.horizon_id))
 const error = ref(''), ledgerError = ref(''), busy = ref(false)
 const labels: Record<string, string> = { T5_V1: '五个交易日', T20_V1: '二十个交易日', M6_V1: '六个月' }
 const pct = (value: number) => `${(value * 100).toFixed(2)}%`
@@ -44,7 +46,7 @@ onBeforeUnmount(() => { ++sequence })
       <p>{{ effects.note }}</p>
       <div class="effect-grid">
         <article
-          v-for="item in effects.horizons"
+          v-for="item in sortedHorizons"
           :key="`${item.horizon_id}:${item.target_definition_id}:${item.direction_policy_hash}`"
         >
           <h3>{{ labels[item.horizon_id] ?? item.horizon_id }}</h3>
