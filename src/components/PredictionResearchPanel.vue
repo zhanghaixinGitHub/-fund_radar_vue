@@ -15,12 +15,17 @@ interface Metric {
   assumption: string
 }
 interface Scope { fundCode: string; startDate: string; endDate: string }
+interface ComparisonModel {
+  label: string
+  role: 'CURRENT' | 'CANDIDATE' | 'BENCHMARK'
+  modelRefs?: { horizonId: string; modelId: string; modelHash: string; labelEndMax: string | null }[]
+}
 interface Replay {
   runId: string
   status: string
   comparisons?: Record<string, Metric>
-  strategyAdoptionDecision?: string
-  eventAdoptionDecision?: string
+  comparisonModels?: Record<string, ComparisonModel>
+  excludedModels?: { label: string; reason: string }[]
   errorMessage?: string
   inputSnapshot?: Partial<Scope> & { inputHash: string; failures: unknown[] }
 }
@@ -32,14 +37,17 @@ interface Research {
     models: { modelId: string; metrics: { primaryScore: number | null; coverage: number } }[]
   }> }
 }
-const code = ref('006730'), start = ref('2024-07-01'), end = ref('2025-12-31')
-const latestDate = ref(shanghaiDate(-1))
+// 日期选择以北京时间为准：默认查看今年以来，原生日期框的“今天”始终允许选择。
+const latestDate = ref(shanghaiDate())
+const code = ref('006730'), start = ref(`${latestDate.value.slice(0, 4)}-01-01`), end = ref(latestDate.value)
+const latestCompleteDate = computed(() => new Date(Date.parse(latestDate.value) - 86400000).toISOString().slice(0, 10))
+const usingToday = computed(() => end.value === latestDate.value)
 const codeInput = ref<{ focus: () => void } | null>(null), startInput = ref<{ focus: () => void } | null>(null), endInput = ref<{ focus: () => void } | null>(null)
 const fieldErrors = ref({ code: '', start: '', end: '' })
 const result = ref<Replay | null>(null), submitted = ref<Scope | null>(null), replayError = ref(''), replayBusy = ref(false)
+const calculationScope = ref<Scope | null>(null)
 const research = ref<Research | null>(null), researchId = ref(''), researchEnd = ref('2025-12-31'), researchError = ref(''), researchBusy = ref(false)
 const busy = computed(() => replayBusy.value || researchBusy.value)
-const labels: Record<string, string> = { V2: '按当前策略买卖', V1: '按旧规则买卖', BUY_HOLD: '买入后一直持有', V2_WITHOUT_EVENTS: '当前策略不考虑公告' }
 const horizons: Record<string, string> = { T5_V1: '五日预测', T20_V1: '二十日预测', M6_V1: '半年预测' }
 const researchStates: Record<string, string> = { PENDING: '等待开始', QUEUED: '等待开始', RUNNING: '正在比较', SUCCEEDED: '比较完成', FAILED: '比较失败', CANCELLED: '已取消', CANCEL_REQUESTED: '正在取消', PARTIAL: '部分完成' }
 const selectionLabels: Record<string, string> = { KEEP_CURRENT: '保留原方法', ACTIVATE: '新方法胜出', NO_ELIGIBLE_MODEL: '没有完成比较的可用方法' }
@@ -48,29 +56,34 @@ const money = (value: number | string | undefined) => value == null || !Number.i
 const dateLabel = (value: string | undefined) => value?.replaceAll('-', '/') ?? '未提供'
 const validDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value
 // 优先使用服务端保存的范围；发请求前的副本用于失败提示，绝不把随后编辑的输入套到旧结果上。
-const resultScope = computed(() => ({ ...submitted.value, ...result.value?.inputSnapshot }))
+const resultScope = computed(() => ({ ...calculationScope.value, ...result.value?.inputSnapshot }))
 const inputChanged = computed(() => submitted.value && (code.value.trim() !== submitted.value.fundCode || start.value !== submitted.value.startDate || end.value !== submitted.value.endDate))
-const comparisons = computed(() => result.value?.status === 'SUCCEEDED' ? result.value.comparisons : undefined)
-const strategy = computed(() => comparisons.value?.V2)
+// 旧回执仍可读，但旧动作规则和去公告对照不再作为用户要比较的模型展示。
+const comparisons = computed(() => {
+  if (result.value?.status !== 'SUCCEEDED' || !result.value.comparisons) return undefined
+  return Object.fromEntries(Object.entries(result.value.comparisons).filter(([id]) => id === 'BUY_HOLD'
+    || (id.startsWith('MODEL_') && ['CURRENT', 'CANDIDATE'].includes(result.value?.comparisonModels?.[id]?.role ?? ''))
+    || (id === 'V2' && !result.value.comparisonModels)))
+})
+const labelFor = (id: string) => id === 'BUY_HOLD' ? '买入后一直持有'
+  : result.value?.comparisonModels?.[id]?.label ?? (id === 'V2' ? '净值趋势基础模型（旧回放）' : '模型名称未提供')
+const modelEntries = computed(() => Object.entries(comparisons.value ?? {}).filter(([id]) => id !== 'BUY_HOLD'))
+// 这里只描述本区间的结果，不据此切换正在使用的模型，也不把局部最高称为全局最优。
+const leadingModel = computed(() => [...modelEntries.value].sort((a, b) => Number(b[1].finalEquity) - Number(a[1].finalEquity))[0])
+const strategy = computed(() => leadingModel.value?.[1])
 const holding = computed(() => comparisons.value?.BUY_HOLD)
 const difference = computed(() => strategy.value && holding.value ? Number(strategy.value.finalEquity) - Number(holding.value.finalEquity) : NaN)
 const headline = computed(() => {
-  if (!Number.isFinite(difference.value)) return '本次模拟已完成，详细结果见下方'
-  if (Math.abs(difference.value) < 0.005) return '这次模拟，两种方式最后的钱一样多'
-  return `这次模拟，按策略买卖比一直持有${difference.value > 0 ? '多' : '少'}了 ${money(Math.abs(difference.value))}`
+  if (!leadingModel.value || !Number.isFinite(difference.value)) return '本次只有一直持有的结果，模型未完成比较'
+  const label = labelFor(leadingModel.value[0])
+  if (Math.abs(difference.value) < 0.005) return `这次模拟，${label}与一直持有最后的钱一样多`
+  return `这次模拟，${label}比一直持有${difference.value > 0 ? '多' : '少'}了 ${money(Math.abs(difference.value))}`
 })
 const drawdownConclusion = computed(() => {
   if (!strategy.value || !holding.value) return ''
   const difference = strategy.value.maxDrawdown - holding.value.maxDrawdown
-  if (Math.abs(difference) < 0.00005) return '两种方式中途从最高点往下跌的最大幅度相同。'
-  return `按策略买卖，中途从最高点往下跌的最大幅度${difference > 0 ? '更大' : '更小'}：${percent(strategy.value.maxDrawdown)}，一直持有为 ${percent(holding.value.maxDrawdown)}。`
-})
-const announcementConclusion = computed(() => {
-  const without = comparisons.value?.V2_WITHOUT_EVENTS
-  if (!strategy.value || !without) return '这次没有完整的公告对照结果。'
-  const difference = strategy.value.netReturn - without.netReturn
-  if (Math.abs(difference) < 0.00000001) return '这次加入公告后，最终收益没有变化。'
-  return `这次加入公告后，收益率${difference > 0 ? '提高' : '降低'}了 ${Math.abs(difference * 100).toFixed(2)} 个百分点。`
+  if (Math.abs(difference) < 0.00005) return '该模型与一直持有的最大回撤相同。'
+  return `该模型的最大回撤${difference > 0 ? '更大' : '更小'}：${percent(strategy.value.maxDrawdown)}，一直持有为 ${percent(holding.value.maxDrawdown)}。`
 })
 function gainText(metric: Metric) {
   const gain = Number(metric.finalEquity) - Number(metric.initialCash)
@@ -78,21 +91,30 @@ function gainText(metric: Metric) {
   return Math.abs(gain) < 0.005 ? '与起始本金相同' : `${gain > 0 ? '赚了' : '亏了'} ${money(Math.abs(gain))}`
 }
 
+function refreshDateLimit() {
+  // 页面跨午夜停留后，重新打开日历也能点击新一天的“今天”。
+  latestDate.value = shanghaiDate()
+}
+
 async function replay() {
   if (busy.value) return
   // 包括前端校验失败在内，每次重新尝试都清除旧结果，避免把上一次成功误认为本次成功。
   result.value = null
   submitted.value = null
+  calculationScope.value = null
   replayError.value = ''
-  latestDate.value = shanghaiDate(-1)
+  refreshDateLimit()
   fieldErrors.value = { code: '', start: '', end: '' }
   const request = { fundCode: code.value.trim(), startDate: start.value, endDate: end.value }
   if (!/^\d{6}$/.test(request.fundCode)) fieldErrors.value.code = '请输入一只基金的6位代码，例如006730。'
   if (!validDate(request.startDate)) fieldErrors.value.start = '请选择有效的开始日期。'
   if (!validDate(request.endDate)) fieldErrors.value.end = '请选择有效的结束日期。'
-  else if (request.endDate > latestDate.value) fieldErrors.value.end = `结束日期必须早于今天，请选 ${dateLabel(latestDate.value)} 或更早。`
+  else if (request.endDate > latestDate.value) fieldErrors.value.end = `结束日期不能晚于今天，请选 ${dateLabel(latestDate.value)} 或更早。`
+  // “到今天”为界面选择，后台只接收已经结束的历史区间；保留原选择用于识别后续编辑。
+  const replayEnd = request.endDate === latestDate.value ? latestCompleteDate.value : request.endDate
   if (!fieldErrors.value.start && !fieldErrors.value.end) {
     if (request.startDate >= request.endDate) fieldErrors.value.start = '开始日期必须早于结束日期。'
+    else if (request.startDate >= replayEnd) fieldErrors.value.start = '选择今天作为结束日时，实际回放截至昨天；请将开始日期选在昨天之前。'
     else if ((Date.parse(request.endDate) - Date.parse(request.startDate)) / 86400000 > 732) fieldErrors.value.start = '本次跨度超过两年（732天），请缩短日期范围。'
   }
   if (Object.values(fieldErrors.value).some(Boolean)) {
@@ -102,9 +124,10 @@ async function replay() {
     return
   }
   submitted.value = request
+  calculationScope.value = { ...request, endDate: replayEnd }
   replayBusy.value = true
   try {
-    const answer = await post<Replay>('/api/v1/admin/prediction-research/strategy', request)
+    const answer = await post<Replay>('/api/v1/admin/prediction-research/strategy', calculationScope.value)
     result.value = answer
     if (answer.status !== 'SUCCEEDED') replayError.value = answer.errorMessage || '这次模拟未完成，请稍后重试。'
   } catch (error) { replayError.value = error instanceof Error ? error.message : '模拟失败，请稍后重试。' }
@@ -114,10 +137,10 @@ async function train() {
   if (busy.value) return
   research.value = null
   researchError.value = ''
-  latestDate.value = shanghaiDate(-1)
+  refreshDateLimit()
   if (!/^\d{6}$/.test(code.value.trim())) { researchError.value = '请先在上方填写一只基金的6位代码。'; return }
-  if (!validDate(researchEnd.value) || researchEnd.value <= '2024-06-28' || researchEnd.value > latestDate.value) {
-    researchError.value = `比较结束日期应晚于 2024/6/28，且不晚于 ${dateLabel(latestDate.value)}。`
+  if (!validDate(researchEnd.value) || researchEnd.value <= '2024-06-28' || researchEnd.value > latestCompleteDate.value) {
+    researchError.value = `比较结束日期应晚于 2024/6/28，且不晚于 ${dateLabel(latestCompleteDate.value)}。`
     return
   }
   researchBusy.value = true
@@ -149,7 +172,7 @@ async function readResearch(action?: 'cancel' | 'resume') {
       过去按建议买卖，结果会怎样？
     </h2>
     <p class="intro">
-      用一段历史行情，比较“按策略买卖”和“买入后一直持有”，看看扣掉手续费后哪种方式更好。
+      比较“买入后一直持有”和“按模型建议买卖”。当前采用模型及已登记候选使用同一段行情、相同买卖规则和费用，看看最后谁的钱更多。
     </p>
     <form
       novalidate
@@ -189,6 +212,7 @@ async function readResearch(action?: 'cancel' | 'resume') {
             :disabled="busy"
             :aria-invalid="!!fieldErrors.start"
             aria-describedby="replay-start-error replay-range-help"
+            @focus="refreshDateLimit"
           >
           <p
             v-if="fieldErrors.start"
@@ -210,6 +234,7 @@ async function readResearch(action?: 'cancel' | 'resume') {
             :disabled="busy"
             :aria-invalid="!!fieldErrors.end"
             aria-describedby="replay-end-error replay-range-help"
+            @focus="refreshDateLimit"
           >
           <p
             v-if="fieldErrors.end"
@@ -225,7 +250,8 @@ async function readResearch(action?: 'cancel' | 'resume') {
         id="replay-range-help"
         class="muted"
       >
-        每次比较一只基金，跨度最多两年。结束日期最晚可选 {{ dateLabel(latestDate) }}（昨天，北京时间）；今天尚未结束，不能作为完整历史。
+        每次比较一只基金，跨度最多两年。日期可以选今天；结束日期选今天时，按截至昨天的历史行情计算。
+        <span v-if="usingToday">本次实际回放截至 {{ dateLabel(latestCompleteDate) }}（北京时间）。</span>
       </p>
       <button
         class="primary-button"
@@ -272,24 +298,30 @@ async function readResearch(action?: 'cancel' | 'resume') {
         本次结果 · 基金 {{ resultScope.fundCode }} · {{ dateLabel(resultScope.startDate) }} 至 {{ dateLabel(resultScope.endDate) }}
       </p>
       <p
+        v-if="submitted && submitted.endDate !== resultScope.endDate"
+        class="muted"
+      >
+        你选择的结束日期是 {{ dateLabel(submitted.endDate) }}；实际回放截至 {{ dateLabel(resultScope.endDate) }}，今天尚未结束的行情未计入。
+      </p>
+      <p
         v-if="inputChanged"
         class="changed-note"
       >
         上方条件已修改。下方仍是上述基金和日期的结果，点击“重新比较这段时间”后才会更新。
       </p>
       <div class="result-conclusion">
-        <span class="muted">先看结论</span>
+        <span class="muted">{{ modelEntries.length > 1 ? '先看本区间收益最高的模型表现' : '先看结论' }}</span>
         <h3>{{ headline }}</h3>
         <p>{{ drawdownConclusion }}</p>
       </div>
       <div class="outcome-grid">
         <article
-          v-for="mode in ['V2', 'BUY_HOLD']"
+          v-for="mode in Object.keys(comparisons)"
           :key="mode"
           class="outcome-card"
         >
           <template v-if="comparisons[mode]">
-            <h4>{{ labels[mode] }}</h4>
+            <h4>{{ labelFor(mode) }}</h4>
             <p class="muted">
               起始本金 {{ money(comparisons[mode]!.initialCash) }}
             </p>
@@ -305,23 +337,40 @@ async function readResearch(action?: 'cancel' | 'resume') {
             </p>
           </template>
           <p v-else>
-            {{ labels[mode] }}的结果暂缺。
+            {{ labelFor(mode) }}的结果暂缺。
           </p>
         </article>
       </div>
-      <p class="announcement-note">
-        <strong>公告有没有帮助：</strong>{{ announcementConclusion }}
-      </p>
       <p class="muted">
-        这是所选历史区间的模拟结果，赚钱不等于跑赢一直持有，也不代表以后仍能取得相同效果。
+        每组模型都综合五日、二十日和半年预测。这里是用当前模型回看历史，本区间收益较高不代表以后最好，也不会因此自动更换正在使用的模型。
       </p>
+      <p
+        v-if="!result?.comparisonModels"
+        class="changed-note"
+      >
+        这是旧版固定基础模型的回放，尚未比较已训练候选；更新后台服务后重新比较，可查看当前模型组合。
+      </p>
+      <div
+        v-if="result?.excludedModels?.length"
+        class="changed-note"
+      >
+        <strong>以下模型未参加本次比较</strong>
+        <ul>
+          <li
+            v-for="(excluded, index) in result.excludedModels"
+            :key="index"
+          >
+            {{ excluded.label }}：{{ excluded.reason }}
+          </li>
+        </ul>
+      </div>
       <details class="result-details">
-        <summary>查看四种方式的详细对照与指标解释</summary>
+        <summary>查看详细对照与指标解释</summary>
         <div
           class="research-table"
           tabindex="0"
           role="region"
-          aria-label="四种买卖方式的历史模拟对照"
+          aria-label="一直持有与模型买卖的历史模拟对照"
         >
           <table>
             <caption>相同基金、时间范围和模拟本金；收益已扣模拟交易费用。</caption>
@@ -330,9 +379,11 @@ async function readResearch(action?: 'cancel' | 'resume') {
                 <th scope="col">
                   买卖方式
                 </th><th scope="col">
+                  最后账户价值
+                </th><th scope="col">
                   扣费后累计收益
                 </th><th scope="col">
-                  中途最大跌幅
+                  最大回撤
                 </th><th scope="col">
                   买卖笔数
                 </th><th scope="col">
@@ -348,19 +399,18 @@ async function readResearch(action?: 'cancel' | 'resume') {
                 :key="mode"
               >
                 <th scope="row">
-                  {{ labels[mode] ?? mode }}
-                </th><td>{{ percent(metric.netReturn) }}</td><td>{{ percent(metric.maxDrawdown) }}</td><td>{{ metric.tradeCount }} 笔</td><td>{{ money(metric.fees) }}</td><td>{{ metric.cashOnlySessions }} 个估值日</td>
+                  {{ labelFor(mode) }}
+                </th><td>{{ money(metric.finalEquity) }}</td><td>{{ percent(metric.netReturn) }}</td><td>{{ percent(metric.maxDrawdown) }}</td><td>{{ metric.tradeCount }} 笔</td><td>{{ money(metric.fees) }}</td><td>{{ metric.cashOnlySessions }} 个估值日</td>
               </tr>
             </tbody>
           </table>
         </div>
         <dl class="metric-guide">
+          <div><dt>最后账户价值</dt><dd>剩余现金、持有基金市值和卖出后待到账的钱合计；尚未卖出的基金按期末净值计价。</dd></div>
           <div><dt>扣费后累计收益</dt><dd>这一整段时间赚或亏的比例，不是每年的收益率。</dd></div>
-          <div><dt>中途最大跌幅（最大回撤）</dt><dd>账户从此前最高点往下跌，最严重的一次跌幅；不是最终亏损比例。</dd></div>
+          <div><dt>最大回撤</dt><dd>账户从此前最高点往下跌，最严重的一次跌幅；不是最终亏损比例。</dd></div>
           <div><dt>买卖笔数与手续费</dt><dd>每笔买入、加仓、减仓或卖出分别计数，手续费受金额和持有时间影响，并非笔数越少就一定越便宜。</dd></div>
           <div><dt>没持有基金的天数</dt><dd>按有净值、能计算账户价值的日期统计，不一定连续，也不是所有自然日。</dd></div>
-          <div><dt>最后账户价值</dt><dd>剩余现金、持有基金市值和卖出后待到账的钱合计；尚未卖出的基金按期末净值计价。</dd></div>
-          <div><dt>其他两组对照</dt><dd>旧规则与当前策略使用相同基础预测，只比较买卖规则；去掉公告的一组用于检查公告是否改变了收益。</dd></div>
         </dl>
       </details>
     </div>
@@ -369,8 +419,8 @@ async function readResearch(action?: 'cancel' | 'resume') {
       class="result-details technical-details"
     >
       <summary>查看模拟假设与任务记录</summary>
-      <p>{{ strategy?.assumption ?? '本次未返回完整的费用假设。' }}</p>
-      <p>过去的基金经理、规模及申赎开放状态未完整恢复；旧规则对照不能当作旧线上模型的实际收益。</p>
+      <p>{{ holding?.assumption ?? '本次未返回完整的费用假设。' }}</p>
+      <p>过去的基金经理、规模及申赎开放状态未完整恢复。所有模型使用相同已接入资料，缺失的信息不假装已经参与判断。</p>
       <p v-if="result.inputSnapshot">
         未能生成预测的周期项：{{ result.inputSnapshot.failures?.length ?? '未提供' }}。
       </p>
@@ -378,7 +428,21 @@ async function readResearch(action?: 'cancel' | 'resume') {
       <p v-if="result.inputSnapshot">
         输入记录编号：<code>{{ result.inputSnapshot.inputHash }}</code>
       </p>
-      <p>{{ result.strategyAdoptionDecision }}</p><p>{{ result.eventAdoptionDecision }}</p>
+      <div
+        v-for="(model, id) in result.comparisonModels"
+        :key="id"
+      >
+        <template v-if="model.modelRefs?.length">
+          <h4>{{ model.label }}</h4>
+          <p
+            v-for="modelRef in model.modelRefs"
+            :key="modelRef.horizonId"
+          >
+            {{ horizons[modelRef.horizonId] ?? modelRef.horizonId }} · 模型 <code>{{ modelRef.modelId }}</code> · 指纹 <code>{{ modelRef.modelHash }}</code>
+            · 训练答案截至 {{ modelRef.labelEndMax ? dateLabel(modelRef.labelEndMax.slice(0, 10)) : '基础方法无需训练' }}
+          </p>
+        </template>
+      </div>
     </details>
     <p class="experiment-note">
       只做历史模拟，不会下单，也不会改变你的持仓。费用和到账时间按实验规则计算，不是实际账户收益。
@@ -399,8 +463,9 @@ async function readResearch(action?: 'cancel' | 'resume') {
           v-model="researchEnd"
           type="date"
           min="2024-06-29"
-          :max="latestDate"
+          :max="latestCompleteDate"
           :disabled="busy"
+          @focus="refreshDateLimit"
         ></label>
         <button
           class="secondary-button"
@@ -523,12 +588,11 @@ button:disabled { opacity: .6; cursor: not-allowed; }
 .result-conclusion { margin: 16px 0; padding: 20px; border-radius: 8px; background: #edf5f2; }
 .result-conclusion h3 { margin: 6px 0 10px; font-size: 21px; line-height: 1.6; }
 .result-conclusion p { margin: 0; }
-.outcome-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.outcome-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 16px; }
 .outcome-card { padding: 20px; border: 1px solid var(--workspace-border, #dce5df); border-radius: 8px; min-width: 0; }
 .outcome-card h4 { margin: 0; font-size: 17px; }
 .outcome-card .final-money { margin: 4px 0; font-size: clamp(24px, 3vw, 32px); line-height: 1.4; font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .gain-line { margin: 10px 0; }
-.announcement-note { margin: 20px 0 6px; }
 .replay-error { margin-top: 18px; padding: 14px 16px; background: #fff5f3; border-radius: 6px; }
 .replay-error p { margin: 6px 0 0; }
 .result-details, .model-research { margin-top: 18px; border-top: 1px solid var(--workspace-border, #dce5df); }
