@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { generateMultiPrediction, readMultiPrediction, readPredictionTask, readLatestPredictionTask, retryPredictionTask } from '@/api/multiPrediction'
 import type { MultiCurrent, PredictionTask } from '@/types/multiPrediction'
 import { useAuthStore } from '@/stores/auth'
+import { directionLabel, flatRange } from '@/utils/predictionDirection'
 const props = defineProps<{ fundCode: string }>()
 const auth = useAuthStore()
 const current = ref<MultiCurrent | null>(null), task = ref<PredictionTask | null>(null)
@@ -166,8 +167,9 @@ onBeforeUnmount(() => { ++sequence; globalThis.clearTimeout(timer) })
           >
             到期日期待官方估值日历公布后顺延确定
           </p>
-          <strong class="direction">{{ card.prediction.direction === 'UP' ? '预计上涨' : '预计下跌或持平' }}</strong>
+          <strong class="direction">预计{{ directionLabel(card.prediction.direction) }}</strong>
           <p>{{ card.prediction.reason }}</p>
+          <p>{{ flatRange(card.prediction.flatThreshold) }}</p>
           <details>
             <summary>数据、模型与实验边界</summary>
             <p>生成于 {{ time(card.prediction.generatedAt) }}；净值截至 {{ card.prediction.dataAsOf }}</p>

@@ -76,7 +76,7 @@ onBeforeUnmount(() => { sequence++ })
     aria-label="下一交易日涨跌预测"
   >
     <header class="prediction-heading">
-      <h2>下一交易日涨跌预测</h2>
+      <h2>下一交易日涨跌预测（旧版二分类）</h2>
       <span class="experiment-badge">实验 · 未正式发布</span>
     </header>
     <p

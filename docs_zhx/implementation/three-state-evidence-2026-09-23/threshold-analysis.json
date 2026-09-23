@@ -1,0 +1,369 @@
+{
+  "readAt": "2026-09-23 08:34:38.665517+00:00",
+  "cycleId": "adf18a81-7776-4792-8cf3-5129e846f4f8",
+  "trainStart": "2023-09-22",
+  "trainEnd": "2025-09-22",
+  "inputCount": 44,
+  "stride": 5,
+  "evidenceLevel": "DEVELOPMENT_ONLY",
+  "failures": {
+    "CALENDAR_POLICY_MISSING": 7,
+    "NAV_GAP": 105
+  },
+  "groups": [
+    {
+      "horizon": "M6_V1",
+      "band": "0.02",
+      "fundType": "BOND",
+      "counts": {
+        "UP": 98,
+        "FLAT": 29,
+        "DOWN": 17
+      }
+    },
+    {
+      "horizon": "M6_V1",
+      "band": "0.02",
+      "fundType": "MIXED",
+      "counts": {
+        "UP": 777,
+        "FLAT": 103,
+        "DOWN": 200
+      }
+    },
+    {
+      "horizon": "M6_V1",
+      "band": "0.02",
+      "fundType": "OTHER",
+      "counts": {
+        "UP": 37
+      }
+    },
+    {
+      "horizon": "M6_V1",
+      "band": "0.02",
+      "fundType": "STOCK",
+      "counts": {
+        "DOWN": 368,
+        "UP": 838,
+        "FLAT": 162
+      }
+    },
+    {
+      "horizon": "M6_V1",
+      "band": "0.03",
+      "fundType": "BOND",
+      "counts": {
+        "UP": 80,
+        "FLAT": 48,
+        "DOWN": 16
+      }
+    },
+    {
+      "horizon": "M6_V1",
+      "band": "0.03",
+      "fundType": "MIXED",
+      "counts": {
+        "UP": 751,
+        "FLAT": 149,
+        "DOWN": 180
+      }
+    },
+    {
+      "horizon": "M6_V1",
+      "band": "0.03",
+      "fundType": "OTHER",
+      "counts": {
+        "UP": 37
+      }
+    },
+    {
+      "horizon": "M6_V1",
+      "band": "0.03",
+      "fundType": "STOCK",
+      "counts": {
+        "DOWN": 330,
+        "FLAT": 247,
+        "UP": 791
+      }
+    },
+    {
+      "horizon": "M6_V1",
+      "band": "0.05",
+      "fundType": "BOND",
+      "counts": {
+        "FLAT": 105,
+        "UP": 28,
+        "DOWN": 11
+      }
+    },
+    {
+      "horizon": "M6_V1",
+      "band": "0.05",
+      "fundType": "MIXED",
+      "counts": {
+        "UP": 698,
+        "FLAT": 246,
+        "DOWN": 136
+      }
+    },
+    {
+      "horizon": "M6_V1",
+      "band": "0.05",
+      "fundType": "OTHER",
+      "counts": {
+        "UP": 37
+      }
+    },
+    {
+      "horizon": "M6_V1",
+      "band": "0.05",
+      "fundType": "STOCK",
+      "counts": {
+        "DOWN": 255,
+        "FLAT": 401,
+        "UP": 712
+      }
+    },
+    {
+      "horizon": "T20_V1",
+      "band": "0.005",
+      "fundType": "BOND",
+      "counts": {
+        "FLAT": 62,
+        "UP": 82,
+        "DOWN": 42
+      }
+    },
+    {
+      "horizon": "T20_V1",
+      "band": "0.005",
+      "fundType": "MIXED",
+      "counts": {
+        "UP": 739,
+        "DOWN": 544,
+        "FLAT": 112
+      }
+    },
+    {
+      "horizon": "T20_V1",
+      "band": "0.005",
+      "fundType": "OTHER",
+      "counts": {
+        "UP": 39,
+        "DOWN": 12,
+        "FLAT": 7
+      }
+    },
+    {
+      "horizon": "T20_V1",
+      "band": "0.005",
+      "fundType": "STOCK",
+      "counts": {
+        "DOWN": 746,
+        "UP": 905,
+        "FLAT": 116
+      }
+    },
+    {
+      "horizon": "T20_V1",
+      "band": "0.01",
+      "fundType": "BOND",
+      "counts": {
+        "FLAT": 95,
+        "UP": 59,
+        "DOWN": 32
+      }
+    },
+    {
+      "horizon": "T20_V1",
+      "band": "0.01",
+      "fundType": "MIXED",
+      "counts": {
+        "UP": 699,
+        "DOWN": 502,
+        "FLAT": 194
+      }
+    },
+    {
+      "horizon": "T20_V1",
+      "band": "0.01",
+      "fundType": "OTHER",
+      "counts": {
+        "UP": 39,
+        "DOWN": 12,
+        "FLAT": 7
+      }
+    },
+    {
+      "horizon": "T20_V1",
+      "band": "0.01",
+      "fundType": "STOCK",
+      "counts": {
+        "DOWN": 683,
+        "FLAT": 228,
+        "UP": 856
+      }
+    },
+    {
+      "horizon": "T20_V1",
+      "band": "0.015",
+      "fundType": "BOND",
+      "counts": {
+        "FLAT": 111,
+        "UP": 47,
+        "DOWN": 28
+      }
+    },
+    {
+      "horizon": "T20_V1",
+      "band": "0.015",
+      "fundType": "MIXED",
+      "counts": {
+        "UP": 639,
+        "DOWN": 462,
+        "FLAT": 294
+      }
+    },
+    {
+      "horizon": "T20_V1",
+      "band": "0.015",
+      "fundType": "OTHER",
+      "counts": {
+        "UP": 33,
+        "FLAT": 17,
+        "DOWN": 8
+      }
+    },
+    {
+      "horizon": "T20_V1",
+      "band": "0.015",
+      "fundType": "STOCK",
+      "counts": {
+        "DOWN": 622,
+        "FLAT": 348,
+        "UP": 797
+      }
+    },
+    {
+      "horizon": "T5_V1",
+      "band": "0.002",
+      "fundType": "BOND",
+      "counts": {
+        "FLAT": 57,
+        "UP": 82,
+        "DOWN": 53
+      }
+    },
+    {
+      "horizon": "T5_V1",
+      "band": "0.002",
+      "fundType": "MIXED",
+      "counts": {
+        "UP": 748,
+        "DOWN": 577,
+        "FLAT": 115
+      }
+    },
+    {
+      "horizon": "T5_V1",
+      "band": "0.002",
+      "fundType": "OTHER",
+      "counts": {
+        "DOWN": 18,
+        "UP": 36,
+        "FLAT": 7
+      }
+    },
+    {
+      "horizon": "T5_V1",
+      "band": "0.002",
+      "fundType": "STOCK",
+      "counts": {
+        "DOWN": 808,
+        "UP": 916,
+        "FLAT": 100
+      }
+    },
+    {
+      "horizon": "T5_V1",
+      "band": "0.003",
+      "fundType": "BOND",
+      "counts": {
+        "FLAT": 80,
+        "UP": 68,
+        "DOWN": 44
+      }
+    },
+    {
+      "horizon": "T5_V1",
+      "band": "0.003",
+      "fundType": "MIXED",
+      "counts": {
+        "UP": 725,
+        "DOWN": 548,
+        "FLAT": 167
+      }
+    },
+    {
+      "horizon": "T5_V1",
+      "band": "0.003",
+      "fundType": "OTHER",
+      "counts": {
+        "DOWN": 18,
+        "UP": 34,
+        "FLAT": 9
+      }
+    },
+    {
+      "horizon": "T5_V1",
+      "band": "0.003",
+      "fundType": "STOCK",
+      "counts": {
+        "DOWN": 786,
+        "UP": 884,
+        "FLAT": 154
+      }
+    },
+    {
+      "horizon": "T5_V1",
+      "band": "0.005",
+      "fundType": "BOND",
+      "counts": {
+        "FLAT": 114,
+        "UP": 43,
+        "DOWN": 35
+      }
+    },
+    {
+      "horizon": "T5_V1",
+      "band": "0.005",
+      "fundType": "MIXED",
+      "counts": {
+        "UP": 685,
+        "DOWN": 502,
+        "FLAT": 253
+      }
+    },
+    {
+      "horizon": "T5_V1",
+      "band": "0.005",
+      "fundType": "OTHER",
+      "counts": {
+        "DOWN": 16,
+        "UP": 31,
+        "FLAT": 14
+      }
+    },
+    {
+      "horizon": "T5_V1",
+      "band": "0.005",
+      "fundType": "STOCK",
+      "counts": {
+        "DOWN": 740,
+        "UP": 830,
+        "FLAT": 254
+      }
+    }
+  ]
+}

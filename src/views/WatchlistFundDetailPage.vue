@@ -291,14 +291,14 @@ watch(selectedNavRange, () => {
         v-if="section === 'research' && basic.fundCode === fundCode"
         class="analysis-section"
       >
-        <summary>查看旧一日与二十日实验（原目标独立保留）</summary>
+        <summary>查看旧一日与二十日实验（旧版二分类，原目标独立保留）</summary>
         <Direction1dPanel :fund-code="basic.fundCode" />
         <WatchlistPredictionCard :fund-code="basic.fundCode" />
       </details>
       <template v-if="section === 'prediction-history' && basic.fundCode === fundCode">
         <MultiPredictionHistory :fund-code="basic.fundCode" />
         <details class="analysis-section">
-          <summary>旧一日预测历史（原目标独立保留）</summary>
+          <summary>旧一日预测历史（旧版二分类，原目标独立保留）</summary>
           <Direction1dFundHistory :fund-code="basic.fundCode" />
         </details>
       </template>

@@ -60,7 +60,7 @@ const branchName = (value: string) => ({ FIXED: '固定模型', WEEKLY: '每周�
       ← 我的关注
     </RouterLink>
     <p class="eyebrow">
-      独立一交易日实验 · 未正式发布
+      独立一交易日实验 · 旧版二分类 · 未正式发布
     </p>
     <h1>提前预测，公布后核对</h1>
     <p class="lead">
@@ -77,7 +77,7 @@ const branchName = (value: string) => ({ FIXED: '固定模型', WEEKLY: '每周�
       v-if="status"
       class="summary"
     >
-      <div><strong>每日自动检查全部关注基金</strong><p>无需开启实验开关；本地服务运行时自动检查，也可在数据同步中心手动生成。电脑或服务离线时不会补造预测。</p></div>
+      <div><strong>每日自动检查全部关注基金</strong><p>无需开启实验开关；本地服务运行时自动检查，可在关注详情的旧版一日实验区域手动生成。电脑或服务离线时不会补造预测。</p></div>
       <div>本期预测目标 <strong>{{ status.python.window.targetNavDate }}</strong><p>留档截止 {{ direction1dTime(status.python.window.deadlineAt) }}；是否已生成请看下方真实留档。</p></div>
       <div>下一期开始 <strong>{{ direction1dTime(status.python.window.nextWindowOpenAt) }}</strong><p>本期截止前，已训练并登记的模型即可生成预测；生成后保留原文。</p></div>
       <p>{{ status.python.trainingPolicyNote }}</p>

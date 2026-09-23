@@ -9,6 +9,7 @@ const auth = useAuthStore()
 const report = ref<DecisionReport | null>(null), history = ref<DecisionReport[]>([])
 const error = ref(''), busy = ref(false), preference = ref('BALANCED'), isDefault = ref(true)
 const page = ref(1), outcomes = ref<Record<string, DecisionOutcome>>({}), outcomeError = ref('')
+const historyVersion = ref('HOLDING_ADVICE_V3_THREE_STATE')
 let sequence = 0
 const labels: Record<string, string> = { BUY: '建议买入', AVOID: '不建议买入', ADD: '建议加仓', HOLD: '继续持有', REDUCE: '建议减仓', SELL: '建议卖出' }
 const time = (value: string) => new Date(value).toLocaleString('zh-CN', { hour12: false })
@@ -16,8 +17,8 @@ async function load() {
   const run = ++sequence; error.value = ''
   try {
     const [value, prefs, records, checks] = await Promise.all([props.historyOnly ? Promise.resolve(null) : readDecision(props.fundCode), props.compact || props.historyOnly ? Promise.resolve({preference:'BALANCED',defaultPreference:true}) : readStrategyPreference(),
-      props.historyOnly ? readDecisionHistory(props.fundCode, page.value) : Promise.resolve([]),
-      props.historyOnly ? readDecisionOutcomes(props.fundCode, page.value).catch(() => { outcomeError.value='到期核验暂时无法读取，已保存原文仍可查看'; return {} }) : Promise.resolve({})])
+      props.historyOnly ? readDecisionHistory(props.fundCode, page.value, historyVersion.value) : Promise.resolve([]),
+      props.historyOnly ? readDecisionOutcomes(props.fundCode, page.value, historyVersion.value).catch(() => { outcomeError.value='到期核验暂时无法读取，已保存原文仍可查看'; return {} }) : Promise.resolve({})])
     if (run !== sequence) return
     report.value = value; preference.value = prefs.preference; isDefault.value = prefs.defaultPreference; history.value = records; outcomes.value = checks
   } catch (e) { if (run === sequence) error.value = e instanceof Error ? e.message : '建议读取失败' }
@@ -46,7 +47,7 @@ onBeforeUnmount(() => { ++sequence })
       <div>
         <p class="eyebrow">
           综合建议 · 实验中
-        </p><h2>{{ historyOnly ? '综合建议历史（V2）' : report?.generationStatus === 'FAILED' ? '本次建议生成失败' : labels[report?.decision ?? ''] ?? '尚无综合建议' }}</h2>
+        </p><h2>{{ historyOnly ? '综合建议历史' : report?.generationStatus === 'FAILED' ? '本次建议生成失败' : labels[report?.decision ?? ''] ?? '尚无综合建议' }}</h2>
       </div>
       <button
         v-if="!historyOnly && auth.hasPermission('SIM_PORTFOLIO_SELF_WRITE')"
@@ -93,7 +94,17 @@ onBeforeUnmount(() => { ++sequence })
         生成于 {{ time(report.generatedAt) }} · {{ report.defaultPreference ? '默认均衡实验策略' : `个人${{ SHORT: '短线', BALANCED: '均衡', LONG: '长线' }[report.preference]}偏好` }}
       </p>
       <details v-if="!compact">
-        <summary>支持、反对因素与本次未覆盖信息</summary>
+        <summary>支持、中性、反对因素与本次未覆盖信息</summary>
+        <h3>中性因素</h3><p v-if="!report.neutralEvidence?.length">
+          本次没有单独记录的中性因子
+        </p><ul>
+          <li
+            v-for="item in report.neutralEvidence"
+            :key="item"
+          >
+            {{ item }}
+          </li>
+        </ul>
         <h3>支持因素</h3><p v-if="!report.supportingEvidence.length">
           本次没有正向因子
         </p><ul>
@@ -171,6 +182,10 @@ onBeforeUnmount(() => { ++sequence })
       <small>{{ isDefault ? '尚未设置，使用默认实验规则' : '已保存个人选择；重新生成建议时生效' }}。不限制关注页的预测周期。</small>
     </div>
     <div v-if="historyOnly">
+      <label>建议版本 <select
+        v-model="historyVersion"
+        @change="historyPage(1)"
+      ><option value="HOLDING_ADVICE_V3_THREE_STATE">三分类综合建议</option><option value="HOLDING_ADVICE_V2_EXPERIMENTAL">旧版二分类综合建议</option></select></label>
       <p>保留当时动作、依据和模型版本。下面核验的是所引用预测的方向与区间总回报，不是模拟交易收益；扣费策略对照在历史研究中单独记录。</p>
       <p
         v-if="outcomeError"
@@ -189,7 +204,7 @@ onBeforeUnmount(() => { ++sequence })
         <strong>{{ labels[item.decision ?? ''] ?? '生成失败' }}</strong> · {{ time(item.generatedAt) }}<p>{{ item.summary }}</p><small>{{ item.strategyVersion }} · {{ item.reportId }}</small>
         <details>
           <summary>当时依据与预测到期结果</summary><p
-            v-for="reason in [...item.supportingEvidence,...item.opposingEvidence]"
+            v-for="reason in [...item.supportingEvidence,...(item.neutralEvidence ?? []),...item.opposingEvidence]"
             :key="reason"
           >
             {{ reason }}

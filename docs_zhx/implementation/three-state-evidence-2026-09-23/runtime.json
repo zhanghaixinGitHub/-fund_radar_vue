@@ -1,0 +1,993 @@
+{
+  "checkedAt": "2026-09-23T09:38:31.753454+00:00",
+  "migrations": {
+    "Python": "20260923_28",
+    "Java": 22
+  },
+  "unchanged": {
+    "predictions": 706,
+    "models": 24,
+    "adviceReports": 607
+  },
+  "allRegisteredModels": 33,
+  "legacyIndependent1dModels": 3,
+  "currentRule": {
+    "version": "PREDICTION_POLICY_V2",
+    "enabled_from": "2026-09-23T00:00:00+08:00",
+    "target_definition_id": "NEXT_EXECUTABLE_CASH_REINVESTED_THREE_STATE_V2",
+    "feature_schema_version": "NAV_TOTAL_RETURN_V1",
+    "direction": {
+      "version": "RETURN_BAND_V1",
+      "unit": "RATIO",
+      "boundary": "CLOSED_FLAT",
+      "classes": [
+        "DOWN",
+        "FLAT",
+        "UP"
+      ],
+      "tieBreakOrder": [
+        "FLAT",
+        "UP",
+        "DOWN"
+      ],
+      "thresholds": {
+        "T5_V1": "0.003",
+        "T20_V1": "0.01",
+        "M6_V1": "0.03"
+      },
+      "momentumThresholds": {
+        "T5_V1": "0.01",
+        "T20_V1": "0.01",
+        "M6_V1": "0.02"
+      },
+      "minimumClassSamples": 5
+    },
+    "dividend_policy": "CASH_REINVEST_AT_EX_DATE_NAV",
+    "split_policy": "REQUIRE_VERIFIED_SHARE_ADJUSTMENT",
+    "gap_policy": "REQUIRE_COMPLETE_NO_FILL",
+    "baseline": {
+      "recipe": "NAV_MOMENTUM_THREE_STATE_V2",
+      "minimum_returns": 20,
+      "maximum_returns": 60
+    },
+    "horizons": [
+      {
+        "horizon_id": "T5_V1",
+        "label": "五个交易日",
+        "unit": "TRADING_SESSION",
+        "length": 5,
+        "lookback_returns": 20
+      },
+      {
+        "horizon_id": "T20_V1",
+        "label": "二十个交易日",
+        "unit": "TRADING_SESSION",
+        "length": 20,
+        "lookback_returns": 20
+      },
+      {
+        "horizon_id": "M6_V1",
+        "label": "六个自然月",
+        "unit": "CALENDAR_MONTH",
+        "length": 6,
+        "lookback_returns": 60
+      }
+    ],
+    "calendar_policy": {
+      "version": "FUND_VALUATION_CALENDAR_V1",
+      "timezone": "Asia/Shanghai",
+      "cutoff_local": "15:00:00",
+      "at_cutoff": "NEXT_SESSION",
+      "start": "FIRST_EXECUTABLE_SESSION_AT_GENERATION",
+      "month_end": "CLAMP_DAY_THEN_ROLL_FORWARD",
+      "unpublished_month_end": "PENDING_OFFICIAL_CALENDAR",
+      "missing_current_calendar": "FAIL_WITH_CALENDAR_RANGE_MISSING"
+    },
+    "selection": {
+      "version": "EXPERIMENT_SELECTION_V2",
+      "tolerance": 1e-08,
+      "maximum_shadows": 3
+    },
+    "strategy": {
+      "version": "HOLDING_ADVICE_V3_THREE_STATE",
+      "weights": {
+        "model": 0.6,
+        "trend_risk": 0.2,
+        "facts_events": 0.2
+      },
+      "preferences": {
+        "BALANCED": {
+          "T5_V1": 0.2,
+          "T20_V1": 0.5,
+          "M6_V1": 0.3
+        },
+        "SHORT": {
+          "T5_V1": 0.6,
+          "T20_V1": 0.3,
+          "M6_V1": 0.1
+        },
+        "LONG": {
+          "T5_V1": 0.1,
+          "T20_V1": 0.3,
+          "M6_V1": 0.6
+        }
+      },
+      "add_above": 0.7,
+      "hold_above": 0,
+      "sell_at_or_below": -0.7,
+      "position_policy": {
+        "version": "POSITION_POLICY_V1",
+        "buy_cash_ratio": 0.5,
+        "add_cash_ratio": 0.25,
+        "reduce_share_ratio": 0.5
+      },
+      "selection": {
+        "version": "STRATEGY_SELECTION_V1",
+        "max_drawdown_deterioration": 0.02
+      }
+    }
+  },
+  "cycleId": "ac003850-ab01-4b5c-95e9-2d8b747c6407",
+  "cycleStatus": "COMPLETED",
+  "protocolHash": "5ff2372be7970f6dc1069e5214b6120a3f472017effc1f650db73c2087ade567",
+  "trainingRun": "15d05d97-432c-40fd-b569-c7d6de44c232",
+  "trainingWindows": {
+    "trainStart": "2023-09-22",
+    "trainEnd": "2025-09-22",
+    "validationEnd": "2026-03-22",
+    "selectionEnd": "2026-09-22"
+  },
+  "newModels": [
+    {
+      "modelId": "MP-ff88d38412cb7facdedadacc0bbbf52d",
+      "hash": "ff88d38412cb7facdedadacc0bbbf52dcf7d2edefde8a546639645b2397ef612",
+      "horizon": "M6_V1",
+      "adapter": "LOGISTIC_MULTICLASS_V2",
+      "classCounts": {
+        "UP": 1468,
+        "DOWN": 336,
+        "FLAT": 345
+      },
+      "restoreMaxDiff": 2.220446049250313e-16
+    },
+    {
+      "modelId": "MP-13f312e5f86bcf2e1e3e73c3b2635fa7",
+      "hash": "13f312e5f86bcf2e1e3e73c3b2635fa71fa3f8f0ce3d539ee217654e6deb385f",
+      "horizon": "T20_V1",
+      "adapter": "LOGISTIC_MULTICLASS_V2",
+      "classCounts": {
+        "UP": 1525,
+        "DOWN": 982,
+        "FLAT": 419
+      },
+      "restoreMaxDiff": 1.1102230246251565e-16
+    },
+    {
+      "modelId": "MP-2ddd6756564c9e24b5769c9efc4c9ba1",
+      "hash": "2ddd6756564c9e24b5769c9efc4c9ba1778ff749b67ec55f0c24d7752b9f8641",
+      "horizon": "T5_V1",
+      "adapter": "LOGISTIC_MULTICLASS_V2",
+      "classCounts": {
+        "UP": 1536,
+        "DOWN": 1164,
+        "FLAT": 337
+      },
+      "restoreMaxDiff": 5.551115123125783e-17
+    },
+    {
+      "modelId": "MP-7552509c276966377054944d8633fa36",
+      "hash": "7552509c276966377054944d8633fa36911473d6ad9cfc74423ebcc374b8771b",
+      "horizon": "M6_V1",
+      "adapter": "NAV_MOMENTUM_THREE_STATE_V2",
+      "classCounts": null,
+      "restoreMaxDiff": null
+    },
+    {
+      "modelId": "MP-8b6bab5d0715286819a4ce5bf4757b5d",
+      "hash": "8b6bab5d0715286819a4ce5bf4757b5d58b586fb0d913dedf46eacab1958fc6f",
+      "horizon": "T20_V1",
+      "adapter": "NAV_MOMENTUM_THREE_STATE_V2",
+      "classCounts": null,
+      "restoreMaxDiff": null
+    },
+    {
+      "modelId": "MP-677a3a5c06bdc3afa8d20abdb70d04f7",
+      "hash": "677a3a5c06bdc3afa8d20abdb70d04f7549e5b204f13d727ae4dd0149d049552",
+      "horizon": "T5_V1",
+      "adapter": "NAV_MOMENTUM_THREE_STATE_V2",
+      "classCounts": null,
+      "restoreMaxDiff": null
+    }
+  ],
+  "routes": [
+    {
+      "route_key": "NEXT_EXECUTABLE_CASH_REINVESTED_THREE_STATE_V2:82abb3ff890e193486f38a0ac23e54aac3aec2729006acacecee0d9dfff04e6a:M6_V1:ALL",
+      "model_id": "MP-7552509c276966377054944d8633fa36",
+      "previous_model_id": "MP-7552509c276966377054944d8633fa36",
+      "revision": 2,
+      "shadow_ids": [
+        "MP-ff88d38412cb7facdedadacc0bbbf52d"
+      ],
+      "updated_at": "2026-09-23 09:19:05.635472+00:00",
+      "release_id": "e2e651c8-c014-4c59-91c3-401d026f6cfc"
+    },
+    {
+      "route_key": "NEXT_EXECUTABLE_CASH_REINVESTED_THREE_STATE_V2:82abb3ff890e193486f38a0ac23e54aac3aec2729006acacecee0d9dfff04e6a:T20_V1:ALL",
+      "model_id": "MP-13f312e5f86bcf2e1e3e73c3b2635fa7",
+      "previous_model_id": "MP-8b6bab5d0715286819a4ce5bf4757b5d",
+      "revision": 2,
+      "shadow_ids": [
+        "MP-13f312e5f86bcf2e1e3e73c3b2635fa7"
+      ],
+      "updated_at": "2026-09-23 09:19:05.634110+00:00",
+      "release_id": "e2e651c8-c014-4c59-91c3-401d026f6cfc"
+    },
+    {
+      "route_key": "NEXT_EXECUTABLE_CASH_REINVESTED_THREE_STATE_V2:82abb3ff890e193486f38a0ac23e54aac3aec2729006acacecee0d9dfff04e6a:T5_V1:ALL",
+      "model_id": "MP-677a3a5c06bdc3afa8d20abdb70d04f7",
+      "previous_model_id": "MP-677a3a5c06bdc3afa8d20abdb70d04f7",
+      "revision": 2,
+      "shadow_ids": [
+        "MP-2ddd6756564c9e24b5769c9efc4c9ba1"
+      ],
+      "updated_at": "2026-09-23 09:19:05.630292+00:00",
+      "release_id": "e2e651c8-c014-4c59-91c3-401d026f6cfc"
+    }
+  ],
+  "decision": {
+    "winner": "MODEL_2f72ca2db111163c",
+    "metrics": {
+      "MODEL_2f72ca2db111163c": {
+        "fees": 83.22357792665771,
+        "turnover": 2.9158645752758385,
+        "fundCount": 37,
+        "netReturn": -0.0011476184421232362,
+        "maxDrawdown": 0.12120384285651817,
+        "plannedFunds": 44,
+        "cashOnlySessions": 3.108108108108108
+      },
+      "MODEL_bd1b322c402e6d20": {
+        "fees": 189.44287120379155,
+        "turnover": 5.253928608322354,
+        "fundCount": 37,
+        "netReturn": -0.018425855853410503,
+        "maxDrawdown": 0.11955568224574005,
+        "plannedFunds": 44,
+        "cashOnlySessions": 45.7027027027027
+      },
+      "MODEL_db5a4d9dce4d5ad1": {
+        "fees": 98.56326954112224,
+        "turnover": 3.5994360246022823,
+        "fundCount": 37,
+        "netReturn": 0.0009040329430650276,
+        "maxDrawdown": 0.10659194664222657,
+        "plannedFunds": 44,
+        "cashOnlySessions": 23.35135135135135
+      },
+      "MODEL_f9831e00c0a4ec07": {
+        "fees": 168.94997991418535,
+        "turnover": 5.574563444384073,
+        "fundCount": 37,
+        "netReturn": -0.014967896388382095,
+        "maxDrawdown": 0.13317233907813925,
+        "plannedFunds": 44,
+        "cashOnlySessions": 15.864864864864865
+      }
+    },
+    "reasons": [
+      {
+        "bundle": "MODEL_db5a4d9dce4d5ad1",
+        "reason": "同题预测主指标不满足不劣条件",
+        "decision": "KEEP_SHADOW"
+      },
+      {
+        "bundle": "MODEL_2f72ca2db111163c",
+        "reason": "收益严格改善且回撤未超过协议上限",
+        "decision": "ELIGIBLE"
+      },
+      {
+        "bundle": "MODEL_f9831e00c0a4ec07",
+        "reason": "同题预测主指标不满足不劣条件",
+        "decision": "KEEP_SHADOW"
+      }
+    ],
+    "decision": "ACTIVATE",
+    "failures": {
+      "MODEL_2f72ca2db111163c": [
+        {
+          "error": "公共数据服务返回 HTTP 422，本次未取得所需数据。",
+          "fundCode": "006476"
+        },
+        {
+          "error": "公共数据服务返回 HTTP 422，本次未取得所需数据。",
+          "fundCode": "008764"
+        },
+        {
+          "error": "公共数据服务返回 HTTP 422，本次未取得所需数据。",
+          "fundCode": "014978"
+        },
+        {
+          "error": "公共数据服务返回 HTTP 422，本次未取得所需数据。",
+          "fundCode": "017145"
+        },
+        {
+          "error": "公共数据服务返回 HTTP 422，本次未取得所需数据。",
+          "fundCode": "018156"
+        },
+        {
+          "error": "公共数据服务返回 HTTP 422，本次未取得所需数据。",
+          "fundCode": "018853"
+        },
+        {
+          "error": "公共数据服务返回 HTTP 422，本次未取得所需数据。",
+          "fundCode": "019449"
+        }
+      ],
+      "MODEL_bd1b322c402e6d20": [
+        {
+          "error": "公共数据服务返回 HTTP 422，本次未取得所需数据。",
+          "fundCode": "006476"
+        },
+        {
+          "error": "公共数据服务返回 HTTP 422，本次未取得所需数据。",
+          "fundCode": "008764"
+        },
+        {
+          "error": "公共数据服务返回 HTTP 422，本次未取得所需数据。",
+          "fundCode": "014978"
+        },
+        {
+          "error": "公共数据服务返回 HTTP 422，本次未取得所需数据。",
+          "fundCode": "017145"
+        },
+        {
+          "error": "公共数据服务返回 HTTP 422，本次未取得所需数据。",
+          "fundCode": "018156"
+        },
+        {
+          "error": "公共数据服务返回 HTTP 422，本次未取得所需数据。",
+          "fundCode": "018853"
+        },
+        {
+          "error": "公共数据服务返回 HTTP 422，本次未取得所需数据。",
+          "fundCode": "019449"
+        }
+      ],
+      "MODEL_db5a4d9dce4d5ad1": [
+        {
+          "error": "公共数据服务返回 HTTP 422，本次未取得所需数据。",
+          "fundCode": "006476"
+        },
+        {
+          "error": "公共数据服务返回 HTTP 422，本次未取得所需数据。",
+          "fundCode": "008764"
+        },
+        {
+          "error": "公共数据服务返回 HTTP 422，本次未取得所需数据。",
+          "fundCode": "014978"
+        },
+        {
+          "error": "公共数据服务返回 HTTP 422，本次未取得所需数据。",
+          "fundCode": "017145"
+        },
+        {
+          "error": "公共数据服务返回 HTTP 422，本次未取得所需数据。",
+          "fundCode": "018156"
+        },
+        {
+          "error": "公共数据服务返回 HTTP 422，本次未取得所需数据。",
+          "fundCode": "018853"
+        },
+        {
+          "error": "公共数据服务返回 HTTP 422，本次未取得所需数据。",
+          "fundCode": "019449"
+        }
+      ],
+      "MODEL_f9831e00c0a4ec07": [
+        {
+          "error": "公共数据服务返回 HTTP 422，本次未取得所需数据。",
+          "fundCode": "006476"
+        },
+        {
+          "error": "公共数据服务返回 HTTP 422，本次未取得所需数据。",
+          "fundCode": "008764"
+        },
+        {
+          "error": "公共数据服务返回 HTTP 422，本次未取得所需数据。",
+          "fundCode": "014978"
+        },
+        {
+          "error": "公共数据服务返回 HTTP 422，本次未取得所需数据。",
+          "fundCode": "017145"
+        },
+        {
+          "error": "公共数据服务返回 HTTP 422，本次未取得所需数据。",
+          "fundCode": "018156"
+        },
+        {
+          "error": "公共数据服务返回 HTTP 422，本次未取得所需数据。",
+          "fundCode": "018853"
+        },
+        {
+          "error": "公共数据服务返回 HTTP 422，本次未取得所需数据。",
+          "fundCode": "019449"
+        }
+      ]
+    },
+    "inputHash": "81c98f4fe6c71d38a71fed87d220d8dba7f748e27a24fae4a10d1c9af294b5e6",
+    "releaseId": "e2e651c8-c014-4c59-91c3-401d026f6cfc",
+    "evidenceLevel": "DEVELOPMENT_ONLY",
+    "matureEvaluation": {
+      "note": "真实同题覆盖齐全后优先使用；未到期不计错误",
+      "comparisons": {
+        "MP-13f312e5f86bcf2e1e3e73c3b2635fa7": {
+          "current": {
+            "accuracy": null,
+            "coverage": 0,
+            "breakdown": {},
+            "dateCount": 0,
+            "fundCount": 0,
+            "classCounts": {
+              "UP": 0,
+              "DOWN": 0,
+              "FLAT": 0
+            },
+            "classRecall": {
+              "UP": null,
+              "DOWN": null,
+              "FLAT": null
+            },
+            "plannedItems": 0,
+            "primaryScore": null,
+            "confusionMatrix": {
+              "UP": {
+                "UP": 0,
+                "DOWN": 0,
+                "FLAT": 0
+              },
+              "DOWN": {
+                "UP": 0,
+                "DOWN": 0,
+                "FLAT": 0
+              },
+              "FLAT": {
+                "UP": 0,
+                "DOWN": 0,
+                "FLAT": 0
+              }
+            },
+            "balancedAccuracy": null,
+            "alwaysFlatAccuracy": null,
+            "successfulMatureItems": 0,
+            "failedOrUnmaturedItems": 0,
+            "alwaysFlatBalancedAccuracy": null
+          },
+          "candidate": {
+            "accuracy": null,
+            "coverage": 0,
+            "breakdown": {},
+            "dateCount": 0,
+            "fundCount": 0,
+            "classCounts": {
+              "UP": 0,
+              "DOWN": 0,
+              "FLAT": 0
+            },
+            "classRecall": {
+              "UP": null,
+              "DOWN": null,
+              "FLAT": null
+            },
+            "plannedItems": 0,
+            "primaryScore": null,
+            "confusionMatrix": {
+              "UP": {
+                "UP": 0,
+                "DOWN": 0,
+                "FLAT": 0
+              },
+              "DOWN": {
+                "UP": 0,
+                "DOWN": 0,
+                "FLAT": 0
+              },
+              "FLAT": {
+                "UP": 0,
+                "DOWN": 0,
+                "FLAT": 0
+              }
+            },
+            "balancedAccuracy": null,
+            "alwaysFlatAccuracy": null,
+            "successfulMatureItems": 0,
+            "failedOrUnmaturedItems": 0,
+            "alwaysFlatBalancedAccuracy": null
+          },
+          "comparable": false
+        },
+        "MP-2ddd6756564c9e24b5769c9efc4c9ba1": {
+          "current": {
+            "accuracy": null,
+            "coverage": 0,
+            "breakdown": {},
+            "dateCount": 0,
+            "fundCount": 0,
+            "classCounts": {
+              "UP": 0,
+              "DOWN": 0,
+              "FLAT": 0
+            },
+            "classRecall": {
+              "UP": null,
+              "DOWN": null,
+              "FLAT": null
+            },
+            "plannedItems": 0,
+            "primaryScore": null,
+            "confusionMatrix": {
+              "UP": {
+                "UP": 0,
+                "DOWN": 0,
+                "FLAT": 0
+              },
+              "DOWN": {
+                "UP": 0,
+                "DOWN": 0,
+                "FLAT": 0
+              },
+              "FLAT": {
+                "UP": 0,
+                "DOWN": 0,
+                "FLAT": 0
+              }
+            },
+            "balancedAccuracy": null,
+            "alwaysFlatAccuracy": null,
+            "successfulMatureItems": 0,
+            "failedOrUnmaturedItems": 0,
+            "alwaysFlatBalancedAccuracy": null
+          },
+          "candidate": {
+            "accuracy": null,
+            "coverage": 0,
+            "breakdown": {},
+            "dateCount": 0,
+            "fundCount": 0,
+            "classCounts": {
+              "UP": 0,
+              "DOWN": 0,
+              "FLAT": 0
+            },
+            "classRecall": {
+              "UP": null,
+              "DOWN": null,
+              "FLAT": null
+            },
+            "plannedItems": 0,
+            "primaryScore": null,
+            "confusionMatrix": {
+              "UP": {
+                "UP": 0,
+                "DOWN": 0,
+                "FLAT": 0
+              },
+              "DOWN": {
+                "UP": 0,
+                "DOWN": 0,
+                "FLAT": 0
+              },
+              "FLAT": {
+                "UP": 0,
+                "DOWN": 0,
+                "FLAT": 0
+              }
+            },
+            "balancedAccuracy": null,
+            "alwaysFlatAccuracy": null,
+            "successfulMatureItems": 0,
+            "failedOrUnmaturedItems": 0,
+            "alwaysFlatBalancedAccuracy": null
+          },
+          "comparable": false
+        },
+        "MP-ff88d38412cb7facdedadacc0bbbf52d": {
+          "current": {
+            "accuracy": null,
+            "coverage": 0,
+            "breakdown": {},
+            "dateCount": 0,
+            "fundCount": 0,
+            "classCounts": {
+              "UP": 0,
+              "DOWN": 0,
+              "FLAT": 0
+            },
+            "classRecall": {
+              "UP": null,
+              "DOWN": null,
+              "FLAT": null
+            },
+            "plannedItems": 0,
+            "primaryScore": null,
+            "confusionMatrix": {
+              "UP": {
+                "UP": 0,
+                "DOWN": 0,
+                "FLAT": 0
+              },
+              "DOWN": {
+                "UP": 0,
+                "DOWN": 0,
+                "FLAT": 0
+              },
+              "FLAT": {
+                "UP": 0,
+                "DOWN": 0,
+                "FLAT": 0
+              }
+            },
+            "balancedAccuracy": null,
+            "alwaysFlatAccuracy": null,
+            "successfulMatureItems": 0,
+            "failedOrUnmaturedItems": 0,
+            "alwaysFlatBalancedAccuracy": null
+          },
+          "candidate": {
+            "accuracy": null,
+            "coverage": 0,
+            "breakdown": {},
+            "dateCount": 0,
+            "fundCount": 0,
+            "classCounts": {
+              "UP": 0,
+              "DOWN": 0,
+              "FLAT": 0
+            },
+            "classRecall": {
+              "UP": null,
+              "DOWN": null,
+              "FLAT": null
+            },
+            "plannedItems": 0,
+            "primaryScore": null,
+            "confusionMatrix": {
+              "UP": {
+                "UP": 0,
+                "DOWN": 0,
+                "FLAT": 0
+              },
+              "DOWN": {
+                "UP": 0,
+                "DOWN": 0,
+                "FLAT": 0
+              },
+              "FLAT": {
+                "UP": 0,
+                "DOWN": 0,
+                "FLAT": 0
+              }
+            },
+            "balancedAccuracy": null,
+            "alwaysFlatAccuracy": null,
+            "successfulMatureItems": 0,
+            "failedOrUnmaturedItems": 0,
+            "alwaysFlatBalancedAccuracy": null
+          },
+          "comparable": false
+        }
+      },
+      "plannedItems": 0,
+      "questionHash": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "evidenceLevel": "LIVE_MATURED"
+    }
+  },
+  "releaseReceipts": [
+    {
+      "release_id": "e2e651c8-c014-4c59-91c3-401d026f6cfc",
+      "kind": "ACTUAL_USE",
+      "payload": {
+        "apiReadback": true,
+        "predictionIds": [
+          "fcfed092-1785-4c4e-ae11-ed3d055eae91",
+          "47866b84-a49c-450a-bb31-1dea8f401485",
+          "fc82714c-47a0-40a2-b9a8-e3577e4850a8"
+        ],
+        "referenceHash": "09e119c1e498716efb5e532b333fd65a0b4bc5e60ed8100191126b616c5b1e86",
+        "adviceReferenced": true
+      }
+    }
+  ],
+  "mainPredictions": {
+    "funds": 37,
+    "records": 111,
+    "directions": {
+      "FLAT": 13,
+      "UP": 69,
+      "DOWN": 29
+    }
+  },
+  "shadowRecords": 111,
+  "firstTask": {
+    "taskId": "5dba8610-8298-4252-957e-bfe149c3c93b",
+    "status": "PARTIAL_SUCCESS",
+    "createdAt": "2026-09-23 09:19:58.032371+00:00",
+    "finishedAt": "2026-09-23 09:20:33.098329+00:00",
+    "plannedItems": 132,
+    "fundCount": 44,
+    "createdItems": 111,
+    "reusedItems": 0,
+    "failedItems": 21,
+    "cancelledItems": 0,
+    "pendingItems": 0,
+    "fallbackItems": 0,
+    "baselineItems": 74,
+    "failures": [
+      {
+        "fund": "006476",
+        "horizon": "M6_V1",
+        "code": "CALENDAR_POLICY_MISSING"
+      },
+      {
+        "fund": "006476",
+        "horizon": "T20_V1",
+        "code": "CALENDAR_POLICY_MISSING"
+      },
+      {
+        "fund": "006476",
+        "horizon": "T5_V1",
+        "code": "CALENDAR_POLICY_MISSING"
+      },
+      {
+        "fund": "008764",
+        "horizon": "M6_V1",
+        "code": "CALENDAR_POLICY_MISSING"
+      },
+      {
+        "fund": "008764",
+        "horizon": "T20_V1",
+        "code": "CALENDAR_POLICY_MISSING"
+      },
+      {
+        "fund": "008764",
+        "horizon": "T5_V1",
+        "code": "CALENDAR_POLICY_MISSING"
+      },
+      {
+        "fund": "014978",
+        "horizon": "M6_V1",
+        "code": "CALENDAR_POLICY_MISSING"
+      },
+      {
+        "fund": "014978",
+        "horizon": "T20_V1",
+        "code": "CALENDAR_POLICY_MISSING"
+      },
+      {
+        "fund": "014978",
+        "horizon": "T5_V1",
+        "code": "CALENDAR_POLICY_MISSING"
+      },
+      {
+        "fund": "017145",
+        "horizon": "M6_V1",
+        "code": "CALENDAR_POLICY_MISSING"
+      },
+      {
+        "fund": "017145",
+        "horizon": "T20_V1",
+        "code": "CALENDAR_POLICY_MISSING"
+      },
+      {
+        "fund": "017145",
+        "horizon": "T5_V1",
+        "code": "CALENDAR_POLICY_MISSING"
+      },
+      {
+        "fund": "018156",
+        "horizon": "M6_V1",
+        "code": "CALENDAR_POLICY_MISSING"
+      },
+      {
+        "fund": "018156",
+        "horizon": "T20_V1",
+        "code": "CALENDAR_POLICY_MISSING"
+      },
+      {
+        "fund": "018156",
+        "horizon": "T5_V1",
+        "code": "CALENDAR_POLICY_MISSING"
+      },
+      {
+        "fund": "018853",
+        "horizon": "M6_V1",
+        "code": "CALENDAR_POLICY_MISSING"
+      },
+      {
+        "fund": "018853",
+        "horizon": "T20_V1",
+        "code": "CALENDAR_POLICY_MISSING"
+      },
+      {
+        "fund": "018853",
+        "horizon": "T5_V1",
+        "code": "CALENDAR_POLICY_MISSING"
+      },
+      {
+        "fund": "019449",
+        "horizon": "M6_V1",
+        "code": "CALENDAR_POLICY_MISSING"
+      },
+      {
+        "fund": "019449",
+        "horizon": "T20_V1",
+        "code": "CALENDAR_POLICY_MISSING"
+      },
+      {
+        "fund": "019449",
+        "horizon": "T5_V1",
+        "code": "CALENDAR_POLICY_MISSING"
+      }
+    ]
+  },
+  "api": {
+    "reportId": "14ae5479-540e-418e-959c-d2990ebd0bab",
+    "strategyVersion": "HOLDING_ADVICE_V3_THREE_STATE",
+    "generatedAt": "2026-09-23T09:21:00.148981500Z",
+    "decision": "BUY",
+    "modelRefs": [
+      {
+        "modelId": "MP-7552509c276966377054944d8633fa36",
+        "dataAsOf": "2026-09-22",
+        "direction": "DOWN",
+        "horizonId": "M6_V1",
+        "modelHash": "7552509c276966377054944d8633fa36911473d6ad9cfc74423ebcc374b8771b",
+        "predictionId": "65088706-5890-42a9-bd85-402d10d708b2",
+        "activationRevision": 2,
+        "targetDefinitionId": "NEXT_EXECUTABLE_CASH_REINVESTED_THREE_STATE_V2",
+        "directionPolicyHash": "82abb3ff890e193486f38a0ac23e54aac3aec2729006acacecee0d9dfff04e6a"
+      },
+      {
+        "modelId": "MP-13f312e5f86bcf2e1e3e73c3b2635fa7",
+        "dataAsOf": "2026-09-22",
+        "direction": "UP",
+        "horizonId": "T20_V1",
+        "modelHash": "13f312e5f86bcf2e1e3e73c3b2635fa71fa3f8f0ce3d539ee217654e6deb385f",
+        "predictionId": "9602f65e-e4c2-430d-9dfe-073973162b61",
+        "activationRevision": 2,
+        "targetDefinitionId": "NEXT_EXECUTABLE_CASH_REINVESTED_THREE_STATE_V2",
+        "directionPolicyHash": "82abb3ff890e193486f38a0ac23e54aac3aec2729006acacecee0d9dfff04e6a"
+      },
+      {
+        "modelId": "MP-677a3a5c06bdc3afa8d20abdb70d04f7",
+        "dataAsOf": "2026-09-22",
+        "direction": "UP",
+        "horizonId": "T5_V1",
+        "modelHash": "677a3a5c06bdc3afa8d20abdb70d04f7549e5b204f13d727ae4dd0149d049552",
+        "predictionId": "802c82c3-ee1a-4a69-bdcf-e587bdd028e3",
+        "activationRevision": 2,
+        "targetDefinitionId": "NEXT_EXECUTABLE_CASH_REINVESTED_THREE_STATE_V2",
+        "directionPolicyHash": "82abb3ff890e193486f38a0ac23e54aac3aec2729006acacecee0d9dfff04e6a"
+      }
+    ],
+    "releaseIds": [
+      "e2e651c8-c014-4c59-91c3-401d026f6cfc"
+    ],
+    "supportingEvidence": [
+      "二十日预测上涨，数据截至2026-09-22",
+      "五日预测上涨，数据截至2026-09-22",
+      "近二十日走势和回撤变化因子=1.0（初始实验规则）"
+    ],
+    "neutralEvidence": [],
+    "opposingEvidence": [
+      "半年预测下跌，数据截至2026-09-22"
+    ]
+  },
+  "engineHash": "4cb9faceaf7cadb5de8855e756bae0544b651b3aa56421d5b314f24a82211f85",
+  "trainingResults": {
+    "M6_V1": {
+      "candidates": null,
+      "selection": {
+        "winner": "MP-7552509c276966377054944d8633fa36",
+        "shadows": [
+          "MP-ff88d38412cb7facdedadacc0bbbf52d"
+        ],
+        "decision": "KEEP_CURRENT",
+        "decisions": [
+          {
+            "reason": "三类均衡识别或持平对照不满足条件",
+            "modelId": "MP-ff88d38412cb7facdedadacc0bbbf52d",
+            "decision": "RUN_AS_SHADOW"
+          }
+        ],
+        "sampleHash": "79da448948592381a17c343171a7742a3affe85cedbf34a6749b40d8ec9fadfe",
+        "publication": "CANDIDATE_ONLY",
+        "protocolHash": "167ffaf66935445c9d6b03dd13560d2efe75d28b78eb80f507637df9617cbb6a"
+      },
+      "keys": [
+        "note",
+        "models",
+        "answers",
+        "planned",
+        "samples",
+        "failures",
+        "selection",
+        "evidenceLevel",
+        "trainingSamples",
+        "evaluationSamples",
+        "historicalQuality"
+      ]
+    },
+    "T5_V1": {
+      "candidates": null,
+      "selection": {
+        "winner": "MP-677a3a5c06bdc3afa8d20abdb70d04f7",
+        "shadows": [
+          "MP-2ddd6756564c9e24b5769c9efc4c9ba1"
+        ],
+        "decision": "KEEP_CURRENT",
+        "decisions": [
+          {
+            "reason": "三类均衡识别或持平对照不满足条件",
+            "modelId": "MP-2ddd6756564c9e24b5769c9efc4c9ba1",
+            "decision": "RUN_AS_SHADOW"
+          }
+        ],
+        "sampleHash": "0af5c2fa27c151081adbdcb5f335c5fd8a51ca77af5197b0b3985fb5e7fdcc45",
+        "publication": "CANDIDATE_ONLY",
+        "protocolHash": "d983675fb375c207ffd7026010d6f8d6d672a1058048578918b38e40ac816be5"
+      },
+      "keys": [
+        "note",
+        "models",
+        "answers",
+        "planned",
+        "samples",
+        "failures",
+        "selection",
+        "evidenceLevel",
+        "trainingSamples",
+        "evaluationSamples",
+        "historicalQuality"
+      ]
+    },
+    "T20_V1": {
+      "candidates": null,
+      "selection": {
+        "winner": "MP-13f312e5f86bcf2e1e3e73c3b2635fa7",
+        "shadows": [],
+        "decision": "ACTIVATE",
+        "decisions": [
+          {
+            "reason": "同题主指标严格改善；自动采用仍须完整组合扣费比较",
+            "modelId": "MP-13f312e5f86bcf2e1e3e73c3b2635fa7",
+            "decision": "ACTIVATE"
+          }
+        ],
+        "sampleHash": "0f119c5c582821e7d5144994a29adac67e03aa12934d04e382968fadbc28bea2",
+        "publication": "CANDIDATE_ONLY",
+        "protocolHash": "9e2f2b8277012bd8c7197005236c4e78dafa558210cc0796597d0bcdd193c6a6"
+      },
+      "keys": [
+        "note",
+        "models",
+        "answers",
+        "planned",
+        "samples",
+        "failures",
+        "selection",
+        "evidenceLevel",
+        "trainingSamples",
+        "evaluationSamples",
+        "historicalQuality"
+      ]
+    }
+  },
+  "finalChecks": {
+    "allMainReferencesMatchPublishedRoutes": 111,
+    "receiptPredictionIdsPresent": 3,
+    "temporaryAcceptanceFollowsRemoved": 4,
+    "normalJavaRestartVerified": true,
+    "browserViewportReset": true,
+    "temporaryBrowserTabClosed": true
+  }
+}

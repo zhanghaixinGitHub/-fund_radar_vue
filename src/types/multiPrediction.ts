@@ -2,7 +2,8 @@
 export interface PredictionError { code: string; stage: string; summary: string; details?: Record<string, unknown>; traceId?: string; nextAction?: string; retryable?: boolean }
 export interface MultiPrediction {
   predictionId: string; fundCode: string; horizonId: string; startDate: string; endDate: string | null
-  nominalEndDate: string | null; endDateStatus: string; direction: 'UP' | 'NON_UP'; reason: string
+  nominalEndDate: string | null; endDateStatus: string; direction: 'UP' | 'FLAT' | 'DOWN' | 'NON_UP'; reason: string
+  targetDefinitionId?: string; directionPolicyHash?: string; flatThreshold?: string
   modelId: string; modelHash: string; activationRevision: number; generatedAt: string; dataAsOf: string
   baseline: boolean; fallbackReason: PredictionError[] | null; limitations: string[]; role: string
   modelManifest: { recipeVersion: string; labelEndMax: string | null; trainedAt: string | null; evidenceLevel: string }
@@ -19,7 +20,7 @@ export interface PredictionTask {
 }
 export interface DecisionReport {
   reportId: string; fundCode: string; generatedAt: string; validUntil: string; generationStatus: string
-  decision: string | null; summary: string; supportingEvidence: string[]; opposingEvidence: string[]
+  decision: string | null; summary: string; supportingEvidence: string[]; opposingEvidence: string[]; neutralEvidence?: string[]
   facts: string[]; missingOptionalFactors: string[]; strategyVersion: string; preference: string; defaultPreference: boolean
   modelRefs: { predictionId: string; horizonId: string; modelId: string; modelHash: string; activationRevision: number }[]
   executionConstraints: string[]; error?: PredictionError

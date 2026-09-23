@@ -2,7 +2,7 @@ import { get, post } from './http'
 
 export interface PredictionEffects {
   mode: string; fundCount: number; followedFundCount: number; failedPeriods: number; note: string
-  horizons: { horizon_id: string; records: number; funds: number; matured: number; unmatured: number; pending_answers: number; check_failed: number; correct: number; matured_funds: number }[]
+  horizons: { horizon_id: string; target_definition_id: string; direction_policy_hash: string; up_actual: number; flat_actual: number; down_actual: number; up_correct: number; flat_correct: number; down_correct: number; records: number; funds: number; matured: number; unmatured: number; pending_answers: number; check_failed: number; correct: number; matured_funds: number }[]
 }
 export interface LedgerResult { finalEquity: number; netReturn: number; maxDrawdown: number; fees: number; tradeCount: number }
 export interface AdviceEffects {

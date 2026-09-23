@@ -24,7 +24,7 @@ interface Evaluation {
     result: { decision: string; winner: string; decisions: { modelId: string; reason: string }[] }
   }
 }
-interface ModelStatus { models: Model[]; routes: Route[]; events: ModelEvent[]; evaluations: Evaluation[]; readAt: string }
+interface ModelStatus { models: Model[]; routes: Route[]; activeRouteKeys: string[]; events: ModelEvent[]; evaluations: Evaluation[]; readAt: string }
 
 const value = ref<ModelStatus | null>(null)
 const error = ref('')
@@ -35,6 +35,8 @@ const horizons: Record<string, { label: string; description: string; order: numb
   M6_V1: { label: '半年预测', description: '判断未来六个自然月的整体方向', order: 2 },
 }
 const recipes: Record<string, { name: string; explanation: string }> = {
+  NAV_MOMENTUM_THREE_STATE_V2: { name: '近期走势法（三分类）', explanation: '按近期净值的整体变化，分别判断上涨、持平或下跌；小幅波动归为持平。' },
+  TOTAL_RETURN_LOGISTIC_THREE_STATE_V2: { name: '历史学习法（三分类）', explanation: '从历史涨跌、波动和回撤学习三种结果，分别预测上涨、持平或下跌。' },
   NAV_MOMENTUM_BASELINE_V1: { name: '近期走势法', explanation: '按近期净值的整体变化，判断未来这一段时间上涨还是下跌或持平。' },
   TOTAL_RETURN_LOGISTIC_V1: { name: '历史学习法', explanation: '从历史净值的涨跌、波动和回撤中学习规律，再判断未来这一段时间的方向。' },
 }
@@ -47,9 +49,11 @@ const methodExplanation = (id: string) => recipes[model(id)?.manifest.recipeVers
 const percent = (number: number | null | undefined) => number == null || !Number.isFinite(number) ? '暂无可比较结果' : `${(number * 100).toFixed(2)}%`
 const time = (date: string | null | undefined) => date && !Number.isNaN(Date.parse(date)) ? simTime(date) : '暂无记录'
 const count = (id: string) => model(id)?.live_calls == null ? '暂缺统计' : `${model(id)!.live_calls.toLocaleString('zh-CN')} 条`
+const comparedIds = (route: Route) => route.shadow_ids.filter(id => id !== route.model_id)
 const modelIds = (route: Route) => [...new Set([route.model_id, ...route.shadow_ids])]
-const routes = computed(() => [...(value.value?.routes ?? [])].sort((a, b) =>
+const routes = computed(() => [...(value.value?.routes ?? [])].filter(route => value.value?.activeRouteKeys.includes(route.route_key)).sort((a, b) =>
   (horizons[horizonId(a)]?.order ?? 99) - (horizons[horizonId(b)]?.order ?? 99)))
+const legacyRoutes = computed(() => (value.value?.routes ?? []).filter(route => !value.value?.activeRouteKeys.includes(route.route_key)))
 
 /** 只用与当前主模型、当前候选都匹配的冻结比较证据，避免拿旧候选成绩解释新版本。 */
 function latestComparison(route: Route) {
@@ -60,15 +64,15 @@ function latestComparison(route: Route) {
 }
 function adoptionReason(route: Route) {
   const evaluation = latestComparison(route)
-  if (!evaluation) return '目前使用这套已登记的方法，暂时没有可展示的历史比较结果。'
+  if (!evaluation) return '当前路由配置了这套方法；实际预测以保存原文中的模型身份为准，暂时没有可展示的历史比较结果。'
   return evaluation.payload.result.decision === 'KEEP_CURRENT'
     ? '最近一次历史比较中，新方法没有胜出，所以继续使用当前方法。'
-    : '这套方法在相同条件的历史比较中胜出，已被选为当前方法。'
+    : '历史研究曾提名这套方法。当前配置见路由，真实采用还需核对新预测、综合建议和采用回执。'
 }
 function trainingExplanation(id: string) {
   const item = model(id)
   // 固定规则本身不需要训练；旧包没有提供日期则明确未知，不再把两种情况混成一句。
-  if (item?.manifest.recipeVersion === 'NAV_MOMENTUM_BASELINE_V1') return '固定规则，无须训练；预测时会读取当时可用的净值。'
+  if (['NAV_MOMENTUM_BASELINE_V1', 'NAV_MOMENTUM_THREE_STATE_V2'].includes(item?.manifest.recipeVersion ?? '')) return '固定规则，无须训练；预测时会读取当时可用的净值。'
   if (!item?.manifest.labelEndMax || Number.isNaN(Date.parse(item.manifest.labelEndMax))) return '尚未提供训练样本的结果截止日期。'
   const date = new Date(item.manifest.labelEndMax).toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' })
   return `学习样本的已知涨跌结果截至 ${date}。新预测仍会读取当时可用的净值。`
@@ -144,7 +148,7 @@ onMounted(load)
           {{ horizons[horizonId(route)]?.description ?? '周期定义见下方技术详情' }}
         </p>
         <div class="current-method">
-          <span class="method-role">目前使用</span>
+          <span class="method-role">当前配置</span>
           <h4>{{ methodName(route.model_id) }}</h4>
           <p>{{ methodExplanation(route.model_id) }}</p>
           <dl class="method-records">
@@ -158,17 +162,17 @@ onMounted(load)
         </div>
         <div class="candidate-methods">
           <p
-            v-if="!route.shadow_ids.length"
+            v-if="!comparedIds(route).length"
             class="muted"
           >
             暂时没有同时比较的新方法。
           </p>
           <div
-            v-for="(id, index) in route.shadow_ids"
+            v-for="(id, index) in comparedIds(route)"
             :key="id"
             class="candidate-method"
           >
-            <span class="method-role">正在比较{{ route.shadow_ids.length > 1 ? ` · 新方法${index + 1}` : '的新方法' }}</span>
+            <span class="method-role">正在比较{{ comparedIds(route).length > 1 ? ` · 新方法${index + 1}` : '的新方法' }}</span>
             <h4>{{ methodName(id) }}</h4>
             <p>已保存预测：{{ count(id) }}。同时记录结果供比较，暂不作为主要判断。</p>
           </div>
@@ -251,11 +255,23 @@ onMounted(load)
         </details>
       </article>
     </div>
+    <details
+      v-if="legacyRoutes.length"
+      class="event-history"
+    >
+      <summary>旧目标或其他规则的路由（不用于当前三分类）</summary>
+      <p
+        v-for="route in legacyRoutes"
+        :key="route.route_key"
+      >
+        {{ horizonName(route) }} · {{ methodName(route.model_id) }} · {{ route.model_id }}<br>{{ route.route_key }}
+      </p>
+    </details>
     <p
       v-if="routes.length"
       class="record-explanation"
     >
-      <strong>“已保存预测”是记录数，不是预测正确次数。</strong>同一批基金可以同时由多种方法预测，不能把各方法的记录数相加当作基金数量。每条预测是否正确，需要等对应周期结束后再核验。
+      <strong>“已保存预测”是记录数，不是预测正确次数。</strong>计数包含主预测和影子比较记录。同一批基金可以同时由多种方法预测，不能把各方法的记录数相加当作基金数量。每条预测是否正确，需要等对应周期结束后再核验。
     </p>
     <details
       v-if="value?.events.length"

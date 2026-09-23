@@ -1,0 +1,212 @@
+{
+  "checkedAt": "2026-09-23T17:41:59.499667",
+  "repositories": {
+    "Vue": {
+      "baseHead": "eda76a511941f0e9e3857e29ff37f97171b23d14",
+      "files": [
+        {
+          "path": "src/api/automaticPrediction.ts",
+          "sha256": "0877ed519ffa896b65c085554e68661117a85b5870d71b552cf5ab7122700d57"
+        },
+        {
+          "path": "src/api/multiPrediction.ts",
+          "sha256": "0cc2cabd208d53d86c1474304bf320eb5028d55ce1676a00e2321aa8632b0d50"
+        },
+        {
+          "path": "src/components/AutomaticEffectsPanel.vue",
+          "sha256": "119ad136f570b39d2e5cc88d9e5ddf4991536909f3c3f4b947aceae24e4169ee"
+        },
+        {
+          "path": "src/components/DecisionPanelV2.vue",
+          "sha256": "db52f08948964e0676f7ef1a628e473169188228f804fd01590dace3f078848f"
+        },
+        {
+          "path": "src/components/Direction1dPanel.vue",
+          "sha256": "4e306e8b6a8c6760cdc5f46f4ba0b2e91a7f2d45d5cf666e72d16e7a44876d87"
+        },
+        {
+          "path": "src/components/ModelRoutesPanel.vue",
+          "sha256": "c6a49139b369c0206f306a6e839c41bf52263ef4f1c1995ddc950276ce3a6219"
+        },
+        {
+          "path": "src/components/MultiPredictionHistory.vue",
+          "sha256": "aa92de7539c47bd5d7914e0ff4d0fdbc3824e4ee992c875f9bd506ae06d6ce8d"
+        },
+        {
+          "path": "src/components/MultiPredictionPanel.vue",
+          "sha256": "789f229c8d8293af2cf9020a0a01d0c3b056a19d9bf36a59f2a61ebed4ff190e"
+        },
+        {
+          "path": "src/types/multiPrediction.ts",
+          "sha256": "e3e8e6e2286822fb4cfff0797159e14522892431e6d122f068dc56dbb04cf0d9"
+        },
+        {
+          "path": "src/utils/predictionDirection.ts",
+          "sha256": "835147dee6757d3492b1a7a401d76fc7ee8ee24bede03fcbf040cd08a8b64190"
+        },
+        {
+          "path": "src/views/Direction1dPage.vue",
+          "sha256": "5768f08d54908c9dd0884b50f8b3ae2403733ac2cf2ec2dfe1f2c49dfc95939e"
+        },
+        {
+          "path": "src/views/WatchlistFundDetailPage.vue",
+          "sha256": "ca5933a48d1e18bed70ea0bd5466282ff9631caa46ca2423b7c233f724a99520"
+        }
+      ]
+    },
+    "Python": {
+      "baseHead": "e370b2359259cfc565a69ef49ab4651f4166e6fa",
+      "files": [
+        {
+          "path": "alembic/versions/20260923_28_prediction_task_input.py",
+          "sha256": "b997de04a04b0fa2075010524f2f10f7976aa3959454b8ced62529db1e9813bc"
+        },
+        {
+          "path": "app/data/auto_model_policy_v1.json",
+          "sha256": "05c391b0080777c361109074a8a983b57b8125cf1e087a16b32e2fbf78b6572a"
+        },
+        {
+          "path": "app/data/prediction_policy_v2.json",
+          "sha256": "3f9c0effc9d85aead1b776046e86e3f85d6d5b16b8ea792acc1b0cc3c5696b10"
+        },
+        {
+          "path": "app/services/auto_model_contract.py",
+          "sha256": "efb7a05d59fd12a41604a23ff80497e926a0240eb6ed3cc921fc5fa2c028caa8"
+        },
+        {
+          "path": "app/services/auto_model_selection.py",
+          "sha256": "6e6174ecf4f3b6a3ab046ec96f9116049ac14da60789b2c603d9a37cd71a9431"
+        },
+        {
+          "path": "app/services/auto_model_store.py",
+          "sha256": "192feecdeea75db7880f08d652bd95d4bf3af5ce3a47e8bc21856ddff2a31c80"
+        },
+        {
+          "path": "app/services/auto_model_summary.py",
+          "sha256": "c1826c88937ad93cc03c6612206afe3db26fb3479d95ec6e2d9c6938a87fdd7e"
+        },
+        {
+          "path": "app/services/prediction_contract.py",
+          "sha256": "d250b3c59ca7dc286fe88f193684b9f752c7ea729758a267fac57b05b625af98"
+        },
+        {
+          "path": "app/services/prediction_direction.py",
+          "sha256": "c934a1150c1a9de0333518ea2f870c71a91197c17ed49eb5f3f62adf80cfb885"
+        },
+        {
+          "path": "app/services/prediction_generation.py",
+          "sha256": "72ade0b93fb625e0e15ea1b8176b579915bd1176e7f5c33f1dacf25e79e9a474"
+        },
+        {
+          "path": "app/services/prediction_models.py",
+          "sha256": "1cfa5e93b87df6286b59e12820ab447f08e1880b0b46cc7793110a22d616ae68"
+        },
+        {
+          "path": "app/services/prediction_replay_inputs.py",
+          "sha256": "7682b07be4376466d669c03e3a0a54748017e7d611261801468c72baffcfa735"
+        },
+        {
+          "path": "app/services/prediction_replay_models.py",
+          "sha256": "5d5ebe4bc999aeb5bf1fc6a4ea5d3f1db2ee5a5dd2ccf5fb8d35f26f885be858"
+        },
+        {
+          "path": "app/services/prediction_research.py",
+          "sha256": "7bcc8e5c1c434fa0d28efdcb3bece851af113d71b87faa93bb34bc1091c4edd4"
+        },
+        {
+          "path": "app/services/prediction_selection.py",
+          "sha256": "79f9b2b053b1a1d3b1aaabba6e54306b70679f7521d42fb0a12a392a2f95c063"
+        },
+        {
+          "path": "app/services/prediction_task_inputs.py",
+          "sha256": "1e26dc70aafb33d120b8d3aae044e4cdd28743d772e44d7830ef8b1fa74c1d07"
+        },
+        {
+          "path": "scripts/three_state_threshold_analysis.py",
+          "sha256": "f7cd89e3537521251b59d9013b4454da1c59fa1873ae5da7f58095f7f5e6892a"
+        },
+        {
+          "path": "tests/test_auto_model_database.py",
+          "sha256": "13280abc2ac3480cc62f6e5e039dc2b474346301cfb2d077b54c19e30aa68da2"
+        },
+        {
+          "path": "tests/test_prediction_database.py",
+          "sha256": "5340b49c9233507687d86cc1355f15de5e5eab6e4550b6363c764544ce8d7b37"
+        },
+        {
+          "path": "tests/test_prediction_models.py",
+          "sha256": "d17abeadac7e7f02b998ee63d424e0336c8c7948669ed44dc0d9ea8f50a7bfbf"
+        },
+        {
+          "path": "tests/test_prediction_replay_models.py",
+          "sha256": "b96aa2079e0c66af1eb437ce29d88560ac8bb752a7ca61c514681d5e3a5994eb"
+        },
+        {
+          "path": "tests/test_prediction_three_state.py",
+          "sha256": "f68efb3f6abb5de4601a6dbbaab02170b31f7f3c85e33252a5257b7e44fc4797"
+        },
+        {
+          "path": "tests/test_three_state_database.py",
+          "sha256": "2520961e9625c80d7aa7a544b44935229a486991a5df071f852ba46a0c848a31"
+        }
+      ]
+    },
+    "Java": {
+      "baseHead": "2c748c701e2887e0c8798d8919727dd1cf71eb5d",
+      "files": [
+        {
+          "path": "src/main/java/com/fundradar/core/advice/DecisionControllerV2.java",
+          "sha256": "95c8cbc8f4c59f422843c62c0b35737b36f09b1298941502bd0b1a45aa4fd5ba"
+        },
+        {
+          "path": "src/main/java/com/fundradar/core/advice/DecisionPolicyV2.java",
+          "sha256": "51a9dfec3de2b1f55fd51975c5302c6fcdf38b5ac6012a6655658217c42273aa"
+        },
+        {
+          "path": "src/main/java/com/fundradar/core/advice/DecisionServiceV2.java",
+          "sha256": "f1a14e323557804cbb1ac8a5574e13d68af15f075b62a36765d3d4cc04babcdd"
+        },
+        {
+          "path": "src/main/java/com/fundradar/core/advice/IssuedAdviceEffectService.java",
+          "sha256": "8f0e1f451e645b1f41dcdf51b1f39d88f7a02e93274a1a083c925ee141bcc77c"
+        },
+        {
+          "path": "src/main/java/com/fundradar/core/advice/StrategyReplayEngine.java",
+          "sha256": "05bb84c68127cc025050f8417311abbd49495fff1e6150eeb2dd90b27e76786a"
+        },
+        {
+          "path": "src/main/java/com/fundradar/core/advice/StrategyResearchService.java",
+          "sha256": "69a195578b37366a9e59539769bbfa83e843937d6c13e5323ae9e0d6cd90f8f0"
+        },
+        {
+          "path": "src/main/java/com/fundradar/core/prediction/AutoModelService.java",
+          "sha256": "91cd1a08db07481bb842f28d034729fbdc84b74f247abba04d2ac364c9dad8b9"
+        },
+        {
+          "path": "src/main/java/com/fundradar/core/prediction/PredictionDirectionContract.java",
+          "sha256": "b3c5a2245914f1254fa3cf40627ce92278c68a94a0724b8f0d668426068f16f5"
+        },
+        {
+          "path": "src/main/resources/prediction-policy-v2.json",
+          "sha256": "3f9c0effc9d85aead1b776046e86e3f85d6d5b16b8ea792acc1b0cc3c5696b10"
+        },
+        {
+          "path": "src/test/java/com/fundradar/core/advice/DecisionPolicyV2Tests.java",
+          "sha256": "278de6222e305f50f9d6afdbb2f9387361733efbe9846fc9d7f0df2bc7be7949"
+        },
+        {
+          "path": "src/test/java/com/fundradar/core/advice/DecisionServiceV2IntegrationTests.java",
+          "sha256": "db4bb7688506bf73de465c3720580b39ecc98d96e6ca09cc7aa552cac84518c4"
+        },
+        {
+          "path": "src/test/java/com/fundradar/core/advice/StrategyModelComparisonTests.java",
+          "sha256": "3265a8d6f138b9c496ddc247519712e0c693d84ad28c1903c644b602c7e45784"
+        },
+        {
+          "path": "src/test/java/com/fundradar/core/advice/StrategyReplayEngineTests.java",
+          "sha256": "1f061c2f59766e73ee812f1abe743804c100f74db207354c0e86ba3c3429ce02"
+        }
+      ]
+    }
+  }
+}

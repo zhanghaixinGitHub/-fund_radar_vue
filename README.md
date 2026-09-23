@@ -2,11 +2,13 @@
 
 基金雷达的 Vue 前端。项目当前定位为**基金预测与持仓决策辅助**：关注页提供基金多周期预测，持仓页综合模型、基金事实、市场事件和个人持仓形成明确操作建议。测试阶段允许实验模型参与，并保留结果、依据与版本供后续核验；按固定比较规则更好的可运行模型应进入实际实验预测，不因尚未证明长期有效而永久停留在研究目录。
 
-这是当前产品目标，不代表全部能力已经实现。2026-09-23 下一轮以[后台自动选用模型与结果展示实施方案](docs_zhx/implementation/fund-auto-model-selection-plan-2026-09-23.md)为准：后台负责训练、比较与选用，日常页面聚焦预测、建议、效果和运行状态。[多周期预测与持仓综合决策实施方案](docs_zhx/implementation/fund-prediction-holding-decision-plan-2026-09-22.md)保留上一轮实现依据；[原需求说明](docs_zhx/requirements/fund-radar.md#current-positioning)保留历史背景，与本轮要求冲突的实验使用限制按新方案调整。系统不承诺确定涨跌，不替用户执行交易。前端只调用 Java 核心服务的 `/api/v1/*`，不直接访问 FastAPI AI 服务，也不保存外部数据源或支付凭证。
+这是当前产品目标，不代表全部能力已经实现。2026-09-23 当前三分类改造以[上涨、持平、下跌实施方案与进度](docs_zhx/implementation/fund-three-state-prediction-plan-2026-09-23.md)为准，已有自动选模流程见[后台自动选用模型与结果展示实施方案](docs_zhx/implementation/fund-auto-model-selection-plan-2026-09-23.md)为准：后台负责训练、比较与选用，日常页面聚焦预测、建议、效果和运行状态。[多周期预测与持仓综合决策实施方案](docs_zhx/implementation/fund-prediction-holding-decision-plan-2026-09-22.md)保留上一轮实现依据；[原需求说明](docs_zhx/requirements/fund-radar.md#current-positioning)保留历史背景，与本轮要求冲突的实验使用限制按新方案调整。系统不承诺确定涨跌，不替用户执行交易。前端只调用 Java 核心服务的 `/api/v1/*`，不直接访问 FastAPI AI 服务，也不保存外部数据源或支付凭证。
 
 ## 项目现状
 
-- **2026-09-23 下一轮实施入口：**[实施方案](docs_zhx/implementation/fund-auto-model-selection-plan-2026-09-23.md)、[当前进度](docs_zhx/implementation/fund-auto-model-selection-progress-2026-09-23.md)、[新窗口接手说明](docs_zhx/implementation/fund-auto-model-selection-handoff-2026-09-23.md)。文档已准备，功能实施 **0/30**、验收 **0/24**；下一步 **S0-01**。每步状态、证据、时间与下一步统一更新新进度页，不沿用上一轮完成数量。
+- **2026-09-23 主三周期三分类已实施：**[上涨、持平、下跌实施方案与进度](docs_zhx/implementation/fund-three-state-prediction-plan-2026-09-23.md)。主三周期已接入三分类：五日±0.3%、二十日±1%、半年±3%内（含边界）算持平。两类方法×三个周期共6份新模型已验证，28/28实施及24/24工程验收完成，真实发布已取得采用回执；旧独立一日/二十日实验明确保留旧版二分类。方案统一跟踪28步实施、24项工程验收和4项自然效果观察；实际切换进度、模型ID和验证证据以该文档为准。
+
+- **2026-09-23 自动选模流程入口：**[实施方案](docs_zhx/implementation/fund-auto-model-selection-plan-2026-09-23.md)、[当前进度](docs_zhx/implementation/fund-auto-model-selection-progress-2026-09-23.md)、[新窗口接手说明](docs_zhx/implementation/fund-auto-model-selection-handoff-2026-09-23.md)。当前三分类在既有自动训练、扣费比较、完整发布和采用回执上扩展；这些流程的原始设计及记录保留在上述文档，三分类进度单独跟踪。
 
 - **2026-09-22 上一轮工程交付：**[多周期预测与综合持仓建议交付记录](docs_zhx/implementation/fund-prediction-holding-decision-delivery-2026-09-22.md)。35步实施、22项工程验收的证据见进度页；真实44只关注全部进入任务，37只成功、7只具体日历失败。历史候选未胜，策略回放跑输一直持有；真实到期效果继续单列观察，不能称为模型优化成功。
 

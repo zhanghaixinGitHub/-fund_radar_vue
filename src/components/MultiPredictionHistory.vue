@@ -2,6 +2,7 @@
 import { ref, watch, onBeforeUnmount } from 'vue'
 import { get } from '@/api/http'
 import type { MultiPrediction } from '@/types/multiPrediction'
+import { directionLabel, directionVersion, flatRange } from '@/utils/predictionDirection'
 const props = defineProps<{fundCode:string}>()
 interface Row { payload: MultiPrediction; resolution?: {endDate:string}; outcomeCheck?: {details:{summary?:string}}; outcomes: { correct:boolean; checkedAt:string; totalReturn:string; actualDirection:string }[] | null }
 const rows=ref<Row[]>([]),error=ref(''),busy=ref(false),hasMore=ref(false)
@@ -50,13 +51,13 @@ const labels:Record<string,string>={T5_V1:'五日',T20_V1:'二十日',M6_V1:'半
       :key="row.payload.predictionId"
       class="prediction-history-row"
     >
-      <h3>{{ labels[row.payload.horizonId] }} · {{ row.payload.direction==='UP'?'预计上涨':'预计下跌或持平' }}</h3><p>{{ row.payload.startDate }} → {{ row.resolution?.endDate ?? row.payload.endDate ?? `${row.payload.nominalEndDate}（待官方日历确定）` }}</p><p>{{ row.payload.reason }}</p><p>生成于 {{ new Date(row.payload.generatedAt).toLocaleString('zh-CN') }}</p><p v-if="!row.outcomes?.length">
+      <h3>{{ labels[row.payload.horizonId] }} · 预计{{ directionLabel(row.payload.direction) }}</h3><p>{{ directionVersion(row.payload.targetDefinitionId) }} · {{ flatRange(row.payload.flatThreshold) }}</p><p>{{ row.payload.startDate }} → {{ row.resolution?.endDate ?? row.payload.endDate ?? `${row.payload.nominalEndDate}（待官方日历确定）` }}</p><p>{{ row.payload.reason }}</p><p>生成于 {{ new Date(row.payload.generatedAt).toLocaleString('zh-CN') }}</p><p v-if="!row.outcomes?.length">
         {{ row.outcomeCheck?.details.summary ?? '尚未到期或到期资料待齐，未计为成功或失败' }}
       </p><p
         v-for="outcome in row.outcomes"
         :key="outcome.checkedAt"
       >
-        核验 {{ outcome.checkedAt }}：{{ outcome.correct?'方向相符':'方向不符' }}；总回报 {{ (Number(outcome.totalReturn)*100).toFixed(2) }}%
+        核验 {{ outcome.checkedAt }}：实际{{ directionLabel(outcome.actualDirection) }}，{{ outcome.correct?'方向相符':'方向不符' }}；总回报 {{ (Number(outcome.totalReturn)*100).toFixed(2) }}%
       </p><details><summary>原文模型身份</summary><p>{{ row.payload.predictionId }}</p><p>{{ row.payload.modelId }} · 采用版本 {{ row.payload.activationRevision }}</p><p>{{ row.payload.modelHash }}</p></details>
     </article>
     <button
