@@ -8,7 +8,6 @@ import FundNavHistoryChart from '@/components/FundNavHistoryChart.vue'
 import FundShareHistoryChart from '@/components/FundShareHistoryChart.vue'
 import MultiPredictionPanel from '@/components/MultiPredictionPanel.vue'
 import MultiPredictionHistory from '@/components/MultiPredictionHistory.vue'
-import Direction1dFundHistory from '@/components/Direction1dFundHistory.vue'
 import { usePageNavigation } from '@/composables/usePageNavigation'
 import { getFundNavHistory } from '@/api/funds'
 import { getWatchlistFundDetail, getWatchlistFundShareHistory } from '@/api/watchlist'
@@ -285,13 +284,10 @@ watch(selectedNavRange, () => {
         :key="`multi-${basic.fundCode}`"
         :fund-code="basic.fundCode"
       />
-      <template v-if="section === 'prediction-history' && basic.fundCode === fundCode">
-        <MultiPredictionHistory :fund-code="basic.fundCode" />
-        <details class="analysis-section">
-          <summary>查看一天预测的历史记录</summary>
-          <Direction1dFundHistory :fund-code="basic.fundCode" />
-        </details>
-      </template>
+      <MultiPredictionHistory
+        v-if="section === 'prediction-history' && basic.fundCode === fundCode"
+        :fund-code="basic.fundCode"
+      />
 
       <section
         v-if="section === 'basic'"
