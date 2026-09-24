@@ -26,7 +26,7 @@ const pageSections: Record<string, PageSection[]> = {
     { key: 'manager', label: '基金经理' },
     { key: 'share', label: '份额规模' },
     { key: 'dividend', label: '分红记录' },
-    { key: 'research', label: '模型分析', group: '研究参考' },
+    { key: 'research', label: '走势预测', group: '预测与回看' },
     { key: 'prediction-history', label: '预测历史' },
   ],
   'fund-detail': [

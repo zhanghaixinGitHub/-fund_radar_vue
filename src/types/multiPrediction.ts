@@ -7,7 +7,16 @@ export interface MultiPrediction {
   targetDefinitionId?: string; directionPolicyHash?: string; flatThreshold?: string
   modelId: string; modelHash: string; activationRevision: number; generatedAt: string; dataAsOf: string
   baseline: boolean; fallbackReason: PredictionError[] | null; limitations: string[]; role: string
-  modelManifest: { recipeVersion: string; labelEndMax: string | null; trainedAt: string | null; evidenceLevel: string }
+  /** 生成时保存的输入和模型；只用于解释该条记录，不用当前行情回填历史依据。 */
+  featureSnapshot?: {
+    fundCode: string; dataAsOf: string; features: Record<string, number | boolean | string>
+    missingOptionalFactors?: string[]
+  }
+  modelManifest: {
+    recipeVersion: string; labelEndMax: string | null; trainedAt: string | null; evidenceLevel: string
+    adapter?: string; features?: string[]; parameters?: Record<string, unknown>
+    directionPolicySnapshot?: { tieBreakOrder?: string[] }
+  }
 }
 export interface MultiCurrent {
   fundCode: string; horizons: { horizon_id: string; label: string }[]; predictions: MultiPrediction[]

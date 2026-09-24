@@ -42,9 +42,9 @@ export function direction1dSummary(forecast: Direction1dForecast) {
       : available.length === 1 ? '当前仅一个模型可用。' : '现有模型判断一致。'
 
   return {
-    direction: direction === 'UP' ? '上涨' : direction === 'NON_UP' ? '下跌或持平'
+    direction: direction === 'UP' ? '上涨' : direction === 'NON_UP' ? '下跌或持平' : direction === 'FLAT' ? '持平' : direction === 'DOWN' ? '下跌'
       : available.length ? '方向不明确' : '暂无预测',
-    tone: direction === 'UP' ? 'up' : direction === 'NON_UP' ? 'non-up' : 'neutral',
+    tone: direction === 'UP' ? 'up' : direction === 'NON_UP' ? 'non-up' : direction === 'DOWN' ? 'down' : 'neutral',
     evidence: available.length
       ? `参考近60个交易日的净值涨跌、波动和回撤。${agreement}` : agreement,
     history: available.length ? direction1dInputSummary(forecast) : '',
@@ -86,7 +86,7 @@ export function assertDirection1dFundHistory(fundCode: string, records: Directio
   }
 }
 
-/** 仅核对已验证的提前预测；平盘归为非上涨，不可用分支和未公布结果都不计对错。 */
+/** 新三分类按实际方向逐项核对；旧档保留原二分类含义，未公布和未提前留档均不计对错。 */
 export function direction1dConclusion(record: Direction1dRecord, branchId: 'FIXED' | 'WEEKLY'): string {
   if (record.status) return direction1dReason(record.status)
   const branch = record.forecast.branches.find(item => item.branchId === branchId)
@@ -96,19 +96,34 @@ export function direction1dConclusion(record: Direction1dRecord, branchId: 'FIXE
   if (!outcome) return '等待结果'
   if (!['UP', 'DOWN', 'FLAT'].includes(outcome.actualDirection)
     || outcome.y !== (outcome.actualDirection === 'UP' ? 1 : 0)) return '实际结果待核验'
-  return (branch.predictedDirection === 'UP') === (outcome.y === 1) ? '正确' : '错误'
+  const correct = record.forecast.schemaVersion === 'DIRECTION_1D_EXPERIMENT_V2'
+    ? branch.predictedDirection === outcome.actualDirection
+    : (branch.predictedDirection === 'UP') === (outcome.y === 1)
+  return correct ? '正确' : '错误'
 }
 
 /** 阻止错误版本或不可用分支显示为可用方向；服务端仍承担最终校验。 */
 export function assertDirection1dForecast(value: Direction1dForecast): void {
-  if (value.schemaVersion !== 'DIRECTION_1D_EXPERIMENT_V1' || value.horizonTradingDays !== 1
-    || value.targetDefinition !== 'UNIT_NAV_DIRECTION_V1' || value.modelReleased !== false || value.upProbability !== null
+  const ternary = value.schemaVersion === 'DIRECTION_1D_EXPERIMENT_V2'
+  if ((!ternary && value.schemaVersion !== 'DIRECTION_1D_EXPERIMENT_V1') || value.horizonTradingDays !== 1
+    || value.targetDefinition !== (ternary ? 'UNIT_NAV_DIRECTION_THREE_STATE_V2' : 'UNIT_NAV_DIRECTION_V1')
+    || (ternary && value.directionPolicy !== 'EXACT_UNIT_NAV_CHANGE_V1') || value.modelReleased !== false || value.upProbability !== null
     || value.branches.length !== 2 || new Set(value.branches.map(b => b.branchId)).size !== 2) throw new Error('1日预测契约未通过校验。')
   for (const b of value.branches) {
     if (!['FIXED', 'WEEKLY'].includes(b.branchId)) throw new Error('分支身份不合法。')
     if (b.status === 'AVAILABLE') {
+      let expected: string = b.score! > .5 ? 'UP' : 'NON_UP'
+      if (ternary) {
+        const scores = b.classScores, order = ['FLAT', 'UP', 'DOWN'] as const
+        if (!scores || Object.keys(scores).sort().join(',') !== 'DOWN,FLAT,UP'
+          || order.some(key => !Number.isFinite(scores[key]) || scores[key] < 0 || scores[key] > 1)
+          || Math.abs(order.reduce((sum, key) => sum + scores[key], 0) - 1) > 1e-12) throw new Error('预测结果暂不可用。')
+        const winner = [...order].sort((a, c) => scores[c] - scores[a])[0]!
+        if (b.score === null || Math.abs(b.score - scores[winner]) > 1e-12) throw new Error('预测结果暂不可用。')
+        expected = winner
+      }
       if (b.score === null || !Number.isFinite(b.score) || b.score < 0 || b.score > 1
-        || b.predictedDirection !== (b.score > .5 ? 'UP' : 'NON_UP')) throw new Error('模型结果不可用。')
+        || b.predictedDirection !== expected) throw new Error('模型结果不可用。')
     } else if (b.score !== null || b.predictedDirection !== null) throw new Error('不可用模型不得展示分数。')
   }
 }

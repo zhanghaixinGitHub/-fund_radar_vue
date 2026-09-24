@@ -6,8 +6,6 @@ import SimulationFundActions from '@/components/SimulationFundActions.vue'
 import FieldHelpTooltip from '@/components/FieldHelpTooltip.vue'
 import FundNavHistoryChart from '@/components/FundNavHistoryChart.vue'
 import FundShareHistoryChart from '@/components/FundShareHistoryChart.vue'
-import WatchlistPredictionCard from '@/components/WatchlistPredictionCard.vue'
-import Direction1dPanel from '@/components/Direction1dPanel.vue'
 import MultiPredictionPanel from '@/components/MultiPredictionPanel.vue'
 import MultiPredictionHistory from '@/components/MultiPredictionHistory.vue'
 import Direction1dFundHistory from '@/components/Direction1dFundHistory.vue'
@@ -281,28 +279,16 @@ watch(selectedNavRange, () => {
         </div>
       </section>
 
-      <!-- 模型分析按一日、五日、二十日、半年展示；一日沿用独立接口和原始预测口径。 -->
-      <Direction1dPanel
-        v-if="section === 'research' && basic.fundCode === fundCode"
-        :key="`daily-${basic.fundCode}`"
-        :fund-code="basic.fundCode"
-      />
+      <!-- 用户只查看一组按时间排列的预测；旧实验不在这里挂载，避免进入页面就触发试算。 -->
       <MultiPredictionPanel
         v-if="section === 'research' && basic.fundCode === fundCode"
         :key="`multi-${basic.fundCode}`"
         :fund-code="basic.fundCode"
       />
-      <details
-        v-if="section === 'research' && basic.fundCode === fundCode"
-        class="analysis-section"
-      >
-        <summary>查看旧二十日实验（旧版二分类，原目标独立保留）</summary>
-        <WatchlistPredictionCard :fund-code="basic.fundCode" />
-      </details>
       <template v-if="section === 'prediction-history' && basic.fundCode === fundCode">
         <MultiPredictionHistory :fund-code="basic.fundCode" />
         <details class="analysis-section">
-          <summary>旧一日预测历史（旧版二分类，原目标独立保留）</summary>
+          <summary>查看一天预测的历史记录</summary>
           <Direction1dFundHistory :fund-code="basic.fundCode" />
         </details>
       </template>

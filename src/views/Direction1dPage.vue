@@ -48,7 +48,7 @@ function nextHistory() {
 }
 function filterHistory() { historyPage.value = 1; cursors.value = [undefined]; void load() }
 const percent = (value: number | null | undefined) => value == null ? '尚无有效结果' : `${(Number(value) * 100).toFixed(2)}%`
-const branchName = (value: string) => ({ FIXED: '固定模型', WEEKLY: '每周模型', ALWAYS_UP: '恒上涨', ALWAYS_NON_UP: '恒非上涨', INITIAL_MAJORITY: '初始多数类', MOMENTUM: '昨日方向延续' })[value] ?? value
+const branchName = (value: string) => ({ FIXED: '固定模型', WEEKLY: '每周模型', ALWAYS_UP: '恒上涨', ALWAYS_NON_UP: '恒非上涨', ALWAYS_FLAT: '恒持平', ALWAYS_DOWN: '恒下跌', INITIAL_MAJORITY: '初始多数类', MOMENTUM: '昨日方向延续' })[value] ?? value
 </script>
 
 <template>
@@ -242,24 +242,30 @@ const branchName = (value: string) => ({ FIXED: '固定模型', WEEKLY: '每周�
         尚无已核对记录。
       </p><p
         v-for="metric in metrics?.branches"
-        :key="metric.branch_id"
+        :key="`${metric.protocol}:${metric.branch_id}`"
       >
-        {{ branchName(metric.branch_id) }}：对 {{ metric.correct_count }} / 已核对 {{ metric.assessed_count }} 题 · 待核对 {{ metric.pending_count }} 题 · {{ metric.distinct_target_dates }} 个不同目标日 · 正确率 {{ percent(metric.accuracy) }} · 两类均衡正确率 {{ percent(metric.balanced_accuracy) }} · 家族日期加权 {{ percent(metric.family_date_weighted_accuracy) }} · 持平 {{ metric.flat_count }} 题
+        {{ metric.protocol === 'DIRECTION_1D_V2' ? '上涨、持平、下跌分别核对' : '历史结果：下跌与持平合并核对' }} · {{ branchName(metric.branch_id) }}：对 {{ metric.correct_count }} / 已核对 {{ metric.assessed_count }} 题 · 待核对 {{ metric.pending_count }} 题 · {{ metric.distinct_target_dates }} 个不同目标日 · 正确率 {{ percent(metric.accuracy) }} · 各类均衡正确率 {{ percent(metric.balanced_accuracy) }} · 家族日期加权 {{ percent(metric.family_date_weighted_accuracy) }} · 持平 {{ metric.flat_count }} 题
       </p><p>{{ metrics?.observationNote }}</p><p>数据和时间不合格的记录不计对错；不会因短期错误自动追加调参。</p>
       <template v-if="metrics">
         <p>检查 {{ metrics.coverage.checked_fund_days }} 个基金目标日，其中适用 {{ metrics.coverage.applicable_fund_days }} 个，提前留档 {{ metrics.coverage.verified_forecast_count }} 个。留档覆盖率 {{ percent(metrics.coverage.applicable_fund_days ? metrics.coverage.verified_forecast_count / metrics.coverage.applicable_fund_days : null) }}；错过截止 {{ metrics.coverage.missed_deadline_count }}，执行失败 {{ metrics.coverage.failed_count }}。</p>
-        <p>两模型共同留档 {{ metrics.paired.paired_count }} 题，共同核对 {{ metrics.paired.assessed_pair_count }} 题；每周模型比固定模型多答对 {{ metrics.paired.weekly_extra_correct ?? '待核对' }} 题。仅固定可用 {{ metrics.paired.fixed_only_count }}，仅每周可用 {{ metrics.paired.weekly_only_count }}。</p>
+        <p>分别判断上涨、持平、下跌的预测中，两模型共同留档 {{ metrics.paired.paired_count }} 题，共同核对 {{ metrics.paired.assessed_pair_count }} 题；每周模型比固定模型多答对 {{ metrics.paired.weekly_extra_correct ?? '待核对' }} 题。仅固定可用 {{ metrics.paired.fixed_only_count }}，仅每周可用 {{ metrics.paired.weekly_only_count }}。</p>
         <details>
           <summary>按基金、资产组、月份、模型和事件查看</summary>
           <label>分层 <select v-model="stratum"><option value="ASSET_GROUP">资产组</option><option value="FUND">基金</option><option value="MONTH">目标月份</option><option value="MODEL">模型版本</option><option value="EVENT">事件状态</option></select></label>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>分层</th><th>预测分支</th><th>正确 / 核对</th><th>目标日数</th><th>正确率</th><th>上涨 / 非上涨识别率</th></tr></thead><tbody>
+              <thead><tr><th>分层</th><th>预测分支</th><th>正确 / 核对</th><th>目标日数</th><th>正确率</th><th>各方向识别率</th></tr></thead><tbody>
                 <tr
                   v-for="row in metrics.strata.filter(r => r.kind === stratum)"
-                  :key="`${row.kind}:${row.key}:${row.branch_id}`"
+                  :key="`${row.protocol}:${row.kind}:${row.key}:${row.branch_id}`"
                 >
-                  <td>{{ direction1dReason(row.key) }}</td><td>{{ branchName(row.branch_id) }}</td><td>{{ row.correct_count }} / {{ row.assessed_count }}</td><td>{{ row.distinct_target_dates }}</td><td>{{ percent(row.accuracy) }}</td><td>{{ percent(row.up_recall) }} / {{ percent(row.non_up_recall) }}</td>
+                  <td>{{ direction1dReason(row.key) }}<small>{{ row.protocol === 'DIRECTION_1D_V2' ? '三种方向' : '历史两种方向' }}</small></td><td>{{ branchName(row.branch_id) }}</td><td>{{ row.correct_count }} / {{ row.assessed_count }}</td><td>{{ row.distinct_target_dates }}</td><td>{{ percent(row.accuracy) }}</td><td>
+                    上涨 {{ percent(row.up_recall) }}<template v-if="row.protocol === 'DIRECTION_1D_V2'">
+                      / 持平 {{ percent(row.flat_recall) }} / 下跌 {{ percent(row.down_recall) }}
+                    </template><template v-else>
+                      / 非上涨 {{ percent(row.non_up_recall) }}
+                    </template>
+                  </td>
                 </tr>
               </tbody>
             </table>

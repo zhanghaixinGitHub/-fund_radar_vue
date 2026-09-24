@@ -6,9 +6,37 @@ import { Buffer } from 'node:buffer'
 import test from 'node:test'
 
 const code = stripTypeScriptTypes(readFileSync(new URL('../src/utils/direction1d.ts', import.meta.url), 'utf8'))
-const { assertDirection1dForecast, direction1dDirection, direction1dSummary } = await import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`)
+const { assertDirection1dForecast, direction1dDirection, direction1dSummary, direction1dConclusion } = await import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`)
 const example = () => ({ schemaVersion: 'DIRECTION_1D_EXPERIMENT_V1', horizonTradingDays: 1, targetDefinition: 'UNIT_NAV_DIRECTION_V1', modelReleased: false, upProbability: null,
   branches: ['FIXED', 'WEEKLY'].map(branchId => ({ branchId, status: 'AVAILABLE', score: .5, predictedDirection: 'NON_UP' })) })
+
+const ternary = direction => ({ ...example(), schemaVersion: 'DIRECTION_1D_EXPERIMENT_V2', targetDefinition: 'UNIT_NAV_DIRECTION_THREE_STATE_V2', directionPolicy: 'EXACT_UNIT_NAV_CHANGE_V1',
+  branches: ['FIXED', 'WEEKLY'].map(branchId => ({ branchId, status: 'AVAILABLE', score: .6, predictedDirection: direction,
+    classScores: Object.fromEntries(['DOWN', 'FLAT', 'UP'].map(key => [key, key === direction ? .6 : .2])) })) })
+
+test('新一日分别展示上涨持平下跌，按三个方向精确核对，旧档仍保留二分类', () => {
+  for (const [direction, label] of [['UP', '上涨'], ['FLAT', '持平'], ['DOWN', '下跌']]) {
+    const forecast = ternary(direction)
+    assertDirection1dForecast(forecast)
+    assert.equal(direction1dSummary(forecast).direction, label)
+    for (const actualDirection of ['UP', 'FLAT', 'DOWN']) {
+      const record = { forecast, receiptStatus: 'VERIFIED', outcomes: [{ actualDirection, y: actualDirection === 'UP' ? 1 : 0 }] }
+      assert.equal(direction1dConclusion(record, 'FIXED'), direction === actualDirection ? '正确' : '错误')
+    }
+  }
+  assert.equal(direction1dConclusion({ forecast: example(), receiptStatus: 'VERIFIED', outcomes: [{ actualDirection: 'FLAT', y: 0 }] }, 'FIXED'), '正确')
+})
+
+test('新一日拒绝旧分数改名、缺类和错误并列结论', () => {
+  const p = ternary('FLAT')
+  delete p.branches[0].classScores
+  assert.throws(() => assertDirection1dForecast(p))
+  const tied = ternary('FLAT')
+  for (const b of tied.branches) { b.score = .45; b.classScores = { DOWN: .1, FLAT: .45, UP: .45 } }
+  assertDirection1dForecast(tied)
+  tied.branches[0].predictedDirection = 'UP'
+  assert.throws(() => assertDirection1dForecast(tied))
+})
 
 test('持平与0.5边界归为非上涨，允许未校准实验', () => {
   assertDirection1dForecast(example())

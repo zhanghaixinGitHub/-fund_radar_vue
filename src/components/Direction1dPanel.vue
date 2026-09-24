@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import { generateDirection1d, getDirection1dCurrent } from '@/api/direction1d'
-import type { Direction1dCurrent } from '@/types/direction1d'
+import { generateDirection1d, getDirection1dCurrent, getDirection1dEvidence } from '@/api/direction1d'
+import type { Direction1dCurrent, Direction1dEvidence } from '@/types/direction1d'
+import { dailyPredictionEvidence } from '@/utils/predictionEvidence'
 import { assertDirection1dFundHistory, direction1dReason, direction1dSummary } from '@/utils/direction1d'
 
-const props = defineProps<{ fundCode: string }>()
+const props = defineProps<{ fundCode: string; selected: boolean }>()
+const emit = defineEmits<{ select: [] }>()
 const value = ref<Direction1dCurrent | null>(null)
+const restoredEvidence = ref<Direction1dEvidence | null>(null)
 const busy = ref(false)
 const error = ref('')
 const notice = ref('')
@@ -15,10 +18,11 @@ let sequence = 0
 const latest = computed(() => value.value?.history.items[0])
 const forecast = computed(() => latest.value && !latest.value.status ? latest.value.forecast : null)
 const summary = computed(() => forecast.value ? direction1dSummary(forecast.value) : null)
-const isPrevious = computed(() => forecast.value && forecast.value.targetNavDate !== value.value?.window.targetNavDate)
+const isPrevious = computed(() => forecast.value && (forecast.value.targetNavDate !== value.value?.window.targetNavDate
+  || forecast.value.schemaVersion !== 'DIRECTION_1D_EXPERIMENT_V2'))
 const canGenerate = computed(() => value.value?.window.status === 'OPEN'
   && value.value.coverage.status === 'READY_EXPERIMENTAL' && (!forecast.value || isPrevious.value))
-/** 手动入口常驻；不能生成时说明真实原因，避免把隐藏按钮误解为不支持手动预测。 */
+/** 不能生成时保留真实原因，页面用展开说明承接，不堆叠禁用按钮。 */
 const generateHint = computed(() => {
   const current = value.value
   if (!current) return ''
@@ -44,10 +48,20 @@ async function load() {
   busy.value = true
   error.value = ''
   value.value = null
+  restoredEvidence.value = null
   try {
     const result = await getDirection1dCurrent(fundCode)
     assertDirection1dFundHistory(fundCode, result.history.items)
-    if (current === sequence) value.value = result
+    if (current === sequence) {
+      value.value = result
+      const record = result.history.items[0]
+      if (record && !record.status) {
+        // 解释是独立只读请求，失败时仍显示原预测和真实输入，不能让解释服务遮住结论。
+        void getDirection1dEvidence(fundCode, record.forecastId).then(explanation => {
+          if (current === sequence) restoredEvidence.value = explanation
+        }).catch(() => { /* 缺少可核对解释时由依据区域明确展示限制，不虚构指标作用。 */ })
+      }
+    }
   } catch (e) { if (current === sequence) error.value = e instanceof Error ? e.message : '读取失败。' }
   finally { if (current === sequence) busy.value = false }
 }
@@ -66,135 +80,44 @@ async function generate() {
   finally { if (current === sequence) busy.value = false }
 }
 watch(() => props.fundCode, () => { notice.value = ''; void load() }, { immediate: true })
+/** 统一更新按钮沿用一日接口和生成窗口，已有本期记录时只读回，不重复生成。 */
+async function refresh(generateMissing = false) {
+  notice.value = ''
+  await load()
+  if (generateMissing && canGenerate.value) await generate()
+}
+const evidence = computed(() => dailyPredictionEvidence(forecast.value, restoredEvidence.value))
+const evidenceStatus = computed(() => error.value ? '一天预测暂时无法读取，请更新后重试。' : notice.value || (isPrevious.value ? '本期暂无新结果，以下依据对应上次预测。' : !forecast.value ? emptyReason.value : ''))
+defineExpose({ refresh, busy, evidence, evidenceStatus, forecast, generateHint })
 onBeforeUnmount(() => { sequence++ })
 </script>
 
 <template>
-  <section
-    class="direction-1d-panel"
+  <button
+    type="button"
+    class="forecast-card"
+    :class="{ 'is-selected': selected }"
+    :aria-pressed="selected"
     :aria-busy="busy"
-    aria-label="下一交易日涨跌预测"
+    aria-controls="prediction-evidence"
+    aria-label="查看下一交易日的预测依据"
+    @click="emit('select')"
   >
-    <header class="prediction-heading">
-      <h2>下一交易日涨跌预测（旧版二分类）</h2>
-      <span class="experiment-badge">实验 · 未正式发布</span>
-    </header>
-    <p
-      v-if="error"
-      class="prediction-error"
-      role="alert"
+    <span class="forecast-card-title">下一交易日</span>
+    <span class="forecast-duration">看一天的涨跌</span>
+    <strong
+      class="forecast-direction"
+      :class="`tone-${summary?.tone ?? 'neutral'}`"
     >
-      {{ error }}
-      <button
-        type="button"
-        :disabled="busy"
-        @click="load"
-      >
-        重新加载
-      </button>
-    </p>
-    <p
-      v-if="notice"
-      class="prediction-notice"
-      role="status"
-    >
-      {{ notice }}
-    </p>
-    <p
-      v-if="busy && !value"
-      class="prediction-notice"
-      role="status"
-    >
-      正在读取预测…
-    </p>
-    <template v-if="value">
-      <!-- 只呈现日期、方向和依据；历史核对结果由左侧“预测历史”入口承接。 -->
-      <dl class="prediction-summary">
-        <div class="prediction-date">
-          <dt>预测日期</dt>
-          <dd>
-            {{ forecast?.targetNavDate ?? value.window.targetNavDate }}
-            <span
-              v-if="isPrevious"
-              class="previous-label"
-            >最近一次预测</span>
-          </dd>
-        </div>
-        <div class="prediction-direction">
-          <dt>预计走势</dt>
-          <dd :class="`direction-${summary?.tone ?? 'neutral'}`">
-            {{ summary?.direction ?? '暂无预测' }}
-          </dd>
-        </div>
-        <div class="prediction-evidence">
-          <dt>判断依据</dt>
-          <dd>
-            <p>{{ summary?.evidence ?? emptyReason }}</p>
-            <p
-              v-if="summary?.history"
-              class="evidence-data"
-            >
-              {{ summary.history }}
-            </p>
-          </dd>
-        </div>
-      </dl>
-      <button
-        class="generate-button"
-        type="button"
-        :disabled="busy || !canGenerate"
-        @click="generate"
-      >
-        {{ busy ? '正在生成…' : '生成本期预测' }}
-      </button>
-      <p class="prediction-notice">
-        {{ generateHint }}
-      </p>
-      <p
-        v-if="!canGenerate && value.coverage.navSyncState && value.coverage.navSyncState.status !== 'SUCCEEDED'"
-        class="prediction-notice"
-      >
-        {{ value.coverage.navSyncState.reason }}
-      </p>
-    </template>
-  </section>
+      {{ busy && !value ? '正在读取…' : error ? '暂不可用' : summary && !['暂无预测', '方向不明确'].includes(summary.direction)
+        ? `预计${summary.direction}` : summary?.direction ?? '暂无预测' }}
+    </strong>
+    <span class="forecast-period">{{ forecast?.targetNavDate ?? value?.window.targetNavDate ?? '日期待确认' }}</span>
+    <span class="forecast-data-date">{{ forecast ? `依据净值截至 ${forecast.baseNavDate}` : '所需数据暂未齐全' }}</span>
+    <span
+      v-if="isPrevious"
+      class="forecast-card-status"
+    >上次结果</span>
+    <span class="forecast-card-action">{{ selected ? '正在查看依据' : '点击查看依据' }}</span>
+  </button>
 </template>
-
-<style scoped>
-.direction-1d-panel {
-  margin: 20px 0 0;
-  padding: 24px;
-  color: #203a34;
-  background: var(--workspace-surface, #fff);
-  border: 1px solid var(--workspace-border, #dfe8e3);
-  border-radius: 10px;
-}
-.prediction-heading { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; }
-.prediction-heading h2 { margin: 0; font-size: 18px; line-height: 1.5; }
-.experiment-badge { padding: 3px 8px; color: #805a19; background: #fff5df; border-radius: 5px; font-size: 12px; }
-.prediction-summary { display: grid; grid-template-columns: minmax(0, 240px) minmax(0, 1fr); gap: 24px 40px; margin: 24px 0 0; }
-.prediction-summary dt { margin-bottom: 7px; color: #536c63; font-size: 13px; }
-.prediction-summary dd { margin: 0; }
-.prediction-date dd, .prediction-direction dd { font-size: 24px; font-weight: 700; line-height: 1.4; }
-.prediction-date dd { font-variant-numeric: tabular-nums; }
-.previous-label { display: block; margin-top: 6px; color: #647b72; font-size: 12px; font-weight: 400; }
-.direction-up { color: #b43d3d; }
-.direction-non-up { color: #0f766e; }
-.direction-neutral { color: #647b72; }
-.prediction-evidence { grid-column: 1 / -1; }
-.prediction-evidence p { margin: 0; font-size: 14px; line-height: 1.8; overflow-wrap: anywhere; }
-.prediction-evidence .evidence-data { margin-top: 5px; color: #536c63; font-size: 13px; }
-.prediction-notice { margin: 18px 0 0; color: #536c63; }
-.prediction-error { margin: 18px 0 0; color: #a23c3c; overflow-wrap: anywhere; }
-button { min-height: 40px; padding: 8px 14px; color: #0f766e; background: #fff; border: 1px solid #c9d8d0; border-radius: 6px; font: inherit; cursor: pointer; }
-button:hover:not(:disabled) { background: #eef7f3; }
-button:focus-visible { outline: 2px solid #0f766e; outline-offset: 3px; }
-button:disabled { opacity: .6; cursor: wait; }
-.prediction-error button { margin-left: 12px; }
-.generate-button { margin-top: 20px; }
-@media (max-width: 600px) {
-  .direction-1d-panel { padding: 18px; }
-  .prediction-summary { grid-template-columns: minmax(0, 1fr); gap: 20px; margin-top: 20px; }
-  .prediction-date dd, .prediction-direction dd { font-size: 22px; }
-}
-</style>

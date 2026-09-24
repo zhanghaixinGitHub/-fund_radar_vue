@@ -1,5 +1,5 @@
 import { get, post } from '@/api/http'
-import type { Direction1dCoverage, Direction1dCurrent, Direction1dPage, Direction1dRecord, Direction1dStatus, Direction1dCursor, Direction1dMetrics } from '@/types/direction1d'
+import type { Direction1dCoverage, Direction1dCurrent, Direction1dPage, Direction1dRecord, Direction1dStatus, Direction1dCursor, Direction1dMetrics, Direction1dEvidence } from '@/types/direction1d'
 import { assertDirection1dFundHistory } from '@/utils/direction1d'
 
 const base = '/api/v1/watchlist/prediction-1d'
@@ -18,6 +18,9 @@ export async function getDirection1dFundHistory(fundCode: string, page: number, 
   return result
 }
 export const getDirection1dCurrent = (code: string) => get<Direction1dCurrent>(`/api/v1/watchlist/${encodeURIComponent(code)}/prediction-1d`)
+export const getDirection1dEvidence = (code: string, forecastId: string) => get<Direction1dEvidence>(
+  `/api/v1/watchlist/${encodeURIComponent(code)}/prediction-1d/evidence/${encodeURIComponent(forecastId)}`,
+)
 export const generateDirection1d = (code: string) => post<{ status: string; reason?: string }>(
   `/api/v1/watchlist/${encodeURIComponent(code)}/prediction-1d/generate`,
 )

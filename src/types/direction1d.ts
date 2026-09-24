@@ -33,7 +33,8 @@ export interface Direction1dBranch {
   modelId: string | null
   modelHash: string | null
   score: number | null
-  predictedDirection: 'UP' | 'NON_UP' | null
+  predictedDirection: 'UP' | 'NON_UP' | 'FLAT' | 'DOWN' | null
+  classScores?: { DOWN: number; FLAT: number; UP: number }
   status: string
   trainedAt?: string
   registeredAt?: string
@@ -44,9 +45,10 @@ export interface Direction1dForecast extends Direction1dWindow {
   activationPolicy?: 'BEFORE_WINDOW_V1' | 'AVAILABLE_AT_PREDICTION_V2'
   fundCode: string
   fundName: string
-  schemaVersion: 'DIRECTION_1D_EXPERIMENT_V1'
+  schemaVersion: 'DIRECTION_1D_EXPERIMENT_V1' | 'DIRECTION_1D_EXPERIMENT_V2'
+  directionPolicy?: 'EXACT_UNIT_NAV_CHANGE_V1'
   horizonTradingDays: 1
-  targetDefinition: 'UNIT_NAV_DIRECTION_V1'
+  targetDefinition: 'UNIT_NAV_DIRECTION_V1' | 'UNIT_NAV_DIRECTION_THREE_STATE_V2'
   modelReleased: false
   upProbability: null
   generatedAt: string
@@ -74,6 +76,8 @@ export interface Direction1dRecord {
 export interface Direction1dCursor { beforeDate: string; beforeId: string }
 export interface Direction1dPage<T> { items: T[]; totalCount: number; page: number; pageSize: number; nextCursor?: Direction1dCursor }
 export interface Direction1dMetric {
+  protocol: 'DIRECTION_1D_V1' | 'DIRECTION_1D_V2'
+  down_recall: number | null; flat_recall: number | null
   kind: string; key: string; branch_id: string; assessed_count: number; correct_count: number
   pending_count: number; distinct_target_dates: number; flat_count: number; unavailable_count: number
   accuracy: number | null; balanced_accuracy: number | null; up_recall: number | null; non_up_recall: number | null
@@ -94,4 +98,14 @@ export interface Direction1dCurrent {
   coverage: Direction1dCoverage
   window: Direction1dWindow
   history: Direction1dPage<Direction1dRecord>
+}
+
+/** 服务端按原文哈希和原模型重新核对的只读解释；贡献值仅为内部判别量。 */
+export interface Direction1dEvidence {
+  fundCode: string; inputHash: string; baseNavDate: string; targetNavDate: string
+  branches: {
+    branchId: string; modelId: string; modelHash: string; direction: 'UP' | 'NON_UP' | 'FLAT' | 'DOWN'; intercept: number
+    referenceDirection?: 'UP' | 'FLAT' | 'DOWN'
+    factors: { feature: string; value: number; contribution: number }[]
+  }[]
 }
