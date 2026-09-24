@@ -149,7 +149,7 @@ onBeforeUnmount(() => { ++sequence; globalThis.clearTimeout(timer) })
           class="error-message"
           role="alert"
         >
-          <strong>本次预测生成失败</strong><p>{{ card.attempt.payload.error?.summary }}</p>
+          <strong>{{ card.attempt.payload.error?.code?.startsWith('NAV_') ? '等待净值补齐' : '本次预测未生成' }}</strong><p>{{ card.attempt.payload.error?.summary }}</p>
           <p>{{ card.attempt.payload.error?.nextAction }}</p><small>{{ time(card.attempt.created_at) }}</small>
           <details><summary>查看失败详情</summary><pre>{{ card.attempt.payload.error?.details }}</pre><p>请求号：{{ card.attempt.payload.error?.traceId }}</p></details>
         </div>
@@ -160,6 +160,7 @@ onBeforeUnmount(() => { ++sequence; globalThis.clearTimeout(timer) })
           >
             以下为上次成功结果，生成于 {{ time(card.prediction.generatedAt) }}
           </p>
+          <p>净值依据截至 {{ card.prediction.baseNavDate ?? card.prediction.dataAsOf }}</p>
           <p class="period">
             {{ card.prediction.startDate }} → {{ current?.targetResolutions?.[card.prediction.predictionId]?.endDate ?? card.prediction.endDate ?? `${card.prediction.nominalEndDate}（名义日期）` }}
           </p>

@@ -24,8 +24,8 @@ const generateHint = computed(() => {
   if (!current) return ''
   if (forecast.value && !isPrevious.value) return '本期预测已生成，无需重复执行。'
   if (current.coverage.status !== 'READY_EXPERIMENTAL') return direction1dReason(current.coverage.status)
-  if (current.window.status !== 'OPEN') return '当前不在生成时间段：上一交易日18:00至目标交易日08:30前，等待下一期。'
-  return `本期预测目标为 ${current.window.targetNavDate}，点击后使用已保存净值生成。`
+  if (current.window.status !== 'OPEN') return '目标估值日已收盘，等待最新净值后预测下一估值日。'
+  return `所需净值截至 ${current.window.baseNavDate}，本期预测目标为 ${current.window.targetNavDate}。`
 })
 
 /** 没有预测时只说明阻止当前判断的原因，不向用户罗列内部检查状态。 */
@@ -149,6 +149,12 @@ onBeforeUnmount(() => { sequence++ })
       </button>
       <p class="prediction-notice">
         {{ generateHint }}
+      </p>
+      <p
+        v-if="!canGenerate && value.coverage.navSyncState && value.coverage.navSyncState.status !== 'SUCCEEDED'"
+        class="prediction-notice"
+      >
+        {{ value.coverage.navSyncState.reason }}
       </p>
     </template>
   </section>

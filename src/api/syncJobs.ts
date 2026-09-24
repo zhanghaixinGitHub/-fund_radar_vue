@@ -1,7 +1,7 @@
 import { get, post } from '@/api/http'
 import type { SyncJobLastSuccess, SyncJobStatus } from '@/types/syncJob'
 
-/** 批量处理全部有效关注基金；日期、数据完整性和留档由后端检查。 */
+/** 独立一日批量入口；日期、数据完整性和留档由后端检查。 */
 export function startDirection1dPredictionSync(): Promise<SyncJobStatus> {
   return post<SyncJobStatus>('/api/v1/sync-jobs/direction-1d-predictions')
 }
@@ -10,7 +10,7 @@ export function getLatestDirection1dPredictionSync(): Promise<SyncJobStatus | nu
   return get<SyncJobStatus | null>('/api/v1/sync-jobs/direction-1d-predictions/latest')
 }
 
-/** 批量处理全部有效关注基金；日期、数据完整性和留档由后端检查。 */
+/** 同步中心统一检查一日、五日、二十日和半年；各周期仍遵守服务端时间和留档规则。 */
 export function startMultiPredictionSync(): Promise<SyncJobStatus> {
   return post<SyncJobStatus>('/api/v1/sync-jobs/multi-predictions')
 }

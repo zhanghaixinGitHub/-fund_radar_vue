@@ -14,6 +14,7 @@ export interface Direction1dCoverage {
   missingCount: number
   missingDates: string[]
   latestNavDate: string | null
+  navSyncState?: { status: string; reason: string; nextRetryAt: string | null } | null
   observedAt: string
   predictionStatus: string
   modelIds: string[]

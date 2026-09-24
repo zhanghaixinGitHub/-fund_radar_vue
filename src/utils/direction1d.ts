@@ -1,6 +1,10 @@
 import type { Direction1dForecast, Direction1dRecord } from '@/types/direction1d'
 
 const reasons: Record<string, string> = {
+  NAV_CURRENT_NOT_READY: '当天净值尚未取得，等待净值后预测下一估值日',
+  NAV_LATEST_NOT_READY: '上一估值日净值尚未取得，补齐后再预测',
+  NAV_GAP: '历史净值存在缺日，补齐后再预测', WAITING_DATA: '等待所需净值补齐',
+  WINDOW_CHANGED: '目标估值日已变化，请重新检查后生成',
   READY_EXPERIMENTAL: '数据与模型已就绪（实验）', DATA_PENDING: '等待官方净值', HISTORY_TOO_SHORT: '完整历史不足61个交易日',
   MODEL_PENDING: '当前基金还没有可用模型', GROUP_UNVERIFIED: '基金资料或产品身份待核实', SPECIAL_POLICY_REQUIRED: '现有模型暂不适用',
   CROSS_MARKET_MODEL_REQUIRED: '涉及港股或海外市场，交易日期、净值发布时间和模型适用性尚未验证',

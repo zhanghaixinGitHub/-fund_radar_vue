@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { readAdviceEffects, readPredictionEffects } from '@/api/automaticPrediction'
 import type { AdviceEffects, PredictionEffects } from '@/api/automaticPrediction'
 import { shanghaiDate } from '@/utils/simulation'
-import { directionVersion, THREE_STATE_TARGET } from '@/utils/predictionDirection'
+import { directionVersion, isThreeStateTarget } from '@/utils/predictionDirection'
 import { sortPredictionHorizons } from '@/utils/predictionHorizon'
 const props = defineProps<{ fundCode: string }>()
 const today = shanghaiDate(), start = ref(`${today.slice(0, 4)}-01-01`), end = ref(today)
@@ -53,7 +53,7 @@ onBeforeUnmount(() => { ++sequence })
           <p>{{ directionVersion(item.target_definition_id) }}<span v-if="item.direction_policy_hash"> · 规则 {{ item.direction_policy_hash.slice(0, 8) }}</span></p>
           <strong>{{ item.matured ? `正确 ${item.correct} / ${item.matured} 条` : '暂无已核验结果' }}</strong>
           <p>{{ item.funds }} 只基金 · {{ item.records }} 条预测</p><p>已核验 {{ item.matured }}，未到期 {{ item.unmatured }}，待答案 {{ item.pending_answers }}，核验失败 {{ item.check_failed }}</p>
-          <template v-if="item.target_definition_id === THREE_STATE_TARGET">
+          <template v-if="isThreeStateTarget(item.target_definition_id)">
             <p>实际上涨：{{ item.up_correct }} / {{ item.up_actual }} 判对{{ item.up_actual ? `（${pct(item.up_correct / item.up_actual)}）` : '（暂无样本）' }}</p>
             <p>实际持平：{{ item.flat_correct }} / {{ item.flat_actual }} 判对{{ item.flat_actual ? `（${pct(item.flat_correct / item.flat_actual)}）` : '（暂无样本）' }}</p>
             <p>实际下跌：{{ item.down_correct }} / {{ item.down_actual }} 判对{{ item.down_actual ? `（${pct(item.down_correct / item.down_actual)}）` : '（暂无样本）' }}</p>
