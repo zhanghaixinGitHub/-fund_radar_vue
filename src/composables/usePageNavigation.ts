@@ -26,17 +26,26 @@ const pageSections: Record<string, PageSection[]> = {
     { key: 'manager', label: '基金经理' },
     { key: 'share', label: '份额规模' },
     { key: 'dividend', label: '分红记录' },
+    { key: 'holdings', label: '基金持仓', group: '投资与动态' },
+    { key: 'company', label: '持仓公司经营' },
+    { key: 'documents', label: '公告与动态' },
     { key: 'research', label: '走势预测', group: '预测与回看' },
     { key: 'prediction-history', label: '预测历史' },
+    { key: 'rules', label: '我的提醒', group: '我的设置' },
   ],
   'fund-detail': [
     { key: 'overview', label: '基金概览', group: '基金资料' },
     { key: 'basic', label: '基础资料' },
     { key: 'nav', label: '净值走势' },
+    { key: 'manager', label: '基金经理' },
+    { key: 'share', label: '份额规模' },
+    { key: 'dividend', label: '分红记录' },
     { key: 'comparison', label: '同类对比' },
-    { key: 'events', label: '关联事件' },
-    { key: 'research', label: '研究分析', group: '分析与提醒' },
-    { key: 'rules', label: '提醒规则' },
+    { key: 'holdings', label: '基金持仓', group: '投资与动态' },
+    { key: 'company', label: '持仓公司经营' },
+    { key: 'documents', label: '公告与动态' },
+    { key: 'research', label: '走势预测', group: '预测与回看' },
+    { key: 'prediction-history', label: '预测历史' },
   ],
   'portfolio-snapshot': [
     { key: 'overview', label: '总览' },
@@ -57,6 +66,7 @@ const pageSections: Record<string, PageSection[]> = {
     { key: 'overview', label: '任务总览' },
     { key: 'marketNav', label: '净值增量同步', group: '任务分类' },
     { key: 'freeDataCompletion', label: '基金资料与市场数据更新' },
+    { key: 'fundMaterials', label: '基金持仓与公司资料更新' },
     { key: 'featureSnapshot', label: '历史指标计算' },
     { key: 'direction1dPrediction', label: '全部关注基金预测' },
     { key: 'simulationFees', label: '模拟费率同步' },
@@ -112,7 +122,9 @@ export function usePageNavigation() {
       ...fundTypeOptions.map((type, index) => ({ key: type.value, label: type.label, group: index === 0 ? '按基金类型' : undefined }))]
     : pageSections[routeName.value] ?? [])
   const section = computed(() => {
-    const candidate = isList.value ? route.query.type : route.query.section
+    const rawCandidate = isList.value ? route.query.type : route.query.section
+    // 兼容旧公告链接，改为共用资料页；旧提醒链接在关注入口保留。
+    const candidate = rawCandidate === 'events' ? 'documents' : rawCandidate
     // 兼容旧的单基金持仓链接；普通模块入口默认进入总览。
     if (routeName.value === 'portfolio-snapshot' && candidate == null
       && /^\d{6}$/.test(String(route.query.fundCode ?? ''))) return 'holdings'
@@ -139,6 +151,7 @@ export function usePageNavigation() {
       else query.type = key
     } else {
       query.section = key
+      if (!['company', 'documents'].includes(key)) delete query.stock
       delete query.user
       delete query.tab
       if (routeName.value === 'portfolio-advice') {

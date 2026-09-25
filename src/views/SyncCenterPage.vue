@@ -9,6 +9,8 @@ import type { SpxManualStatus } from '@/types/spxManual'
 
 import {
   getLastSuccessfulSyncTimes,
+  startFundMaterialsSync,
+  getLatestFundMaterialsSync,
   getLatestMultiPredictionSync,
   startMultiPredictionSync,
   getLatestAllSync,
@@ -24,13 +26,13 @@ import {
 } from '@/api/syncJobs'
 import type { SyncJobStatus } from '@/types/syncJob'
 
-type SyncTaskKey = 'marketNav' | 'freeDataCompletion' | 'featureSnapshot' | 'direction1dPrediction' | 'simulationFees'
+type SyncTaskKey = 'marketNav' | 'freeDataCompletion' | 'featureSnapshot' | 'direction1dPrediction' | 'simulationFees' | 'fundMaterials'
 const { section, sectionLabel, sectionTarget } = usePageNavigation()
 const auth = useAuthStore()
 
 interface SyncTaskDefinition {
   key: SyncTaskKey
-  jobType: 'MARKET_NAV_INCREMENTAL' | 'MARKET_FREE_DATA_COMPLETION' | 'STOCK_FEATURE_SNAPSHOT' | 'MULTI_PREDICTIONS' | 'SIMULATION_FEES'
+  jobType: 'MARKET_NAV_INCREMENTAL' | 'MARKET_FREE_DATA_COMPLETION' | 'STOCK_FEATURE_SNAPSHOT' | 'MULTI_PREDICTIONS' | 'SIMULATION_FEES' | 'FUND_MATERIALS'
   title: string
   description: string
   scheduleNote: string
@@ -41,6 +43,16 @@ interface SyncTaskDefinition {
 
 /** 同步中心任务注册表；完整资料由资料更新统一覆盖，不再重复提供入口。 */
 const tasks: readonly SyncTaskDefinition[] = [
+  {
+    key: 'fundMaterials',
+    jobType: 'FUND_MATERIALS',
+    title: '基金持仓与公司资料更新',
+    description: '更新 002112（德邦鑫星价值混合 C）的报告、持仓、股票行情、公司经营、公告和新闻，检查后自动更新基金详情。同时补齐本基金早期历史和已确定的 10 只参照基金资料，按历史日期检查是否够用于一日研究；不会自动训练或启用新预测。其他基金详情暂不支持。',
+    scheduleNote: '首次手动更新后纳入后台持续检查；一键同步也会执行。重复执行复用已保存成果，失败可重试；这些资料尚未用于正式预测，已披露持仓不代表实时持仓。',
+    actionLabel: '更新资料并补齐历史',
+    start: startFundMaterialsSync,
+    loadLatest: getLatestFundMaterialsSync,
+  },
   {
     key: 'marketNav',
     jobType: 'MARKET_NAV_INCREMENTAL',
@@ -55,7 +67,7 @@ const tasks: readonly SyncTaskDefinition[] = [
     key: 'freeDataCompletion',
     jobType: 'MARKET_FREE_DATA_COMPLETION',
     title: '基金资料与市场数据更新',
-    description: '更新基金基础资料、历史净值、基金经理、份额规模、分红、场内基金行情和市场参考指数，已包含原完整资料同步。使用当前 2000 积分已验权的免费数据，不读取基金持仓、新闻或公告。',
+    description: '更新基金基础资料、历史净值、基金经理、份额规模、分红、场内基金行情和市场参考指数，已包含原完整资料同步。使用当前 2000 积分已验权的免费数据，持仓、公司经营与公告新闻由“基金持仓与公司资料更新”单独处理。',
     scheduleNote: '按需手动执行；不会因打开详情页或预测页面自动拉取，指数仅同步已登记的 DRAFT/ACTIVE 参考序列。',
     actionLabel: '开始更新',
     start: startMarketFreeDataCompletionSync,
@@ -86,7 +98,7 @@ const tasks: readonly SyncTaskDefinition[] = [
     jobType: 'SIMULATION_FEES',
     title: '模拟组合申赎费率同步',
     description: '从天天基金抓取申购费率与赎回分档；可刷新单只基金，全量初始化覆盖模拟持仓和定投计划涉及的基金。',
-    scheduleNote: '按需手动执行，也作为一键同步的第五项，在多周期预测前更新；单只失败会保留原因，其余基金继续。',
+    scheduleNote: '按需手动执行，也作为一键同步的第六项，在多周期预测前更新；单只失败会保留原因，其余基金继续。',
     actionLabel: '全量初始化',
     start: startSimulationFeeSync,
     loadLatest: getLatestSimulationFeeSync,
@@ -94,6 +106,7 @@ const tasks: readonly SyncTaskDefinition[] = [
 ]
 
 const jobs = ref<Record<SyncTaskKey, SyncJobStatus | null>>({
+  fundMaterials: null,
   marketNav: null,
   freeDataCompletion: null,
   featureSnapshot: null,
@@ -101,6 +114,7 @@ const jobs = ref<Record<SyncTaskKey, SyncJobStatus | null>>({
   simulationFees: null,
 })
 const starting = ref<Record<SyncTaskKey, boolean>>({
+  fundMaterials: false,
   marketNav: false,
   freeDataCompletion: false,
   featureSnapshot: false,
@@ -108,6 +122,7 @@ const starting = ref<Record<SyncTaskKey, boolean>>({
   simulationFees: false,
 })
 const lastSuccessfulAt = ref<Record<string, string | null>>({
+  FUND_MATERIALS: null,
   MARKET_NAV_INCREMENTAL: null,
   MARKET_FREE_DATA_COMPLETION: null,
   STOCK_FEATURE_SNAPSHOT: null,
@@ -165,7 +180,9 @@ function progressPercent(job: SyncJobStatus | null): number {
 }
 
 /** 将服务端任务状态映射为清晰的中文业务含义。 */
-function statusLabel(status: SyncJobStatus['status'] | undefined, isBatch = false, isFee = false, isCalculation = false, isPrediction = false): string {
+function statusLabel(status: SyncJobStatus['status'] | undefined, isBatch = false, isFee = false, isCalculation = false, isPrediction = false, isMaterials = false): string {
+  // 资料补充的部分成功与净值、指标无关，避免把缺报告误报成指标计算失败。
+  if (isMaterials && status === 'PARTIAL_SUCCESS') return '部分资料尚未补齐'
   if (isPrediction) return {
     QUEUED: '等待生成', RUNNING: '正在生成预测', SUCCEEDED: '预测已齐备',
     PARTIAL_SUCCESS: '部分基金未生成', FAILED: '预测未生成',
@@ -309,7 +326,7 @@ async function startAll(): Promise<void> {
   actionMessage.value = ''
   try {
     allJob.value = await startAllSync()
-    actionMessage.value = '一键同步已创建，包含关注基金预测和模拟费率的六项任务将在后台依次执行。关闭或刷新页面不影响执行。'
+    actionMessage.value = '一键同步已创建，包含基金持仓资料、关注基金预测和模拟费率的七项任务将在后台依次执行。关闭或刷新页面不影响执行。'
   } catch (error) {
     actionError.value = error instanceof Error ? error.message : '未能确认批次是否创建，请查看最新状态。'
   } finally {
@@ -365,7 +382,7 @@ onBeforeUnmount(() => {
           <h2 id="sync-all-title">
             一键同步全部
           </h2>
-          <p>依次执行：标普500 → 基金资料与市场数据更新 → 净值增量 → 历史指标计算 → 模拟费率 → 全部关注基金四周期预测 → 综合建议 → 到期核验。某项失败会记录原因，并继续尝试其余任务。</p>
+          <p>依次执行：标普500 → 基金资料与市场数据更新 → 基金持仓与公司资料 → 净值增量 → 历史指标计算 → 模拟费率 → 全部关注基金四周期预测 → 综合建议 → 到期核验。某项失败会记录原因，并继续尝试其余任务。</p>
         </div>
         <span
           v-if="allJob"
@@ -492,7 +509,7 @@ onBeforeUnmount(() => {
                   <span
                     class="sync-status"
                     :class="jobs[task.key] ? `is-${jobs[task.key]!.status.toLowerCase()}` : 'is-idle'"
-                  >{{ loading ? '读取中…' : errorMessage ? '状态暂不可用' : jobs[task.key] ? statusLabel(jobs[task.key]!.status, false, task.key === 'simulationFees', task.key === 'featureSnapshot', task.key === 'direction1dPrediction') : '尚未运行' }}</span>
+                  >{{ loading ? '读取中…' : errorMessage ? '状态暂不可用' : jobs[task.key] ? statusLabel(jobs[task.key]!.status, false, task.key === 'simulationFees', task.key === 'featureSnapshot', task.key === 'direction1dPrediction', task.key === 'fundMaterials') : '尚未运行' }}</span>
                 </td>
                 <td>{{ loading || errorMessage ? '—' : formatTime(lastSuccessfulAt[task.jobType]) }}</td>
                 <td>
@@ -543,7 +560,7 @@ onBeforeUnmount(() => {
           class="sync-status"
           :class="jobs[task.key] ? `is-${jobs[task.key]!.status.toLowerCase()}` : 'is-idle'"
         >
-          {{ jobs[task.key] ? statusLabel(jobs[task.key]!.status, false, task.key === 'simulationFees', task.key === 'featureSnapshot', task.key === 'direction1dPrediction') : task.key === 'direction1dPrediction' ? '本次服务启动后无手动记录' : '尚未运行' }}
+          {{ jobs[task.key] ? statusLabel(jobs[task.key]!.status, false, task.key === 'simulationFees', task.key === 'featureSnapshot', task.key === 'direction1dPrediction', task.key === 'fundMaterials') : task.key === 'direction1dPrediction' ? '本次服务启动后无手动记录' : '尚未运行' }}
         </span>
       </div>
 
@@ -621,7 +638,7 @@ onBeforeUnmount(() => {
         class="state-message sync-job-message"
         aria-live="polite"
       >
-        <template v-if="task.key === 'simulationFees' || task.key === 'featureSnapshot' || task.key === 'direction1dPrediction'">
+        <template v-if="task.key === 'simulationFees' || task.key === 'featureSnapshot' || task.key === 'direction1dPrediction' || task.key === 'fundMaterials'">
           {{ jobs[task.key]!.progressMessage }}
         </template>
         <template v-else>
@@ -682,14 +699,14 @@ onBeforeUnmount(() => {
         运行说明
       </h2>
       <ul>
-        <li>一键同步依次执行标普500、基金资料与市场数据更新、净值增量、历史指标计算、模拟费率、一日及其他周期预测与综合建议核验，共六类任务；某项失败会单列未完成，其余任务继续。</li>
+        <li>一键同步依次执行标普500、基金资料与市场数据更新、基金持仓与公司资料、净值增量、历史指标计算、模拟费率、一日及其他周期预测与综合建议核验，共七类任务；某项失败会单列未完成，其余任务继续。</li>
         <li>预测无需系统或个人实验开关。每只基金每个周期期次复用已有预测；缺数据、日历政策待补或服务失败时列出原因，不能用历史补算冒充提前预测。</li>
         <li>模拟费率支持单只刷新和全量初始化；全量范围为模拟持仓与定投计划涉及的基金。同步成功后可在“费率维护”中查询和编辑规则。</li>
         <li>某项失败仍尝试后续任务；批次部分成功不代表所有数据均已补齐，可查看对应任务并单独重试。</li>
         <li>批次与单项任务共用互斥限制。关闭网页不影响执行；Python 服务重启后不会自动续跑，实时批次状态也会清空。</li>
         <li>净值自动补拉每轮结束30分钟后继续检查；临时错误退避重试，成功数据保留，中间缺日也会补拉。</li>
         <li>净值增量同步成功后，会自动计算股票型基金的历史指标，无需再点计算按钮；若计算失败，可进入“历史指标计算”单独重试。</li>
-        <li>基金资料与市场数据更新已包含原完整资料同步，按需手动执行；只使用当前已验权的免费数据，不读取基金持仓、新闻或公告。</li>
+        <li>基金资料与市场数据更新已包含原完整资料同步，按需手动执行；只使用当前已验权的免费数据，持仓、公司经营与公告新闻由“基金持仓与公司资料更新”单独处理。</li>
         <li>任意时刻只允许一个市场同步任务运行；页面每秒读取一次服务端进度，不会重复触发数据源调用。</li>
         <li>定投计划由后台在每个交易日上午 10:00 自动执行；左侧“定投手动执行”可为每个进行中的计划按前一交易日净值立即补入一期并确认，用于补齐持仓，同一天重复点击不会重复买入，也不属于一键同步全部。</li>
       </ul>

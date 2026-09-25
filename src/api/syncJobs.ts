@@ -1,6 +1,15 @@
 import { get, post } from '@/api/http'
 import type { SyncJobLastSuccess, SyncJobStatus } from '@/types/syncJob'
 
+/** 明确指定试点基金，参数缺失不会变成全市场采集。 */
+export function startFundMaterialsSync(): Promise<SyncJobStatus> {
+  return post<SyncJobStatus>('/api/v1/sync-jobs/fund-materials?fundCode=002112')
+}
+
+export function getLatestFundMaterialsSync(): Promise<SyncJobStatus | null> {
+  return get<SyncJobStatus | null>('/api/v1/sync-jobs/fund-materials/latest')
+}
+
 /** 独立一日批量入口；日期、数据完整性和留档由后端检查。 */
 export function startDirection1dPredictionSync(): Promise<SyncJobStatus> {
   return post<SyncJobStatus>('/api/v1/sync-jobs/direction-1d-predictions')
