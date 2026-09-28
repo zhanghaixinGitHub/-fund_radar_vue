@@ -1,0 +1,309 @@
+{
+  "purpose": "财报输入明确缺口补充和零拟合覆盖诊断",
+  "created_date": "2026-09-25",
+  "scope": "只用目标日之前公开的公司资料；不读2025封存或2026回算基金标签",
+  "artifact_directory": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\financial-gap-checks\\prior-day-20260925-v1",
+  "facts": [
+    {
+      "stock_code": "688192.SH",
+      "name": "迪哲医药",
+      "period": "20230930",
+      "period_kind": "JANUARY_THROUGH_SEPTEMBER_CUMULATIVE",
+      "published_date": "2023-10-28",
+      "metric": "operating_revenue_yoy_pct",
+      "status": "DISCLOSED_NOT_APPLICABLE",
+      "value_pct": null,
+      "current_amount": "40102400.00",
+      "amount_unit": "CNY",
+      "prior_amount": null,
+      "prior_amount_status": "BLANK_OR_DASH_NOT_IMPUTED",
+      "reported_text": "不适用",
+      "physical_pages": [
+        1
+      ],
+      "source_url": "https://static.cninfo.com.cn/finalpage/2023-10-28/1218187708.PDF",
+      "source_sha256": "c77e4be75d484755b0c982949fd03a614ed6247bbecb5d15e833e9af6fc0734f",
+      "source_file": "raw/c77e4be75d484755b0c982949fd03a614ed6247bbecb5d15e833e9af6fc0734f.pdf",
+      "received_at": "2026-09-25T22:59:29.618269+08:00",
+      "expires_at": "2027-09-25T22:59:29.618269+08:00",
+      "training_eligible": false
+    },
+    {
+      "stock_code": "688382.SH",
+      "name": "益方生物",
+      "period": "20230930",
+      "period_kind": "JANUARY_THROUGH_SEPTEMBER_CUMULATIVE",
+      "published_date": "2023-10-28",
+      "metric": "operating_revenue_yoy_pct",
+      "status": "DISCLOSED_NOT_APPLICABLE",
+      "value_pct": null,
+      "current_amount": "127169811.32",
+      "amount_unit": "CNY",
+      "prior_amount": null,
+      "prior_amount_status": "BLANK_OR_DASH_NOT_IMPUTED",
+      "reported_text": "不适用",
+      "physical_pages": [
+        1
+      ],
+      "source_url": "https://static.cninfo.com.cn/finalpage/2023-10-28/1218184932.PDF",
+      "source_sha256": "e3b71fbcbe096d6d62c4f0a1762313b34cc00770b82682e08ecc2149f46a5048",
+      "source_file": "raw/e3b71fbcbe096d6d62c4f0a1762313b34cc00770b82682e08ecc2149f46a5048.pdf",
+      "received_at": "2026-09-25T22:59:30.215290+08:00",
+      "expires_at": "2027-09-25T22:59:30.215290+08:00",
+      "training_eligible": false
+    },
+    {
+      "stock_code": "003031.SZ",
+      "name": "中瓷电子",
+      "period": "20200930",
+      "period_kind": "JANUARY_THROUGH_SEPTEMBER_CUMULATIVE",
+      "published_date": "2020-12-21",
+      "metric": "operating_revenue_yoy_pct",
+      "status": "DERIVED_FROM_COMPARABLE_PUBLISHED_AMOUNTS",
+      "value_pct": "40.84",
+      "current_amount": "60640.41",
+      "prior_amount": "43056.27",
+      "amount_unit": "TEN_THOUSAND_CNY",
+      "calculated_from_displayed_amounts_pct": "40.83990554685763536878600960",
+      "precision_note": "中瓷使用原文万元、两位小数金额推导约值，非供应商原字段的四位小数；江天采用原文直接披露的两位小数同比。",
+      "assurance": "REVIEWED_NOT_FULL_PERIOD_AUDITED",
+      "physical_pages": [
+        30
+      ],
+      "source_url": "https://static.cninfo.com.cn/finalpage/2020-12-21/1208941543.PDF",
+      "source_sha256": "2c99dc7e30f315a3616304d86d1d334dc4bdbc77913d3cb581d7c03ac0383e37",
+      "source_file": "raw/2c99dc7e30f315a3616304d86d1d334dc4bdbc77913d3cb581d7c03ac0383e37.pdf",
+      "received_at": "2026-09-25T23:03:00.472001+08:00",
+      "expires_at": "2027-09-25T23:03:00.472001+08:00",
+      "training_eligible": false
+    },
+    {
+      "stock_code": "300927.SZ",
+      "name": "江天化学",
+      "period": "20200930",
+      "period_kind": "JANUARY_THROUGH_SEPTEMBER_CUMULATIVE",
+      "published_date": "2020-12-31",
+      "metric": "operating_revenue_yoy_pct",
+      "status": "REPORTED_COMPARABLE_YOY",
+      "value_pct": "-16.97",
+      "current_amount": "30975.35",
+      "prior_amount": "37308.38",
+      "amount_unit": "TEN_THOUSAND_CNY",
+      "calculated_from_displayed_amounts_pct": "-16.97481906209811307808058136",
+      "precision_note": "中瓷使用原文万元、两位小数金额推导约值，非供应商原字段的四位小数；江天采用原文直接披露的两位小数同比。",
+      "assurance": "REVIEWED_NOT_FULL_PERIOD_AUDITED",
+      "physical_pages": [
+        241
+      ],
+      "source_url": "https://static.cninfo.com.cn/finalpage/2020-12-31/1209024990.PDF",
+      "source_sha256": "df55605554a692eeec7086668e3c500449a6533ecc11928bb1dc5be3e0887e12",
+      "source_file": "raw/df55605554a692eeec7086668e3c500449a6533ecc11928bb1dc5be3e0887e12.pdf",
+      "received_at": "2026-09-25T23:03:58.656865+08:00",
+      "expires_at": "2027-09-25T23:03:58.656865+08:00",
+      "training_eligible": false
+    }
+  ],
+  "coverage": {
+    "train": {
+      "total_rows": 4422,
+      "before": {
+        "rows": 732,
+        "dates": 659,
+        "own": 659,
+        "class_dates": {
+          "UP": 336,
+          "FLAT": 16,
+          "DOWN": 325
+        },
+        "families": {
+          "002112": 659,
+          "004237": 29,
+          "005187": 44
+        }
+      },
+      "after": {
+        "rows": 733,
+        "dates": 660,
+        "own": 660,
+        "class_dates": {
+          "UP": 336,
+          "FLAT": 16,
+          "DOWN": 326
+        },
+        "families": {
+          "002112": 660,
+          "004237": 29,
+          "005187": 44
+        }
+      },
+      "row_primary_reason_counts": {
+        "NO_LOCAL_FILE": 3645,
+        "NO_PRIOR_PUBLISHED_RECORD": 44
+      },
+      "row_reason_combinations": {
+        "NO_LOCAL_FILE+NO_PRIOR_PUBLISHED_RECORD": 565,
+        "NO_PRIOR_PUBLISHED_RECORD": 44,
+        "NO_LOCAL_FILE": 3080
+      },
+      "company_day_reason_counts": {
+        "NO_PRIOR_PUBLISHED_RECORD": 4471,
+        "NO_LOCAL_FILE": 34102
+      },
+      "gained_complete_rows": [
+        {
+          "fund_code": "002112",
+          "target": "2021-03-31",
+          "actual_direction": "DOWN"
+        }
+      ]
+    },
+    "development": {
+      "total_rows": 230,
+      "before": {
+        "rows": 220,
+        "dates": 220,
+        "own": 220,
+        "class_dates": {
+          "UP": 102,
+          "FLAT": 2,
+          "DOWN": 116
+        },
+        "families": {
+          "002112": 220
+        }
+      },
+      "after": {
+        "rows": 220,
+        "dates": 220,
+        "own": 220,
+        "class_dates": {
+          "UP": 102,
+          "FLAT": 2,
+          "DOWN": 116
+        },
+        "families": {
+          "002112": 220
+        }
+      },
+      "row_primary_reason_counts": {
+        "DISCLOSED_NOT_APPLICABLE": 10
+      },
+      "row_reason_combinations": {
+        "DISCLOSED_NOT_APPLICABLE": 10
+      },
+      "company_day_reason_counts": {
+        "DISCLOSED_NOT_APPLICABLE": 20
+      },
+      "gained_complete_rows": []
+    }
+  },
+  "resolved_numeric_company_days": [
+    {
+      "split": "train",
+      "fund_code": "002112",
+      "target": "2021-03-31",
+      "stock_code": "300927.SZ",
+      "weight_pct": "0.01",
+      "period": "20200930",
+      "provider_ann_date": "20201217",
+      "supplement_published_date": "2020-12-31",
+      "value_pct": "-16.97",
+      "source_sha256": "df55605554a692eeec7086668e3c500449a6533ecc11928bb1dc5be3e0887e12",
+      "status": "REPORTED_COMPARABLE_YOY"
+    },
+    {
+      "split": "train",
+      "fund_code": "002170",
+      "target": "2021-04-21",
+      "stock_code": "003031.SZ",
+      "weight_pct": "0.01",
+      "period": "20200930",
+      "provider_ann_date": "20201214",
+      "supplement_published_date": "2020-12-21",
+      "value_pct": "40.84",
+      "source_sha256": "2c99dc7e30f315a3616304d86d1d334dc4bdbc77913d3cb581d7c03ac0383e37",
+      "status": "DERIVED_FROM_COMPARABLE_PUBLISHED_AMOUNTS"
+    },
+    {
+      "split": "train",
+      "fund_code": "006038",
+      "target": "2021-04-22",
+      "stock_code": "003031.SZ",
+      "weight_pct": "0.01",
+      "period": "20200930",
+      "provider_ann_date": "20201214",
+      "supplement_published_date": "2020-12-21",
+      "value_pct": "40.84",
+      "source_sha256": "2c99dc7e30f315a3616304d86d1d334dc4bdbc77913d3cb581d7c03ac0383e37",
+      "status": "DERIVED_FROM_COMPARABLE_PUBLISHED_AMOUNTS"
+    }
+  ],
+  "not_applicable_company_days": 20,
+  "checked_source_files": 379,
+  "download_attempts": 5,
+  "saved_pdfs": 4,
+  "bounded_catalog_queries": 2,
+  "other_access": "公开检索与页面核查；请求总数不以5+2冒充全部网络调用",
+  "source_file_hashes": {
+    "financial-facts.json": "bf5720df6256124ede1d411d56a5f99853116a84b90d14d39663fbe06deb5f18",
+    "resolution.json": "e61c7914ebce1810e49db0b8507d67f1842ef817aa952473c12be85549ce3c80",
+    "gap-classification.json": "86c3ba5f9ef6556f5675bc28c55dcd28a01332724f477d90bf9a9d0b28fc8150"
+  },
+  "new_fit_count": 0,
+  "total_existing_fit_count": 34,
+  "training_eligible": false,
+  "checks": {
+    "source_protection_files": 47,
+    "source_protection_differences": [],
+    "pdf_hashes_verified": 4,
+    "core_table_pages_visually_reviewed": 4,
+    "coverage_before_matches_previous_evidence": true,
+    "missing_values_zero_filled": false,
+    "old_source_snapshots_modified": false,
+    "repository_diff_check": {
+      "Vue": "PASS",
+      "Python": "PASS",
+      "Java": "PASS"
+    },
+    "utf8_json_links": "PASS",
+    "local_document_links_checked": 10,
+    "new_raw_materials_git_ignored": true
+  },
+  "worktree_protection": {
+    "C:\\WebStormProject\\workSpace05": {
+      "baseline_files": 281,
+      "changed": [
+        "docs_zhx/implementation/fund-002112-prior-day-validation-2026-09-25.md"
+      ],
+      "deleted": [],
+      "added": [
+        "docs_zhx/implementation/fund-002112-financial-gap-and-diagnosis-2026-09-25.md",
+        "docs_zhx/implementation/fund-002112-financial-gap-evidence-2026-09-25.json"
+      ]
+    },
+    "C:\\pythonProject\\workSpace06": {
+      "baseline_files": 1257,
+      "changed": [],
+      "deleted": [],
+      "added": []
+    },
+    "C:\\ideaProject\\workSpace12": {
+      "baseline_files": 300,
+      "changed": [],
+      "deleted": [],
+      "added": []
+    },
+    "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\training-runs\\002112-b9fcc6eb85cce6e19466db3a": {
+      "baseline_files": 35,
+      "changed": [],
+      "deleted": [],
+      "added": []
+    },
+    "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\optimization-runs\\round-20260925-v1": {
+      "baseline_files": 116,
+      "changed": [],
+      "deleted": [],
+      "added": []
+    }
+  }
+}

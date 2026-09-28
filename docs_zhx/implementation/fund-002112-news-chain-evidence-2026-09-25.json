@@ -1,0 +1,493 @@
+{
+  "purpose": "12份现存公告的零拟合新闻分析链样例核查",
+  "summary": {
+    "document_count": 12,
+    "unique_companies": 5,
+    "target_dates": 5,
+    "pdf_total_pages": 72,
+    "visually_reviewed_company_pages": 21,
+    "visually_reviewed_fund_pages": 2,
+    "source_anchors_verified": 30,
+    "company_union_reported_weight_pct": "25.16",
+    "company_union_is_not_daily_coverage": true,
+    "reported_top10_nav_weight_pct": "47.60",
+    "reported_total_stock_nav_weight_pct": "93.84",
+    "current_actual_holdings_known": false,
+    "topics": {
+      "BEIGENE_FEB_CAPITAL": [
+        "N01",
+        "N04",
+        "N12"
+      ],
+      "KANGYUAN_BUYBACK": [
+        "N02"
+      ],
+      "ANTU_BUYBACK": [
+        "N03"
+      ],
+      "ZHIFEI_BUYBACK_PROCEDURE": [
+        "N05"
+      ],
+      "CR999_KUNYAO_GUARANTEE": [
+        "N06",
+        "N07",
+        "N08"
+      ],
+      "CR999_TECH_CENTER": [
+        "N06"
+      ],
+      "BEIGENE_SHANGHAI_PROPERTY": [
+        "N09"
+      ],
+      "BEIGENE_PI_HEALTH": [
+        "N10",
+        "N11"
+      ]
+    },
+    "topic_count": 8,
+    "topic_count_is_not_independent_predictive_signal_count": true,
+    "existing_fit_count": 34,
+    "new_fit_count": 0,
+    "new_network_requests": 0,
+    "actual_directions_extracted": false,
+    "automatic_pipeline_implemented": false,
+    "model_accuracy_measured": false,
+    "independent_semantic_accuracy_measured": false
+  },
+  "sample_selection": {
+    "window": [
+      "2024-03-01",
+      "2024-04-16"
+    ],
+    "eligible_catalog_ids": 456,
+    "excluded_not_disclosed_at_time": 222,
+    "sort": [
+      "published_date",
+      "announcement_id",
+      "stock_code"
+    ],
+    "replaced_samples": 0
+  },
+  "daily_context": [
+    {
+      "target": "2024-03-04",
+      "sample_companies": {
+        "688235.SH": "5.96",
+        "600557.SH": "4.66",
+        "603658.SH": "4.79"
+      },
+      "sample_reported_weight_pct": "15.41",
+      "other_disclosed_top10_weight_pct": "32.19",
+      "undisclosed_stock_weight_pct": "46.24",
+      "non_stock_net_remainder_pct": "6.16",
+      "fund_direction": null,
+      "coverage_meaning": "仅选中样本关联权重，不是当天全部新闻覆盖或净值贡献"
+    },
+    {
+      "target": "2024-03-05",
+      "sample_companies": {
+        "300122.SZ": "4.97"
+      },
+      "sample_reported_weight_pct": "4.97",
+      "other_disclosed_top10_weight_pct": "42.63",
+      "undisclosed_stock_weight_pct": "46.24",
+      "non_stock_net_remainder_pct": "6.16",
+      "fund_direction": null,
+      "coverage_meaning": "仅选中样本关联权重，不是当天全部新闻覆盖或净值贡献"
+    },
+    {
+      "target": "2024-03-06",
+      "sample_companies": {
+        "000999.SZ": "4.78"
+      },
+      "sample_reported_weight_pct": "4.78",
+      "other_disclosed_top10_weight_pct": "42.82",
+      "undisclosed_stock_weight_pct": "46.24",
+      "non_stock_net_remainder_pct": "6.16",
+      "fund_direction": null,
+      "coverage_meaning": "仅选中样本关联权重，不是当天全部新闻覆盖或净值贡献"
+    },
+    {
+      "target": "2024-03-07",
+      "sample_companies": {
+        "688235.SH": "5.96"
+      },
+      "sample_reported_weight_pct": "5.96",
+      "other_disclosed_top10_weight_pct": "41.64",
+      "undisclosed_stock_weight_pct": "46.24",
+      "non_stock_net_remainder_pct": "6.16",
+      "fund_direction": null,
+      "coverage_meaning": "仅选中样本关联权重，不是当天全部新闻覆盖或净值贡献"
+    },
+    {
+      "target": "2024-03-08",
+      "sample_companies": {
+        "688235.SH": "5.96"
+      },
+      "sample_reported_weight_pct": "5.96",
+      "other_disclosed_top10_weight_pct": "41.64",
+      "undisclosed_stock_weight_pct": "46.24",
+      "non_stock_net_remainder_pct": "6.16",
+      "fund_direction": null,
+      "coverage_meaning": "仅选中样本关联权重，不是当天全部新闻覆盖或净值贡献"
+    }
+  ],
+  "samples": [
+    {
+      "id": "N01",
+      "stock_code": "688235.SH",
+      "stock_name": "百济神州",
+      "title": "港股公告：翌日披露报表",
+      "published_date": "2024-03-01",
+      "target": "2024-03-04",
+      "url": "https://static.cninfo.com.cn/finalpage/2024-03-01/1219213820.PDF",
+      "pdf_file": "raw/fe61c6365d7a55abc8e11061a2efe88a3bdc34717181305190d3e439ef48f172.pdf",
+      "pdf_sha256": "fe61c6365d7a55abc8e11061a2efe88a3bdc34717181305190d3e439ef48f172",
+      "source_pages": [
+        1,
+        2
+      ],
+      "reported_weight_pct": "5.96",
+      "facts": "2月28日因限制性股份单位归属发行普通股355,706股；表内人民币股份数量未变。",
+      "event_topics": [
+        "BEIGENE_FEB_CAPITAL"
+      ],
+      "effect_on_target_fund_next_day": null,
+      "effect_status": "UNDETERMINED_NOT_FLAT"
+    },
+    {
+      "id": "N02",
+      "stock_code": "600557.SH",
+      "stock_name": "康缘药业",
+      "title": "江苏康缘药业股份有限公司关于以集中竞价交易方式回购公司股份的进展公告",
+      "published_date": "2024-03-02",
+      "target": "2024-03-04",
+      "url": "https://static.cninfo.com.cn/finalpage/2024-03-02/1219216932.PDF",
+      "pdf_file": "raw/2580912c5d1c7241be18d8ce07c6279c1b1304e00a6ca9028351d876fc9719ff.pdf",
+      "pdf_sha256": "2580912c5d1c7241be18d8ce07c6279c1b1304e00a6ca9028351d876fc9719ff",
+      "source_pages": [
+        1,
+        2
+      ],
+      "reported_weight_pct": "4.66",
+      "facts": "康缘截至2月29日累计回购849,300股，支付14,121,888.36元，含费用；既定计划1.5亿至3亿元，拟在完成后注销。",
+      "event_topics": [
+        "KANGYUAN_BUYBACK"
+      ],
+      "effect_on_target_fund_next_day": null,
+      "effect_status": "UNDETERMINED_NOT_FLAT"
+    },
+    {
+      "id": "N03",
+      "stock_code": "603658.SH",
+      "stock_name": "安图生物",
+      "title": "安图生物关于以集中竞价交易方式回购公司股份的进展公告",
+      "published_date": "2024-03-02",
+      "target": "2024-03-04",
+      "url": "https://static.cninfo.com.cn/finalpage/2024-03-02/1219218075.PDF",
+      "pdf_file": "raw/633cddc3c97c94ddaa8ddf6277cb33656be61a939108d7e441094c9de6edc1d1.pdf",
+      "pdf_sha256": "633cddc3c97c94ddaa8ddf6277cb33656be61a939108d7e441094c9de6edc1d1",
+      "source_pages": [
+        1,
+        2
+      ],
+      "reported_weight_pct": "4.79",
+      "facts": "安图截至2月29日累计回购70,100股、4,102,048元，不含费用；既定额度25,000万至50,000万元，期限12个月。",
+      "event_topics": [
+        "ANTU_BUYBACK"
+      ],
+      "effect_on_target_fund_next_day": null,
+      "effect_status": "UNDETERMINED_NOT_FLAT"
+    },
+    {
+      "id": "N04",
+      "stock_code": "688235.SH",
+      "stock_name": "百济神州",
+      "title": "港股公告：翌日披露报表",
+      "published_date": "2024-03-02",
+      "target": "2024-03-04",
+      "url": "https://static.cninfo.com.cn/finalpage/2024-03-02/1219219617.PDF",
+      "pdf_file": "raw/a4dff88567705c5d318d75ef88dadeaaf55b9a35e67d51a73135f4f6e24fa976.pdf",
+      "pdf_sha256": "a4dff88567705c5d318d75ef88dadeaaf55b9a35e67d51a73135f4f6e24fa976",
+      "source_pages": [
+        1,
+        2
+      ],
+      "reported_weight_pct": "5.96",
+      "facts": "百济披露2月期权行使相关两笔普通股发行433,732股和7,800股，合计441,532股；人民币股份数量未变。",
+      "event_topics": [
+        "BEIGENE_FEB_CAPITAL"
+      ],
+      "effect_on_target_fund_next_day": null,
+      "effect_status": "UNDETERMINED_NOT_FLAT"
+    },
+    {
+      "id": "N05",
+      "stock_code": "300122.SZ",
+      "stock_name": "智飞生物",
+      "title": "关于回购股份事项前十名股东及前十名无限售条件股东持股情况的公告",
+      "published_date": "2024-03-04",
+      "target": "2024-03-05",
+      "url": "https://static.cninfo.com.cn/finalpage/2024-03-04/1219229886.PDF",
+      "pdf_file": "raw/d17e75010e1e913137f9131c85ea3fcee218b781c9aa1b3321759eca9ef235a7.pdf",
+      "pdf_sha256": "d17e75010e1e913137f9131c85ea3fcee218b781c9aa1b3321759eca9ef235a7",
+      "source_pages": [
+        1,
+        2,
+        3
+      ],
+      "reported_weight_pct": "4.97",
+      "facts": "智飞公告披露3月1日登记在册的前十名股东及无限售条件股东；引用2月23日已披露的回购方案，并明确仍待股东大会审议。",
+      "event_topics": [
+        "ZHIFEI_BUYBACK_PROCEDURE"
+      ],
+      "effect_on_target_fund_next_day": null,
+      "effect_status": "UNDETERMINED_NOT_FLAT"
+    },
+    {
+      "id": "N06",
+      "stock_code": "000999.SZ",
+      "stock_name": "华润三九",
+      "title": "董事会2024年第四次会议决议公告",
+      "published_date": "2024-03-05",
+      "target": "2024-03-06",
+      "url": "https://static.cninfo.com.cn/finalpage/2024-03-05/1219229821.PDF",
+      "pdf_file": "raw/b7e095c55204fa572bc5f3d5be6e29a38122823d3da11e38a8472eb694a71485.pdf",
+      "pdf_sha256": "b7e095c55204fa572bc5f3d5be6e29a38122823d3da11e38a8472eb694a71485",
+      "source_pages": [
+        1
+      ],
+      "reported_weight_pct": "4.78",
+      "facts": "华润董事会通过昆药年度担保计划，并决定成立生产技术中心（工艺技术研究院）；担保还须股东大会审议。",
+      "event_topics": [
+        "CR999_KUNYAO_GUARANTEE",
+        "CR999_TECH_CENTER"
+      ],
+      "effect_on_target_fund_next_day": null,
+      "effect_status": "UNDETERMINED_NOT_FLAT"
+    },
+    {
+      "id": "N07",
+      "stock_code": "000999.SZ",
+      "stock_name": "华润三九",
+      "title": "关于公司控股子公司昆药集团2024年度担保计划的公告",
+      "published_date": "2024-03-05",
+      "target": "2024-03-06",
+      "url": "https://static.cninfo.com.cn/finalpage/2024-03-05/1219229822.PDF",
+      "pdf_file": "raw/121d11ea8ec6119d76150524c5197098c4f7c39a2b97635aec3fa31812d440f5.pdf",
+      "pdf_sha256": "121d11ea8ec6119d76150524c5197098c4f7c39a2b97635aec3fa31812d440f5",
+      "source_pages": [
+        1,
+        13,
+        14
+      ],
+      "reported_weight_pct": "4.78",
+      "facts": "昆药及下属公司年度融资担保预计上限6.06亿元，其中高负债率公司额度4.09亿元；披露时担保余额2.57亿元，无逾期；具体协议未签。",
+      "event_topics": [
+        "CR999_KUNYAO_GUARANTEE"
+      ],
+      "effect_on_target_fund_next_day": null,
+      "effect_status": "UNDETERMINED_NOT_FLAT"
+    },
+    {
+      "id": "N08",
+      "stock_code": "000999.SZ",
+      "stock_name": "华润三九",
+      "title": "监事会2024年第四次会议决议公告",
+      "published_date": "2024-03-05",
+      "target": "2024-03-06",
+      "url": "https://static.cninfo.com.cn/finalpage/2024-03-05/1219229823.PDF",
+      "pdf_file": "raw/619ec3531b2f7ef0ee8df4c7599be86a726c94ae19ba8041d6fd3052225a952f.pdf",
+      "pdf_sha256": "619ec3531b2f7ef0ee8df4c7599be86a726c94ae19ba8041d6fd3052225a952f",
+      "source_pages": [
+        1
+      ],
+      "reported_weight_pct": "4.78",
+      "facts": "华润监事会通过与N07同一昆药担保计划并引用2024-021公告，仍需股东大会审议。",
+      "event_topics": [
+        "CR999_KUNYAO_GUARANTEE"
+      ],
+      "effect_on_target_fund_next_day": null,
+      "effect_status": "UNDETERMINED_NOT_FLAT"
+    },
+    {
+      "id": "N09",
+      "stock_code": "688235.SH",
+      "stock_name": "百济神州",
+      "title": "百济神州有限公司关于与关联方共同投资暨关联交易的进展公告",
+      "published_date": "2024-03-06",
+      "target": "2024-03-07",
+      "url": "https://static.cninfo.com.cn/finalpage/2024-03-06/1219243130.PDF",
+      "pdf_file": "raw/26c45350ff854274a3338d9ff4dbbb16440877f7b1d12fa5075254aa68d26f30.pdf",
+      "pdf_sha256": "26c45350ff854274a3338d9ff4dbbb16440877f7b1d12fa5075254aa68d26f30",
+      "source_pages": [
+        1,
+        2
+      ],
+      "reported_weight_pct": "5.96",
+      "facts": "百济项目公司取得上海研发物业受让资格并签署交易合同，价款57,500万元含税，已付17,000万元保证金转价款；为2023年披露项目的进展。",
+      "event_topics": [
+        "BEIGENE_SHANGHAI_PROPERTY"
+      ],
+      "effect_on_target_fund_next_day": null,
+      "effect_status": "UNDETERMINED_NOT_FLAT"
+    },
+    {
+      "id": "N10",
+      "stock_code": "688235.SH",
+      "stock_name": "百济神州",
+      "title": "百济神州有限公司关于与关联方共同投资暨关联交易的公告",
+      "published_date": "2024-03-06",
+      "target": "2024-03-07",
+      "url": "https://static.cninfo.com.cn/finalpage/2024-03-06/1219243131.PDF",
+      "pdf_file": "raw/14469f570a5d1a58166c64377cd2807e0c0535f2278352f8b5414291028cc995.pdf",
+      "pdf_sha256": "14469f570a5d1a58166c64377cd2807e0c0535f2278352f8b5414291028cc995",
+      "source_pages": [
+        1,
+        2,
+        3,
+        13,
+        14
+      ],
+      "reported_weight_pct": "5.96",
+      "facts": "Pi Health重组并引入外部投资，披露外部A类优先股认购合计28,249,996美元；完成后百济持股45.71%、不再控制及并表，原公司尚未实现收入。",
+      "event_topics": [
+        "BEIGENE_PI_HEALTH"
+      ],
+      "effect_on_target_fund_next_day": null,
+      "effect_status": "UNDETERMINED_NOT_FLAT"
+    },
+    {
+      "id": "N11",
+      "stock_code": "688235.SH",
+      "stock_name": "百济神州",
+      "title": "中国国际金融股份有限公司、高盛（中国）证券有限责任公司关于百济神州有限公司与关联方共同投资暨关联交易的核查意见",
+      "published_date": "2024-03-06",
+      "target": "2024-03-07",
+      "url": "https://static.cninfo.com.cn/finalpage/2024-03-06/1219243132.PDF",
+      "pdf_file": "raw/75dbf5145e5c303c29973c73514cbb18548eef5400d7e86ef36db4b4023e4aaf.pdf",
+      "pdf_sha256": "75dbf5145e5c303c29973c73514cbb18548eef5400d7e86ef36db4b4023e4aaf",
+      "source_pages": [
+        1,
+        12
+      ],
+      "reported_weight_pct": "5.96",
+      "facts": "联席保荐机构核查N10同一Pi Health交易，对履行程序等无异议，并保留初创经营风险说明。",
+      "event_topics": [
+        "BEIGENE_PI_HEALTH"
+      ],
+      "effect_on_target_fund_next_day": null,
+      "effect_status": "UNDETERMINED_NOT_FLAT"
+    },
+    {
+      "id": "N12",
+      "stock_code": "688235.SH",
+      "stock_name": "百济神州",
+      "title": "港股公告：证券变动月报表",
+      "published_date": "2024-03-07",
+      "target": "2024-03-08",
+      "url": "https://static.cninfo.com.cn/finalpage/2024-03-07/1219251083.PDF",
+      "pdf_file": "raw/d3416d4da7275f85acd396a34cb6b241bad965d7c607a282f5c5981f5a8def25.pdf",
+      "pdf_sha256": "d3416d4da7275f85acd396a34cb6b241bad965d7c607a282f5c5981f5a8def25",
+      "source_pages": [
+        1,
+        2,
+        3
+      ],
+      "reported_weight_pct": "5.96",
+      "facts": "百济2月月报列普通股净增953,108股，人民币股份数量未变；期权行使所得资金为2,238,792.31美元，期末普通股余额与N04一致。",
+      "event_topics": [
+        "BEIGENE_FEB_CAPITAL"
+      ],
+      "effect_on_target_fund_next_day": null,
+      "effect_status": "UNDETERMINED_NOT_FLAT"
+    }
+  ],
+  "artifact_directory": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\news-chain-checks\\prior-day-20260925-v1",
+  "artifact_sha256": {
+    "plan.json": "33a70d3e5772512d3f8172477b72101e5e56c6804ea9c4516316b3fd998b113a",
+    "selection.json": "fc4dbb1a0c5fd3d5700cb5950989f10078faf5c42536d635a9b9d9ad1e56c79a",
+    "analysis.json": "fcdcc7ad0a0323153515aacf0a6cab16967d7a3657eb957930c5ca6909df2c1d",
+    "extracted-pages.json": "9c018c0b47823e9e6800ba74733dd41561ad5dc8a28df758d8dcc0c99deaef1d",
+    "fund-report-excerpts.json": "5ed7588a75434842243393b057b1638e6320e8a0a887eb30101426aaf2921d9d",
+    "verification.json": "9bcf9e94f56d74a2089a61e1e4b0773d9c6850fd15a7ef344452a440899f7ff9"
+  },
+  "limitations": [
+    "时间排序小样本集中5家公司5个目标日，不能代表全部新闻",
+    "原文事实有据，正负传导是需验证假设",
+    "未穷尽此前公告，不能确认全部事件首次披露或超市场预期",
+    "没有目标日净值答案，不计算正确率",
+    "日月股本分类和存托股份排除口径尚未逐项桥接",
+    "公开持仓只有前十股票，且距报告期末64至68天"
+  ],
+  "new_fit_count": 0,
+  "new_network_requests": 0,
+  "protection_verification": {
+    "status": "PASS",
+    "worktrees": {
+      "C:\\WebStormProject\\workSpace05": {
+        "baseline_files": 283,
+        "changed": [
+          "docs_zhx/implementation/fund-002112-financial-gap-and-diagnosis-2026-09-25.md"
+        ],
+        "deleted": [],
+        "added": [
+          "docs_zhx/implementation/fund-002112-news-chain-evidence-2026-09-25.json",
+          "docs_zhx/implementation/fund-002112-news-chain-sample-audit-2026-09-25.md"
+        ]
+      },
+      "C:\\pythonProject\\workSpace06": {
+        "baseline_files": 1257,
+        "changed": [],
+        "deleted": [],
+        "added": []
+      },
+      "C:\\ideaProject\\workSpace12": {
+        "baseline_files": 300,
+        "changed": [],
+        "deleted": [],
+        "added": []
+      },
+      "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\training-runs\\002112-b9fcc6eb85cce6e19466db3a": {
+        "baseline_files": 35,
+        "changed": [],
+        "deleted": [],
+        "added": []
+      },
+      "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\optimization-runs\\round-20260925-v1": {
+        "baseline_files": 116,
+        "changed": [],
+        "deleted": [],
+        "added": []
+      }
+    },
+    "checks": {
+      "selection_unique_ordered_limit": "PASS",
+      "source_file_sha256": {
+        "catalog_reports_calendar": 43,
+        "company_documents": 12,
+        "company_pdfs": 12,
+        "status": "PASS"
+      },
+      "future_report_perturbation_no_effect_on_12_holdings": "PASS_IN_MEMORY_ONLY",
+      "unknown_not_zero_or_flat_and_no_prediction": "PASS",
+      "event_and_daily_weight_consistency": "PASS_NOT_AUTOMATIC_SEMANTIC_ACCURACY",
+      "original_system_protection": {
+        "count": 47,
+        "differences": 0
+      },
+      "fit_attempt_counts": [
+        6,
+        28
+      ],
+      "document_local_links": 24,
+      "all_three_repo_diff_check": "PASS"
+    }
+  },
+  "existing_heads": {
+    "Vue": "6aab08b",
+    "Python": "bc61ef9",
+    "Java": "b702b62"
+  },
+  "new_research_materials_git_ignored": true
+}
