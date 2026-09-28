@@ -1,10 +1,15 @@
-/* 全站页脚参与正常布局：短页贴近底部，长页随内容滚动，窄屏换行也不会遮挡操作。 */
-#app { display: flex; flex-direction: column; min-height: 100dvh; }
+/* 风险提示始终固定在视口底部，正文按实际页脚高度留白，避免分页和表单操作被遮挡。 */
+html { scroll-padding-bottom: calc(var(--app-risk-footer-height, 47px) + 16px); }
+#app { display: flex; flex-direction: column; min-height: 100dvh; padding-bottom: var(--app-risk-footer-height, 47px); }
 .public-shell { display: grid; flex: 1; min-width: 0; }
 .public-shell > .login-page { min-height: 0; }
 .app-risk-footer {
-  flex-shrink: 0;
-  padding: 12px 20px;
+  position: fixed;
+  z-index: 20;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px));
   color: #647b72;
   background: #fff;
   border-top: 1px solid #dfe8e3;
@@ -69,8 +74,8 @@ body:has(.app-shell) { min-width: 0; }
   display: flex;
   flex-direction: column;
   gap: 16px;
-  /* 短页随工作区伸展，为页脚留位；长页限制在视口内，侧栏仍可独立滚动。 */
-  max-height: calc(100dvh - 68px);
+  /* 侧栏滚动区域止于固定风险提示上方，底部菜单和说明始终可以滚动到可见位置。 */
+  max-height: calc(100dvh - 68px - var(--app-risk-footer-height, 47px));
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 24px 12px 16px;
@@ -276,7 +281,7 @@ body:has(.app-shell) { min-width: 0; }
   .app-shell .top-nav { order: 3; flex: 1 0 100%; justify-content: space-between; gap: 8px; }
   .app-shell .top-nav a { min-height: 48px; font-size: 13px; }
   .workspace-layout { display: block; }
-  .workspace-sidebar { display: none; position: fixed; top: 105px; z-index: 25; left: 12px; right: 12px; max-height: calc(100dvh - 125px); height: auto; border: 1px solid var(--workspace-border); border-radius: 10px; box-shadow: 0 18px 45px #17332e25; }
+  .workspace-sidebar { display: none; position: fixed; top: 105px; z-index: 25; left: 12px; right: 12px; max-height: calc(100dvh - 125px - var(--app-risk-footer-height, 47px)); height: auto; border: 1px solid var(--workspace-border); border-radius: 10px; box-shadow: 0 18px 45px #17332e25; }
   .workspace-sidebar.is-open { display: flex; }
   .sidebar-footer { display: none; }
   .sidebar-toggle { display: inline-flex; flex-shrink: 0; min-height: 38px; align-items: center; padding: 6px 10px; color: #0f766e; background: #fff; border: 1px solid var(--workspace-border); border-radius: 6px; cursor: pointer; }

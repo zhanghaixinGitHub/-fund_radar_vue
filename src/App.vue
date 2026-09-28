@@ -14,6 +14,8 @@ const showAppShell = computed(() => route.meta.requiresAuth !== false)
 const isAdminArea = computed(() => route.meta.appArea === 'admin')
 const accountMenuOpen = ref(false)
 const accountMenuElement = ref<globalThis.HTMLElement | null>(null)
+const riskFooterElement = ref<globalThis.HTMLElement | null>(null)
+let riskFooterResizeObserver: globalThis.ResizeObserver | undefined
 const sidebarOpen = ref(false)
 const { sections, section, sectionLabel, moduleLabel, returnTarget, returnLabel, sectionTarget } = usePageNavigation()
 const adminEntryPermissions: PermissionCode[] = [
@@ -78,14 +80,28 @@ watch(() => route.fullPath, async () => {
   if (wasOpen) globalThis.document.getElementById('main-content')?.focus({ preventScroll: true })
 })
 
+/** 根据风险提示的实际高度预留空间；窗口缩放或窄屏换行后，正文和侧栏底部仍可完整访问。 */
+function updateRiskFooterHeight(): void {
+  if (!riskFooterElement.value) return
+  const height = Math.ceil(riskFooterElement.value.getBoundingClientRect().height)
+  globalThis.document.documentElement.style.setProperty('--app-risk-footer-height', `${height}px`)
+}
+
 onMounted(() => {
   globalThis.document.addEventListener('pointerdown', onDocumentPointerDown)
   globalThis.document.addEventListener('keydown', onDocumentKeyDown)
+  updateRiskFooterHeight()
+  if (riskFooterElement.value) {
+    riskFooterResizeObserver = new globalThis.ResizeObserver(updateRiskFooterHeight)
+    riskFooterResizeObserver.observe(riskFooterElement.value)
+  }
 })
 
 onBeforeUnmount(() => {
   globalThis.document.removeEventListener('pointerdown', onDocumentPointerDown)
   globalThis.document.removeEventListener('keydown', onDocumentKeyDown)
+  riskFooterResizeObserver?.disconnect()
+  globalThis.document.documentElement.style.removeProperty('--app-risk-footer-height')
 })
 
 /** 退出后清理浏览器内存身份并返回登录页。 */
@@ -342,7 +358,10 @@ async function signOut(): Promise<void> {
     </div>
   </div>
   <!-- 在路由分支之外统一展示，覆盖前后台、登录注册及错误页，避免逐页维护遗漏。 -->
-  <footer class="app-risk-footer">
+  <footer
+    ref="riskFooterElement"
+    class="app-risk-footer"
+  >
     <p><strong>风险提示：</strong>本系统分析及预测仅供参考，不构成投资建议或收益承诺。投资有风险，决策需谨慎。</p>
   </footer>
 </template>
