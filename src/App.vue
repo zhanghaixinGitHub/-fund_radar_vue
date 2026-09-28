@@ -97,7 +97,12 @@ async function signOut(): Promise<void> {
 </script>
 
 <template>
-  <RouterView v-if="!showAppShell" />
+  <div
+    v-if="!showAppShell"
+    class="public-shell"
+  >
+    <RouterView />
+  </div>
   <div
     v-else
     class="app-shell"
@@ -336,4 +341,8 @@ async function signOut(): Promise<void> {
       </main>
     </div>
   </div>
+  <!-- 在路由分支之外统一展示，覆盖前后台、登录注册及错误页，避免逐页维护遗漏。 -->
+  <footer class="app-risk-footer">
+    <p><strong>风险提示：</strong>本系统分析及预测仅供参考，不构成投资建议或收益承诺。投资有风险，决策需谨慎。</p>
+  </footer>
 </template>
