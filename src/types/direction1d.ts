@@ -42,6 +42,8 @@ export interface Direction1dBranch {
   trainAsOf?: string
 }
 export interface Direction1dForecast extends Direction1dWindow {
+  /** 实际输入的先后顺序；旧档不含此字段，页面不向用户展示内部编号。 */
+  revisionSequence?: number
   activationPolicy?: 'BEFORE_WINDOW_V1' | 'AVAILABLE_AT_PREDICTION_V2'
   fundCode: string
   fundName: string
@@ -84,6 +86,7 @@ export interface Direction1dMetric {
   family_date_weighted_accuracy: number | null
 }
 export interface Direction1dMetrics {
+  predictionBasis?: 'FIRST_VALID' | 'LAST_VALID'
   branches: Direction1dMetric[]; strata: Direction1dMetric[]; strataTruncated: boolean; observationNote: string
   paired: { paired_count: number; assessed_pair_count: number; fixed_only_count: number; weekly_only_count: number; weekly_extra_correct: number | null }
   coverage: { checked_fund_days: number; applicable_fund_days: number; missed_deadline_count: number; failed_count: number; verified_forecast_count: number }

@@ -37,9 +37,9 @@ export function direction1dSummary(forecast: Direction1dForecast) {
   const available = forecast.branches.filter(branch => branch.status === 'AVAILABLE' && branch.predictedDirection)
   const directions = new Set(available.map(branch => branch.predictedDirection))
   const direction = directions.size === 1 ? available[0]?.predictedDirection : null
-  const agreement = available.length === 0 ? '当前没有可用的模型判断。'
-    : directions.size > 1 ? '模型判断不一致，暂时无法给出统一方向。'
-      : available.length === 1 ? '当前仅一个模型可用。' : '现有模型判断一致。'
+  const agreement = available.length === 0 ? '当前暂无法判断。'
+    : directions.size > 1 ? '判断存在分歧，暂时无法给出统一方向。'
+      : available.length === 1 ? '本次只有部分判断可用。' : '本次判断方向一致。'
 
   return {
     direction: direction === 'UP' ? '上涨' : direction === 'NON_UP' ? '下跌或持平' : direction === 'FLAT' ? '持平' : direction === 'DOWN' ? '下跌'

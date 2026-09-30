@@ -49,6 +49,9 @@ const pageSections: Record<string, PageSection[]> = {
   ],
   'portfolio-snapshot': [
     { key: 'overview', label: '总览' },
+    { key: 'funding', label: '本人资金安排' },
+    { key: 'account-risk', label: '已录入持仓检查' },
+    { key: 'options', label: '调整前的条件比较' },
     { key: 'holdings', label: '持仓' },
     { key: 'plans', label: '定投计划' },
     { key: 'orders', label: '交易记录' },
@@ -67,6 +70,7 @@ const pageSections: Record<string, PageSection[]> = {
     { key: 'marketNav', label: '净值增量同步', group: '任务分类' },
     { key: 'freeDataCompletion', label: '基金资料与市场数据更新' },
     { key: 'fundMaterials', label: '基金持仓与公司资料更新' },
+    { key: 'fundNews', label: '近期基金公告核验' },
     { key: 'featureSnapshot', label: '历史指标计算' },
     { key: 'direction1dPrediction', label: '全部关注基金预测' },
     { key: 'simulationFees', label: '模拟费率同步' },

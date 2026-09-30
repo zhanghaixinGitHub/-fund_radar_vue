@@ -62,6 +62,18 @@ test('不展示其他基金或失效的一日原文，不把后台错误伪装�
   assert.deepEqual(groupPredictionHistory('008888', [], [other, { forecastId: 'bad', status: 'EVIDENCE_CORRUPTED' }]), [])
 })
 
+test('较晚完成的旧输入不能替换新输入；当日历次方向和依据原文全部保留', () => {
+  const older = dailyRow('older', '2026-09-24', '2026-09-24T06:59:00Z', ['UP', 'UP'])
+  const newer = dailyRow('newer', '2026-09-24', '2026-09-24T06:58:00Z', ['DOWN', 'DOWN'])
+  older.forecast.revisionSequence = 11
+  newer.forecast.revisionSequence = 12
+  const before = JSON.stringify([older, newer])
+  const [day] = groupPredictionHistory('008888', [], [newer, older, newer])
+  assert.equal(day.items.T1_V1.id, 'newer')
+  assert.deepEqual(day.dailyRevisions.map(row => historyItemView(row).direction), ['上涨', '下跌'])
+  assert.equal(JSON.stringify([older, newer]), before)
+})
+
 const dailyView = row => historyItemView(groupPredictionHistory('008888', [], [row])[0].items.T1_V1)
 test('一日上涨持平下跌分别展示；存在分歧或未确认提前保存时不计对错', () => {
   for (const [direction, label] of [['UP', '上涨'], ['FLAT', '持平'], ['DOWN', '下跌']]) {

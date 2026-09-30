@@ -4,6 +4,9 @@ import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { readLatestDecisions } from '@/api/multiPrediction'
 import type { DecisionReport } from '@/types/multiPrediction'
 import DecisionPanelV2 from '@/components/DecisionPanelV2.vue'
+import AccountFundingPanel from '@/components/AccountFundingPanel.vue'
+import AccountRiskPanel from '@/components/AccountRiskPanel.vue'
+import AccountOptionsPanel from '@/components/AccountOptionsPanel.vue'
 import { rememberPortfolioScroll, takePortfolioScroll } from '@/utils/advice'
 import { cancelSimOrder, changeSimPlan, getSimLedger, getSimOrders, getSimOverview, getSimPerformance, getSimPeriods, getSimPlans } from '@/api/simulation'
 import SimulationTradeDialog from '@/components/SimulationTradeDialog.vue'
@@ -110,7 +113,7 @@ let detailGeneration = 0
 let polling: ReturnType<typeof globalThis.setInterval> | undefined
 
 async function load(silent = false) {
-  if (loading.value) return
+  if (loading.value || ['funding', 'account-risk', 'options'].includes(section.value)) return
   const current = ++loadGeneration
   if (!silent) loading.value = true
   error.value = ''
@@ -238,7 +241,8 @@ async function viewPeriods(plan: SimPlan, page = 1) {
 watch([section, selectedCode], () => {
   endingPlan.value = null
   orderPage.value = 1; ledgerPage.value = 1; history.value = []; orders.value = null; ledger.value = null; periodPlan.value = null
-  void loadDetails()
+  if (!['funding', 'account-risk', 'options'].includes(section.value) && !overview.value) void load()
+  else void loadDetails()
 })
 watch([orderPage, ledgerPage, recordMode, days], () => void loadDetails())
 watch(appliedKeyword, value => { keyword.value = value })
@@ -282,7 +286,7 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
     <header class="sim-page-header">
       <div>
         <p class="eyebrow">
-          我的持仓 · 模拟账户
+          {{ ['funding', 'account-risk', 'options'].includes(section) ? '我的持仓 · 本人资料' : '我的持仓 · 模拟账户' }}
         </p><h1 id="sim-title">
           {{ section === 'overview' ? '持仓总览' : sectionLabel }}
         </h1><p
@@ -292,7 +296,10 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
           按真实净值更新，买入、定投和卖出均为模拟记录。
         </p>
       </div>
-      <div class="sim-actions">
+      <div
+        v-if="!['funding', 'account-risk', 'options'].includes(section)"
+        class="sim-actions"
+      >
         <button
           v-if="canWrite"
           class="primary-button"
@@ -310,6 +317,9 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
         </button>
       </div>
     </header>
+    <AccountFundingPanel v-if="section === 'funding'" />
+    <AccountRiskPanel v-if="section === 'account-risk'" />
+    <AccountOptionsPanel v-if="section === 'options'" />
     <form
       v-if="section === 'overview' || section === 'holdings'"
       class="search-panel"

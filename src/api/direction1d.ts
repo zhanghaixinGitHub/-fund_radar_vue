@@ -21,7 +21,8 @@ export const getDirection1dCurrent = (code: string) => get<Direction1dCurrent>(`
 export const getDirection1dEvidence = (code: string, forecastId: string) => get<Direction1dEvidence>(
   `/api/v1/watchlist/${encodeURIComponent(code)}/prediction-1d/evidence/${encodeURIComponent(forecastId)}`,
 )
-export const generateDirection1d = (code: string) => post<{ status: string; reason?: string }>(
+export const generateDirection1d = (code: string, expectedTargetDate: string, requestId: string) => post<{ status: string; reason?: string; reused?: boolean }>(
   `/api/v1/watchlist/${encodeURIComponent(code)}/prediction-1d/generate`,
+  { expectedTargetDate, requestId },
 )
-export const getDirection1dMetrics = (labelBasis = 'FIRST_OBSERVED') => get<Direction1dMetrics>(`${base}/metrics?${new URLSearchParams({ labelBasis })}`)
+export const getDirection1dMetrics = (labelBasis = 'FIRST_OBSERVED', predictionBasis = 'LAST_VALID') => get<Direction1dMetrics>(`${base}/metrics?${new URLSearchParams({ labelBasis, predictionBasis })}`)

@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-import { getDirection1dCoverage, getDirection1dHistory, getDirection1dMetrics, getDirection1dStatus } from '@/api/direction1d'
-import type { Direction1dCoverage, Direction1dPage, Direction1dRecord, Direction1dStatus, Direction1dCursor } from '@/types/direction1d'
-import { assertDirection1dForecast, direction1dDirection, direction1dReason, direction1dTime } from '@/utils/direction1d'
+import { getDirection1dCoverage, getDirection1dHistory, getDirection1dMetrics } from '@/api/direction1d'
+import type { Direction1dCoverage, Direction1dPage, Direction1dRecord, Direction1dCursor } from '@/types/direction1d'
+import { assertDirection1dForecast, direction1dDirection, direction1dSummary, direction1dTime } from '@/utils/direction1d'
 
-const status = ref<Direction1dStatus | null>(null)
 const coverage = ref<(Direction1dPage<Direction1dCoverage> & { checkedCount: number; statusCounts: Record<string, number> }) | null>(null)
 const history = ref<Direction1dPage<Direction1dRecord> | null>(null)
 const metrics = ref<Awaited<ReturnType<typeof getDirection1dMetrics>> | null>(null)
@@ -17,7 +16,7 @@ const historyBranch = ref('')
 const startDate = ref('2021-01-01')
 const endDate = ref('2026-12-31')
 const labelBasis = ref('FIRST_OBSERVED')
-const stratum = ref('ASSET_GROUP')
+const predictionBasis = ref('LAST_VALID')
 let sequence = 0
 const keyword = ref('')
 const busy = ref(false)
@@ -27,18 +26,29 @@ async function load() {
   busy.value = true
   error.value = ''
   try {
-    const [s, c, h, m] = await Promise.all([getDirection1dStatus(), getDirection1dCoverage(page.value, keyword.value), getDirection1dHistory(historyPage.value, historyFund.value, cursors.value[historyPage.value - 1], { assessment: assessment.value, branch: historyBranch.value, startDate: startDate.value, endDate: endDate.value }), getDirection1dMetrics(labelBasis.value)])
+    const [c, h, m] = await Promise.all([getDirection1dCoverage(page.value, keyword.value), getDirection1dHistory(historyPage.value, historyFund.value, cursors.value[historyPage.value - 1], { assessment: assessment.value, branch: historyBranch.value, startDate: startDate.value, endDate: endDate.value }), getDirection1dMetrics(labelBasis.value, predictionBasis.value)])
     h.items.forEach(r => { if (!r.status) assertDirection1dForecast(r.forecast) })
     if (request !== sequence) return
-    status.value = s; coverage.value = c; history.value = h; metrics.value = m
-  } catch (e) { if (request === sequence) error.value = e instanceof Error ? e.message : '读取失败。' }
+    coverage.value = c; history.value = h; metrics.value = m
+  } catch { if (request === sequence) error.value = '预测记录暂时无法读取，请稍后重试。' }
   finally { if (request === sequence) busy.value = false }
 }
-function conclusion(record: Direction1dRecord, direction: string | null) {
-  if (record.receiptStatus !== 'VERIFIED') return '未满足提前留档条件'
+/** 只对同次判断方向一致且已经提前保存的记录核对，分歧不强行择优。 */
+function conclusion(record: Direction1dRecord) {
+  if (record.receiptStatus !== 'VERIFIED') return '提前保存状态待核对'
+  const directions = new Set(record.forecast.branches.filter(b => b.status === 'AVAILABLE').map(b => b.predictedDirection))
+  if (directions.size !== 1) return '当时方向不明确'
+  const predicted = [...directions][0]
   const answer = record.outcomes[0]
-  if (!answer || !direction) return '待到期 / 待公布'
-  return (direction === 'UP') === (answer.y === 1) ? '正确' : '错误'
+  if (!answer || !predicted) return '等待官方净值'
+  const correct = predicted === 'NON_UP' ? answer.actualDirection !== 'UP' : predicted === answer.actualDirection
+  return correct ? '与实际方向一致' : '与实际方向不一致'
+}
+function availability(fund: Direction1dCoverage) {
+  if (fund.status === 'READY_EXPERIMENTAL') return '可查看走势判断'
+  if (fund.missingCount > 0) return '历史净值待补齐'
+  if (['NAV_CURRENT_NOT_READY', 'NAV_LATEST_NOT_READY', 'DATA_PENDING', 'WAITING_DATA'].includes(fund.status)) return '等待所需净值'
+  return '当前资料尚不足以给出走势判断'
 }
 onMounted(load)
 onBeforeUnmount(() => { sequence++ })
@@ -48,7 +58,6 @@ function nextHistory() {
 }
 function filterHistory() { historyPage.value = 1; cursors.value = [undefined]; void load() }
 const percent = (value: number | null | undefined) => value == null ? '尚无有效结果' : `${(Number(value) * 100).toFixed(2)}%`
-const branchName = (value: string) => ({ FIXED: '固定模型', WEEKLY: '每周模型', ALWAYS_UP: '恒上涨', ALWAYS_NON_UP: '恒非上涨', ALWAYS_FLAT: '恒持平', ALWAYS_DOWN: '恒下跌', INITIAL_MAJORITY: '初始多数类', MOMENTUM: '昨日方向延续' })[value] ?? value
 </script>
 
 <template>
@@ -60,11 +69,11 @@ const branchName = (value: string) => ({ FIXED: '固定模型', WEEKLY: '每周�
       ← 我的关注
     </RouterLink>
     <p class="eyebrow">
-      独立一交易日实验 · 旧版二分类 · 未正式发布
+      一日走势与回看
     </p>
     <h1>提前预测，公布后核对</h1>
     <p class="lead">
-      保留每次真实预测原文，分别观察固定模型与每周更新模型。历史训练成绩不计入这里。
+      查看关注基金的走势判断和已公布结果。每天的判断按实际保存时间保留，尚未公布的结果不计对错。
     </p>
     <p
       v-if="error"
@@ -73,41 +82,11 @@ const branchName = (value: string) => ({ FIXED: '固定模型', WEEKLY: '每周�
     >
       {{ error }}
     </p>
-    <section
-      v-if="status"
-      class="summary"
-    >
-      <div><strong>每日自动检查全部关注基金</strong><p>无需开启实验开关；本地服务运行时自动检查，可在关注详情的旧版一日实验区域手动生成。电脑或服务离线时不会补造预测。</p></div>
-      <div>本期预测目标 <strong>{{ status.python.window.targetNavDate }}</strong><p>留档截止 {{ direction1dTime(status.python.window.deadlineAt) }}；是否已生成请看下方真实留档。</p></div>
-      <div>下一期开始 <strong>{{ direction1dTime(status.python.window.nextWindowOpenAt) }}</strong><p>本期截止前，已训练并登记的模型即可生成预测；生成后保留原文。</p></div>
-      <p>{{ status.python.trainingPolicyNote }}</p>
-      <p
-        v-for="(job, index) in status.python.recentJobs.filter(j => j.kind === 'TRAINING')"
-        :key="`training:${index}`"
-      >
-        最近周更新：{{ direction1dReason(job.state) }} · {{ direction1dReason(job.reason ?? '') }}
-      </p>
-      <p
-        v-for="(health, index) in status.health"
-        :key="index"
-      >
-        后台：{{ direction1dReason(health.state) }} · {{ direction1dTime(health.finished_at) }} · {{ health.message }}
-      </p>
-    </section>
     <section class="card">
       <h2>全部关注覆盖</h2>
       <p v-if="coverage">
         已检查 {{ coverage.checkedCount }} 只。每只保留结果，暂不适用和缺数据的基金也列在这里。
       </p>
-      <div
-        v-if="coverage"
-        class="counts"
-      >
-        <span
-          v-for="(count, key) in coverage.statusCounts"
-          :key="key"
-        >{{ direction1dReason(key) }} {{ count }}</span>
-      </div>
       <form @submit.prevent="page = 1; load()">
         <label for="d1-search">基金代码或名称</label><input
           id="d1-search"
@@ -118,7 +97,7 @@ const branchName = (value: string) => ({ FIXED: '固定模型', WEEKLY: '每周�
       </form>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>基金</th><th>资产组</th><th>覆盖结果</th><th>最近净值 / 缺口</th></tr></thead><tbody>
+          <thead><tr><th>基金</th><th>基金类型</th><th>资料状态</th><th>最近净值</th></tr></thead><tbody>
             <tr
               v-for="fund in coverage?.items"
               :key="fund.fundCode"
@@ -129,17 +108,12 @@ const branchName = (value: string) => ({ FIXED: '固定模型', WEEKLY: '每周�
                 </RouterLink><small>{{ fund.fundCode }} · {{ fund.shareClass }}</small>
               </td>
               <td>
-                {{ ({ CN_EQUITY: '境内股票', CN_MIXED: '境内混合', CN_BOND: '境内债券' })[fund.groupId ?? ''] ?? '暂未适配' }}<details v-if="fund.groupEvidence">
-                  <summary>基金资料参考</summary><small>业绩比较基准：{{ fund.groupEvidence.benchmark || '来源暂未提供' }}。缺少基准文字不再单独阻止预测；按已核实档案选择现有模型。</small>
-                </details>
+                {{ ({ CN_EQUITY: '境内股票', CN_MIXED: '境内混合', CN_BOND: '境内债券' })[fund.groupId ?? ''] ?? '暂未适配' }}
               </td>
               <td>
-                {{ direction1dReason(fund.status) }}<small
-                  v-for="reason in fund.reasonCodes.filter(r => r !== fund.status)"
-                  :key="reason"
-                >{{ direction1dReason(reason) }}</small>
+                {{ availability(fund) }}
               </td>
-              <td>{{ fund.latestNavDate ?? '暂无净值' }}<small>完整历史 {{ fund.historyCount }} 条 · 61日窗口缺 {{ fund.missingCount }} 条</small></td>
+              <td>{{ fund.latestNavDate ?? '暂无净值' }}</td>
             </tr>
           </tbody>
         </table>
@@ -159,7 +133,7 @@ const branchName = (value: string) => ({ FIXED: '固定模型', WEEKLY: '每周�
       </div>
     </section>
     <section class="card">
-      <h2>真实留档与核对</h2><p>单位净值变化 = 目标净值 ÷ 冻结基准净值 − 1；分红不加回，持平归为非上涨。</p>
+      <h2>历史判断与实际结果</h2><p>核对单位净值的涨跌；分红不加回，不能当作持有收益。旧记录中的“下跌或持平”保留当时含义。</p>
       <form @submit.prevent="filterHistory">
         <label>基金代码 <input
           v-model="historyFund"
@@ -174,7 +148,7 @@ const branchName = (value: string) => ({ FIXED: '固定模型', WEEKLY: '每周�
           type="date"
         ></label>
         <label>核对状态 <select v-model="assessment"><option value="">全部</option><option value="PENDING">待公布</option><option value="ASSESSED">已核对</option></select></label>
-        <label>预测分支 <select v-model="historyBranch"><option value="">全部</option><option value="FIXED">固定模型</option><option value="WEEKLY">每周模型</option></select></label>
+
         <button :disabled="busy">
           筛选历史
         </button>
@@ -194,28 +168,19 @@ const branchName = (value: string) => ({ FIXED: '固定模型', WEEKLY: '每周�
           v-if="record.status"
           role="alert"
         >
-          {{ direction1dReason(record.status) }}，已停止展示和计分。记录编号 {{ record.forecastId }}
+          这条历史判断的依据暂时无法核实，已停止展示和计入结果。
         </p>
         <template v-else>
           <h3>{{ record.forecast.fundName }} · 目标 {{ record.forecast.targetNavDate }}</h3>
-          <p>基准 {{ record.forecast.baseNavDate }} · 生成 {{ direction1dTime(record.forecast.generatedAt) }} · 留档确认 {{ direction1dTime(record.receiptVerifiedAt) }}</p>
-          <p
-            v-for="branch in record.forecast.branches"
-            :key="branch.branchId"
-          >
-            {{ branch.branchId }}：{{ direction1dDirection(branch.predictedDirection) }} · {{ conclusion(record, branch.predictedDirection) }}
-          </p>
+          <p>资料截至 {{ record.forecast.baseNavDate }} · 判断时间 {{ direction1dTime(record.forecast.generatedAt) }}</p>
+          <p><strong>{{ direction1dSummary(record.forecast).direction }}</strong> · {{ conclusion(record) }}</p>
+          <p>{{ direction1dSummary(record.forecast).history }}</p>
+          <RouterLink :to="{ name: 'watchlist-fund-detail', params: { fundCode: record.forecast.fundCode }, query: { section: 'prediction-history' } }">
+            查看当时依据与相反证据
+          </RouterLink>
           <p v-if="record.outcomes[0]">
-            实际 {{ direction1dDirection(record.outcomes[0].actualDirection) }} · {{ record.outcomes[0].baseUnitNav }} → {{ record.outcomes[0].targetUnitNav }} · 变化 {{ record.outcomes[0].navReturn }}
+            实际 {{ direction1dDirection(record.outcomes[0].actualDirection) }} · {{ record.outcomes[0].baseUnitNav }} → {{ record.outcomes[0].targetUnitNav }} · 变化 {{ percent(Number(record.outcomes[0].navReturn)) }}
           </p>
-          <details>
-            <summary>原始证据、模型与后续修订</summary><p>输入摘要 {{ record.forecast.inputHash }} · 输入时间 {{ direction1dTime(record.forecast.input.featureAsOf) }}</p><p
-              v-for="branch in record.forecast.branches"
-              :key="branch.branchId"
-            >
-              {{ branch.branchId }} · 模型 {{ branch.modelId }} · 模型分数 {{ branch.score }}（尚未校准）
-            </p><pre>{{ record.outcomes }}</pre>
-          </details>
         </template>
       </article>
       <div class="pager">
@@ -238,42 +203,15 @@ const branchName = (value: string) => ({ FIXED: '固定模型', WEEKLY: '每周�
         :disabled="busy"
         @change="load"
       ><option value="FIRST_OBSERVED">首次核对（默认）</option><option value="LATEST_REVISION">最新修订（单独观察）</option></select></label>
-      <h2>真实观察统计</h2><p v-if="!metrics?.branches.length">
-        尚无已核对记录。
-      </p><p
-        v-for="metric in metrics?.branches"
-        :key="`${metric.protocol}:${metric.branch_id}`"
-      >
-        {{ metric.protocol === 'DIRECTION_1D_V2' ? '上涨、持平、下跌分别核对' : '历史结果：下跌与持平合并核对' }} · {{ branchName(metric.branch_id) }}：对 {{ metric.correct_count }} / 已核对 {{ metric.assessed_count }} 题 · 待核对 {{ metric.pending_count }} 题 · {{ metric.distinct_target_dates }} 个不同目标日 · 正确率 {{ percent(metric.accuracy) }} · 各类均衡正确率 {{ percent(metric.balanced_accuracy) }} · 家族日期加权 {{ percent(metric.family_date_weighted_accuracy) }} · 持平 {{ metric.flat_count }} 题
-      </p><p>{{ metrics?.observationNote }}</p><p>数据和时间不合格的记录不计对错；不会因短期错误自动追加调参。</p>
-      <template v-if="metrics">
-        <p>检查 {{ metrics.coverage.checked_fund_days }} 个基金目标日，其中适用 {{ metrics.coverage.applicable_fund_days }} 个，提前留档 {{ metrics.coverage.verified_forecast_count }} 个。留档覆盖率 {{ percent(metrics.coverage.applicable_fund_days ? metrics.coverage.verified_forecast_count / metrics.coverage.applicable_fund_days : null) }}；错过截止 {{ metrics.coverage.missed_deadline_count }}，执行失败 {{ metrics.coverage.failed_count }}。</p>
-        <p>分别判断上涨、持平、下跌的预测中，两模型共同留档 {{ metrics.paired.paired_count }} 题，共同核对 {{ metrics.paired.assessed_pair_count }} 题；每周模型比固定模型多答对 {{ metrics.paired.weekly_extra_correct ?? '待核对' }} 题。仅固定可用 {{ metrics.paired.fixed_only_count }}，仅每周可用 {{ metrics.paired.weekly_only_count }}。</p>
-        <details>
-          <summary>按基金、资产组、月份、模型和事件查看</summary>
-          <label>分层 <select v-model="stratum"><option value="ASSET_GROUP">资产组</option><option value="FUND">基金</option><option value="MONTH">目标月份</option><option value="MODEL">模型版本</option><option value="EVENT">事件状态</option></select></label>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>分层</th><th>预测分支</th><th>正确 / 核对</th><th>目标日数</th><th>正确率</th><th>各方向识别率</th></tr></thead><tbody>
-                <tr
-                  v-for="row in metrics.strata.filter(r => r.kind === stratum)"
-                  :key="`${row.protocol}:${row.kind}:${row.key}:${row.branch_id}`"
-                >
-                  <td>{{ direction1dReason(row.key) }}<small>{{ row.protocol === 'DIRECTION_1D_V2' ? '三种方向' : '历史两种方向' }}</small></td><td>{{ branchName(row.branch_id) }}</td><td>{{ row.correct_count }} / {{ row.assessed_count }}</td><td>{{ row.distinct_target_dates }}</td><td>{{ percent(row.accuracy) }}</td><td>
-                    上涨 {{ percent(row.up_recall) }}<template v-if="row.protocol === 'DIRECTION_1D_V2'">
-                      / 持平 {{ percent(row.flat_recall) }} / 下跌 {{ percent(row.down_recall) }}
-                    </template><template v-else>
-                      / 非上涨 {{ percent(row.non_up_recall) }}
-                    </template>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div><p v-if="metrics.strataTruncated">
-            分层数量超过本次显示上限，请缩小统计日期范围后查询。
-          </p>
-        </details>
-      </template>
+      <label>判断时间 <select
+        v-model="predictionBasis"
+        @change="load"
+      ><option value="LAST_VALID">截止前最后一次</option><option value="FIRST_VALID">首次判断</option></select></label>
+      <h2>提前保存情况</h2>
+      <p v-if="metrics">
+        当前口径覆盖 {{ metrics.coverage.checked_fund_days }} 个基金目标日；其中 {{ metrics.coverage.verified_forecast_count }} 条满足提前保存条件，{{ metrics.coverage.missed_deadline_count }} 条错过截止。每只基金的实际结果见上方记录。
+      </p>
+      <p>同一基金、同一目标日只计一次；短期结果不能证明长期有效。</p>
     </section>
   </section>
 </template>

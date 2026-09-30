@@ -24,6 +24,8 @@ export default defineConfig(({ mode }) => {
     server: {
       host: '127.0.0.1',
       port: 5173,
+      // 本地数据库/JAR备份不是前端源码；Windows文件占用会使监听器报EBUSY并退出。
+      watch: { ignored: ['**/.local-runs/**'] },
       allowedHosts: ['.natappfree.cc'],
       proxy: {
         '/api': {

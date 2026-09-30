@@ -1,0 +1,279 @@
+{
+  "at": "2026-09-30T15:06:27.632830+08:00",
+  "status": "PARTIAL_DATA_COMPLETION_WITH_LAYERED_ACCEPTANCE",
+  "all_data_completed": false,
+  "existing_plan_unchanged": true,
+  "source_scope_manifest": "C:\\WebStormProject\\workSpace05\\docs_zhx\\implementation\\fund-002112-data-completion-manifest-2026-09-30.json",
+  "missing_originals_verified": 46,
+  "current_announcements_verified": 55,
+  "version_alternatives_obtained": 2,
+  "version_gaps_remaining": 2,
+  "historical_identity": {
+    "total": 6167,
+    "verified": 6164,
+    "conflicts": [
+      {
+        "id": "1216439874",
+        "title": "常熟汽饰董事、监事、高级管理人员签署的对2022年年度报告的书面确认意见",
+        "source": {
+          "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\information-research\\20260929-earnings-v15\\documents\\1216439874.json",
+          "sha256": "1aeb59e1c2148a241cedc6b2507649cf49c545a86e701de2d9e26eddea6baca6",
+          "verification": "FULL_FINAL_PROTECTION_READBACK"
+        }
+      },
+      {
+        "id": "1216517762",
+        "title": "桐昆集团股份有限公司2021年年度报告摘要",
+        "source": {
+          "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\closure\\20260929-v1\\company-bodies\\documents\\1216517762.json",
+          "sha256": "40d273e330005ffbe27e0d048dfdcb4151ccc054d12b7553a524fb305ae807fd",
+          "verification": "FULL_FINAL_PROTECTION_READBACK"
+        }
+      },
+      {
+        "id": "1217757139",
+        "title": "关于注销2020年度回购股份减少注册资本通知债权人的公告",
+        "source": {
+          "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\closure\\20260929-v1\\company-bodies\\documents\\1217757139.json",
+          "sha256": "4af3a48579eab90095ee4db9d9935a1f452ff93e945613383e2eb6d877019178",
+          "verification": "FULL_FINAL_PROTECTION_READBACK"
+        }
+      }
+    ]
+  },
+  "financial": {
+    "at": "2026-09-30T14:25:33.309583+08:00",
+    "reviewed_reports": 4358,
+    "reports_with_table_facts": 3363,
+    "table_facts": 3383,
+    "all_report_failures_retained": true,
+    "no_automatic_training_admission": true
+  },
+  "forecast": {
+    "at": "2026-09-30T15:01:10.898266+08:00",
+    "scope": 609,
+    "with_grid_facts": 421,
+    "grid_facts": 497,
+    "layout_verified_facts": 496,
+    "period_verified_facts": 497,
+    "with_table_or_literal": 603,
+    "metric_counts": {
+      "NET_PROFIT_ATTRIBUTABLE_TO_PARENT": 480,
+      "NET_PROFIT_EXCLUDING_NON_RECURRING_ITEMS": 17
+    },
+    "column_roles": {
+      "CURRENT_REPORT_COLUMN": 496,
+      "PREVIOUS_FORECAST_QUOTED": 1
+    },
+    "new_fits": 0
+  },
+  "forecast_manual_review": {
+    "additional_parent_profit_documents": 3,
+    "other_metric_documents": 3,
+    "all_six_retained": true
+  },
+  "public": {
+    "at": "2026-09-30T14:31:56.504978+08:00",
+    "rows": 1475,
+    "source_body_identity_time_verified": 1203,
+    "reason_counts": {
+      "VIDEO_PAGE_SUMMARY_IS_NOT_FULL_TRANSCRIPT": 104,
+      "TITLE_NOT_MATCHED": 122,
+      "PUBLICATION_DAY_NOT_VERIFIED": 128,
+      "BODY_CONTAINER_OR_TRANSCRIPTION_UNVERIFIED": 196,
+      "BODY_UNAVAILABLE": 68,
+      "SOURCE_DISPLAYS_UPDATED_TIME_ONLY_FIRST_PUBLICATION_NOT_SEPARATELY_PROVEN": 10,
+      "BODY_UPDATED_AFTER_ORIGINAL_PUBLICATION": 17,
+      "ATTACHMENT_OR_IMAGE_NOT_PARSED": 1
+    }
+  },
+  "industry": {
+    "at": "2026-09-30T13:26:28.796077+08:00",
+    "targets": 1422,
+    "complete_target_rows": 1370,
+    "newly_bound_holding_rows": 118,
+    "remaining_holding_rows": 52,
+    "remaining_stocks": {
+      "600956": 17,
+      "301007": 35
+    },
+    "evidence_cutoffs_passed": true,
+    "remaining_reasons": {
+      "SECTION_ONLY_NOT_SUBINDUSTRY": 17,
+      "BUSINESS_AND_PRODUCTION_PROCESS_CLASSIFICATIONS_DIFFER": 35
+    }
+  },
+  "evidence": {
+    "final_acceptance": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\acceptance-final-v3.json",
+      "sha256": "cd350ea535176387c1270094ad6346b67b5d87fab838225d792fae29c2bb2a38"
+    },
+    "historical_per_document": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\historical-acceptance-final-v3.json",
+      "sha256": "b9cbf61caf42f893081e3beab7ede76623b504c91bc801eab872fecf8b95d6cc"
+    },
+    "public_per_document": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\public-acceptance-final-v3.json",
+      "sha256": "02dbb39f06570c4ed8222721e6faf3ac43e50ecbe6c3f35f1d2dd00ed49e00fa"
+    },
+    "verified_file_index": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\verified-files-final-v3.json",
+      "sha256": "1f7c9d35e968fb9d67367ed948c67fabe8dd8f34a3ff95584b694bfc3c834202"
+    },
+    "historical_46": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\historical-missing-audit-result-v4.json",
+      "sha256": "6d9ae428801fdd3ff11c8b1ca03e50bf69ebe8486a9bfce9e3134cd387c54cca"
+    },
+    "current_55": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\current-audit-result-v2.json",
+      "sha256": "861df8fcc5090e1712b062ecf0b191b5457b34be52517c8e3c4f6c83be99a35e"
+    },
+    "versions": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\version-evidence-final.json",
+      "sha256": "b5085e2d1a5798c24b7f9830ddd85b9716dec19b1cc377f18c440040a7573dd3"
+    },
+    "version_text_differences": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\version-copy-text-comparison.json",
+      "sha256": "e863211cc4e5ad1e2f9ce7785c9f56f0d6810018d6df7a658f994a69929ee59f"
+    },
+    "financial": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\financial-table-result-v5.json",
+      "sha256": "40ab676ab52b91fb6324e1c94e94b5dae09be1c23efd196cfe79ca8f6a9f4161"
+    },
+    "financial_layout": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\financial-layout-result-v5.json",
+      "sha256": "c523cdcae294a9be56ac1ec2295acabd7040eb470816e88d0694c2697763258f"
+    },
+    "financial_grid": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\financial-grid-result-v5.json",
+      "sha256": "50e02dce575ee5d72575785aca7364b06c16648cc950e73dcde42f8dd4b02565"
+    },
+    "financial_unresolved": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\financial-unresolved-detail.json",
+      "sha256": "313738cd3ce3f3e40d53a8d9f188c0bb7ee325ab2a6fb1c91e2b45ceca07273b"
+    },
+    "forecast_final": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\forecast-context-result-v6.json",
+      "sha256": "9521e6fbdb2f6ebc800d6c3fcbfe386d4bca27a037617d3d7bd2d6a5b554f718"
+    },
+    "forecast_literals": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\forecast-literal-result-v3.json",
+      "sha256": "66a9a28548a56ca88a389d4bef35dde8a03f5827d0c37a56b7df58572f86fa6a"
+    },
+    "forecast_manual_six": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\forecast-manual-completion-result.json",
+      "sha256": "ebf064fb2864832518c6169dce2b732bc38de3748761da64e8ad5a4b4f4299d8"
+    },
+    "forecast_visual": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\forecast-visual-review.json",
+      "sha256": "148424fd97e6d701f7385518fabc09e7f682a093eab521de26e1aeb5d2d846fc"
+    },
+    "buyback": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\buyback-execution-result.json",
+      "sha256": "e68cdfddedc87d8c496d895321063d8c1592fee5cb3b65b43b6ffb0288266626"
+    },
+    "contracts": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\contract-scope-review-result.json",
+      "sha256": "280077c5344f637599cbe82d2cc7fa8cb6b9bff85dd4c02c9cbd38053824ef7c"
+    },
+    "public_audit": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\public-audit-result-v10.json",
+      "sha256": "834dc594a9aa2b5ce287ecda8b75b5d74dc5f78fe3940b79c45a7531ff511c8b"
+    },
+    "public_semantics": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\public-semantic-closure-result-v4.json",
+      "sha256": "1490738d116a5edf6812d193e3e5cab6c5cb9b0110ac8d2016b7b4bf87dc7e52"
+    },
+    "public_policy_visual": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\policy-clause-visual-review.json",
+      "sha256": "39def8d95113afffb3b85fc3b02de6492743b9750e49a66c1333ad03eb7ebf43"
+    },
+    "public_browser_blocks": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\public-browser-blocks.json",
+      "sha256": "3ff0bf81118feccee812a2fefda6de86101207b1855f9d75fd9b69ead924f85c"
+    },
+    "public_search_limit": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\public-alternative-search-evidence-clarification.json",
+      "sha256": "a6ef18262f69f8e4a6727a0ecff0a632517eddf474a9896a8f30d80f62ebf5b7"
+    },
+    "large_attachment": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\large-attachment-result.json",
+      "sha256": "221a5579af03f2edeebbe76c4406445b96bc7a02fa6c2f94eb8e838395283647"
+    },
+    "industry_coverage": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\industry\\coverage-validated-v2.json",
+      "sha256": "e206f36abadbd9e7357c1bbc0d803fbebefbf8b12d296246f4d59947d369000a"
+    },
+    "sector_inputs": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\independent-sector-input-acceptance.json",
+      "sha256": "0b58f1465a73d02fa303899f2a427290971e2baab4b946664a145f204b82f0ca"
+    },
+    "historical_holdings": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\historical-fund-relations.json",
+      "sha256": "13f6a2d42f9e0c73c619c46fb2ed6d975f79a519e58ab871b78db9a2dabddd82"
+    },
+    "historical_industry": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\historical-industry-relations-result-final.json",
+      "sha256": "cdc2f9175ced77eed39e40fb5053c5e5d0ddb82ae6a07061bbbf685c8947db9b"
+    },
+    "company_explicit_references": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\historical-explicit-reference-graph-v2.json",
+      "sha256": "0c6e0cdb57063c1522befc9f1f8f0cca63866630285fe2cc6e000a2f47b8bc98"
+    },
+    "policy_explicit_references": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\public-explicit-reference-graph-v4.json",
+      "sha256": "2acfd577e9cd13b88abcd418073db89c62cfaf62ecdf218cb5c05b3ada357190"
+    },
+    "policy_holding_links": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\public-historical-holding-relations-v4.json",
+      "sha256": "104871d964b8f413833ed79219b045d2324c46cd177cbb15859791b674bdbd6a"
+    },
+    "request_ledger": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\request-ledger-final-v3.json",
+      "sha256": "013b00670cf8c5b8c2bac102391f85f79d9d7076043ecfed819aa27d93d1a261"
+    },
+    "protection_before": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\protection-before.json",
+      "sha256": "9b3b5476ca9f1d1e4f361385411b1d969b1a50b2b2dc4e57d70957c20569b982"
+    },
+    "protection_after": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\protection-after.json",
+      "sha256": "e4413518f5dc19383e5076a41596432c26a03540a1c6904e542f0178561f6760"
+    },
+    "protection_reconciliation": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\protection-reconciliation.json",
+      "sha256": "e7653fc962e8bcc38a93255776ab36bdc13cbe353eac967871ffec9b821fb07f"
+    },
+    "runtime_before": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\runtime-before.json",
+      "sha256": "22194197621518eb7a966437be5c608cf8f70a783d83b26f8e99876a16272f58"
+    },
+    "runtime_final": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\runtime-final.json",
+      "sha256": "bc59f8be866f05ac7a0dd3d1fee8d97cc41bb289c7e76a8788e8b405b77afafa"
+    },
+    "process_snapshot": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\processes-after.json",
+      "sha256": "1bea72c641bb79c32f10c460938d9860cfb76e7a52be1764293c2136211290cb"
+    },
+    "code_validation": {
+      "path": "C:\\pythonProject\\workSpace06\\.local-runs\\fund-exposure-002112\\data-completion\\20260930-v1\\code-validation-final-v2.json",
+      "sha256": "e05a2c60420055a50972308aa16464d900ce73ccdedb75ae091854d9432a4251"
+    }
+  },
+  "unresolved_financial_documents": 995,
+  "complete_training_or_event_semantics_claimed": false,
+  "new_fits": 0,
+  "new_registration": false,
+  "model_replacement": false,
+  "personal_account_conditions": "UNKNOWN",
+  "old_request_consumed": 3523,
+  "new_http_attempt_records": 4039,
+  "old_fit_consumed": 70,
+  "shared_remaining_fit_not_reallocated": 12,
+  "old_model_records": 6,
+  "old_prediction_records_verified_unchanged": 169,
+  "new_prediction_records_at_final_snapshot": 0,
+  "other_sessions_business_files_not_modified": true,
+  "no_commit_push_deploy_or_external_notification": true
+}

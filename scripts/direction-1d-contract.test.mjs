@@ -72,7 +72,9 @@ test('仅一个分支可用时如实说明，两个都不可用时不展示方�
   const value = example()
   value.branches[1] = { branchId: 'WEEKLY', status: 'MODEL_UNAVAILABLE', predictedDirection: null, score: null }
   assert.equal(direction1dSummary(value).direction, '下跌或持平')
-  assert.match(direction1dSummary(value).evidence, /仅一个模型可用/)
+  // 保留判断不完整的业务提示，日常页面不透出后台模型信息。
+  assert.match(direction1dSummary(value).evidence, /只有部分判断可用/)
+  assert.doesNotMatch(direction1dSummary(value).evidence, /模型/)
   value.branches[0] = { ...value.branches[1], branchId: 'FIXED' }
   assert.equal(direction1dSummary(value).direction, '暂无预测')
   assert.equal(direction1dSummary(value).history, '')

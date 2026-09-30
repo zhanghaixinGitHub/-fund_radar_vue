@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { usePageNavigation } from '@/composables/usePageNavigation'
+import ReviewNoticePanel from '@/components/ReviewNoticePanel.vue'
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
@@ -19,7 +20,6 @@ const rulesError = ref('')
 const ruleMessage = ref('')
 const readingIds = ref<Set<string>>(new Set())
 const savingRuleIds = ref<Set<string>>(new Set())
-const ruleThresholds = ref<Record<string, number>>({})
 
 const currentPage = computed(() => notificationPage.value?.page ?? 1)
 const hasPreviousPage = computed(() => currentPage.value > 1)
@@ -31,9 +31,9 @@ const hasNextPage = computed(() => {
 /** 将内部提醒类型转换为用户可理解的资讯提示文案。 */
 function ruleTypeLabel(ruleType: AlertRule['ruleType']): string {
   const labels: Record<AlertRule['ruleType'], string> = {
-    RISK_LEVEL: '风险等级达到阈值',
-    SIGNAL_CHANGE: '评分方向变化',
-    EVENT: '已授权关联事件',
+    RISK_LEVEL: '风险程度达到设定条件',
+    SIGNAL_CHANGE: '分析方向变化',
+    EVENT: '基金相关事项',
   }
   return labels[ruleType]
 }
@@ -47,14 +47,6 @@ function formatDateTime(value: string | null | undefined): string {
   return Number.isNaN(parsed.getTime())
     ? value
     : parsed.toLocaleString('zh-CN', { hour12: false })
-}
-
-/** 将 0 到 1 的置信度转换为百分比；缺失数据不补零。 */
-function formatPercent(value: number | string | null | undefined): string {
-  const numericValue = Number(value)
-  return value === null || value === undefined || !Number.isFinite(numericValue)
-    ? '—'
-    : `${(numericValue * 100).toFixed(1)}%`
 }
 
 /** 统一将接口失败映射为页面可区分的权限或服务状态，不暴露内部连接信息。 */
@@ -88,11 +80,6 @@ async function load(page = 1): Promise<void> {
   }
   if (rulesResult.status === 'fulfilled') {
     alertRules.value = rulesResult.value
-    ruleThresholds.value = Object.fromEntries(
-      rulesResult.value
-        .filter((rule) => rule.ruleType === 'RISK_LEVEL')
-        .map((rule) => [rule.ruleId, Number(rule.threshold ?? 0.5)]),
-    )
   } else {
     alertRules.value = []
     rulesError.value = displayRequestError(rulesResult.reason, '提醒规则暂时不可用。')
@@ -142,24 +129,11 @@ async function markRead(item: NotificationItem): Promise<void> {
   }
 }
 
-/** 读取某条风险规则当前编辑值，缺失时使用服务端已存阈值而不是推断风险。 */
-function thresholdFor(rule: AlertRule): number {
-  return ruleThresholds.value[rule.ruleId] ?? Number(rule.threshold ?? 0.5)
-}
-
-/** 更新本地风险阈值草稿，输入非法时让服务端规则保持不变。 */
-function updateThreshold(rule: AlertRule, event: globalThis.Event): void {
-  const value = Number((event.target as globalThis.HTMLInputElement).value)
-  if (Number.isFinite(value)) {
-    ruleThresholds.value = { ...ruleThresholds.value, [rule.ruleId]: value }
-  }
-}
-
-/** 保存一条已存在规则的启用状态或风险阈值；规则类型和基金代码不可在此页隐式改变。 */
+/** 只管理已存在规则的启停，保留其原条件；普通页面不要求用户理解算法分数或补默认值。 */
 async function saveRule(rule: AlertRule, enabled: boolean): Promise<void> {
-  const threshold = rule.ruleType === 'RISK_LEVEL' ? thresholdFor(rule) : null
-  if (threshold !== null && (threshold < 0 || threshold > 1)) {
-    ruleMessage.value = '风险阈值必须在 0 到 1 之间。'
+  const threshold = rule.ruleType === 'RISK_LEVEL' ? rule.threshold : null
+  if (rule.ruleType === 'RISK_LEVEL' && (threshold === null || !Number.isFinite(Number(threshold)) || Number(threshold) < 0 || Number(threshold) > 1)) {
+    ruleMessage.value = '原提醒条件尚未核对，当前设置保持不变。'
     return
   }
   savingRuleIds.value = new Set([...savingRuleIds.value, rule.ruleId])
@@ -175,9 +149,6 @@ async function saveRule(rule: AlertRule, enabled: boolean): Promise<void> {
     alertRules.value = alertRules.value.map((candidate) => (
       candidate.ruleId === saved.ruleId ? saved : candidate
     ))
-    ruleThresholds.value = saved.ruleType === 'RISK_LEVEL'
-      ? { ...ruleThresholds.value, [saved.ruleId]: Number(saved.threshold ?? 0.5) }
-      : ruleThresholds.value
     ruleMessage.value = saved.enabled ? '提醒规则已保存。' : '提醒规则已停用。'
   } catch (error) {
     ruleMessage.value = displayRequestError(error, '提醒规则未保存。')
@@ -198,14 +169,16 @@ const { section, sectionLabel } = usePageNavigation()
     aria-labelledby="notifications-title"
   >
     <p class="eyebrow">
-      IN-APP NOTICES
+      站内提醒
     </p>
     <h1 id="notifications-title">
       {{ sectionLabel }}
     </h1>
     <p class="lead">
-      这里只展示已发布评分或已授权事件触发的信息提示；不包含交易指令、收益承诺或外部账户入口。
+      查看基金事项与本人条件变化，并按保存的依据复查。
     </p>
+
+    <ReviewNoticePanel v-if="section === 'messages'" />
 
     <p
       v-if="section === 'messages' && loading && !notificationPage"
@@ -228,7 +201,7 @@ const { section, sectionLabel } = usePageNavigation()
         <header class="notification-card-heading">
           <div>
             <p class="eyebrow">
-              MY NOTICES
+              基金分析
             </p>
             <h2 id="notification-list-title">
               已触发提醒
@@ -255,7 +228,7 @@ const { section, sectionLabel } = usePageNavigation()
               </div>
               <p>
                 数据截至 {{ item.payload.asOfDate || '暂缺' }} · 方向 {{ signalDirectionLabel(item.payload.direction ?? null) }} ·
-                风险 {{ riskLevelLabel(item.payload.riskLevel ?? null) }} · 置信度 {{ formatPercent(item.payload.confidence) }}
+                风险 {{ riskLevelLabel(item.payload.riskLevel ?? null) }}
               </p>
               <p>{{ item.payload.explanation || '暂无附加解释。' }}</p>
               <small>触发时间：{{ formatDateTime(item.createdAt) }}</small>
@@ -275,7 +248,7 @@ const { section, sectionLabel } = usePageNavigation()
           v-else
           class="empty-analysis"
         >
-          暂无站内提醒。当前没有已发布评分命中你的已启用规则，或该规则仍处于冷却期。
+          暂无已有基金分析提醒。这不代表没有风险。
         </p>
         <nav
           v-if="notificationPage.totalPages > 1"
@@ -311,7 +284,7 @@ const { section, sectionLabel } = usePageNavigation()
       <header class="notification-card-heading">
         <div>
           <p class="eyebrow">
-            MY RULES
+            本人设置
           </p>
           <h2 id="notification-rule-title">
             提醒规则
@@ -351,25 +324,7 @@ const { section, sectionLabel } = usePageNavigation()
               <strong>基金 {{ rule.fundCode }} · {{ ruleTypeLabel(rule.ruleType) }}</strong>
               <p>更新于 {{ formatDateTime(rule.updatedAt) }}</p>
             </div>
-            <label v-if="rule.ruleType === 'RISK_LEVEL'">
-              风险阈值（0–1）
-              <input
-                :value="thresholdFor(rule)"
-                max="1"
-                min="0"
-                step="0.01"
-                type="number"
-                @input="updateThreshold(rule, $event)"
-              >
-            </label>
-            <button
-              class="secondary-button"
-              :disabled="savingRuleIds.has(rule.ruleId)"
-              type="button"
-              @click="saveRule(rule, rule.enabled)"
-            >
-              {{ savingRuleIds.has(rule.ruleId) ? '保存中…' : '保存' }}
-            </button>
+            <span v-if="rule.ruleType === 'RISK_LEVEL'">沿用已保存的风险提醒条件</span>
             <button
               class="text-button"
               :disabled="savingRuleIds.has(rule.ruleId)"

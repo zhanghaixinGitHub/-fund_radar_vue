@@ -11,18 +11,21 @@ const props = defineProps<{
   errorMessage: string
 }>()
 
-const visibleItems = computed(() => props.comparison?.items.slice(0, 5) ?? [])
-const remainingItems = computed(() => props.comparison?.items.slice(5) ?? [])
+/** 当前只有大类归属，尚未通过同类样本准入。按代码列事实，不展示旧位置或排名。 */
+const orderedItems = computed(() => [...(props.comparison?.items ?? [])]
+  .sort((left, right) => left.fundCode.localeCompare(right.fundCode)))
+const visibleItems = computed(() => orderedItems.value.slice(0, 5))
+const remainingItems = computed(() => orderedItems.value.slice(5))
 
 function scopeLabel(scope: string | undefined): string {
   return scope === 'CURRENT_MARKET_ACTIVE_TUSHARE_PRO_FUND'
-    ? '仅与当前基金市场中 ACTIVE 且 Tushare 基金数据源的同类型基金比较，不代表全市场排名。'
+    ? '以下按基金代码列出已收录的同类型资料，尚不具备同类排名条件。单位净值变化不含分红和买卖费用。'
     : '比较范围信息暂不可用。'
 }
 
 function statusMessage(status: string | undefined): string {
   if (status === 'OUT_OF_SCOPE') {
-    return '当前基金不在此受控市场样本范围内，暂不比较。'
+    return '当前基金不在已收录的可比基金范围内，暂不比较。'
   }
   if (status === 'DATA_INSUFFICIENT') {
     return '当前基金或同类样本缺少同净值日期的一月涨跌基准，暂不比较。'
@@ -60,9 +63,9 @@ function statusMessage(status: string | undefined): string {
       </p>
       <template v-else>
         <dl class="same-type-summary">
-          <div><dt>当前基金位置</dt><dd>{{ comparison.targetRank }} / {{ comparison.comparableCount }}</dd></div>
+          <div><dt>本次可查基金</dt><dd>{{ comparison.comparableCount }} 只</dd></div>
           <div><dt>比较净值日期</dt><dd>{{ comparison.asOfDate || '暂缺' }}</dd></div>
-          <div><dt>比较指标</dt><dd>近一月涨跌</dd></div>
+          <div><dt>比较指标</dt><dd>近一月单位净值变化</dd></div>
         </dl>
         <ol class="same-type-list">
           <li
@@ -70,7 +73,6 @@ function statusMessage(status: string | undefined): string {
             :key="item.fundCode"
             :class="{ 'is-current': item.fundCode === currentFundCode }"
           >
-            <span class="same-type-rank">第 {{ item.rank }} 位</span>
             <strong>{{ item.fundName }}</strong>
             <span>{{ item.fundCode }} · {{ item.asOfDate }}</span>
             <span :class="['change-rate', changeRateTone(item.monthChangeRate)]">{{ formatChangeRate(item.monthChangeRate) }}</span>
@@ -88,7 +90,6 @@ function statusMessage(status: string | undefined): string {
               :key="item.fundCode"
               :class="{ 'is-current': item.fundCode === currentFundCode }"
             >
-              <span class="same-type-rank">第 {{ item.rank }} 位</span>
               <strong>{{ item.fundName }}</strong>
               <span>{{ item.fundCode }} · {{ item.asOfDate }}</span>
               <span :class="['change-rate', changeRateTone(item.monthChangeRate)]">{{ formatChangeRate(item.monthChangeRate) }}</span>

@@ -96,8 +96,8 @@ export function dataSourceLabel(value: string): string {
     MANUAL_PUBLISHER_VERIFIED_SAMPLE: '人工核验的公开资料样本',
     M0_MOCK: '演示用模拟数据',
     MANUAL_IMPORT: '人工录入数据',
-    TUSHARE: 'Tushare 数据接口',
-    TUSHARE_PRO_FUND: 'Tushare 数据接口',
+    TUSHARE: 'Tushare',
+    TUSHARE_PRO_FUND: 'Tushare',
     AUTHORIZED_COMMERCIAL: '已授权的商业数据源',
   }
   return labels[value] ?? '来源信息待确认'

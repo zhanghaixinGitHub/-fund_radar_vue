@@ -1,6 +1,14 @@
 import { get, post } from '@/api/http'
 import type { SyncJobLastSuccess, SyncJobStatus } from '@/types/syncJob'
 
+/** 近期公告与历史研究独立更新，明确限定已登记来源的试点基金。 */
+export function startFundNewsSync(): Promise<SyncJobStatus> {
+  return post<SyncJobStatus>('/api/v1/sync-jobs/fund-news?fundCode=002112')
+}
+export function getLatestFundNewsSync(): Promise<SyncJobStatus | null> {
+  return get<SyncJobStatus | null>('/api/v1/sync-jobs/fund-news/latest')
+}
+
 /** 明确指定试点基金，参数缺失不会变成全市场采集。 */
 export function startFundMaterialsSync(): Promise<SyncJobStatus> {
   return post<SyncJobStatus>('/api/v1/sync-jobs/fund-materials?fundCode=002112')

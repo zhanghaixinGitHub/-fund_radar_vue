@@ -1,36 +1,46 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { getAlertRules, upsertAlertRule } from '@/api/alerts'
 import type { AlertRule } from '@/types/alert'
 const props = defineProps<{ fundCode: string; followed: boolean }>()
 const rules = ref<AlertRule[]>([])
 const selected = ref<AlertRule['ruleType']>('EVENT')
 const enabled = ref(true)
-const threshold = ref(.5)
+const existingRisk = computed(() => rules.value.find(r => r.fundCode === props.fundCode && r.ruleType === 'RISK_LEVEL'))
 const busy = ref(false)
 const loaded = ref(false)
 const message = ref('')
 let sequence = 0
 function apply() {
+  if (selected.value === 'RISK_LEVEL' && !existingRisk.value) selected.value = 'EVENT'
   const rule = rules.value.find(r => r.fundCode === props.fundCode && r.ruleType === selected.value)
-  enabled.value = rule?.enabled ?? true; threshold.value = Number(rule?.threshold ?? .5)
+  enabled.value = rule?.enabled ?? true
 }
 watch(() => [props.fundCode, props.followed], async () => {
   const ticket = ++sequence
-  rules.value = []; loaded.value = false; message.value = ''
+  rules.value = []; loaded.value = false; message.value = ''; busy.value = false
   if (!props.followed) return
   try { const result = await getAlertRules(); if (ticket === sequence) { rules.value = result; loaded.value = true; apply() } }
   catch { if (ticket === sequence) message.value = '提醒设置暂时无法加载。' }
 }, { immediate: true })
 async function save() {
+  if (busy.value || !loaded.value || !props.followed) return
+  const ticket = sequence
+  const threshold = selected.value === 'RISK_LEVEL' ? existingRisk.value?.threshold ?? null : null
+  if (selected.value === 'RISK_LEVEL' && (threshold === null || !Number.isFinite(Number(threshold)))) {
+    message.value = '原提醒条件尚未核对，当前设置保持不变。'; return
+  }
   busy.value = true; message.value = ''
   try {
-    const result = await upsertAlertRule({ fundCode: props.fundCode, ruleType: selected.value, enabled: enabled.value, threshold: selected.value === 'RISK_LEVEL' ? threshold.value : null })
+    const result = await upsertAlertRule({ fundCode: props.fundCode, ruleType: selected.value, enabled: enabled.value, threshold })
+    // 旧基金请求完成后不能污染新基金的设置或成功提示。
+    if (ticket !== sequence) return
     rules.value = [...rules.value.filter(r => r.ruleType !== result.ruleType || r.fundCode !== result.fundCode), result]
     message.value = '提醒设置已保存。'
-  } catch { message.value = '提醒设置未能保存，请稍后重试。' }
-  finally { busy.value = false }
+  } catch { if (ticket === sequence) message.value = '提醒设置未能保存，请稍后重试。' }
+  finally { if (ticket === sequence) busy.value = false }
 }
+onBeforeUnmount(() => sequence++)
 </script>
 <template>
   <section class="analysis-section">
@@ -49,15 +59,13 @@ async function save() {
       <label>提醒内容<select
         v-model="selected"
         @change="apply"
-      ><option value="EVENT">重要关联事件</option><option value="SIGNAL_CHANGE">判断发生变化</option><option value="RISK_LEVEL">风险达到指定程度</option></select></label>
-      <label v-if="selected === 'RISK_LEVEL'">风险阈值（0 至 1）<input
-        v-model.number="threshold"
-        type="number"
-        min="0"
-        max="1"
-        step=".01"
-        required
-      ></label>
+      ><option value="EVENT">基金相关事项</option><option value="SIGNAL_CHANGE">判断发生变化</option><option
+        v-if="existingRisk"
+        value="RISK_LEVEL"
+      >已有风险提醒</option></select></label>
+      <p v-if="selected === 'RISK_LEVEL'">
+        沿用已保存的条件，不替你更改风险安排。
+      </p>
       <label class="toggle-label"><input
         v-model="enabled"
         type="checkbox"

@@ -2,13 +2,24 @@ import { get, post } from './http'
 
 export interface PredictionEffects {
   mode: string; fundCount: number; followedFundCount: number; failedPeriods: number; note: string
-  horizons: { horizon_id: string; target_definition_id: string; direction_policy_hash: string; up_actual: number; flat_actual: number; down_actual: number; up_correct: number; flat_correct: number; down_correct: number; records: number; funds: number; matured: number; unmatured: number; pending_answers: number; check_failed: number; correct: number; matured_funds: number }[]
+  horizons: { horizon_id: string; target_definition_id: string; direction_policy_hash: string; first_generated_date?: string; last_generated_date?: string; up_actual: number; flat_actual: number; down_actual: number; up_correct: number; flat_correct: number; down_correct: number; records: number; funds: number; matured: number; unmatured: number; pending_answers: number; check_failed: number; correct: number; matured_funds: number }[]
 }
-export interface LedgerResult { finalEquity: number; netReturn: number; maxDrawdown: number; fees: number; tradeCount: number }
+export interface LedgerResult {
+  finalEquity: number; netReturn: number; maxDrawdown: number; fees: number; tradeCount: number
+  turnover: number; investedSessions: number; cashOnlySessions: number; assumption: string
+  exitReviews: { soldOn: string; boughtBackOn: string | null; assessedUntil: string; avoidedDecline: number; missedRise: number; exitFee: number; reentryFee: number }[]
+}
+export interface LedgerExecution {
+  requestedTradeDays: number; executedTradeDays: number; unexecutedTradeDays: number
+  meanInvestedFraction: number; pendingCashSessions: number; noReportSessions: number
+}
 export interface AdviceEffects {
   status: string; message?: string; note: string; startDate: string; endDate: string; actualStartDate?: string
   reportCount?: number; effectiveDays?: number; failedReports?: number; missingReportDays?: number
   system?: LedgerResult; buyHold?: LedgerResult; evidenceHash?: string
+  execution?: LedgerExecution
+  exposureControls?: { initialRatio: number; result: LedgerResult; execution: LedgerExecution }[]
+  comparisonLimitations?: string[]
 }
 export interface AutoCycle { cycleId: string; status: string; trigger: string; fundCount: number; createdAt: string; updatedAt: string; decision: string | null; error: { summary: string; code: string } | null; retries: number; nextAttemptAt: string | null }
 const root = '/api/v1/predictions/automatic'

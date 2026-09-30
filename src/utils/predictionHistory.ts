@@ -25,10 +25,12 @@ export type HistoryItem = {
 export interface HistoryDay {
   date: string
   items: Partial<Record<HistoryPeriod, HistoryItem>>
+  /** 一日历次原始判断，按输入顺序排列；展示旧判断不改变当前引用。 */
+  dailyRevisions: HistoryItem[]
 }
 
 /**
- * 以预测起始日分组（一日使用目标净值日），同日同周期只选生成时间最新的原始记录。
+ * 以预测起始日分组；一日按服务端输入顺序选最新，保留历次判断，其他周期按生成时间选择。
  * 不按生成日期分组，不按模型版本或最终对错挑选，不改写历史记录或接口翻页顺序。
  * 生成时间按绝对时刻比较，兼容 UTC 与北京时间；同一时刻用编号稳定排序。
  */
@@ -36,11 +38,15 @@ export function groupPredictionHistory(fundCode: string, multi: readonly MultiHi
   const days = new Map<string, HistoryDay>()
   const add = (item: HistoryItem) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(item.date)) return
-    const day = days.get(item.date) ?? { date: item.date, items: {} }
+    const day = days.get(item.date) ?? { date: item.date, items: {}, dailyRevisions: [] }
     const previous = day.items[item.period]
     const time = Date.parse(item.generatedAt)
     const previousTime = previous ? Date.parse(previous.generatedAt) : Number.NEGATIVE_INFINITY
-    if (!previous || (Number.isFinite(time) && (!Number.isFinite(previousTime) || time > previousTime))
+    if (item.kind === 'daily') {
+      if (!day.dailyRevisions.some(row => row.id === item.id)) day.dailyRevisions.push(item)
+      day.dailyRevisions.sort(compareDailyHistory)
+      day.items[item.period] = day.dailyRevisions.at(-1)
+    } else if (!previous || (Number.isFinite(time) && (!Number.isFinite(previousTime) || time > previousTime))
       || (time === previousTime && item.id > previous.id)) day.items[item.period] = item
     days.set(item.date, day)
   }
@@ -57,6 +63,15 @@ export function groupPredictionHistory(fundCode: string, multi: readonly MultiHi
       generatedAt: record.forecast.generatedAt, record })
   }
   return [...days.values()].sort((a, b) => b.date.localeCompare(a.date))
+}
+
+/** 不使用到期答案挑选版本；V2 三方向契约优先，较晚完成的旧输入不能压过新输入。 */
+function compareDailyHistory(a: HistoryItem, b: HistoryItem): number {
+  if (a.kind !== 'daily' || b.kind !== 'daily') return 0
+  const fa = a.record.forecast, fb = b.record.forecast
+  const protocol = Number(fa.schemaVersion === 'DIRECTION_1D_EXPERIMENT_V2') - Number(fb.schemaVersion === 'DIRECTION_1D_EXPERIMENT_V2')
+  const order = (fa.revisionSequence ?? 0) - (fb.revisionSequence ?? 0)
+  return protocol || order || Date.parse(a.generatedAt) - Date.parse(b.generatedAt) || a.id.localeCompare(b.id)
 }
 
 const directions: Record<string, string> = { UP: '上涨', FLAT: '持平', DOWN: '下跌', NON_UP: '下跌或持平' }

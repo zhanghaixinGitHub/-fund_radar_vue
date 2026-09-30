@@ -72,7 +72,7 @@ function formatCreatedAt(value: string): string {
       关注列表
     </h1>
     <p class="lead">
-      已关注基金会按类型归类显示，方便查看最近已同步净值计算的阶段涨跌率。
+      按类型查看已关注基金的单位净值变化，不含分红和买卖费用，不能当作总收益。
     </p>
     <p class="notice-banner">
       每个登录账号仅能查看和维护自己名下的关注基金；账户、角色与数据范围由服务端统一控制。
@@ -182,9 +182,9 @@ function formatCreatedAt(value: string): string {
               </span>
               <span
                 class="change-rate-list"
-                aria-label="净值涨跌率"
+                aria-label="单位净值变化"
               >
-                <span :class="['change-rate', changeRateTone(item.dayChangeRate)]">昨日 {{ formatChangeRate(item.dayChangeRate) }}</span>
+                <span :class="['change-rate', changeRateTone(item.dayChangeRate)]">最新净值日 {{ formatChangeRate(item.dayChangeRate) }}</span>
                 <span :class="['change-rate', changeRateTone(item.weekChangeRate)]">近一周 {{ formatChangeRate(item.weekChangeRate) }}</span>
                 <span :class="['change-rate', changeRateTone(item.monthChangeRate)]">近一月 {{ formatChangeRate(item.monthChangeRate) }}</span>
               </span>

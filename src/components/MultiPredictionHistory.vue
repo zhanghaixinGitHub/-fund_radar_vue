@@ -18,6 +18,7 @@ const { multi, daily, busy, errors, more, hasMore, load, dailyDateComplete } = u
   },
 )
 const expandedId = ref<string | null>(null)
+const selectedRevision = ref<Record<string, string>>({})
 const dailyEvidence = ref<Record<string, Direction1dEvidence>>({})
 const evidenceLoadingId = ref<string | null>(null)
 const evidenceErrorId = ref<string | null>(null)
@@ -26,10 +27,13 @@ let sequence = 0
 /** 四个周期保留固定位置；跨页的一日记录读齐前不展示可能已经过时的版本。 */
 const days = computed(() => groupPredictionHistory(props.fundCode, multi.value, daily.value).map(day => ({
   date: day.date,
+  revisions: dailyDateComplete(day.date) ? day.dailyRevisions : [],
   slots: historyPeriods.map(period => {
     const source = period.id === 'T1_V1' ? 'daily' : 'multi'
     const complete = source === 'multi' || dailyDateComplete(day.date)
-    const item = complete ? day.items[period.id] : undefined
+    const item = complete ? (source === 'daily'
+      ? day.dailyRevisions.find(row => row.id === selectedRevision.value[day.date]) ?? day.items[period.id]
+      : day.items[period.id]) : undefined
     return { ...period, item, view: item ? historyItemView(item) : null,
       empty: errors.value[source] ? '暂时无法读取' : busy.value ? '正在读取…'
         : !complete || more.value[source] ? '还有记录待加载' : '暂无预测',
@@ -73,9 +77,13 @@ function toggleEvidence(item: HistoryItem) {
   expandedId.value = expandedId.value === item.id ? null : item.id
   if (expandedId.value) void readEvidence(item)
 }
+function changeRevision() {
+  expandedId.value = null
+}
 watch(() => props.fundCode, () => {
   sequence++
   expandedId.value = null
+  selectedRevision.value = {}
   dailyEvidence.value = {}
   evidenceLoadingId.value = null
   evidenceErrorId.value = null
@@ -94,7 +102,7 @@ onBeforeUnmount(() => { sequence++ })
         <h2 id="prediction-history-title">
           预测历史
         </h2>
-        <p>按预测起始日归组，每个周期只显示最新一条。</p>
+        <p>按预测起始日归组；一日判断保留每次更新及当时依据。</p>
       </div>
       <span
         v-if="days.length"
@@ -165,6 +173,25 @@ onBeforeUnmount(() => { sequence++ })
             <span>{{ slot.duration }}</span>
           </div>
           <template v-if="slot.item && slot.view">
+            <label
+              v-if="slot.id === 'T1_V1' && day.revisions.length > 1"
+              class="history-revisions"
+            >
+              当日历次判断
+              <select
+                :value="selectedRevision[day.date] ?? day.revisions.at(-1)?.id"
+                :aria-label="`${day.date} 一日历次判断`"
+                @change="selectedRevision[day.date] = ($event.target as HTMLSelectElement).value; changeRevision()"
+              >
+                <option
+                  v-for="(revision, index) in day.revisions"
+                  :key="revision.id"
+                  :value="revision.id"
+                >
+                  {{ timeText(revision.generatedAt) }} · {{ historyItemView(revision).direction }}{{ index === 0 ? '（首次）' : index === day.revisions.length - 1 ? '（最后一次）' : '' }}
+                </option>
+              </select>
+            </label>
             <strong
               class="history-direction"
               :class="`tone-${slot.view.tone}`"
@@ -329,6 +356,8 @@ onBeforeUnmount(() => { sequence++ })
 .tone-down { color: #0f766e; }
 .tone-flat, .tone-neutral, .tone-non_up, .tone-non-up { color: #536c63; }
 .history-period { margin: 6px 0 16px; color: #536c63; font-size: 12px; font-variant-numeric: tabular-nums; }
+.history-revisions { display: grid; gap: 6px; margin-top: 12px; color: #536c63; font-size: 12px; }
+.history-revisions select { width: 100%; min-width: 0; min-height: 44px; padding: 6px; border: 1px solid #cbd9d1; border-radius: 5px; background: #fff; color: #294c3e; }
 .history-results { margin: 0; font-size: 13px; }
 .history-results > div { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 4px 10px; margin-top: 8px; }
 .history-results dt { color: #536c63; }

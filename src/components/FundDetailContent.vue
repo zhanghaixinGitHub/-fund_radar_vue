@@ -2,6 +2,9 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import FundMaterialsPanel from '@/components/FundMaterialsPanel.vue'
+import FundRiskSummary from '@/components/FundRiskSummary.vue'
+import FundEvaluationStatus from '@/components/FundEvaluationStatus.vue'
+import FundNewsFacts from '@/components/FundNewsFacts.vue'
 import FundAlertRules from '@/components/FundAlertRules.vue'
 import FundComparisonSection from '@/components/FundComparisonSection.vue'
 import { getCompleteFundDetail, getPublicFundShareHistory } from '@/api/fundMaterials'
@@ -240,7 +243,7 @@ watch(selectedNavRange, () => {
       </p>
       <div class="fund-detail-topline">
         <div><span>单位净值</span><strong>{{ formatNetValue(basic.unitNav) }}</strong><small>截至 {{ basic.asOfDate || '日期暂缺' }}</small></div>
-        <div><span>日涨跌</span><strong :class="changeRateTone(basic.dayChangeRate)">{{ formatChangeRate(basic.dayChangeRate) }}</strong></div>
+        <div><span>单位净值变化</span><strong :class="changeRateTone(basic.dayChangeRate)">{{ formatChangeRate(basic.dayChangeRate) }}</strong><small>较上一条净值，不含分红和买卖费用</small></div>
         <button
           type="button"
           class="secondary-button"
@@ -339,12 +342,24 @@ watch(selectedNavRange, () => {
         </div>
       </section>
 
-      <!-- 用户只查看一组按时间排列的预测；旧实验不在这里挂载，避免进入页面就触发试算。 -->
+      <!-- 公告页只展示提取后的要点，避免与原始资料目录上下重复。 -->
+      <FundNewsFacts
+        v-if="section === 'documents'"
+        :fund-code="fundCode"
+      />
       <FundMaterialsPanel
-        v-if="['overview', 'holdings', 'company', 'documents'].includes(section)"
+        v-if="['overview', 'holdings', 'company'].includes(section)"
         :fund-code="fundCode"
         :view="section"
         :watched="watchContext"
+      />
+      <FundRiskSummary
+        v-if="section === 'holdings'"
+        :fund-code="fundCode"
+      />
+      <FundEvaluationStatus
+        v-if="section === 'comparison'"
+        :fund-code="fundCode"
       />
       <FundComparisonSection
         v-if="section === 'comparison'"

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import { useFundMarket } from '@/composables/useFundMarket'
+import { readEvaluationStatus, type EvaluationStatus } from '@/api/fundEvaluation'
 import {
   changeRateTone,
   formatChangeRate,
@@ -38,6 +39,18 @@ const {
   totalPages,
 } = useFundMarket()
 const route = useRoute()
+const evaluations = ref<Record<string, EvaluationStatus>>({})
+let evaluationSequence = 0
+watch(funds, async rows => {
+  const ticket = ++evaluationSequence
+  evaluations.value = {}
+  if (!rows.length) return
+  try {
+    const response = await readEvaluationStatus(rows.map(row => row.fundCode))
+    if (ticket === evaluationSequence) evaluations.value = Object.fromEntries(response.items.map(item => [item.fundCode, item]))
+  } catch { /* 公共评价读取失败不影响净值列表；未返回资料显示未知，不补造低分。 */ }
+}, { immediate: true })
+onBeforeUnmount(() => evaluationSequence++)
 
 /** 后端已按基金类型稳定排序；此处只把相邻类型组织为可读的分组。 */
 const fundGroups = computed(() => {
@@ -64,14 +77,14 @@ const fundGroups = computed(() => {
       基金市场
     </h1>
     <p class="lead">
-      当前展示基金市场中已完成同步与校验的基金；净值以已授权数据源的最近同步结果为准。
+      查看已收录基金的单位净值变化，不含分红和买卖费用；数据日期见各基金资料。
     </p>
     <p
       v-if="stale"
       class="notice-banner"
       role="status"
     >
-      分析服务暂不可用，当前展示缓存读模型（缓存时间：{{ cachedAt || '未知' }}）。
+      数据暂时无法更新，当前展示之前保存的资料（保存时间：{{ cachedAt || '未知' }}）。
     </p>
 
     <form
@@ -108,7 +121,7 @@ const fundGroups = computed(() => {
       v-else-if="!loading && funds.length === 0"
       class="state-message"
     >
-      暂无可展示基金（共 {{ totalCount }} 条）。请先完成基金市场同步后重新查询。
+      暂无可展示基金（共 {{ totalCount }} 条），可调整查询条件或稍后重试。
     </p>
     <div
       v-else
@@ -152,13 +165,14 @@ const fundGroups = computed(() => {
               </span>
               <span
                 class="change-rate-list"
-                aria-label="净值涨跌率"
+                aria-label="单位净值变化"
               >
-                <span :class="['change-rate', changeRateTone(fund.dayChangeRate)]">昨日 {{ formatChangeRate(fund.dayChangeRate) }}</span>
+                <span :class="['change-rate', changeRateTone(fund.dayChangeRate)]">最新净值日 {{ formatChangeRate(fund.dayChangeRate) }}</span>
                 <span :class="['change-rate', changeRateTone(fund.weekChangeRate)]">近一周 {{ formatChangeRate(fund.weekChangeRate) }}</span>
                 <span :class="['change-rate', changeRateTone(fund.monthChangeRate)]">近一月 {{ formatChangeRate(fund.monthChangeRate) }}</span>
               </span>
               <span class="as-of-date">数据截至：{{ fund.asOfDate || '尚无合规净值同步' }}</span>
+              <span class="as-of-date">历史评价：{{ evaluations[fund.fundCode]?.message || '资料暂不可用' }}</span>
             </RouterLink>
           </li>
         </ul>
