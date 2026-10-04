@@ -1,6 +1,6 @@
 import { get, post, put } from '@/api/http'
 import type {
-  SimDaily, SimFeeRuleRow, SimLedger, SimOrder, SimOrderRequest, SimOverview, SimPage, SimPeriod,
+  SimDaily, SimEarnings, SimEarningsFund, SimEarningsDetail, SimFeeRuleRow, SimLedger, SimOrder, SimOrderRequest, SimOverview, SimPage, SimPeriod,
   SimPlan, SimPlanRequest, SimPreview, SimRecurringRunResult,
 } from '@/types/simulation'
 
@@ -12,6 +12,14 @@ function query(page: number, fundCode?: string) {
   return params.toString()
 }
 export const getSimOverview = () => get<SimOverview>(base)
+/** 收益查询仅使用 current 本人账户接口，不提供 userId。 */
+export const getSimEarnings = (params: URLSearchParams) => get<SimEarnings>(`${base}/earnings?${params}`)
+export const getSimEarningsFunds = (keyword = '', page = 1) => get<SimPage<SimEarningsFund>>(
+  `${base}/earnings/funds?${new URLSearchParams({ keyword, page: String(page), pageSize: '20' })}`,
+)
+export const getSimEarningsDetails = (date: string, page = 1) => get<SimPage<SimEarningsDetail>>(
+  `${base}/earnings/days/${encodeURIComponent(date)}?${query(page)}`,
+)
 export const getSimPreview = (code: string) => get<SimPreview>(`${base}/preview/${codePath(code)}`)
 export const placeSimOrder = (request: SimOrderRequest) => post<SimOrder>(`${base}/orders`, request)
 export const cancelSimOrder = (id: string) => post<SimOrder>(`${base}/orders/${codePath(id)}/cancel`)

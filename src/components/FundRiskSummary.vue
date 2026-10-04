@@ -62,12 +62,7 @@ onBeforeUnmount(() => ++sequence)
     <template v-else-if="result">
       <template v-if="result.available">
         <p>
-          持仓日期 {{ result.reportDate }} · 披露日期 {{ result.publishedDate }}<a
-            v-if="result.sourceUrl"
-            :href="result.sourceUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-          >查看原报告 ↗</a>
+          持仓日期 {{ result.reportDate }} · 披露日期 {{ result.publishedDate }}
         </p>
         <ul>
           <li
@@ -103,5 +98,4 @@ h2 { font-size: 1.05rem; margin: 0; }
 p, li { line-height: 1.7; }
 ul { padding-left: 1.25rem; }
 header span, .muted { color: var(--color-text-secondary, #64748b); font-size: .875rem; }
-a { margin-left: .75rem; }
 </style>

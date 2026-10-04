@@ -4,6 +4,7 @@ import type { LocationQuery, RouteLocationRaw } from 'vue-router'
 
 import { fundTypeOptions } from '@/utils/fundPresentation'
 import { portfolioReturnPath } from '@/utils/advice'
+import { earningsReturnPath } from '@/utils/simulationEarnings'
 
 export interface PageSection {
   key: string
@@ -20,8 +21,7 @@ const pageSections: Record<string, PageSection[]> = {
     { key: 'review', label: '效果回看' },
   ],
   'watchlist-fund-detail': [
-    { key: 'overview', label: '资料概览', group: '关注资料' },
-    { key: 'basic', label: '基础资料' },
+    { key: 'basic', label: '基础资料', group: '关注资料' },
     { key: 'nav', label: '净值走势' },
     { key: 'manager', label: '基金经理' },
     { key: 'share', label: '份额规模' },
@@ -34,8 +34,7 @@ const pageSections: Record<string, PageSection[]> = {
     { key: 'rules', label: '我的提醒', group: '我的设置' },
   ],
   'fund-detail': [
-    { key: 'overview', label: '基金概览', group: '基金资料' },
-    { key: 'basic', label: '基础资料' },
+    { key: 'basic', label: '基础资料', group: '基金资料' },
     { key: 'nav', label: '净值走势' },
     { key: 'manager', label: '基金经理' },
     { key: 'share', label: '份额规模' },
@@ -53,6 +52,7 @@ const pageSections: Record<string, PageSection[]> = {
     { key: 'account-risk', label: '已录入持仓检查' },
     { key: 'options', label: '调整前的条件比较' },
     { key: 'holdings', label: '持仓' },
+    { key: 'earnings', label: '收益明细' },
     { key: 'plans', label: '定投计划' },
     { key: 'orders', label: '交易记录' },
   ],
@@ -91,6 +91,7 @@ const moduleNames: Record<string, string> = {
   'fund-market': '基金市场', 'fund-detail': '基金市场',
   watchlist: '我的关注', 'watchlist-fund-detail': '我的关注',
   'portfolio-snapshot': '我的持仓', notifications: '站内提醒', profile: '个人信息',
+  'portfolio-earnings': '我的持仓',
   'portfolio-advice': '持仓分析',
   'admin-dashboard': '工作台', 'admin-sync-center': '数据同步', 'admin-users': '用户管理',
   'admin-sim-fee-rules': '费率维护',
@@ -116,7 +117,7 @@ export function listReturnTarget(value: unknown, listPath: '/funds' | '/watchlis
   return { path: listPath, query }
 }
 
-/** 顶栏、左侧导航和页面共用同一份子页定义；未知参数回落到首项。 */
+/** 顶栏、左侧导航和页面共用子页顺序；未指定子页、未知参数及已移除的概览链接均回落到首项。 */
 export function usePageNavigation() {
   const route = useRoute()
   const routeName = computed(() => String(route.name ?? ''))
@@ -124,8 +125,9 @@ export function usePageNavigation() {
   const sections = computed<PageSection[]>(() => isList.value
     ? [{ key: 'all', label: routeName.value === 'watchlist' ? '全部关注' : '全部基金' },
       ...fundTypeOptions.map((type, index) => ({ key: type.value, label: type.label, group: index === 0 ? '按基金类型' : undefined }))]
-    : pageSections[routeName.value] ?? [])
+    : pageSections[routeName.value === 'portfolio-earnings' ? 'portfolio-snapshot' : routeName.value] ?? [])
   const section = computed(() => {
+    if (routeName.value === 'portfolio-earnings') return 'earnings'
     const rawCandidate = isList.value ? route.query.type : route.query.section
     // 兼容旧公告链接，改为共用资料页；旧提醒链接在关注入口保留。
     const candidate = rawCandidate === 'events' ? 'documents' : rawCandidate
@@ -137,6 +139,7 @@ export function usePageNavigation() {
   const sectionLabel = computed(() => sections.value.find((item) => item.key === section.value)?.label ?? '')
   const moduleLabel = computed(() => moduleNames[routeName.value] ?? String(route.meta.title ?? '基金雷达'))
   const returnTarget = computed(() => {
+    if (routeName.value === 'portfolio-earnings') return earningsReturnPath(route.query.from)
     // 从顶栏直接进入持仓分析时没有来源页，不显示返回链接。
     if (routeName.value === 'portfolio-advice') {
       return typeof route.query.from === 'string' ? portfolioReturnPath(route.query.from) : null
@@ -147,6 +150,8 @@ export function usePageNavigation() {
   })
   const returnLabel = computed(() => returnLabels[routeName.value] ?? moduleLabel.value)
   function sectionTarget(key: string): RouteLocationRaw {
+    if (['portfolio-snapshot', 'portfolio-earnings'].includes(routeName.value) && key === 'earnings') return { name: 'portfolio-earnings' }
+    if (routeName.value === 'portfolio-earnings') return { name: 'portfolio-snapshot', query: { section: key } }
     const query: LocationQuery = { ...route.query }
     if (isList.value) {
       delete query.page

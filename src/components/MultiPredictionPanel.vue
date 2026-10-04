@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { generateMultiPrediction, readMultiPrediction, readPredictionTask, readLatestPredictionTask } from '@/api/multiPrediction'
 import Direction1dPanel from '@/components/Direction1dPanel.vue'
+import PredictionEvidenceBody from '@/components/PredictionEvidenceBody.vue'
 import type { MultiCurrent, MultiPrediction, PredictionError, PredictionTask } from '@/types/multiPrediction'
 import { useAuthStore } from '@/stores/auth'
 import { sortPredictionHorizons } from '@/utils/predictionHorizon'
@@ -249,58 +250,12 @@ onBeforeUnmount(() => { ++sequence; globalThis.clearTimeout(timer) })
         {{ selectedStatus }}
       </p>
       <template v-if="evidence">
-        <p class="forecast-basis-summary">
-          {{ evidence.summary }}
-        </p>
-        <dl
-          v-if="evidence.facts.length"
-          class="forecast-facts"
-        >
-          <div
-            v-for="fact in evidence.facts"
-            :key="fact.label"
-          >
-            <dt>{{ fact.label }}</dt><dd>{{ fact.value }}</dd>
-          </div>
-        </dl>
-        <div
-          v-if="evidence.supporting.length || evidence.opposing.length"
-          class="forecast-reasons"
-        >
-          <div v-if="evidence.supporting.length">
-            <h3>系统怎样得出结论</h3>
-            <ul>
-              <li
-                v-for="reason in evidence.supporting"
-                :key="reason"
-              >
-                {{ reason }}
-              </li>
-            </ul>
-          </div>
-          <div v-if="evidence.opposing.length">
-            <h3>与结论相反的因素</h3>
-            <ul>
-              <li
-                v-for="reason in evidence.opposing"
-                :key="reason"
-              >
-                {{ reason }}
-              </li>
-            </ul>
-          </div>
-        </div>
-        <div class="forecast-limitations">
-          <h3>这份依据的局限</h3>
-          <ul>
-            <li
-              v-for="limitation in evidence.limitations"
-              :key="limitation"
-            >
-              {{ limitation }}
-            </li>
-          </ul>
-        </div>
+        <PredictionEvidenceBody
+          :fund-code="fundCode"
+          :kind="selectedPeriod === 'DAY' ? 'daily' : 'multi'"
+          :record-id="selectedPeriod === 'DAY' ? dailyPanel?.forecastId : selectedPrediction?.predictionId"
+          :evidence="evidence"
+        />
         <p
           v-if="selectedPeriod === 'DAY' && dailyPanel?.forecast"
           class="forecast-basis-meta"

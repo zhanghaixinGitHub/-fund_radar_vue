@@ -73,6 +73,12 @@ export const router = createRouter({
       meta: { title: '我的持仓', appArea: 'user', permissions: ['PORTFOLIO_SELF_READ'] },
     },
     {
+      path: '/portfolio/earnings',
+      name: 'portfolio-earnings',
+      component: () => import('@/views/SimulationEarningsPage.vue'),
+      meta: { title: '收益明细', appArea: 'user', permissions: ['PORTFOLIO_SELF_READ'] },
+    },
+    {
       path: '/portfolio/advice',
       name: 'portfolio-advice',
       component: () => import('@/views/PortfolioAdvicePage.vue'),

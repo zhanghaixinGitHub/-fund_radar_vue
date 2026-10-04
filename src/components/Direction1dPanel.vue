@@ -18,6 +18,7 @@ let pendingRequest: { target: string; id: string } | null = null
 
 // 当前接口返回本基金最近一条记录。日期和依据都取自该记录，不能把旧结论套到本期日期。
 const latest = computed(() => value.value?.history.items[0])
+const forecastId = computed(() => forecast.value ? latest.value?.forecastId : undefined)
 const forecast = computed(() => latest.value && !latest.value.status ? latest.value.forecast : null)
 const summary = computed(() => forecast.value ? direction1dSummary(forecast.value) : null)
 const isPrevious = computed(() => forecast.value && (forecast.value.targetNavDate !== value.value?.window.targetNavDate
@@ -99,7 +100,7 @@ async function refresh(generateMissing = false) {
 }
 const evidence = computed(() => dailyPredictionEvidence(forecast.value, restoredEvidence.value))
 const evidenceStatus = computed(() => error.value ? '一天预测暂时无法读取，请更新后重试。' : notice.value || (isPrevious.value ? '本期暂无新结果，以下依据对应上次预测。' : !forecast.value ? emptyReason.value : ''))
-defineExpose({ refresh, busy, evidence, evidenceStatus, forecast, generateHint })
+defineExpose({ refresh, busy, evidence, evidenceStatus, forecast, forecastId, generateHint })
 onBeforeUnmount(() => { sequence++ })
 </script>
 

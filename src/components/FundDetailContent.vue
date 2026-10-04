@@ -31,7 +31,7 @@ const actionMessage = ref('')
 let loadSequence = 0
 let navSequence = 0
 let shareSequence = 0
-const { section, sectionLabel, sectionTarget, returnTarget } = usePageNavigation()
+const { section, sectionLabel, returnTarget } = usePageNavigation()
 const detail = ref<WatchlistFundDetail | null>(null)
 const loading = ref(false)
 const errorMessage = ref('')
@@ -44,11 +44,6 @@ const shareHistoryError = ref('')
 const selectedNavRange = ref<'THREE_MONTHS' | 'ONE_YEAR' | 'THREE_YEARS' | 'ALL'>('ONE_YEAR')
 const fundCode = computed(() => String(route.params.fundCode ?? ''))
 const basic = computed(() => detail.value?.basic ?? null)
-const currentManagers = computed(() => (detail.value?.managers ?? [])
-  .filter((manager) => !manager.endDate)
-  .slice(0, 2))
-const currentManagerNames = computed(() => currentManagers.value.map((manager) => manager.managerName).join('、'))
-const recentDividend = computed(() => detail.value?.dividends.at(0) ?? null)
 const navRangeOptions = [
   { value: 'THREE_MONTHS', label: '近三月' },
   { value: 'ONE_YEAR', label: '近一年' },
@@ -267,91 +262,15 @@ watch(selectedNavRange, () => {
       >
         分析服务暂不可用，当前展示缓存资料（缓存时间：{{ detail.cachedAt || '未知' }}）。
       </p>
-      <section
-        v-if="section === 'overview'"
-        class="watchlist-summary"
-        aria-labelledby="watchlist-summary-title"
-      >
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">
-              基金资料
-            </p>
-            <h2 id="watchlist-summary-title">
-              基金概览
-            </h2>
-          </div>
-          <RouterLink
-            v-if="watchContext"
-            class="secondary-link"
-            :to="sectionTarget('research')"
-          >
-            查看走势预测 →
-          </RouterLink>
-        </div>
-        <div class="watchlist-summary-grid">
-          <article class="detail-overview-card">
-            <p class="detail-overview-label">
-              在任基金经理
-            </p>
-            <strong class="detail-overview-value">
-              {{ detail.managersStatus === 'SYNCED' ? (currentManagerNames || '暂缺') : '尚未同步' }}
-            </strong>
-            <p class="detail-overview-meta">
-              {{ detail.managersStatus !== 'SYNCED'
-                ? '基金经理资料尚未同步。'
-                : currentManagers.length > 0
-                  ? `当前展示 ${currentManagers.length} 条仍在任记录。`
-                  : '来源暂未提供仍在任的基金经理记录。' }}
-            </p>
-          </article>
-          <article class="detail-overview-card">
-            <p class="detail-overview-label">
-              最新基金份额
-            </p>
-            <strong class="detail-overview-value">
-              {{ detail.latestShareStatus === 'SYNCED' && detail.latestShare
-                ? `${formatSourceNumber(detail.latestShare.fundShare, 4)} 万份`
-                : detail.latestShareStatus === 'SYNCED' ? '暂缺' : '尚未同步' }}
-            </strong>
-            <p class="detail-overview-meta">
-              {{ detail.latestShareStatus !== 'SYNCED'
-                ? '基金份额规模尚未同步。'
-                : detail.latestShare
-                  ? `变动日期：${detail.latestShare.tradeDate} · ${dataSourceLabel(detail.latestShare.dataSource)}`
-                  : '来源暂未提供可展示的基金份额规模记录。' }}
-            </p>
-          </article>
-          <article class="detail-overview-card">
-            <p class="detail-overview-label">
-              最近分红记录
-            </p>
-            <strong class="detail-overview-value">
-              {{ detail.dividendsStatus === 'SYNCED' && recentDividend
-                ? `每份 ${formatSourceNumber(recentDividend.cashDividend, 6)}`
-                : detail.dividendsStatus === 'SYNCED' ? '暂缺' : '尚未同步' }}
-            </strong>
-            <p class="detail-overview-meta">
-              {{ detail.dividendsStatus !== 'SYNCED'
-                ? '分红记录尚未同步。'
-                : recentDividend
-                  ? `公告日期：${recentDividend.annDate || '暂缺'} · ${dataSourceLabel(recentDividend.dataSource)}`
-                  : '来源暂未提供可展示的分红事件。' }}
-            </p>
-          </article>
-        </div>
-      </section>
-
       <!-- 公告页只展示提取后的要点，避免与原始资料目录上下重复。 -->
       <FundNewsFacts
         v-if="section === 'documents'"
         :fund-code="fundCode"
       />
       <FundMaterialsPanel
-        v-if="['overview', 'holdings', 'company'].includes(section)"
+        v-if="['holdings', 'company'].includes(section)"
         :fund-code="fundCode"
         :view="section"
-        :watched="watchContext"
       />
       <FundRiskSummary
         v-if="section === 'holdings'"
@@ -625,7 +544,7 @@ watch(selectedNavRange, () => {
       </section>
 
       <section
-        v-if="section === 'nav' || section === 'overview'"
+        v-if="section === 'nav'"
         class="analysis-section"
         aria-labelledby="watchlist-nav-history-title"
       >
@@ -638,17 +557,7 @@ watch(selectedNavRange, () => {
               历史单位净值
             </h2>
           </div>
-          <RouterLink
-            v-if="section === 'overview'"
-            class="secondary-link"
-            :to="sectionTarget('nav')"
-          >
-            查看净值详情 →
-          </RouterLink>
-          <span
-            v-else
-            class="section-note"
-          >仅展示已同步历史数据</span>
+          <span class="section-note">仅展示已同步历史数据</span>
         </div>
         <div
           class="nav-range-controls"

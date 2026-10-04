@@ -1,25 +1,38 @@
 <script setup lang="ts">
 import { usePageNavigation } from '@/composables/usePageNavigation'
 import ReviewNoticePanel from '@/components/ReviewNoticePanel.vue'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 
-import { getAlertRules, upsertAlertRule } from '@/api/alerts'
+import { getAlertAvailability, getAlertRulePage, upsertAlertRule } from '@/api/alerts'
 import { ApiRequestError } from '@/api/http'
 import { getNotifications, markNotificationRead } from '@/api/notifications'
-import type { AlertRule, UpsertAlertRuleRequest } from '@/types/alert'
+import type { AlertAvailability, AlertRule, AlertRulePage, UpsertAlertRuleRequest } from '@/types/alert'
+import { alertAvailabilityNote, alertDescriptions } from '@/utils/alertPresentation'
 import type { NotificationItem, NotificationPage } from '@/types/notification'
 import { riskLevelLabel, signalDirectionLabel } from '@/utils/fundPresentation'
 
 const pageSize = 20
 const notificationPage = ref<NotificationPage | null>(null)
-const alertRules = ref<AlertRule[]>([])
+const rulePageSize = 10
+const rulePage = ref<AlertRulePage | null>(null)
+const ruleStatus = ref<'all' | 'enabled' | 'disabled'>('all')
+const rulesLoading = ref(true)
+let rulesRequest = 0
+let disposed = false
+const availability = ref<AlertAvailability | null>(null)
 const loading = ref(true)
 const notificationError = ref('')
 const rulesError = ref('')
 const ruleMessage = ref('')
 const readingIds = ref<Set<string>>(new Set())
 const savingRuleIds = ref<Set<string>>(new Set())
+const currentRulePage = computed(() => rulePage.value?.page ?? 1)
+const emptyRulesMessage = computed(() => ruleStatus.value === 'enabled'
+  ? '暂无已开启的提醒。'
+  : ruleStatus.value === 'disabled'
+    ? '暂无已关闭的提醒。'
+    : '暂无提醒设置。关注基金后会默认开启两类提醒，你可以随时分别关闭。')
 
 const currentPage = computed(() => notificationPage.value?.page ?? 1)
 const hasPreviousPage = computed(() => currentPage.value > 1)
@@ -30,12 +43,7 @@ const hasNextPage = computed(() => {
 
 /** 将内部提醒类型转换为用户可理解的资讯提示文案。 */
 function ruleTypeLabel(ruleType: AlertRule['ruleType']): string {
-  const labels: Record<AlertRule['ruleType'], string> = {
-    RISK_LEVEL: '风险程度达到设定条件',
-    SIGNAL_CHANGE: '分析方向变化',
-    EVENT: '基金相关事项',
-  }
-  return labels[ruleType]
+  return alertDescriptions[ruleType].title
 }
 
 /** 格式化服务端时间；不可解析时保留原值，避免用本地当前时间伪造事件时间。 */
@@ -63,14 +71,13 @@ function displayRequestError(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback
 }
 
-/** 加载本人通知和提醒规则；任一接口失败不阻塞另一块已授权数据展示。 */
+/** 加载本人通知和可用范围；提醒规则独立分页，失败不影响其他区域。 */
 async function load(page = 1): Promise<void> {
   loading.value = true
   notificationError.value = ''
-  rulesError.value = ''
-  const [notificationsResult, rulesResult] = await Promise.allSettled([
+  const [notificationsResult, abilityResult] = await Promise.allSettled([
     getNotifications(page, pageSize),
-    getAlertRules(),
+    getAlertAvailability(),
   ])
   if (notificationsResult.status === 'fulfilled') {
     notificationPage.value = notificationsResult.value
@@ -78,14 +85,34 @@ async function load(page = 1): Promise<void> {
     notificationPage.value = null
     notificationError.value = displayRequestError(notificationsResult.reason, '站内提醒暂时不可用。')
   }
-  if (rulesResult.status === 'fulfilled') {
-    alertRules.value = rulesResult.value
-  } else {
-    alertRules.value = []
-    rulesError.value = displayRequestError(rulesResult.reason, '提醒规则暂时不可用。')
-  }
+  availability.value = abilityResult.status === 'fulfilled' ? abilityResult.value : null
   loading.value = false
 }
+
+/** 筛选和翻页均只读取当前页；序号丢弃较慢的旧响应，防止快速切换后展示错误状态。 */
+async function loadRules(page = 1): Promise<void> {
+  const request = ++rulesRequest
+  rulesLoading.value = true
+  rulesError.value = ''
+  const enabled = ruleStatus.value === 'all' ? undefined : ruleStatus.value === 'enabled'
+  try {
+    const result = await getAlertRulePage(page, rulePageSize, enabled)
+    if (disposed || request !== rulesRequest) return
+    rulePage.value = result
+  } catch (error) {
+    if (disposed || request !== rulesRequest) return
+    rulePage.value = null
+    rulesError.value = displayRequestError(error, '提醒规则暂时不可用。')
+  } finally {
+    if (!disposed && request === rulesRequest) rulesLoading.value = false
+  }
+}
+
+/** 更换接收状态后从第一页查看，避免沿用旧筛选的页码。 */
+watch(ruleStatus, () => {
+  ruleMessage.value = ''
+  void loadRules(1)
+})
 
 /** 翻页只重新请求通知，不因切页重复写入或修改任何提醒规则。 */
 async function changePage(page: number): Promise<void> {
@@ -131,6 +158,7 @@ async function markRead(item: NotificationItem): Promise<void> {
 
 /** 只管理已存在规则的启停，保留其原条件；普通页面不要求用户理解算法分数或补默认值。 */
 async function saveRule(rule: AlertRule, enabled: boolean): Promise<void> {
+  if (savingRuleIds.value.has(rule.ruleId)) return
   const threshold = rule.ruleType === 'RISK_LEVEL' ? rule.threshold : null
   if (rule.ruleType === 'RISK_LEVEL' && (threshold === null || !Number.isFinite(Number(threshold)) || Number(threshold) < 0 || Number(threshold) > 1)) {
     ruleMessage.value = '原提醒条件尚未核对，当前设置保持不变。'
@@ -141,15 +169,15 @@ async function saveRule(rule: AlertRule, enabled: boolean): Promise<void> {
   const request: UpsertAlertRuleRequest = {
     fundCode: rule.fundCode,
     ruleType: rule.ruleType,
-    threshold,
+    threshold: threshold === null ? null : Number(threshold),
     enabled,
   }
   try {
     const saved = await upsertAlertRule(request)
-    alertRules.value = alertRules.value.map((candidate) => (
-      candidate.ruleId === saved.ruleId ? saved : candidate
-    ))
-    ruleMessage.value = saved.enabled ? '提醒规则已保存。' : '提醒规则已停用。'
+    if (disposed) return
+    ruleMessage.value = saved.enabled ? '已开启接收。' : '已关闭接收，不影响关注这只基金。'
+    // 启停后重新读取当前筛选，正确更新总数；最后一页清空时由服务端回退到有效页。
+    await loadRules(currentRulePage.value)
   } catch (error) {
     ruleMessage.value = displayRequestError(error, '提醒规则未保存。')
   } finally {
@@ -159,6 +187,11 @@ async function saveRule(rule: AlertRule, enabled: boolean): Promise<void> {
 
 onMounted(() => {
   void load()
+  void loadRules()
+})
+onBeforeUnmount(() => {
+  disposed = true
+  rulesRequest++
 })
 const { section, sectionLabel } = usePageNavigation()
 </script>
@@ -175,7 +208,7 @@ const { section, sectionLabel } = usePageNavigation()
       {{ sectionLabel }}
     </h1>
     <p class="lead">
-      查看基金事项与本人条件变化，并按保存的依据复查。
+      {{ section === 'rules' ? '可在“我的关注 → 基金详情 → 我的提醒”中设置提醒，也可以在这里直接开启或关闭。' : '查看基金事项与本人条件变化，并按保存的依据复查。' }}
     </p>
 
     <ReviewNoticePanel v-if="section === 'messages'" />
@@ -279,26 +312,35 @@ const { section, sectionLabel } = usePageNavigation()
     <section
       v-if="section === 'rules'"
       class="notification-card"
-      aria-labelledby="notification-rule-title"
+      aria-label="提醒规则列表"
     >
-      <header class="notification-card-heading">
-        <div>
-          <p class="eyebrow">
-            本人设置
-          </p>
-          <h2 id="notification-rule-title">
-            提醒规则
-          </h2>
-        </div>
-        <RouterLink
-          class="text-button"
-          to="/watchlist"
+      <div class="rule-filter-row">
+        <label for="rule-status">提醒状态</label>
+        <select
+          id="rule-status"
+          v-model="ruleStatus"
         >
-          前往我的关注
-        </RouterLink>
-      </header>
+          <option value="all">
+            全部
+          </option>
+          <option value="enabled">
+            已开启
+          </option>
+          <option value="disabled">
+            已关闭
+          </option>
+        </select>
+        <span v-if="!rulesLoading && !rulesError && rulePage">共 {{ rulePage.totalCount }} 条</span>
+      </div>
       <p
-        v-if="rulesError"
+        v-if="rulesLoading"
+        class="state-message"
+        role="status"
+      >
+        正在加载提醒设置…
+      </p>
+      <p
+        v-else-if="rulesError"
         class="state-message error-message"
         role="alert"
       >
@@ -313,35 +355,92 @@ const { section, sectionLabel } = usePageNavigation()
           {{ ruleMessage }}
         </p>
         <ul
-          v-if="alertRules.length > 0"
+          v-if="rulePage && rulePage.items.length > 0"
           class="notification-rule-list"
         >
           <li
-            v-for="rule in alertRules"
+            v-for="rule in rulePage.items"
             :key="rule.ruleId"
           >
             <div>
               <strong>基金 {{ rule.fundCode }} · {{ ruleTypeLabel(rule.ruleType) }}</strong>
+              <p>{{ alertDescriptions[rule.ruleType].description }}</p>
+              <p>{{ alertAvailabilityNote(rule.ruleType, rule.fundCode, availability) }}</p>
+              <span>{{ rule.enabled ? '接收已开启' : '接收已关闭' }}</span>
               <p>更新于 {{ formatDateTime(rule.updatedAt) }}</p>
+              <span v-if="rule.ruleType === 'RISK_LEVEL'">沿用已保存的风险提醒条件</span>
             </div>
-            <span v-if="rule.ruleType === 'RISK_LEVEL'">沿用已保存的风险提醒条件</span>
             <button
               class="text-button"
               :disabled="savingRuleIds.has(rule.ruleId)"
               type="button"
               @click="saveRule(rule, !rule.enabled)"
             >
-              {{ rule.enabled ? '停用' : '启用' }}
+              {{ savingRuleIds.has(rule.ruleId) ? '保存中…' : rule.enabled ? '关闭提醒' : '开启提醒' }}
             </button>
           </li>
         </ul>
         <p
-          v-else-if="!loading"
+          v-else
           class="empty-analysis"
         >
-          暂无提醒规则。请先在已关注基金的详情页创建信息提醒规则。
+          {{ emptyRulesMessage }}
         </p>
+        <nav
+          v-if="rulePage && rulePage.totalCount > 0"
+          class="pagination rule-pagination"
+          aria-label="提醒规则分页"
+        >
+          <span>每页 {{ rulePageSize }} 条</span>
+          <button
+            class="secondary-button"
+            :disabled="currentRulePage <= 1"
+            type="button"
+            @click="loadRules(currentRulePage - 1)"
+          >
+            上一页
+          </button>
+          <span>第 {{ currentRulePage }} / {{ rulePage.totalPages }} 页</span>
+          <button
+            class="secondary-button"
+            :disabled="currentRulePage >= rulePage.totalPages"
+            type="button"
+            @click="loadRules(currentRulePage + 1)"
+          >
+            下一页
+          </button>
+        </nav>
       </template>
     </section>
   </section>
 </template>
+
+<style scoped>
+.rule-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgb(20 68 57 / 14%);
+}
+.rule-filter-row label { font-weight: 700; }
+.rule-filter-row select {
+  min-width: 160px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid #b8cbc5;
+  border-radius: 8px;
+  background: white;
+  color: inherit;
+  font: inherit;
+}
+.rule-filter-row select:focus-visible { outline: 2px solid #0f766e; outline-offset: 3px; }
+.rule-filter-row > span { margin-left: auto; color: #587068; }
+.notification-rule-list li { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.rule-pagination { flex-wrap: wrap; }
+@media (max-width: 600px) {
+  .notification-rule-list li { grid-template-columns: minmax(0, 1fr); }
+  .rule-pagination > span:first-child { flex-basis: 100%; }
+}
+</style>

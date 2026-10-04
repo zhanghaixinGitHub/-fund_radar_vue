@@ -42,6 +42,25 @@ export interface SimPeriod {
   status: 'ORDERED' | 'MISSED' | 'SKIPPED'; orderId: string | null; message: string; createdAt: string
 }
 export interface SimDaily { date: string; marketValue: DecimalValue; cumulativeGain: DecimalValue; dailyGain: DecimalValue | null }
+/** 收益状态与金额分开：未知金额为 null，真实零收益仍为十进制零。 */
+export type SimEarningsStatus = 'COMPLETE' | 'PARTIAL' | 'PENDING' | 'MISSING' | 'NON_TRADING' | 'CALENDAR_UNKNOWN' | 'REVIEW'
+export interface SimEarningsFund {
+  fundCode: string; fundName: string; firstDate: string; lastDate: string | null
+  closed: boolean; marketValue: DecimalValue | null; navDate: string | null; reviewRequired: boolean
+}
+export interface SimEarningsDay {
+  date: string; status: SimEarningsStatus; expectedFunds: number; updatedFunds: number
+  dailyGain: DecimalValue | null; knownGain: DecimalValue | null; cumulativeGain: DecimalValue | null
+}
+export interface SimEarningsDetail {
+  fundCode: string; fundName: string; status: SimEarningsStatus
+  dailyGain: DecimalValue | null; cumulativeGain: DecimalValue | null
+}
+export interface SimEarnings {
+  fund: SimEarningsFund | null; startDate: string; endDate: string; firstDate: string | null
+  periodGain: DecimalValue | null; knownGain: DecimalValue | null; complete: boolean; incompleteDays: number
+  days: SimPage<SimEarningsDay>; curve: SimEarningsDay[]
+}
 export interface SimLedger {
   entryId: string; fundCode: string; entryType: string; payload: Record<string, unknown>; createdAt: string
 }

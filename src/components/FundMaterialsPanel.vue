@@ -1,50 +1,67 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getFundDocuments, getFundMaterials } from '@/api/fundMaterials'
-import type { FundDocuments, FundMaterials } from '@/types/fundMaterials'
+import { getFundMaterials } from '@/api/fundMaterials'
+import type { FundMaterials } from '@/types/fundMaterials'
 
-const props = defineProps<{ fundCode: string; view: string; watched?: boolean }>()
+/** 持仓与公司经营共用结构化资料；公告要点由 FundNewsFacts 展示，不提供原文跳转。 */
+const props = defineProps<{ fundCode: string; view: string }>()
 const route = useRoute()
 const router = useRouter()
 const data = ref<FundMaterials | null>(null)
-const docs = ref<FundDocuments | null>(null)
 const loading = ref(false)
-const docLoading = ref(false)
 const error = ref('')
-const docError = ref('')
 const reportId = ref('')
 const stockCode = ref('')
-const kind = ref('all')
-const keyword = ref('')
-const latestOnly = ref(Boolean(props.watched))
-const page = ref(1)
 let sequence = 0
-let docSequence = 0
 const report = computed(() => data.value?.report)
-const company = computed(() => data.value?.company)
-const currentCompanies = computed(() => data.value?.companies.filter(c => c.latestHeld) ?? [])
-const pastCompanies = computed(() => data.value?.companies.filter(c => !c.latestHeld) ?? [])
+/** latestHeld 只表示最新报告披露持有；历史公司仍留在后台资料中，不作为此处的候选。 */
+const currentCompanies = computed(() => data.value?.companies.filter(c => c.latestHeld === true) ?? [])
+const company = computed(() => {
+  const detail = data.value?.company
+  // 名单、当前选择和详情必须同时匹配，防止快照更新或旧响应把历史公司当成最新持仓展示。
+  return detail?.latestHeld === true && detail.stockCode === stockCode.value
+    && currentCompanies.value.some(c => c.stockCode === detail.stockCode) ? detail : null
+})
 const money = (n: number | null | undefined) => n == null ? '暂缺' : `${(n / 100_000_000).toLocaleString('zh-CN', { maximumFractionDigits: 2 })} 亿`
 const pct = (n: number | null | undefined) => n == null ? '暂缺' : `${n.toFixed(2)}%`
-const title = computed(() => ({ overview: props.watched ? '近期动态与持仓' : '投资方向与动态', holdings: '基金持仓', company: '持仓公司经营', documents: '公告与动态' })[props.view] ?? '基金资料')
+const title = computed(() => ({ holdings: '基金持仓', company: '持仓公司经营' })[props.view] ?? '基金资料')
 
-/** 每次切换基金清除旧结果；请求序号阻止较慢的旧请求覆盖新基金资料。 */
+/**
+ * 切换基金或公司时清除旧结果；整个加载过程共用请求序号，较慢的旧响应不能覆盖新选择。
+ * 公司页先取最新名单，再校正旧链接/历史代码并读取详情，未知代码不会直接传给详情查询。
+ * 每轮至多读取两次；两次读取之间名单变化时只保留有效选择，详情不匹配则显示可重试空态。
+ */
 async function load() {
   const ticket = ++sequence
+  const fundCode = props.fundCode
+  const companyView = props.view === 'company'
+  const requestedStock = stockCode.value
   loading.value = true
   error.value = ''
   data.value = null
   try {
-    const result = await getFundMaterials(props.fundCode, reportId.value, stockCode.value)
+    const result = await getFundMaterials(fundCode, companyView ? '' : reportId.value)
     if (ticket !== sequence) return
+    if (result.fundCode !== fundCode) throw new Error('基金资料归属不一致')
     data.value = result
-    if (props.view === 'company' && !stockCode.value && result.report?.holdings[0]) {
-      stockCode.value = result.report.holdings[0].stockCode
-      await load()
-      return
+    if (!companyView) return
+
+    stockCode.value = result.available
+      ? currentCompanies.value.find(c => c.stockCode === requestedStock)?.stockCode
+        ?? currentCompanies.value[0]?.stockCode ?? ''
+      : ''
+    if (!stockCode.value) return
+
+    const detail = await getFundMaterials(fundCode, '', stockCode.value)
+    if (ticket !== sequence) return
+    if (detail.fundCode !== fundCode) throw new Error('基金资料归属不一致')
+    data.value = detail
+    // 以详情响应携带的最新名单再次校验；不递归重取，也不改写路由触发加载循环。
+    if (!detail.available) stockCode.value = ''
+    else if (!currentCompanies.value.some(c => c.stockCode === stockCode.value)) {
+      stockCode.value = currentCompanies.value[0]?.stockCode ?? ''
     }
-    if (props.view === 'overview' || props.view === 'documents') void loadDocuments()
   } catch {
     if (ticket === sequence) error.value = '基金补充资料暂时无法加载，请重试。'
   } finally {
@@ -52,40 +69,12 @@ async function load() {
   }
 }
 
-async function loadDocuments() {
-  const ticket = ++docSequence
-  docLoading.value = true
-  docError.value = ''
-  docs.value = null
-  const query: Record<string, string> = {
-    page: String(page.value), pageSize: props.view === 'overview' ? '3' : '20',
-    kind: kind.value, keyword: keyword.value.trim(), latestOnly: String(latestOnly.value),
-  }
-  if (stockCode.value) query.stockCode = stockCode.value
-  try {
-    const result = await getFundDocuments(props.fundCode, query)
-    if (ticket === docSequence) docs.value = result
-  } catch {
-    if (ticket === docSequence) docError.value = '公告暂时无法加载，请重试。'
-  } finally {
-    if (ticket === docSequence) docLoading.value = false
-  }
-}
-function searchDocuments() {
-  if (kind.value === 'fund' || kind.value === 'news') stockCode.value = ''
-  if (stockCode.value) latestOnly.value = false
-  page.value = 1; void loadDocuments()
-}
-function turnPage(delta: number) { page.value += delta; void loadDocuments() }
 function navigate(section: string, code = '') {
   void router.push({ path: route.path, query: { ...route.query, section, stock: code || undefined } })
 }
 watch(() => [props.fundCode, props.view, route.query.stock], () => {
-  ++sequence; ++docSequence
+  ++sequence
   reportId.value = ''; stockCode.value = typeof route.query.stock === 'string' ? route.query.stock : ''
-  kind.value = 'all'; keyword.value = ''; page.value = 1
-  docs.value = null; docError.value = ''; docLoading.value = false
-  latestOnly.value = !stockCode.value && (props.view === 'overview' || Boolean(props.watched))
   void load()
 }, { immediate: true })
 </script>
@@ -130,19 +119,6 @@ watch(() => [props.fundCode, props.view, route.query.stock], () => {
       {{ data?.notice }}
     </p>
     <template v-else>
-      <template v-if="view === 'overview' && report">
-        <p class="materials-note">
-          {{ report.endDate }} 披露持仓：股票占净资产 <strong>{{ pct(report.stockWeightPct) }}</strong>，前几大持仓为 {{ report.holdings.slice(0, 3).map(h => h.stockName).join('、') }}。持仓可能已发生变化。
-        </p>
-        <button
-          type="button"
-          class="material-link"
-          @click="navigate('holdings')"
-        >
-          查看持仓与行业分布 →
-        </button>
-      </template>
-
       <template v-if="view === 'holdings' && report">
         <label class="material-field">选择报告
           <select
@@ -163,12 +139,6 @@ watch(() => [props.fundCode, props.view, route.query.stock], () => {
         <div class="material-stat-line">
           <span>股票仓位 <strong>{{ pct(report.stockWeightPct) }}</strong></span>
           <span>已披露股票 <strong>{{ report.holdings.length }} 只</strong></span>
-          <a
-            v-if="report.sourceUrl"
-            :href="report.sourceUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-          >查看报告原文 ↗</a>
         </div>
         <div class="material-table-wrap">
           <table class="material-table">
@@ -238,32 +208,42 @@ watch(() => [props.fundCode, props.view, route.query.stock], () => {
       </template>
 
       <template v-if="view === 'company'">
-        <label class="material-field">选择公司
+        <p class="materials-note">
+          <template v-if="report">
+            最新披露持仓截至 <strong>{{ report.endDate || '日期暂缺' }}</strong>，报告公布于 {{ report.publishedDate || '日期暂缺' }}。{{ report.fullDisclosure ? '本报告披露全部股票持仓。' : '本报告仅披露部分股票持仓。' }}
+          </template>
+          <template v-else>
+            最新披露持仓日期暂缺。
+          </template>
+          报告披露不代表实时持仓。
+        </p>
+        <p
+          v-if="!currentCompanies.length"
+          class="empty-analysis"
+        >
+          暂无最新披露的持仓公司资料。
+        </p>
+        <label
+          v-else
+          class="material-field"
+        >选择公司
           <select
             v-model="stockCode"
             @change="load"
           >
-            <optgroup label="最新报告披露的持仓"><option
+            <option
               v-for="c in currentCompanies"
               :key="c.stockCode"
               :value="c.stockCode"
-            >{{ c.stockName }} · {{ c.stockCode }}</option></optgroup>
-            <optgroup label="历史报告曾披露的持仓"><option
-              v-for="c in pastCompanies"
-              :key="c.stockCode"
-              :value="c.stockCode"
-            >{{ c.stockName }} · {{ c.stockCode }}</option></optgroup>
+            >{{ c.stockName }} · {{ c.stockCode }}</option>
           </select>
         </label>
         <template v-if="company">
-          <p class="materials-note">
-            {{ company.latestHeld ? '最新基金报告披露持有该公司，实际持仓可能已变化。' : '该公司出现在历史持仓报告中，最新报告未披露持有，不能当作当前持仓。' }}
-          </p>
           <p
             v-if="company.quote?.close != null"
             class="material-stat-line"
           >
-            <span>{{ company.quote.date }} 收盘价 <strong>{{ company.quote.close.toFixed(2) }} 元</strong></span>
+            <span>行情截至 {{ company.quote.date }}，收盘价 <strong>{{ company.quote.close.toFixed(2) }} 元</strong></span>
             <span>当日涨跌 <strong>{{ pct(company.quote.changePct) }}</strong></span>
           </p>
           <div class="section-heading">
@@ -336,124 +316,17 @@ watch(() => [props.fundCode, props.view, route.query.stock], () => {
             </ul>
           </details>
         </template>
-      </template>
-
-      <template v-if="view === 'documents' || view === 'overview'">
-        <form
-          v-if="view === 'documents'"
-          class="material-filters"
-          @submit.prevent="searchDocuments"
-        >
-          <label>资料类别<select
-            v-model="kind"
-            @change="searchDocuments"
-          ><option value="all">全部资料</option><option value="fund">基金公告与文件</option><option value="company">持仓公司公告</option><option value="news">基金公司新闻</option></select></label>
-          <label>关联公司<select
-            v-model="stockCode"
-            @change="searchDocuments"
-          ><option value="">全部公司</option><optgroup label="最新披露持仓"><option
-            v-for="c in currentCompanies"
-            :key="c.stockCode"
-            :value="c.stockCode"
-          >{{ c.stockName }}</option></optgroup><optgroup label="历史披露持仓"><option
-            v-for="c in pastCompanies"
-            :key="c.stockCode"
-            :value="c.stockCode"
-          >{{ c.stockName }}</option></optgroup></select></label>
-          <label class="material-search">标题搜索<input
-            v-model="keyword"
-            maxlength="80"
-            placeholder="输入公告关键词"
-          ></label><button
-            type="submit"
-            :disabled="docLoading"
-          >
-            搜索
-          </button>
-          <label class="material-checkbox"><input
-            v-model="latestOnly"
-            type="checkbox"
-            @change="searchDocuments"
-          >公司公告仅看最新报告持仓</label>
-        </form>
         <p
-          v-if="view === 'documents'"
-          class="materials-note"
+          v-else-if="currentCompanies.length"
+          class="empty-analysis"
         >
-          以下为已保存资料的原始标题和来源。基金公司新闻不等于持仓公司的全部新闻；公告尚未形成经核对的事件解读。
-        </p>
-        <p
-          v-if="docLoading"
-          role="status"
-          class="state-message"
-        >
-          正在加载公告…
-        </p>
-        <p
-          v-else-if="docError"
-          role="alert"
-        >
-          {{ docError }} <button
+          所选公司的最新持仓资料暂时无法显示，请重试。<button
             type="button"
-            @click="loadDocuments"
+            @click="load"
           >
             重试
           </button>
         </p>
-        <ul
-          v-else-if="docs?.items.length"
-          class="material-document-list"
-        >
-          <li
-            v-for="d in docs.items"
-            :key="d.id"
-          >
-            <div class="document-meta">
-              <time>{{ d.publishedDate || '日期暂缺' }}</time><span>{{ d.stockName || (d.kind === 'news' ? '基金公司新闻' : '基金公告与文件') }}</span><span v-if="d.kind === 'company'">{{ d.latestHeld ? '最新披露持仓关联' : '历史持仓关联' }}</span>
-            </div>
-            <a
-              v-if="d.sourceUrl"
-              :href="d.sourceUrl"
-              target="_blank"
-              rel="noopener noreferrer"
-            >{{ d.title }} ↗</a><strong v-else>{{ d.title }}</strong>
-            <p class="document-source">
-              {{ d.sourceName }} · {{ d.dateNote }}<span v-if="!d.textComplete"> · 部分文字待核对，可查看原文</span>
-            </p>
-          </li>
-        </ul>
-        <p
-          v-else
-          class="empty-analysis"
-        >
-          当前筛选下暂无已收集的资料。
-        </p>
-        <button
-          v-if="view === 'overview'"
-          type="button"
-          class="material-link"
-          @click="navigate('documents')"
-        >
-          查看全部公告与动态 →
-        </button>
-        <div
-          v-else-if="docs"
-          class="material-pagination"
-        >
-          <span>共 {{ docs.total.toLocaleString('zh-CN') }} 条 · 第 {{ docs.page }} / {{ Math.max(1, Math.ceil(docs.total / docs.pageSize)) }} 页</span><button
-            type="button"
-            :disabled="page <= 1 || docLoading"
-            @click="turnPage(-1)"
-          >
-            上一页
-          </button><button
-            type="button"
-            :disabled="page * docs.pageSize >= docs.total || docLoading"
-            @click="turnPage(1)"
-          >
-            下一页
-          </button>
-        </div>
       </template>
     </template>
   </section>
@@ -461,13 +334,13 @@ watch(() => [props.fundCode, props.view, route.query.stock], () => {
 
 <style scoped>
 .materials-panel { min-width: 0; }
-.materials-note, .document-source { color: var(--text-muted, #526a6b); font-size: .9rem; line-height: 1.7; }
+.materials-note { color: var(--text-muted, #526a6b); font-size: .9rem; line-height: 1.7; }
 .material-field { display: grid; gap: .5rem; max-width: 44rem; margin: 1rem 0; }
-select, input { font: inherit; padding: .65rem .75rem; border: 1px solid #c9d9d6; border-radius: 6px; background: white; color: #173c40; min-width: 0; }
+select { font: inherit; padding: .65rem .75rem; border: 1px solid #c9d9d6; border-radius: 6px; background: white; color: #173c40; min-width: 0; }
 select { max-width: 100%; }
 button { font: inherit; cursor: pointer; }
 button:disabled { cursor: default; opacity: .45; }
-button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid #70b5aa; outline-offset: 3px; }
+button:focus-visible, select:focus-visible { outline: 3px solid #70b5aa; outline-offset: 3px; }
 .material-link, .material-actions button { border: 0; padding: .35rem 0; background: transparent; color: #087e79; text-align: left; }
 .material-stat-line { display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: center; margin: 1.4rem 0; }
 .material-stat-line strong { font-size: 1.2rem; margin-left: .4rem; }
@@ -485,19 +358,8 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .business-details { margin-top: 1.5rem; }
 .business-details summary { cursor: pointer; font-weight: 600; }
 .business-list { padding: 0; list-style: none; }
-.material-filters { display: flex; flex-wrap: wrap; align-items: end; gap: .8rem; margin: 1rem 0; }
-.material-filters label { display: grid; gap: .35rem; font-size: .85rem; }
-.material-filters select { max-width: 15rem; }
-.material-search { flex: 1; min-width: 10rem; }
-.material-filters button, .material-pagination button { padding: .65rem 1rem; border: 1px solid #bcd3ce; border-radius: 6px; background: #f2f8f6; color: #176862; }
-.material-filters .material-checkbox { width: 100%; display: flex; align-items: center; padding-top: .4rem; }
 .material-document-list { padding: 0; list-style: none; }
 .material-document-list li { padding: 1.1rem 0; border-bottom: 1px solid #e0eae7; }
-.material-document-list a { color: #174b50; text-decoration: none; line-height: 1.7; font-weight: 600; }
-.material-document-list a:hover { text-decoration: underline; }
 .document-meta { display: flex; flex-wrap: wrap; gap: .85rem; font-size: .8rem; color: #687c7b; margin-bottom: .4rem; }
-.document-source { margin: .4rem 0 0; font-size: .78rem; }
-.material-pagination { display: flex; gap: .7rem; align-items: center; justify-content: end; flex-wrap: wrap; margin-top: 1.2rem; font-size: .9rem; }
-.material-pagination span { margin-right: auto; }
-@media (max-width: 700px) { .allocation-columns { grid-template-columns: 1fr; gap: 1rem; } .material-filters label { width: 100%; } .material-filters select { max-width: none; } .material-table td, .material-table th { padding: .7rem; } }
+@media (max-width: 700px) { .allocation-columns { grid-template-columns: 1fr; gap: 1rem; } .material-table td, .material-table th { padding: .7rem; } }
 </style>

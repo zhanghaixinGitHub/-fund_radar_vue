@@ -18,6 +18,18 @@ export interface SyncJobStatus {
   errorMessage: string | null
   startedAt: string | null
   finishedAt: string | null
+  /** 新任务返回的业务摘要；旧记录为空时表示没有该统计，不能默认全为零。 */
+  resultSummary?: {
+    counts?: { COMPLETED: number; WAITING: number; UNSUPPORTED: number; ERROR: number }
+    /** 逐基金周期的实际结果；目标日期未取得时为 null，不能用任务兼容日期代替。 */
+    items?: { fundCode: string; horizonId: string; targetDate: string | null; state: string; reason?: string | null }[]
+    /** 已从保存记录读回的周期、日期和基金数；为空或缺失不能推断存在历史预测。 */
+    savedResults?: { horizonId: string; targetDate: string; count: number }[]
+    followupIssues?: string[]
+    dailyUpdated?: boolean
+    historicalGapCount?: number
+    currentIssueCount?: number
+  } | null
 }
 
 /** 任务最近一次完整成功的持久化时间，不依赖当前 Python 进程是否重启。 */

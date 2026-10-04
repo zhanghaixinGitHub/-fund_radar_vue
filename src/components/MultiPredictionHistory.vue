@@ -7,6 +7,7 @@ import { usePredictionHistory } from '@/composables/usePredictionHistory'
 import { groupPredictionHistory, historyItemView, historyPeriods } from '@/utils/predictionHistory'
 import type { HistoryItem, MultiHistoryRow } from '@/utils/predictionHistory'
 import { dailyPredictionEvidence, multiPredictionEvidence } from '@/utils/predictionEvidence'
+import PredictionEvidenceBody from '@/components/PredictionEvidenceBody.vue'
 
 const props = defineProps<{ fundCode: string }>()
 const { multi, daily, busy, errors, more, hasMore, load, dailyDateComplete } = usePredictionHistory(
@@ -275,38 +276,21 @@ onBeforeUnmount(() => { sequence++ })
               重试
             </button>
           </p>
-          <p>{{ evidence.summary }}</p>
-          <ul v-if="evidence.supporting.length || evidence.opposing.length">
-            <li
-              v-for="reason in [...evidence.supporting, ...evidence.opposing]"
-              :key="reason"
-            >
-              {{ reason }}
-            </li>
-          </ul>
-          <ul v-else-if="evidence.facts.length">
-            <li
-              v-for="fact in evidence.facts"
-              :key="fact.label"
-            >
-              {{ fact.label }}：{{ fact.value }}
-            </li>
-          </ul>
-          <p>{{ selected.view.rule }}</p>
+          <PredictionEvidenceBody
+            :fund-code="fundCode"
+            :kind="selected.item.kind"
+            :record-id="selected.item.id"
+            :evidence="evidence"
+          />
+          <p v-if="selected.item.kind === 'multi'">
+            {{ selected.view.rule }}
+          </p>
           <p
             v-if="selected.view.caution"
             class="history-notice"
           >
             {{ selected.view.caution }}
           </p>
-          <ul class="history-limitations">
-            <li
-              v-for="limitation in evidence.limitations"
-              :key="limitation"
-            >
-              {{ limitation }}
-            </li>
-          </ul>
           <p
             v-if="selected.view.updatedAt"
             class="history-meta"

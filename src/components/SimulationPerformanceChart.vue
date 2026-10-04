@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as echarts from 'echarts'
-import type { SimDaily } from '@/types/simulation'
-const props = defineProps<{ points: SimDaily[] }>()
+import type { DecimalValue } from '@/types/simulation'
+import { earningsTooltipValue } from '@/utils/simulationEarnings'
+const props = defineProps<{ points: { date: string; cumulativeGain: DecimalValue | null }[] }>()
 const target = ref<InstanceType<typeof globalThis.HTMLDivElement> | null>(null)
 let chart: echarts.ECharts | null = null
 let observer: globalThis.ResizeObserver | null = null
@@ -16,10 +17,10 @@ async function draw() {
   chart.setOption({
     animation: false, aria: { enabled: true, description: '模拟累计收益金额曲线，已剔除本金投入，单位为元。' },
     grid: { left: 65, right: 22, top: 24, bottom: 45 },
-    tooltip: { trigger: 'axis', valueFormatter: (value: unknown) => `${Number(value).toFixed(2)} 元` },
+    tooltip: { trigger: 'axis', valueFormatter: earningsTooltipValue },
     xAxis: { type: 'category', data: props.points.map(p => p.date), axisLabel: { hideOverlap: true } },
     yAxis: { type: 'value', name: '收益（元）', scale: true },
-    series: [{ name: '累计收益', type: 'line', data: props.points.map(p => Number(p.cumulativeGain)),
+    series: [{ name: '累计收益', type: 'line', connectNulls: false, data: props.points.map(p => p.cumulativeGain == null ? null : Number(p.cumulativeGain)),
       showSymbol: props.points.length < 10, lineStyle: { color: '#0f766e', width: 2 }, itemStyle: { color: '#0f766e' } }],
   }, true)
 }

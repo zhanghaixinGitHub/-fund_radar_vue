@@ -8,15 +8,15 @@ import AccountFundingPanel from '@/components/AccountFundingPanel.vue'
 import AccountRiskPanel from '@/components/AccountRiskPanel.vue'
 import AccountOptionsPanel from '@/components/AccountOptionsPanel.vue'
 import { rememberPortfolioScroll, takePortfolioScroll } from '@/utils/advice'
-import { cancelSimOrder, changeSimPlan, getSimLedger, getSimOrders, getSimOverview, getSimPerformance, getSimPeriods, getSimPlans } from '@/api/simulation'
+import { rememberEarningsScroll, takeEarningsScroll, shouldOpenEarnings, shouldBlockEarningsLink } from '@/utils/simulationEarnings'
+import { cancelSimOrder, changeSimPlan, getSimLedger, getSimOrders, getSimOverview, getSimPeriods, getSimPlans } from '@/api/simulation'
 import SimulationTradeDialog from '@/components/SimulationTradeDialog.vue'
 import SimulationFundPicker from '@/components/SimulationFundPicker.vue'
-import SimulationPerformanceChart from '@/components/SimulationPerformanceChart.vue'
 import { useListLocation } from '@/composables/useListLocation'
 import { usePageNavigation } from '@/composables/usePageNavigation'
 import { useAuthStore } from '@/stores/auth'
-import type { SimDaily, SimLedger, SimOrder, SimOverview, SimPage, SimPeriod, SimPlan } from '@/types/simulation'
-import { planFrequency, shanghaiDate, simMoney, simPercent, simShares, simTime, simTone } from '@/utils/simulation'
+import type { SimLedger, SimOrder, SimOverview, SimPage, SimPeriod, SimPlan } from '@/types/simulation'
+import { planFrequency, simMoney, simPercent, simShares, simTime, simTone } from '@/utils/simulation'
 
 const route = useRoute()
 const router = useRouter()
@@ -32,7 +32,6 @@ const orders = ref<SimPage<SimOrder> | null>(null)
 const ledger = ref<SimPage<SimLedger> | null>(null)
 const periods = ref<SimPage<SimPeriod> | null>(null)
 const periodPlan = ref<SimPlan | null>(null)
-const history = ref<SimDaily[]>([])
 const loading = ref(false)
 const error = ref('')
 const message = ref('')
@@ -47,7 +46,6 @@ const orderPage = ref(1)
 const ledgerPage = ref(1)
 const periodPage = ref(1)
 const recordMode = ref<'orders' | 'ledger'>('orders')
-const days = ref(365)
 // 已提交的关键词由 URL 保存，输入框草稿在点击查询或按回车后才生效，返回持仓时可恢复。
 const appliedKeyword = computed(() => listLocation.value.keyword.trim())
 const keyword = ref(appliedKeyword.value)
@@ -143,13 +141,20 @@ async function loadDetails() {
         const result = await getSimLedger(ledgerPage.value, code)
         if (alive && current === detailGeneration) ledger.value = result
       }
-    } else if (section.value === 'holdings' && code) {
-      const result = await getSimPerformance(code, shanghaiDate(-days.value), shanghaiDate())
-      if (alive && current === detailGeneration) history.value = result
     }
   } catch (reason) { if (alive && current === detailGeneration) detailError.value = reason instanceof Error ? reason.message : '记录加载失败。' }
 }
 function selectCode(code: string) { void router.replace({ path: route.path, query: { ...route.query, fundCode: code || undefined, page: undefined } }) }
+function earningsTarget(code?: string) { return { name: 'portfolio-earnings', query: { ...(code ? { fundCode: code } : {}), from: route.fullPath } } }
+/** 名称与明确的收益链接提供原生键盘入口；卡片其余非交互区域补充点击，不吞掉文本选择。 */
+function openEarnings(event: globalThis.MouseEvent, code: string) {
+  if (shouldOpenEarnings(event, globalThis.getSelection()?.toString() ?? '')) void router.push(earningsTarget(code))
+}
+function protectEarningsSelection(event: globalThis.MouseEvent) {
+  if (shouldBlockEarningsLink(event, globalThis.getSelection()?.toString() ?? '')) {
+    event.preventDefault(); event.stopPropagation()
+  }
+}
 // 定投与交易记录共用基金搜索：关键词解析为唯一持仓基金后沿用 fundCode 精确过滤，空关键词恢复全部基金。
 const scopeKeyword = ref('')
 const scopeHint = ref('')
@@ -240,11 +245,11 @@ async function viewPeriods(plan: SimPlan, page = 1) {
 }
 watch([section, selectedCode], () => {
   endingPlan.value = null
-  orderPage.value = 1; ledgerPage.value = 1; history.value = []; orders.value = null; ledger.value = null; periodPlan.value = null
+  orderPage.value = 1; ledgerPage.value = 1; orders.value = null; ledger.value = null; periodPlan.value = null
   if (!['funding', 'account-risk', 'options'].includes(section.value) && !overview.value) void load()
   else void loadDetails()
 })
-watch([orderPage, ledgerPage, recordMode, days], () => void loadDetails())
+watch([orderPage, ledgerPage, recordMode], () => void loadDetails())
 watch(appliedKeyword, value => { keyword.value = value })
 watch(selectedCode, code => {
   scopeKeyword.value = code ? (selectedPosition.value ? `${selectedPosition.value.fundName} · ${code}` : code) : ''
@@ -269,12 +274,15 @@ watch([() => listLocation.value.page, planPage, section, overview], () => {
 onMounted(() => {
   void load().then(async () => {
     await nextTick()
-    const top = takePortfolioScroll(route.fullPath)
+    const top = takeEarningsScroll(route.fullPath) ?? takePortfolioScroll(route.fullPath)
     if (alive && top !== null) globalThis.scrollTo({ top })
   })
   polling = globalThis.setInterval(() => { if (globalThis.document.visibilityState === 'visible' && !busy.value && !trade.value) void load(true) }, 60_000)
 })
-onBeforeRouteLeave(to => { if (to.name === 'portfolio-advice') rememberPortfolioScroll(route.fullPath, globalThis.scrollY) })
+onBeforeRouteLeave(to => {
+  if (to.name === 'portfolio-advice') rememberPortfolioScroll(route.fullPath, globalThis.scrollY)
+  if (to.name === 'portfolio-earnings') rememberEarningsScroll(route.fullPath, globalThis.scrollY)
+})
 onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; globalThis.clearInterval(polling) })
 </script>
 
@@ -382,7 +390,11 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
       <template v-if="section === 'overview'">
         <div class="sim-metrics">
           <article><span>持仓市值（元）</span><strong>{{ simMoney(overview.marketValue) }}</strong><small>{{ overview.complete ? '按已公布净值计算' : '部分数据待核对，汇总含上次估值' }}</small></article>
-          <article><span>最近一期收益（元）</span><strong :class="simTone(overview.dailyGain)">{{ simMoney(overview.dailyGain) }}</strong><small>{{ dailyGainPending ? '部分基金净值待更新，暂未计入合计' : '各基金最新净值日的收益合计' }}</small></article>
+          <article>
+            <span>最近一期收益（元）</span><strong :class="simTone(overview.dailyGain)">{{ simMoney(overview.dailyGain) }}</strong><small>{{ dailyGainPending ? '部分基金净值待更新，暂未计入合计' : '各基金最新净值日的收益合计' }}</small><RouterLink :to="earningsTarget()">
+              查看收益明细 ›
+            </RouterLink>
+          </article>
           <article><span>持有收益（元）</span><strong :class="simTone(overview.holdingGain)">{{ simMoney(overview.holdingGain) }}</strong><small>当前剩余份额的浮动盈亏</small></article>
           <article><span>累计收益（元）</span><strong :class="simTone(overview.cumulativeGain)">{{ simMoney(overview.cumulativeGain) }}</strong><small>包含卖出盈亏与现金分红</small></article>
         </div>
@@ -501,17 +513,19 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
           <article
             v-for="p in pagedPositions"
             :key="p.fundCode"
-            class="sim-position-card"
+            class="sim-position-card sim-earnings-card"
+            @click.capture="protectEarningsSelection"
+            @click="openEarnings($event, p.fundCode)"
           >
             <header>
               <div>
-                <button
+                <RouterLink
                   class="sim-fund-link"
-                  type="button"
-                  @click="selectCode(p.fundCode)"
+                  data-earnings-link
+                  :to="earningsTarget(p.fundCode)"
                 >
                   {{ p.fundName }}
-                </button><p>{{ p.fundCode }} · {{ p.navDate ? `净值 ${p.navDate} / ${p.unitNav}` : '等待首笔交易确认' }}</p>
+                </RouterLink><p>{{ p.fundCode }} · {{ p.navDate ? `净值 ${p.navDate} / ${p.unitNav}` : '等待首笔交易确认' }}</p>
               </div><span
                 v-if="planFor(p.fundCode)"
                 class="sim-badge"
@@ -545,12 +559,24 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
             <p class="sim-muted">
               持有 {{ simShares(p.shares) }} 份 · 可卖 {{ simShares(p.availableShares) }} 份 · 冻结 {{ simShares(p.frozenShares) }} 份 · 剩余成本 {{ simMoney(p.cost) }} 元
             </p>
-            <DecisionPanelV2
-              :fund-code="p.fundCode"
-              :initial-report="adviceByFund.get(p.fundCode) ?? null"
-              compact
-            />
-            <div class="sim-actions">
+            <RouterLink
+              class="sim-earnings-link"
+              data-earnings-link
+              :to="earningsTarget(p.fundCode)"
+            >
+              查看收益明细 ›
+            </RouterLink>
+            <div data-earnings-exclude>
+              <DecisionPanelV2
+                :fund-code="p.fundCode"
+                :initial-report="adviceByFund.get(p.fundCode) ?? null"
+                compact
+              />
+            </div>
+            <div
+              class="sim-actions"
+              data-earnings-exclude
+            >
               <button
                 v-if="canWrite"
                 class="primary-button"
@@ -659,17 +685,6 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
             </button>
           </div>
         </nav>
-        <section
-          v-if="selectedPosition && positions.length"
-          class="sim-detail-panel"
-          aria-label="基金收益详情"
-        >
-          <div class="sim-section-header">
-            <h2>收益记录</h2><label>时间范围 <select v-model="days"><option :value="30">近一个月</option><option :value="90">近三个月</option><option :value="365">近一年</option><option :value="3650">全部（最多十年）</option></select></label>
-          </div>
-          <p>已实现收益 {{ simMoney(selectedPosition.realizedGain) }} 元 · 分红收益 {{ simMoney(selectedPosition.dividendGain) }} 元（应收 {{ simMoney(selectedPosition.receivableDividend) }} 元，已派 {{ simMoney(selectedPosition.paidDividend) }} 元）</p>
-          <SimulationPerformanceChart :points="history" />
-        </section>
       </template>
 
       <template v-else-if="section === 'plans'">
@@ -1011,3 +1026,12 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
     />
   </section>
 </template>
+
+<style scoped>
+.sim-earnings-card { cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease; }
+.sim-earnings-card:hover { border-color: #91bdb0; box-shadow: 0 2px 10px #203a3408; }
+.sim-earnings-card [data-earnings-exclude] { cursor: auto; }
+.sim-earnings-card .sim-fund-link { text-decoration: none; }
+.sim-earnings-link { display: inline-block; margin: 0 0 14px; color: #0f766e; font-size: 13px; }
+.sim-earnings-card a:focus-visible { outline: 2px solid #0f766e; outline-offset: 4px; }
+</style>

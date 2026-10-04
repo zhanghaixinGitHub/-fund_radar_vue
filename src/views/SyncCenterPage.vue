@@ -27,6 +27,7 @@ import {
   startSimulationFeeSync,
 } from '@/api/syncJobs'
 import type { SyncJobStatus } from '@/types/syncJob'
+import { predictionProgressNote, savedPredictionLines, syncResultLabel } from '@/utils/syncResult'
 
 type SyncTaskKey = 'marketNav' | 'freeDataCompletion' | 'featureSnapshot' | 'direction1dPrediction' | 'simulationFees' | 'fundMaterials' | 'fundNews'
 const { section, sectionLabel, sectionTarget } = usePageNavigation()
@@ -43,30 +44,14 @@ interface SyncTaskDefinition {
   loadLatest: () => Promise<SyncJobStatus | null>
 }
 
-/** 同步中心任务注册表；完整资料由资料更新统一覆盖，不再重复提供入口。 */
+/** 单项任务按一键同步的相对顺序展示；完整资料由资料更新覆盖，不再重复提供入口。 */
 const tasks: readonly SyncTaskDefinition[] = [
-  {
-    key: 'fundNews', jobType: 'FUND_NEWS', title: '近期基金公告核验',
-    description: '独立核对 002112 近 30 天的基金官方公告，保留原文与取得时间。暂未覆盖所有持仓公司、行业和政策消息，部分失败不会被记成没有事件。',
-    scheduleNote: '手动与一键同步共用流程，十分钟内复用上次检查。公告披露事实尚未进入走势预测，也不代表已经证明有效。',
-    actionLabel: '核对近期公告', start: startFundNewsSync, loadLatest: getLatestFundNewsSync,
-  },
-  {
-    key: 'fundMaterials',
-    jobType: 'FUND_MATERIALS',
-    title: '基金持仓与公司资料更新',
-    description: '更新 002112（德邦鑫星价值混合 C）的报告、持仓、股票行情、公司经营、公告和新闻，检查后自动更新基金详情。同时补齐本基金早期历史和已确定的 10 只参照基金资料，按历史日期检查是否够用于一日研究；不会自动训练或启用新预测。其他基金详情暂不支持。',
-    scheduleNote: '通过本页按钮或一键同步更新，不再定时执行。重复执行复用已保存成果，失败可重试；这些资料尚未用于正式预测，已披露持仓不代表实时持仓。',
-    actionLabel: '更新资料并补齐历史',
-    start: startFundMaterialsSync,
-    loadLatest: getLatestFundMaterialsSync,
-  },
   {
     key: 'marketNav',
     jobType: 'MARKET_NAV_INCREMENTAL',
     title: '基金市场净值增量同步',
     description: '逐只同步基金净值；境内基金按估值日历补齐最新净值及历史缺日。单只失败继续其他基金，成功数据保留；空响应会继续核查。',
-    scheduleNote: '通过本页按钮或一键同步补齐净值，不再随服务启动或定时补拉；未完成时请检查原因后手动重试。',
+    scheduleNote: '通过本页按钮或一键同步更新净值；未完成时可单独重试。',
     actionLabel: '开始同步',
     start: startMarketNavIncrementalSync,
     loadLatest: getLatestMarketNavIncrementalSync,
@@ -76,7 +61,7 @@ const tasks: readonly SyncTaskDefinition[] = [
     jobType: 'MARKET_FREE_DATA_COMPLETION',
     title: '基金资料与市场数据更新',
     description: '更新基金基础资料、历史净值、基金经理、份额规模、分红、场内基金行情和市场参考指数，已包含原完整资料同步。使用当前 2000 积分已验权的免费数据，持仓、公司经营与公告新闻由“基金持仓与公司资料更新”单独处理。',
-    scheduleNote: '按需手动执行；不会因打开详情页或预测页面自动拉取，指数仅同步已登记的 DRAFT/ACTIVE 参考序列。',
+    scheduleNote: '按需手动更新基金资料和已有市场参考数据。',
     actionLabel: '开始更新',
     start: startMarketFreeDataCompletionSync,
     loadLatest: getLatestMarketFreeDataCompletionSync,
@@ -92,16 +77,6 @@ const tasks: readonly SyncTaskDefinition[] = [
     loadLatest: getLatestStockFeatureSnapshotSync,
   },
   {
-    key: 'direction1dPrediction',
-    jobType: 'MULTI_PREDICTIONS',
-    title: '全部关注基金预测生成',
-    description: '检查全部有效账号关注的基金，按基金去重生成一日、五日、二十日和半年实验预测，并保存到各自的预测历史。每只基金检查四个周期；必要净值缺失或暂不适用时，逐周期列出具体原因，其他周期继续执行。',
-    scheduleNote: '后台每轮结束30分钟后自动检查；一键同步在净值、指标和费率更新后执行。境内四个周期统一规则：估值日15:00前，上一估值日净值齐全才能预测今天；15:00及之后，取得当天净值后预测下一估值日，否则等待净值。非估值日按估值日历处理；历史缺日先补齐。同一输入复用结果；截止前取得有效新输入可追加判断，旧记录保留。此处显示本次服务启动后的手动同步任务，公共预测原文永久留档。',
-    actionLabel: '生成全部关注基金预测',
-    start: startMultiPredictionSync,
-    loadLatest: getLatestMultiPredictionSync,
-  },
-  {
     key: 'simulationFees',
     jobType: 'SIMULATION_FEES',
     title: '模拟组合申赎费率同步',
@@ -111,7 +86,36 @@ const tasks: readonly SyncTaskDefinition[] = [
     start: startSimulationFeeSync,
     loadLatest: getLatestSimulationFeeSync,
   },
+  {
+    key: 'direction1dPrediction',
+    jobType: 'MULTI_PREDICTIONS',
+    title: '全部关注基金预测生成',
+    description: '检查全部有效账号关注的基金，按基金去重生成一日、五日、二十日和半年实验预测，并保存到各自的预测历史。每只基金检查四个周期；必要净值缺失或暂不适用时，逐周期列出具体原因，其他周期继续执行。',
+    scheduleNote: '通过手动按钮或一键同步生成，不再定时执行；一键同步在净值、基础资料、指标和费率更新后执行，随后继续更新公告与持仓资料。境内四个周期统一规则：估值日15:00前，上一估值日净值齐全才能预测今天；15:00及之后，取得当天净值后预测下一估值日，否则等待净值。非估值日按估值日历处理；历史缺日先补齐。同一输入复用结果；截止前取得有效新输入可追加判断，旧记录保留。已保存预测按所属日期保留，下一期等待不影响查看上一期结果。',
+    actionLabel: '生成全部关注基金预测',
+    start: startMultiPredictionSync,
+    loadLatest: getLatestMultiPredictionSync,
+  },
+  {
+    key: 'fundNews', jobType: 'FUND_NEWS', title: '近期基金公告核验',
+    description: '独立核对 002112 近 30 天的基金官方公告，保留原文与取得时间。暂未覆盖所有持仓公司、行业和政策消息，部分失败不会被记成没有事件。',
+    scheduleNote: '手动与一键同步共用流程，十分钟内复用上次检查。公告披露事实尚未进入走势预测，也不代表已经证明有效。',
+    actionLabel: '核对近期公告', start: startFundNewsSync, loadLatest: getLatestFundNewsSync,
+  },
+  {
+    key: 'fundMaterials',
+    jobType: 'FUND_MATERIALS',
+    title: '基金持仓与公司资料更新',
+    description: '更新 002112（德邦鑫星价值混合 C）的报告、持仓、行情、公司经营、公告和新闻。当前资料更新与历史缺口分别显示，历史资料未齐时保留已核实成果。其他基金暂不支持。',
+    scheduleNote: '通过本页按钮或一键同步更新，不再定时执行。重复执行复用已保存成果，失败可重试；这些资料尚未用于正式预测，已披露持仓不代表实时持仓。',
+    actionLabel: '更新资料并补齐历史',
+    start: startFundMaterialsSync,
+    loadLatest: getLatestFundMaterialsSync,
+  },
 ]
+
+/** 一键同步还包含独立面板的标普500，以及只随批次执行的002112分析资料留存。 */
+const allSyncTaskCount = tasks.length + 2
 
 const jobs = ref<Record<SyncTaskKey, SyncJobStatus | null>>({
   fundNews: null,
@@ -170,11 +174,30 @@ const visibleTasks = computed(() => tasks.filter((task) => task.key === section.
 const runningCount = computed(() => Object.values(jobs.value).filter((job) => job?.status === 'RUNNING' || job?.status === 'QUEUED').length + Number(spxActive.value))
 const attentionCount = computed(() => Object.values(jobs.value).filter((job) => job?.status === 'FAILED' || job?.status === 'PARTIAL_SUCCESS').length
   + Number(['FAILED', 'INCOMPLETE', 'INTERRUPTED', 'EXPIRED'].includes(spxStatus.value?.lastAttempt?.state ?? '')))
-const spxStateLabel = computed(() => ({ ON_TIME: '8点前已保存', LATE: '已同步·晚到', REFERENCE_ONLY: '已同步·资料参考',
-  INCOMPLETE: '数据未齐', RUNNING: '正在同步', INTERRUPTED: '同步中断', FAILED: '同步失败', EXPIRED: '资料过期' })[spxStatus.value?.lastAttempt?.state ?? ''] ?? '尚未运行')
+// 总览统一展示同步结果，取数时间与资料用途在详情中说明。
+const spxLabels: Record<string, string> = { ON_TIME: '同步完成', LATE: '同步完成', REFERENCE_ONLY: '同步完成',
+  INCOMPLETE: '数据未齐', RUNNING: '正在同步', INTERRUPTED: '同步中断', FAILED: '同步失败', EXPIRED: '资料过期' }
+const spxStateLabel = computed(() => spxLabels[spxStatus.value?.lastAttempt?.state ?? ''] ?? '尚未运行')
 const spxSuccessAt = computed(() => ['ON_TIME', 'LATE', 'REFERENCE_ONLY'].includes(spxStatus.value?.lastAttempt?.state ?? '')
   ? spxStatus.value?.lastAttempt?.persistedAt ?? null : null)
 const errorMessage = ref('')
+/** 标普500沿用任务列表的状态配色；成功仅表示资料已保存。 */
+const spxStateClass = computed(() => {
+  if (loading.value || errorMessage.value) return 'is-idle'
+  const state = spxStatus.value?.lastAttempt?.state
+  if (!state) return 'is-idle'
+  const classes: Record<NonNullable<SpxManualStatus['lastAttempt']>['state'], string> = {
+    ON_TIME: 'is-succeeded',
+    LATE: 'is-succeeded',
+    REFERENCE_ONLY: 'is-succeeded',
+    RUNNING: 'is-running',
+    INCOMPLETE: 'is-partial_success',
+    EXPIRED: 'is-partial_success',
+    INTERRUPTED: 'is-failed',
+    FAILED: 'is-failed',
+  }
+  return classes[state] ?? 'is-idle'
+})
 const actionError = ref('')
 const actionMessage = ref('')
 let pollingTimer: ReturnType<typeof globalThis.setTimeout> | undefined
@@ -207,19 +230,19 @@ function statusLabel(status: SyncJobStatus['status'] | undefined, isBatch = fals
   if (isMaterials && status === 'PARTIAL_SUCCESS') return '部分资料尚未补齐'
   if (isPrediction) return {
     QUEUED: '等待生成', RUNNING: '正在生成预测', SUCCEEDED: '预测检查完成',
-    PARTIAL_SUCCESS: '部分基金未生成', FAILED: '预测未生成',
+    PARTIAL_SUCCESS: '部分预测待完成', FAILED: '本次预测检查未完成',
   }[status ?? 'QUEUED']
   return {
     QUEUED: '等待执行',
     RUNNING: isCalculation ? '正在计算' : '正在同步',
     SUCCEEDED: isCalculation ? '计算完成' : '同步完成',
-    PARTIAL_SUCCESS: isBatch ? '部分任务未完成' : isFee ? '部分基金同步失败' : '净值已同步，历史指标待重试',
+    PARTIAL_SUCCESS: isBatch ? '部分任务未完成' : isFee ? '部分基金同步失败' : '部分项目待完成',
     FAILED: isCalculation ? '计算未完成' : '同步未完成',
   }[status ?? 'QUEUED']
 }
 
 /** 格式化服务端时间；无值时不伪造成已开始或已结束。 */
-function formatTime(value: string | null): string {
+function formatTime(value: string | null | undefined): string {
   if (!value) {
     return '尚无成功记录'
   }
@@ -258,8 +281,9 @@ async function refreshJobStates(): Promise<void> {
   allJob.value = latestAll
   spxStatus.value = latestSpx
   tasks.forEach((task, index) => {
-    jobs.value[task.key] = latestJobs[index]
-    if (latestJobs[index]) updateLastSuccessfulTime(latestJobs[index])
+    const latest = latestJobs[index] ?? null
+    jobs.value[task.key] = latest
+    if (latest) updateLastSuccessfulTime(latest)
   })
   stateReady.value = true
 }
@@ -388,7 +412,7 @@ onBeforeUnmount(() => {
       {{ sectionLabel }}
     </h1>
     <p class="lead">
-      集中发起和跟踪基金市场同步任务；所有进度均来自服务端实际执行状态，不涉及买卖或交易。
+      更新基金资料、净值和预测，查看完成情况及需要重试的项目。
     </p>
 
     <SpxManualSyncPanel v-if="section === 'spxManual'" />
@@ -404,7 +428,7 @@ onBeforeUnmount(() => {
           <h2 id="sync-all-title">
             一键同步全部
           </h2>
-          <p>依次执行九项任务：标普500 → 近期基金公告核验 → 基金资料与市场数据更新 → 基金持仓与公司资料 → 净值增量 → 002112 分析资料更新与留存 → 历史指标计算 → 模拟费率 → 全部关注基金四周期预测（含综合建议与到期核验）。某项失败会记录原因，并继续尝试其余任务。</p>
+          <p>依次执行九项任务：标普500 → 净值增量 → 基金资料与市场数据更新 → 历史指标计算 → 模拟费率 → 全部关注基金四周期预测（含综合建议与到期核验） → 近期基金公告核验 → 基金持仓与公司资料 → 002112 分析资料更新与留存。某项失败会记录原因，并继续尝试其余任务。</p>
         </div>
         <span
           v-if="allJob"
@@ -497,8 +521,8 @@ onBeforeUnmount(() => {
       <div class="watchlist-summary-grid workspace-summary-grid">
         <article class="detail-overview-card">
           <p class="detail-overview-label">
-            已配置任务
-          </p><strong class="detail-overview-value">{{ tasks.length + 1 }} 类</strong>
+            一键同步任务
+          </p><strong class="detail-overview-value">{{ allSyncTaskCount }} 项</strong>
         </article>
         <article class="detail-overview-card">
           <p class="detail-overview-label">
@@ -529,6 +553,24 @@ onBeforeUnmount(() => {
           <table>
             <thead><tr><th>任务</th><th>最近状态</th><th>上次成功</th><th>操作</th></tr></thead>
             <tbody>
+              <tr>
+                <td><strong>美国标普500手动同步</strong><span>一键同步首先执行，也可单独手动获取；两个入口共用执行间隔。</span></td>
+                <td>
+                  <span
+                    class="sync-status"
+                    :class="spxStateClass"
+                  >{{ loading ? '读取中…' : errorMessage ? '状态暂不可用' : spxStateLabel }}</span>
+                </td>
+                <td>{{ loading || errorMessage ? '—' : spxSuccessAt ? formatTime(spxSuccessAt) : '最近一次无成功记录' }}</td>
+                <td>
+                  <RouterLink
+                    class="secondary-link"
+                    :to="sectionTarget('spxManual')"
+                  >
+                    查看详情 →
+                  </RouterLink>
+                </td>
+              </tr>
               <tr
                 v-for="task in tasks"
                 :key="task.key"
@@ -538,26 +580,13 @@ onBeforeUnmount(() => {
                   <span
                     class="sync-status"
                     :class="jobs[task.key] ? `is-${jobs[task.key]!.status.toLowerCase()}` : 'is-idle'"
-                  >{{ loading ? '读取中…' : errorMessage ? '状态暂不可用' : jobs[task.key] ? statusLabel(jobs[task.key]!.status, false, task.key === 'simulationFees', task.key === 'featureSnapshot', task.key === 'direction1dPrediction', (task.key === 'fundMaterials' || task.key === 'fundNews')) : '尚未运行' }}</span>
+                  >{{ loading ? '读取中…' : errorMessage ? '状态暂不可用' : jobs[task.key] ? syncResultLabel(jobs[task.key]) || statusLabel(jobs[task.key]!.status, false, task.key === 'simulationFees', task.key === 'featureSnapshot', task.key === 'direction1dPrediction', (task.key === 'fundMaterials' || task.key === 'fundNews')) : '尚未运行' }}</span>
                 </td>
                 <td>{{ loading || errorMessage ? '—' : formatTime(lastSuccessfulAt[task.jobType]) }}</td>
                 <td>
                   <RouterLink
                     class="secondary-link"
                     :to="sectionTarget(task.key)"
-                  >
-                    查看详情 →
-                  </RouterLink>
-                </td>
-              </tr>
-              <tr>
-                <td><strong>美国标普500手动同步</strong><span>一键同步首先执行，也可单独手动获取；共用每日次数。</span></td>
-                <td>{{ loading ? '读取中…' : errorMessage ? '状态暂不可用' : spxStateLabel }}</td>
-                <td>{{ loading || errorMessage ? '—' : spxSuccessAt ? formatTime(spxSuccessAt) : '最近一次无成功记录' }}</td>
-                <td>
-                  <RouterLink
-                    class="secondary-link"
-                    :to="sectionTarget('spxManual')"
                   >
                     查看详情 →
                   </RouterLink>
@@ -589,7 +618,7 @@ onBeforeUnmount(() => {
           class="sync-status"
           :class="jobs[task.key] ? `is-${jobs[task.key]!.status.toLowerCase()}` : 'is-idle'"
         >
-          {{ jobs[task.key] ? statusLabel(jobs[task.key]!.status, false, task.key === 'simulationFees', task.key === 'featureSnapshot', task.key === 'direction1dPrediction', (task.key === 'fundMaterials' || task.key === 'fundNews')) : task.key === 'direction1dPrediction' ? '本次服务启动后无手动记录' : '尚未运行' }}
+          {{ jobs[task.key] ? syncResultLabel(jobs[task.key]) || statusLabel(jobs[task.key]!.status, false, task.key === 'simulationFees', task.key === 'featureSnapshot', task.key === 'direction1dPrediction', (task.key === 'fundMaterials' || task.key === 'fundNews')) : task.key === 'direction1dPrediction' ? '尚无执行记录' : '尚未运行' }}
         </span>
       </div>
 
@@ -626,7 +655,7 @@ onBeforeUnmount(() => {
           v-else-if="task.key === 'direction1dPrediction'"
           class="sync-progress-note"
         >
-          {{ isActive(task) ? '正在逐周期检查关注基金；缺净值的项目会等待，其他基金继续，具体进度见上方。' : `本期检查已结束，任务日期：${jobs[task.key]!.requestedNavDate}；一日目标日及其他周期起止日见对应预测卡` }}
+          {{ predictionProgressNote(jobs[task.key]) }}
         </p>
         <p
           v-else
@@ -635,6 +664,14 @@ onBeforeUnmount(() => {
           当前基金：{{ jobs[task.key]!.currentFundCode || '正在准备或写入数据' }} · 目标日期：{{ jobs[task.key]!.requestedNavDate }}
         </p>
       </div>
+
+      <p
+        v-for="line in savedPredictionLines(jobs[task.key])"
+        :key="line"
+        class="sync-progress-note"
+      >
+        {{ line }}
+      </p>
 
       <dl
         v-if="jobs[task.key]"
@@ -728,17 +765,12 @@ onBeforeUnmount(() => {
         运行说明
       </h2>
       <ul>
-        <li>一键同步依次执行标普500、近期基金公告、基金资料与市场数据更新、基金持仓与公司资料、净值增量、002112 分析资料更新与留存、历史指标计算、模拟费率、一日及其他周期预测与综合建议核验，共九类任务；某项失败会单列未完成，其余任务继续。</li>
-        <li>净值补拉、002112 分析资料更新与留存、基金持仓与公司资料补齐均由手动触发，不再定时执行。同步后才发布的数据需下次更新才能获取；分析资料留存未完成时，可重新执行一键同步。</li>
-        <li>预测无需系统或个人实验开关。每只基金每个周期期次复用已有预测；缺数据、日历政策待补或服务失败时列出原因，不能用历史补算冒充提前预测。</li>
-        <li>模拟费率支持单只刷新和全量初始化；全量范围为模拟持仓与定投计划涉及的基金。同步成功后可在“费率维护”中查询和编辑规则。</li>
-        <li>某项失败仍尝试后续任务；批次部分成功不代表所有数据均已补齐，可查看对应任务并单独重试。</li>
-        <li>批次与单项任务共用互斥限制。关闭网页不影响执行；Python 服务重启后不会自动续跑，实时批次状态也会清空。</li>
-        <li>净值自动补拉每轮结束30分钟后继续检查；临时错误退避重试，成功数据保留，中间缺日也会补拉。</li>
-        <li>净值增量同步成功后，会自动计算股票型基金的历史指标，无需再点计算按钮；若计算失败，可进入“历史指标计算”单独重试。</li>
-        <li>基金资料与市场数据更新已包含原完整资料同步，按需手动执行；只使用当前已验权的免费数据，持仓、公司经营与公告新闻由“基金持仓与公司资料更新”单独处理。</li>
-        <li>任意时刻只允许一个市场同步任务运行；页面每秒读取一次服务端进度，不会重复触发数据源调用。</li>
-        <li>定投计划由后台在每个交易日上午 10:00 自动执行；左侧“定投手动执行”可为每个进行中的计划按前一交易日净值立即补入一期并确认，用于补齐持仓，同一天重复点击不会重复买入，也不属于一键同步全部。</li>
+        <li>一键同步更新基金资料、净值和预测；某项未完成时，其余任务继续，已成功的成果保留。</li>
+        <li>净值和预测通过本页按钮或一键同步更新；同一基金、日期和周期已有预测时直接复用。</li>
+        <li>下一期资料未齐时显示等待，已保存的预测按所属日期保留；等待不代表本期已完成。</li>
+        <li>当前资料与历史资料缺口分别显示；部分成功不代表所有资料均已补齐，可单独重试未完成项。</li>
+        <li>关闭网页不影响正在执行的更新。同一时间只能发起一个同步任务。</li>
+        <li>模拟费率支持单只刷新和全量初始化，全量范围为模拟持仓与定投计划涉及的基金。</li>
       </ul>
     </section>
   </section>
