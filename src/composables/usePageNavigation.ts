@@ -26,6 +26,7 @@ const pageSections: Record<string, PageSection[]> = {
     { key: 'manager', label: '基金经理' },
     { key: 'share', label: '份额规模' },
     { key: 'dividend', label: '分红记录' },
+    { key: 'rating', label: '基金评级' },
     { key: 'holdings', label: '基金持仓', group: '投资与动态' },
     { key: 'company', label: '持仓公司经营' },
     { key: 'documents', label: '公告与动态' },
@@ -40,6 +41,7 @@ const pageSections: Record<string, PageSection[]> = {
     { key: 'share', label: '份额规模' },
     { key: 'dividend', label: '分红记录' },
     { key: 'comparison', label: '同类对比' },
+    { key: 'rating', label: '基金评级' },
     { key: 'holdings', label: '基金持仓', group: '投资与动态' },
     { key: 'company', label: '持仓公司经营' },
     { key: 'documents', label: '公告与动态' },
@@ -70,6 +72,7 @@ const pageSections: Record<string, PageSection[]> = {
     { key: 'marketNav', label: '净值增量同步', group: '任务分类' },
     { key: 'freeDataCompletion', label: '基金资料与市场数据更新' },
     { key: 'fundMaterials', label: '基金持仓与公司资料更新' },
+    { key: 'fundRatings', label: '基金评级更新' },
     { key: 'fundNews', label: '近期基金公告核验' },
     { key: 'featureSnapshot', label: '历史指标计算' },
     { key: 'direction1dPrediction', label: '全部关注基金预测' },
@@ -160,6 +163,7 @@ export function usePageNavigation() {
       else query.type = key
     } else {
       query.section = key
+      if (key !== 'rating') delete query.ratingRef
       if (!['company', 'documents'].includes(key)) delete query.stock
       delete query.user
       delete query.tab

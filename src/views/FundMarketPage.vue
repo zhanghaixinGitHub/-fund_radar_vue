@@ -3,7 +3,8 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import { useFundMarket } from '@/composables/useFundMarket'
-import { readEvaluationStatus, type EvaluationStatus } from '@/api/fundEvaluation'
+import { readFundRatings, type RatingSummary } from '@/api/fundRating'
+import FundRatingBadge from '@/components/FundRatingBadge.vue'
 import {
   changeRateTone,
   formatChangeRate,
@@ -39,16 +40,19 @@ const {
   totalPages,
 } = useFundMarket()
 const route = useRoute()
-const evaluations = ref<Record<string, EvaluationStatus>>({})
+const evaluations = ref<Record<string, RatingSummary>>({})
+const ratingLoading = ref(false)
 let evaluationSequence = 0
 watch(funds, async rows => {
   const ticket = ++evaluationSequence
   evaluations.value = {}
+  ratingLoading.value = rows.length > 0
   if (!rows.length) return
   try {
-    const response = await readEvaluationStatus(rows.map(row => row.fundCode))
+    const response = await readFundRatings(rows.map(row => row.fundCode))
     if (ticket === evaluationSequence) evaluations.value = Object.fromEntries(response.items.map(item => [item.fundCode, item]))
-  } catch { /* 公共评价读取失败不影响净值列表；未返回资料显示未知，不补造低分。 */ }
+  } catch { /* 评级故障不影响净值列表，保留独立的不可用状态。 */ }
+  finally { if (ticket === evaluationSequence) ratingLoading.value = false }
 }, { immediate: true })
 onBeforeUnmount(() => evaluationSequence++)
 
@@ -140,6 +144,7 @@ const fundGroups = computed(() => {
           <li
             v-for="fund in group.items"
             :key="fund.fundCode"
+            class="fund-market-entry"
           >
             <RouterLink
               class="fund-card"
@@ -172,8 +177,15 @@ const fundGroups = computed(() => {
                 <span :class="['change-rate', changeRateTone(fund.monthChangeRate)]">近一月 {{ formatChangeRate(fund.monthChangeRate) }}</span>
               </span>
               <span class="as-of-date">数据截至：{{ fund.asOfDate || '尚无合规净值同步' }}</span>
-              <span class="as-of-date">历史评价：{{ evaluations[fund.fundCode]?.message || '资料暂不可用' }}</span>
             </RouterLink>
+            <FundRatingBadge
+              :value="evaluations[fund.fundCode]"
+              :loading="ratingLoading"
+              :fund-name="fund.fundName"
+              :to="{ name: 'fund-detail', params: { fundCode: fund.fundCode }, query: {
+                from: route.fullPath, section: 'rating', ratingRef: evaluations[fund.fundCode]?.ratingRef || undefined,
+              } }"
+            />
           </li>
         </ul>
       </section>

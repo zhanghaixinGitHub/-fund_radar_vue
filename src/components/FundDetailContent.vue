@@ -3,7 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import FundMaterialsPanel from '@/components/FundMaterialsPanel.vue'
 import FundRiskSummary from '@/components/FundRiskSummary.vue'
-import FundEvaluationStatus from '@/components/FundEvaluationStatus.vue'
+import FundRatingSection from '@/components/FundRatingSection.vue'
 import FundNewsFacts from '@/components/FundNewsFacts.vue'
 import FundAlertRules from '@/components/FundAlertRules.vue'
 import FundComparisonSection from '@/components/FundComparisonSection.vue'
@@ -276,9 +276,10 @@ watch(selectedNavRange, () => {
         v-if="section === 'holdings'"
         :fund-code="fundCode"
       />
-      <FundEvaluationStatus
-        v-if="section === 'comparison'"
+      <FundRatingSection
+        v-if="section === 'rating'"
         :fund-code="fundCode"
+        :rating-ref="typeof route.query.ratingRef === 'string' && /^[a-f0-9]{64}$/.test(route.query.ratingRef) ? route.query.ratingRef : undefined"
       />
       <FundComparisonSection
         v-if="section === 'comparison'"

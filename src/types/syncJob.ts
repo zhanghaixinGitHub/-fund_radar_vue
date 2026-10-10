@@ -20,6 +20,11 @@ export interface SyncJobStatus {
   finishedAt: string | null
   /** 新任务返回的业务摘要；旧记录为空时表示没有该统计，不能默认全为零。 */
   resultSummary?: {
+    /** 评级统计按基金份额计数；资料缺口不是计算故障。 */
+    target?: number
+    rated?: number
+    notRated?: number
+    failures?: string[]
     counts?: { COMPLETED: number; WAITING: number; UNSUPPORTED: number; ERROR: number }
     /** 已提交且尚待最终回执的一日预测数；用于继续查询状态，不代表等待行情资料。 */
     pendingDailyCount?: number

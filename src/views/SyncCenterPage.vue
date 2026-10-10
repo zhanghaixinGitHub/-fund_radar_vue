@@ -9,6 +9,8 @@ import type { SpxManualStatus } from '@/types/spxManual'
 
 import {
   getLastSuccessfulSyncTimes,
+  startFundRatingsSync,
+  getLatestFundRatingsSync,
   startFundNewsSync,
   getLatestFundNewsSync,
   startFundMaterialsSync,
@@ -29,13 +31,13 @@ import {
 import type { SyncJobStatus } from '@/types/syncJob'
 import { hasPendingPrediction, predictionProgressNote, savedPredictionLines, syncResultLabel } from '@/utils/syncResult'
 
-type SyncTaskKey = 'marketNav' | 'freeDataCompletion' | 'featureSnapshot' | 'direction1dPrediction' | 'simulationFees' | 'fundMaterials' | 'fundNews'
+type SyncTaskKey = 'marketNav' | 'freeDataCompletion' | 'featureSnapshot' | 'direction1dPrediction' | 'simulationFees' | 'fundMaterials' | 'fundNews' | 'fundRatings'
 const { section, sectionLabel, sectionTarget } = usePageNavigation()
 const auth = useAuthStore()
 
 interface SyncTaskDefinition {
   key: SyncTaskKey
-  jobType: 'MARKET_NAV_INCREMENTAL' | 'MARKET_FREE_DATA_COMPLETION' | 'STOCK_FEATURE_SNAPSHOT' | 'MULTI_PREDICTIONS' | 'SIMULATION_FEES' | 'FUND_MATERIALS' | 'FUND_NEWS'
+  jobType: 'MARKET_NAV_INCREMENTAL' | 'MARKET_FREE_DATA_COMPLETION' | 'STOCK_FEATURE_SNAPSHOT' | 'MULTI_PREDICTIONS' | 'SIMULATION_FEES' | 'FUND_MATERIALS' | 'FUND_NEWS' | 'FUND_RATINGS'
   title: string
   description: string
   scheduleNote: string
@@ -103,6 +105,12 @@ const tasks: readonly SyncTaskDefinition[] = [
     loadLatest: getLatestFundMaterialsSync,
   },
   {
+    key: 'fundRatings', jobType: 'FUND_RATINGS', title: '基金评级更新',
+    description: '核验市场目录内基金的八维资料，按完整比较类别更新评级。缺少必要资料时保留具体原因，不生成等级。',
+    scheduleNote: '仅手动或一键同步执行；打开基金页面只读取已有结果。',
+    actionLabel: '检查并更新评级', start: startFundRatingsSync, loadLatest: getLatestFundRatingsSync,
+  },
+  {
     key: 'direction1dPrediction',
     jobType: 'MULTI_PREDICTIONS',
     title: '全部关注基金预测生成',
@@ -118,6 +126,7 @@ const tasks: readonly SyncTaskDefinition[] = [
 const allSyncTaskCount = tasks.length + 2
 
 const jobs = ref<Record<SyncTaskKey, SyncJobStatus | null>>({
+  fundRatings: null,
   fundNews: null,
   fundMaterials: null,
   marketNav: null,
@@ -127,6 +136,7 @@ const jobs = ref<Record<SyncTaskKey, SyncJobStatus | null>>({
   simulationFees: null,
 })
 const starting = ref<Record<SyncTaskKey, boolean>>({
+  fundRatings: false,
   fundNews: false,
   fundMaterials: false,
   marketNav: false,
@@ -136,6 +146,7 @@ const starting = ref<Record<SyncTaskKey, boolean>>({
   simulationFees: false,
 })
 const lastSuccessfulAt = ref<Record<string, string | null>>({
+  FUND_RATINGS: null,
   FUND_NEWS: null,
   FUND_MATERIALS: null,
   MARKET_NAV_INCREMENTAL: null,
@@ -153,6 +164,7 @@ const spxActive = computed(() => spxStatus.value?.lastAttempt?.state === 'RUNNIN
 const ownPanel = computed(() => section.value === 'spxManual' || section.value === 'simRecurring')
 const startingAll = ref(false)
 const feeFundCode = ref('')
+const ratingFundCode = ref('')
 const canMaintainFees = computed(() => auth.hasPermission('SIM_FEE_RULE_ADMIN'))
 const canStartAll = computed(() => canStart.value && canMaintainFees.value)
 const allActive = computed(() => allJob.value?.status === 'QUEUED' || allJob.value?.status === 'RUNNING')
@@ -364,6 +376,13 @@ function startSingleFeeSync(task: SyncTaskDefinition): void {
   void startSync(task, code)
 }
 
+/** 单只评级只限定触发入口，服务端仍重算该基金完整比较类别。 */
+function startSingleRatingSync(task: SyncTaskDefinition): void {
+  const code = ratingFundCode.value.trim()
+  if (!/^[0-9]{6}$/.test(code)) { actionError.value = '请输入6位基金代码。'; return }
+  void startSync(task, code)
+}
+
 /** 仅发起一次后台批次；超时也只刷新状态，避免自动重发同步请求。 */
 async function startAll(): Promise<void> {
   if (!canStartAll.value) return
@@ -373,7 +392,7 @@ async function startAll(): Promise<void> {
   actionMessage.value = ''
   try {
     allJob.value = await startAllSync()
-    actionMessage.value = '一键同步已创建，包含 002112 分析资料更新与留存的九项任务将在后台依次执行。关闭或刷新页面不影响执行。'
+    actionMessage.value = `一键同步已创建，包含基金评级检查的${allSyncTaskCount}项任务将在后台依次执行。关闭或刷新页面不影响执行。`
   } catch (error) {
     actionError.value = error instanceof Error ? error.message : '未能确认批次是否创建，请查看最新状态。'
   } finally {
@@ -429,7 +448,7 @@ onBeforeUnmount(() => {
           <h2 id="sync-all-title">
             一键同步全部
           </h2>
-          <p>依次执行九项任务：标普500 → 净值增量 → 基金资料与市场数据更新 → 历史指标计算 → 模拟费率 → 近期基金公告核验 → 基金持仓与公司资料 → 002112 分析资料更新与留存 → 全部关注基金四周期预测（含综合建议与到期核验）。某项失败会记录原因，并继续尝试其余任务；预测按实际可用资料判断。</p>
+          <p>依次执行{{ allSyncTaskCount }}项任务：标普500 → 净值增量 → 基金资料与市场数据更新 → 历史指标计算 → 模拟费率 → 近期基金公告核验 → 基金持仓与公司资料 → 002112 分析资料更新与留存 → 基金评级更新 → 全部关注基金四周期预测（含综合建议与到期核验）。某项失败会记录原因，并继续尝试其余任务；预测按实际可用资料判断。</p>
         </div>
         <span
           v-if="allJob"
@@ -633,7 +652,7 @@ onBeforeUnmount(() => {
       >
         <div class="sync-progress-meta">
           <strong>{{ jobs[task.key]!.progressMessage }}</strong>
-          <span>{{ jobs[task.key]!.progressCurrent }} / {{ jobs[task.key]!.progressTotal }} {{ task.key === 'direction1dPrediction' ? '个基金周期项' : '步' }}</span>
+          <span>{{ jobs[task.key]!.progressCurrent }} / {{ jobs[task.key]!.progressTotal }} {{ task.key === 'direction1dPrediction' ? '个基金周期项' : task.key === 'fundRatings' ? '只基金' : '步' }}</span>
         </div>
         <div
           class="sync-progress-track"
@@ -659,6 +678,12 @@ onBeforeUnmount(() => {
           {{ predictionProgressNote(jobs[task.key]) }}
         </p>
         <p
+          v-else-if="task.key === 'fundRatings'"
+          class="sync-progress-note"
+        >
+          检查范围：{{ jobs[task.key]!.fundCodes.length ? `${jobs[task.key]!.fundCodes.join('、')} 所在完整比较类别` : '市场目录内全部基金' }} · 执行日期：{{ jobs[task.key]!.requestedNavDate }}
+        </p>
+        <p
           v-else
           class="sync-progress-note"
         >
@@ -680,8 +705,11 @@ onBeforeUnmount(() => {
       >
         <div><dt>开始时间</dt><dd>{{ formatTime(jobs[task.key]!.startedAt) }}</dd></div>
         <div><dt>结束时间</dt><dd>{{ formatTime(jobs[task.key]!.finishedAt) }}</dd></div>
-        <div><dt>{{ task.key === 'direction1dPrediction' ? '基金周期项数' : task.key === 'simulationFees' ? '检查基金数' : '读取条数' }}</dt><dd>{{ jobs[task.key]!.fetchedCount }}</dd></div>
-        <div v-if="task.key === 'simulationFees'">
+        <div><dt>{{ task.key === 'direction1dPrediction' ? '基金周期项数' : ['simulationFees', 'fundRatings'].includes(task.key) ? '检查基金数' : '读取条数' }}</dt><dd>{{ jobs[task.key]!.fetchedCount }}</dd></div>
+        <div v-if="task.key === 'fundRatings'">
+          <dt>已评级 / 暂未评级</dt><dd>{{ jobs[task.key]!.createdCount }} / {{ jobs[task.key]!.skippedCount }}</dd>
+        </div>
+        <div v-else-if="task.key === 'simulationFees'">
           <dt>保存成功 / 失败</dt><dd>{{ jobs[task.key]!.updatedCount }} / {{ jobs[task.key]!.fetchedCount - jobs[task.key]!.updatedCount }}</dd>
         </div>
         <div v-else-if="task.key === 'direction1dPrediction'">
@@ -705,7 +733,7 @@ onBeforeUnmount(() => {
         class="state-message sync-job-message"
         aria-live="polite"
       >
-        <template v-if="task.key === 'simulationFees' || task.key === 'featureSnapshot' || task.key === 'direction1dPrediction' || (task.key === 'fundMaterials' || task.key === 'fundNews')">
+        <template v-if="task.key === 'fundRatings' || task.key === 'simulationFees' || task.key === 'featureSnapshot' || task.key === 'direction1dPrediction' || (task.key === 'fundMaterials' || task.key === 'fundNews')">
           {{ jobs[task.key]!.progressMessage }}
         </template>
         <template v-else>
@@ -714,6 +742,28 @@ onBeforeUnmount(() => {
       </p>
 
       <div class="sync-task-actions">
+        <template v-if="task.key === 'fundRatings' && auth.hasPermission('SYNC_JOB_START')">
+          <div class="admin-inline-form">
+            <label for="rating-fund-code">基金代码</label>
+            <input
+              id="rating-fund-code"
+              v-model="ratingFundCode"
+              inputmode="numeric"
+              maxlength="6"
+              placeholder="如 002112"
+              :disabled="!canStart"
+              @keyup.enter="startSingleRatingSync(task)"
+            >
+          </div>
+          <button
+            class="primary-button"
+            type="button"
+            :disabled="!canStart"
+            @click="startSingleRatingSync(task)"
+          >
+            更新所在类别评级
+          </button>
+        </template>
         <template v-if="task.key === 'simulationFees' && auth.hasPermission('SYNC_JOB_START') && canMaintainFees">
           <div class="fee-code-field admin-inline-form">
             <label for="sync-fee-fund-code">基金代码</label>
