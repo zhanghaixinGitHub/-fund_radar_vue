@@ -14,6 +14,22 @@ const historySource = source('../src/utils/predictionHistory.ts')
   .replace("'./predictionDirection'", JSON.stringify(moduleUrl(source('../src/utils/predictionDirection.ts'))))
 const { groupPredictionHistory, historyItemView, historyReturnText, historyPeriods } = await import(moduleUrl(historySource))
 
+test('002112新分析选择最新输入，净值日期与比较基准分开，实际持平不算预测下跌正确', () => {
+  const row = { forecastId: 'new', receiptStatus: 'VERIFIED', outcomes: [], forecast: {
+    fundCode: '002112', targetNavDate: '2026-10-12', baseNavDate: '2026-10-09', latestNavDate: '2026-10-08',
+    generatedAt: '2026-10-09T09:00:00Z', schemaVersion: 'DIRECTION_1D_ANALYSIS_V1', revisionSequence: 101,
+    analysis: { direction: 'DOWN', confidence: 'LOW', summary: '弱势延续属于假设' }, input: { values: [] },
+  } }
+  const item = groupPredictionHistory('002112', [], [row])[0].items.T1_V1
+  const view = historyItemView(item)
+  assert.equal(view.direction, '偏下跌')
+  assert.equal(view.dataDate, '2026-10-08')
+  assert.equal(view.comparisonDate, '2026-10-09')
+  assert.equal(view.result, '等待结果')
+  row.outcomes.push({ actualDirection: 'FLAT', y: 0, navReturn: '0' })
+  assert.equal(historyItemView(item).result, '方向不符')
+})
+
 const multiRow = (id, date, generatedAt, horizonId = 'T5_V1', direction = 'UP') => ({ payload: {
   predictionId: id, fundCode: '008888', startDate: date, generatedAt, horizonId, direction,
   endDate: '2026-10-08', dataAsOf: '2026-09-23', flatThreshold: '.003',
@@ -24,6 +40,20 @@ const dailyRow = (id, date, generatedAt, directions = ['UP', 'UP']) => ({ foreca
   schemaVersion: 'DIRECTION_1D_EXPERIMENT_V2',
   branches: ['FIXED', 'WEEKLY'].map((branchId, i) => ({ branchId, status: 'AVAILABLE', predictedDirection: directions[i] })),
 } })
+
+test('依据不足是暂不判断，不把拒判当成持平或计入方向对错', () => {
+  const row = dailyRow('abstained', '2026-10-09', '2026-10-09T14:00:00+08:00')
+  row.forecast.branches.forEach(branch => {
+    branch.status = 'ABSTAINED'; branch.predictedDirection = null
+    branch.decision = { policy: '002112_EVENT_EVIDENCE_V2', reasonCodes: ['NO_DIRECTIONAL_EVENT'] }
+  })
+  row.outcomes = [{ actualDirection: 'UP', navReturn: '0.01', y: 1 }]
+  const [day] = groupPredictionHistory('008888', [], [row])
+  const view = historyItemView(day.items.T1_V1)
+  assert.equal(view.direction, '暂不判断')
+  assert.equal(view.result, '暂不计对错')
+  assert.equal(view.tone, 'neutral')
+})
 
 test('三次规则生成的同日起始预测只留最新，每日保留四个周期固定位置', () => {
   const rows = ['T5_V1', 'T20_V1', 'M6_V1'].flatMap(period => [

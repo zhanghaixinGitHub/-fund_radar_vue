@@ -36,7 +36,8 @@ async function load() {
 /** 只对同次判断方向一致且已经提前保存的记录核对，分歧不强行择优。 */
 function conclusion(record: Direction1dRecord) {
   if (record.receiptStatus !== 'VERIFIED') return '提前保存状态待核对'
-  const directions = new Set(record.forecast.branches.filter(b => b.status === 'AVAILABLE').map(b => b.predictedDirection))
+  const directions = new Set(record.forecast.schemaVersion === 'DIRECTION_1D_ANALYSIS_V1' ? [record.forecast.analysis.direction]
+    : record.forecast.branches.filter(b => b.status === 'AVAILABLE').map(b => b.predictedDirection))
   if (directions.size !== 1) return '当时方向不明确'
   const predicted = [...directions][0]
   const answer = record.outcomes[0]
@@ -172,7 +173,7 @@ const percent = (value: number | null | undefined) => value == null ? '尚无有
         </p>
         <template v-else>
           <h3>{{ record.forecast.fundName }} · 目标 {{ record.forecast.targetNavDate }}</h3>
-          <p>资料截至 {{ record.forecast.baseNavDate }} · 判断时间 {{ direction1dTime(record.forecast.generatedAt) }}</p>
+          <p>净值截至 {{ record.forecast.schemaVersion === 'DIRECTION_1D_ANALYSIS_V1' ? record.forecast.latestNavDate ?? '暂缺' : record.forecast.baseNavDate }} · 判断时间 {{ direction1dTime(record.forecast.generatedAt) }}</p>
           <p><strong>{{ direction1dSummary(record.forecast).direction }}</strong> · {{ conclusion(record) }}</p>
           <p>{{ direction1dSummary(record.forecast).history }}</p>
           <RouterLink :to="{ name: 'watchlist-fund-detail', params: { fundCode: record.forecast.fundCode }, query: { section: 'prediction-history' } }">

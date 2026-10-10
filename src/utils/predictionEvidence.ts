@@ -1,5 +1,5 @@
 import type { MultiPrediction } from '@/types/multiPrediction'
-import type { Direction1dEvidence, Direction1dForecast } from '@/types/direction1d'
+import type { Direction1dEvidence, Direction1dForecast, Direction1dLegacyForecast } from '@/types/direction1d'
 import type { PredictionEvidence } from '@/types/predictionEvidence'
 
 const names: Record<string, string> = {
@@ -97,6 +97,27 @@ export function multiPredictionEvidence(prediction?: MultiPrediction): Predictio
 /** 按原预测和原登记模型还原指标作用；解释不可用时只列原输入，不把分数当作上涨概率。 */
 export function dailyPredictionEvidence(forecast?: Direction1dForecast | null, restored?: Direction1dEvidence | null): PredictionEvidence {
   if (!forecast) return unavailable('一天预测尚未生成，暂时没有对应依据。')
+  if (forecast.schemaVersion === 'DIRECTION_1D_ANALYSIS_V1') {
+    if (restored && (restored.fundCode !== forecast.fundCode || restored.inputHash !== forecast.inputHash
+      || restored.targetNavDate !== forecast.targetNavDate)) return unavailable('取得的依据与这次判断不一致。')
+    return { summary: forecast.analysis.summary, facts: [{ label: '已取得净值截至', value: forecast.latestNavDate ?? '暂缺' }],
+      supporting: [], opposing: [], limitations: forecast.narrative.limitations }
+  }
+  if (forecast.input?.featureVersion === '002112_EVENT_EVIDENCE_V2') {
+    const original = forecast.branches.filter(b => ['AVAILABLE', 'ABSTAINED'].includes(b.status))
+    if (forecast.fundCode !== '002112' || !original.length) return unavailable('这条判断的事件依据暂时无法核对。')
+    if (restored && (restored.fundCode !== forecast.fundCode || restored.inputHash !== forecast.inputHash
+      || restored.targetNavDate !== forecast.targetNavDate || restored.baseNavDate !== forecast.baseNavDate
+      || restored.branches.length !== original.length
+      || !restored.branches.every(b => original.some(o => o.branchId === b.branchId && o.modelId === b.modelId
+        && o.modelHash === b.modelHash && o.status === b.status && o.predictedDirection === b.direction)))) {
+      return unavailable('取得的事件依据与这条判断不一致。')
+    }
+    return { summary: original.some(b => b.status === 'ABSTAINED') ? '依据不足或存在冲突，暂不判断涨跌。' : '正在核对本次判断对应的具体事件。',
+      facts: [{ label: '净值及行情截至', value: forecast.baseNavDate }], supporting: [], opposing: [],
+      limitations: ['暂不判断不等于预计持平，不计入方向对错。', '持仓来自披露报告，可能不同于当日真实持仓。'] }
+  }
+  if (forecast.input?.featureVersion === '002112_FULL_INFORMATION_V1') return informationPredictionEvidence(forecast, restored)
   const usable = forecast.branches.filter(branch => branch.status === 'AVAILABLE' && numeric(branch.score))
   const ternary = forecast.schemaVersion === 'DIRECTION_1D_EXPERIMENT_V2'
   if (!usable.length) return unavailable('这条记录没有可用的判断结果。')
@@ -144,11 +165,62 @@ export function dailyPredictionEvidence(forecast?: Direction1dForecast | null, r
       const toward = ternary || branch.direction === 'UP' ? 1 : -1
       const sorted = [...branch.factors].sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution))
       const comparison = ternary && branch.referenceDirection ? `相对于“${dailyLabels[branch.referenceDirection]}”` : ''
-      const sentence = (factor: typeof sorted[number]) => `${prefix}${names[factor.feature]}为 ${featureText(factor.feature, factor.value)}，在本次计算中${factor.contribution * toward > 0 ? '支持' : '削弱'}“${dailyLabels[branch.direction]}”${comparison}的判断。`
+      const sentence = (factor: typeof sorted[number]) => `${prefix}${names[factor.feature]}为 ${featureText(factor.feature, factor.value)}，在本次计算中${factor.contribution * toward > 0 ? '支持' : '削弱'}“${dailyLabels[branch.direction!]}”${comparison}的判断。`
       evidence.supporting.push(...sorted.filter(f => f.contribution * toward > 0).slice(0, 3).map(sentence))
       evidence.opposing.push(...sorted.filter(f => f.contribution * toward < 0).slice(0, 3).map(sentence))
     }
   }
   if (usable.length < 2) evidence.limitations.unshift('其中一次分析暂不可用，本次只保留另一次判断。')
+  return evidence
+}
+
+/** 综合信息只解释原预测实际使用的内容；无匹配资料时不说政策或新闻支持某个方向。 */
+function informationPredictionEvidence(forecast: Direction1dLegacyForecast, restored?: Direction1dEvidence | null): PredictionEvidence {
+  const info = forecast.input.information
+  if (forecast.fundCode !== '002112' || !info || info.version !== '002112_FULL_INFORMATION_V1') {
+    return unavailable('这条预测的信息依据暂时无法核对。')
+  }
+  const usable = forecast.branches.filter(b => b.status === 'AVAILABLE' && numeric(b.score))
+  if (!usable.length) return unavailable('这条记录没有可用的判断结果。')
+  const descriptions: Record<string, string> = {
+    nav_history: '基金净值走势', holding_market: '已披露持仓与大盘表现', company_announcements: '公司公告事实',
+    policy_information: '政策相关资料', news_information: '新闻相关资料', document_content: '公告和消息正文',
+  }
+  const kinds = [['ANNOUNCEMENT', '公告'], ['POLICY', '政策'], ['NEWS', '新闻']] as const
+  const available = kinds.filter(([key]) => info.counts[key] > 0).map(([, name]) => name)
+  const missing = kinds.filter(([key]) => info.counts[key] === 0).map(([, name]) => name)
+  const directions = new Set(usable.map(b => b.predictedDirection))
+  const result = directions.size === 1 ? `判断偏向“${dailyLabels[usable[0]!.predictedDirection!]}”。` : '各项判断存在分歧。'
+  const evidence: PredictionEvidence = {
+    summary: `综合当时可用的基金净值、持仓行情${available.length ? `、${available.join('、')}` : ''}，${result}`,
+    facts: [
+      { label: '持仓披露截至', value: info.holdingReportDate },
+      { label: '股票及大盘行情截至', value: info.marketDate },
+      { label: '已取得行情的披露持仓占净资产', value: `${(info.holdingCoverage * 100).toFixed(2)}%` },
+      ...kinds.filter(([key]) => info.counts[key] > 0).map(([key, name]) => ({ label: `相关${name}资料`, value: `${info.counts[key]} 条` })),
+    ],
+    supporting: [], opposing: [], limitations: [...info.limitations, '目标交易日单位净值与前一交易日比较，判断涨跌方向。'],
+  }
+  if (missing.length) evidence.limitations.unshift(`此次未找到可用的相关${missing.join('、')}，不代表没有相关事件或风险。`)
+  if (!restored) return evidence
+  const valid = restored.fundCode === forecast.fundCode && restored.inputHash === forecast.inputHash
+    && restored.baseNavDate === forecast.baseNavDate && restored.targetNavDate === forecast.targetNavDate
+    && restored.branches.length === usable.length && new Set(restored.branches.map(b => b.branchId)).size === usable.length
+    && restored.branches.every(b => usable.some(original => original.branchId === b.branchId && original.modelId === b.modelId
+      && original.modelHash === b.modelHash && original.predictedDirection === b.direction)
+      && b.factors.length === 6 && new Set(b.factors.map(f => f.feature)).size === 6
+      && b.factors.every(f => descriptions[f.feature] && numeric(f.value) && numeric(f.contribution)))
+  if (!valid) return unavailable('取得的解释与这条预测不一致，已停止展示原因。')
+  const unique = [...new Map(restored.branches.map(b => [b.modelHash, b])).values()]
+  for (const branch of unique) {
+    const factors = branch.factors.filter(f => (f.feature !== 'policy_information' || info.counts.POLICY > 0)
+      && (f.feature !== 'news_information' || info.counts.NEWS > 0)
+      && (f.feature !== 'company_announcements' || info.counts.ANNOUNCEMENT > 0))
+      .sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution))
+    const sentence = (f: typeof factors[number]) => `${descriptions[f.feature]}在本次计算中${f.contribution > 0 ? '支持' : '削弱'}“${dailyLabels[branch.direction!]}”的判断。`
+    evidence.supporting.push(...factors.filter(f => f.contribution > 0).slice(0, 3).map(sentence))
+    evidence.opposing.push(...factors.filter(f => f.contribution < 0).slice(0, 3).map(sentence))
+  }
+  evidence.limitations.push('这些是本次判断中的信息作用，不能当成真实市场涨跌的原因。')
   return evidence
 }

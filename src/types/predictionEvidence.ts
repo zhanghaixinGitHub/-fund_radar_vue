@@ -15,6 +15,22 @@ export interface PredictionNarrative {
   supporting: string
   opposing: string
   limitations: string[]
+  /** 原预测时已知的具体事实及条件性影响；来源链接只指向该条事实的原文。 */
+  drivers?: PredictionDriver[]
+  counterpoints?: PredictionDriver[]
+  conditions?: string[]
+  inventory?: { id: string; name: string; status: string; detail: string }[]
+}
+export interface PredictionDriver {
+  category: '净值' | '持仓行情' | '公告' | '政策' | '新闻' | '公司经营' | '基金经理'
+  title: string
+  assessment: string
+  observation: string
+  implication: string
+  meaning?: string
+  relation?: string
+  sources?: { title: string; url: string; publishedDate: string }[]
+  source?: { title: string; url: string; publishedDate: string }
 }
 export interface PredictionNarrativeResponse {
   fundCode: string

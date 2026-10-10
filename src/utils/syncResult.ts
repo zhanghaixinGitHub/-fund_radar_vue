@@ -1,11 +1,19 @@
 import type { SyncJobStatus } from '../types/syncJob'
 
+/** 批次收尾后仍只查询原任务；普通资料缺失不持续轮询，也不阻止用户显式重试。 */
+export function hasPendingPrediction(job: SyncJobStatus | null | undefined): boolean {
+  return (job?.resultSummary?.pendingDailyCount ?? 0) > 0
+    || !!job?.resultSummary?.items?.some(item => item.horizonId === 'T1' && item.state === 'WAITING'
+      && (item.pending || item.reason?.includes('尚未确认留档')))
+}
+
 /** 只读业务摘要；旧任务没有摘要时保留原状态，不推测等待或成功数量。 */
 export function syncResultLabel(job: SyncJobStatus | null | undefined): string | null {
   if (!job || !['SUCCEEDED', 'PARTIAL_SUCCESS', 'FAILED'].includes(job.status)) return null
   const summary = job.resultSummary
   if (summary?.counts) {
     if (summary.counts.ERROR > 0 || summary.followupIssues?.length) return '部分项目需重试'
+    if (hasPendingPrediction(job)) return '部分预测仍在生成'
     if (summary.counts.WAITING > 0) return savedPredictions(job).length ? '等待资料，已有预测保留' : '等待资料'
     if (summary.counts.UNSUPPORTED > 0) return summary.counts.COMPLETED > 0 ? '部分基金暂不支持' : '本次基金暂不支持'
   }

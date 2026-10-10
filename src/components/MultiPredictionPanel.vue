@@ -65,7 +65,7 @@ function failureMessage(failure?: PredictionError): string {
 
 /** 所有周期共用下方依据区域；点击只切换已读取的记录，不触发新预测。 */
 const selectedCard = computed(() => cards.value.find(card => card.horizon_id === selectedPeriod.value))
-const selectedTitle = computed(() => selectedPeriod.value === 'DAY' ? '下一交易日' : selectedCard.value?.title ?? '所选周期')
+const selectedTitle = computed(() => selectedPeriod.value === 'DAY' ? '一天预测' : selectedCard.value?.title ?? '所选周期')
 const evidence = computed(() => selectedPeriod.value === 'DAY'
   ? dailyPanel.value?.evidence ?? null : multiPredictionEvidence(selectedCard.value?.prediction))
 const selectedPrediction = computed(() => selectedCard.value?.prediction)
@@ -116,6 +116,11 @@ async function poll(id: string, run: number) {
 async function generate() {
   if (updating.value) return
   const canWrite = auth.hasPermission('WATCHLIST_SELF_WRITE')
+  // 002112的一日分析独立更新，查看一天时不连带生成其他周期。
+  if (props.fundCode === '002112' && selectedPeriod.value === 'DAY') {
+    await dailyPanel.value?.refresh(canWrite)
+    return
+  }
   void dailyPanel.value?.refresh(canWrite)
   if (!canWrite) { await load(); return }
   busy.value = true
@@ -260,7 +265,7 @@ onBeforeUnmount(() => { ++sequence; globalThis.clearTimeout(timer) })
           v-if="selectedPeriod === 'DAY' && dailyPanel?.forecast"
           class="forecast-basis-meta"
         >
-          预测日期：{{ dailyPanel.forecast.targetNavDate }} · 依据净值截至 {{ dailyPanel.forecast.baseNavDate }}
+          预测日期：{{ dailyPanel.forecast.targetNavDate }} · 已取得净值截至 {{ dailyPanel.forecast.schemaVersion === 'DIRECTION_1D_ANALYSIS_V1' ? dailyPanel.forecast.latestNavDate ?? '暂缺' : dailyPanel.forecast.baseNavDate }}
         </p>
         <template v-else-if="selectedPrediction">
           <p

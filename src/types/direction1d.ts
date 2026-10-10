@@ -34,14 +34,25 @@ export interface Direction1dBranch {
   modelHash: string | null
   score: number | null
   predictedDirection: 'UP' | 'NON_UP' | 'FLAT' | 'DOWN' | null
-  classScores?: { DOWN: number; FLAT: number; UP: number }
+  classScores?: { DOWN: number; FLAT: number; UP: number } | null
+  /** 依据不足时保留原因，不伪装成持平或继续展示旧方向。 */
+  decision?: { policy: string; reasonCodes: string[] }
   status: string
   trainedAt?: string
   registeredAt?: string
   modelSelectedAt?: string
   trainAsOf?: string
 }
-export interface Direction1dForecast extends Direction1dWindow {
+/** 当时实际使用的信息范围；缺少消息仍明确保留，不能当成没有风险。 */
+export interface Direction1dInformationSummary {
+  marketDate: string
+  holdingReportDate: string
+  holdingCoverage: number
+  counts: { ANNOUNCEMENT: number; POLICY: number; NEWS: number }
+  publicMaterialThrough: string | null
+  limitations: string[]
+}
+export interface Direction1dLegacyForecast extends Direction1dWindow {
   /** 实际输入的先后顺序；旧档不含此字段，页面不向用户展示内部编号。 */
   revisionSequence?: number
   activationPolicy?: 'BEFORE_WINDOW_V1' | 'AVAILABLE_AT_PREDICTION_V2'
@@ -56,8 +67,21 @@ export interface Direction1dForecast extends Direction1dWindow {
   generatedAt: string
   inputHash: string
   branches: Direction1dBranch[]
-  input: { eventStatus: string; featureAsOf: string; values: { navDate: string; unitNav: string }[] }
+  input: {
+    eventStatus: string; featureAsOf: string; values: { navDate: string; unitNav: string }[]
+    featureVersion?: string
+    information?: Direction1dInformationSummary & { version: string; sourceIdentity: string }
+  }
 }
+/** 002112独立综合分析；不伪造旧统计模型的分支或分数。 */
+export interface Direction1dAnalysisForecast extends Omit<Direction1dLegacyForecast, 'schemaVersion' | 'branches'> {
+  schemaVersion: 'DIRECTION_1D_ANALYSIS_V1'
+  latestNavDate: string | null
+  validationStatus: 'UNVALIDATED'
+  analysis: { direction: 'UP' | 'DOWN'; confidence: 'LOW'; summary: string; synthesis: string }
+  narrative: import('./predictionEvidence').PredictionNarrative
+}
+export type Direction1dForecast = Direction1dLegacyForecast | Direction1dAnalysisForecast
 export interface Direction1dOutcome {
   actualDirection: 'UP' | 'DOWN' | 'FLAT'
   y: 0 | 1
@@ -107,8 +131,11 @@ export interface Direction1dCurrent {
 export interface Direction1dEvidence {
   fundCode: string; inputHash: string; baseNavDate: string; targetNavDate: string
   branches: {
-    branchId: string; modelId: string; modelHash: string; direction: 'UP' | 'NON_UP' | 'FLAT' | 'DOWN'; intercept: number
+    branchId: string; modelId: string; modelHash: string; direction: 'UP' | 'NON_UP' | 'FLAT' | 'DOWN' | null; intercept: number
+    status?: string
+    decision?: { policy: string; reasonCodes: string[] }
     referenceDirection?: 'UP' | 'FLAT' | 'DOWN'
+    information?: Direction1dInformationSummary
     factors: { feature: string; value: number; contribution: number }[]
   }[]
 }

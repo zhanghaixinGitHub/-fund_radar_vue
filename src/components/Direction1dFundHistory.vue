@@ -121,7 +121,7 @@ function actualChange(record: Direction1dRecord): string {
                 v-for="branch in branches"
                 :key="branch.id"
               >
-                {{ direction1dDirection(record.forecast.branches.find(item => item.branchId === branch.id)?.predictedDirection) }}
+                {{ direction1dDirection(record.forecast.schemaVersion === 'DIRECTION_1D_ANALYSIS_V1' ? record.forecast.analysis.direction : record.forecast.branches.find(item => item.branchId === branch.id)?.predictedDirection) }}
               </td>
               <td>{{ record.outcomes.length ? direction1dDirection(record.outcomes[0]?.actualDirection) : '等待结果' }}<small>{{ actualChange(record) }}</small></td>
               <td>

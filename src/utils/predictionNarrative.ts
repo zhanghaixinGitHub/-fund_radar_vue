@@ -1,4 +1,4 @@
-import type { PredictionEvidence, PredictionNarrative, PredictionNarrativeResponse } from '@/types/predictionEvidence'
+import type { PredictionDriver, PredictionEvidence, PredictionNarrative, PredictionNarrativeResponse } from '@/types/predictionEvidence'
 
 const displayVersion = 'PREDICTION_NARRATIVE_ZH_V4'
 
@@ -9,8 +9,11 @@ export function readNarrative(response: PredictionNarrativeResponse, fundCode: s
   }
   if (!['READY', 'PENDING', 'FALLBACK'].includes(response.state)) return null
   const value = response.narrative
-  // 旧版仍保存在后台，但其中的参数因果话术不能在升级等待或失败时重新展示。
-  if (!value || value.styleVersion !== displayVersion) return null
+  // 002112综合信息说明沿用同一正文结构，单独标识净值、持仓及消息的实际覆盖。
+  // 仅接受该基金的一日已完成说明；其他基金、周期和旧版因果话术仍按原边界拒绝。
+  const informationVersion = fundCode === '002112' && kind === 'daily' && response.state === 'READY'
+    && ['PREDICTION_INFORMATION_ZH_V1', 'PREDICTION_INFORMATION_ZH_V2', 'PREDICTION_INFORMATION_ZH_V3', 'PREDICTION_INFORMATION_ZH_V4'].includes(value?.styleVersion ?? '')
+  if (!value || (value.styleVersion !== displayVersion && !informationVersion)) return null
   if (!value.summary || !value.context
     || ![value.summary, value.context, value.supporting, value.opposing].every(item => typeof item === 'string' && item.length <= 1400)
     || value.supporting !== '' || value.opposing !== ''
@@ -18,7 +21,79 @@ export function readNarrative(response: PredictionNarrativeResponse, fundCode: s
     || !value.limitations.every(item => typeof item === 'string' && item.length <= 250)) {
     throw new Error('解释正文暂不可用')
   }
+  if (['PREDICTION_INFORMATION_ZH_V2', 'PREDICTION_INFORMATION_ZH_V3'].includes(value.styleVersion)) {
+    // 业务事实使用纯文本展示；链接仅接受正常HTTP(S)来源，防止原文链接变成可执行地址。
+    const text = (item: unknown, limit: number) => typeof item === 'string' && item.length > 0 && item.length <= limit
+    const validSource = (source: NonNullable<typeof value.drivers>[number]['source']) => {
+      if (!source) return true
+      if (!text(source.title, 220) || !text(source.url, 1500) || !/^\d{4}-\d{2}-\d{2}$/.test(source.publishedDate)) return false
+      try {
+        const url = new URL(source.url)
+        return ['https:', 'http:'].includes(url.protocol) && !!url.hostname && !url.username && !url.password
+      } catch { return false }
+    }
+    if (!Array.isArray(value.drivers) || value.drivers.length < 2 || value.drivers.length > 7
+      || !value.drivers.every(item => item && ['净值', '持仓行情', '公告', '政策', '新闻'].includes(item.category)
+        && text(item.title, 200) && text(item.assessment, 30) && text(item.observation, 600)
+        && text(item.implication, 300) && validSource(item.source))) throw new Error('具体依据暂不可用')
+  } else if (value.styleVersion === 'PREDICTION_INFORMATION_ZH_V4') {
+    const text = (s: unknown, max: number) => typeof s === 'string' && s.length > 0 && s.length <= max
+    const validSource = (s: NonNullable<NonNullable<typeof value.drivers>[number]['sources']>[number]) => {
+      // 新说明的原文标题可附带本条已保存的公司关联；仍保持有界文本和原有链接校验。
+      if (!s || !text(s.title, 3000) || !text(s.url, 1500) || !/^\d{4}-\d{2}-\d{2}$/.test(s.publishedDate)) return false
+      try { const u = new URL(s.url); return ['http:', 'https:'].includes(u.protocol) && !!u.hostname && !u.username && !u.password }
+      catch { return false }
+    }
+    const validDriver = (d: NonNullable<typeof value.drivers>[number]) => d
+      // 经理变更及任期表现由后端按原预测快照保存，前端沿用相同的来源与身份校验。
+      && ['净值', '持仓行情', '公司经营', '公告', '新闻', '政策', '基金经理'].includes(d.category)
+      && ['支持上涨', '支持下跌', '双向影响', '背景观察'].includes(d.assessment)
+      && text(d.title, 120) && text(d.observation, 26000) && text(d.meaning, 250) && text(d.implication, 250)
+      && typeof d.relation === 'string' && d.relation.length <= 2500
+      && Array.isArray(d.sources) && d.sources.length <= 5 && d.sources.every(validSource)
+    if (!Array.isArray(value.drivers) || value.drivers.length < 1 || value.drivers.length > 6 || !value.drivers.every(validDriver)
+      || !Array.isArray(value.counterpoints) || value.counterpoints.length > 4 || !value.counterpoints.every(validDriver)
+      || !Array.isArray(value.conditions) || value.conditions.length > 3 || !value.conditions.every(s => text(s, 250))
+      || !Array.isArray(value.inventory) || value.inventory.length !== 16
+      || new Set(value.inventory.map(s => s.id)).size !== 16
+      || !value.inventory.every(s => /^D(0[1-9]|1[0-6])$/.test(s.id) && text(s.name, 50) && text(s.detail, 300))) {
+      throw new Error('本次具体依据未通过核对')
+    }
+  } else if (value.drivers !== undefined) {
+    throw new Error('具体依据版本不匹配')
+  }
   return value
+}
+
+/**
+ * 同一份综合依据中，净值、持仓等计算事实只完整展示一次。
+ * 仅省略逐行完全相同的观察，日期、数值或口径不同的内容仍保留；
+ * 带原文来源的引用不拆行去重，避免去掉公告上下文、否定或条件。
+ * 这里只创建展示副本，不改保存的分析，也不省略各条依据的含义与影响。
+ */
+export function narrativeGroups(value: PredictionNarrative) {
+  const seen = new Map<string, string>()
+  const display = (driver: PredictionDriver): PredictionDriver => {
+    if (value.styleVersion !== 'PREDICTION_INFORMATION_ZH_V4'
+      || driver.source || driver.sources?.length
+      || !['净值', '持仓行情', '公司经营'].includes(driver.category)) return driver
+    const references = new Set<string>()
+    const lines = driver.observation.split(/\r?\n/).filter(line => {
+      const fact = line.trim()
+      if (!fact) return false
+      const previous = seen.get(fact)
+      if (previous) { references.add(previous); return false }
+      seen.set(fact, driver.title)
+      return true
+    })
+    return { ...driver, observation: lines.length ? lines.join('\n')
+      : `相关数据见上文${[...references].map(title => `“${title}”`).join('、')}。` }
+  }
+  return [
+    { title: '主要判断依据', drivers: (value.drivers ?? []).map(display) },
+    ...(value.counterpoints?.length
+      ? [{ title: '还需要考虑的相反因素', drivers: value.counterpoints.map(display) }] : []),
+  ]
 }
 
 /** 无可靠新版说明时只保留核对过的原观察，不从旧 summary/支持项中提取市场因果。 */

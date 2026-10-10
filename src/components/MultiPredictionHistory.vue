@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { get } from '@/api/http'
 import { getDirection1dEvidence, getDirection1dFundHistory } from '@/api/direction1d'
 import type { Direction1dEvidence } from '@/types/direction1d'
@@ -24,6 +24,7 @@ const dailyEvidence = ref<Record<string, Direction1dEvidence>>({})
 const evidenceLoadingId = ref<string | null>(null)
 const evidenceErrorId = ref<string | null>(null)
 let sequence = 0
+let scrollSequence = 0
 
 /** 四个周期保留固定位置；跨页的一日记录读齐前不展示可能已经过时的版本。 */
 const days = computed(() => groupPredictionHistory(props.fundCode, multi.value, daily.value).map(day => ({
@@ -33,7 +34,7 @@ const days = computed(() => groupPredictionHistory(props.fundCode, multi.value, 
     const source = period.id === 'T1_V1' ? 'daily' : 'multi'
     const complete = source === 'multi' || dailyDateComplete(day.date)
     const item = complete ? (source === 'daily'
-      ? day.dailyRevisions.find(row => row.id === selectedRevision.value[day.date]) ?? day.items[period.id]
+      ? (props.fundCode === '002112' ? day.items[period.id] : day.dailyRevisions.find(row => row.id === selectedRevision.value[day.date]) ?? day.items[period.id])
       : day.items[period.id]) : undefined
     return { ...period, item, view: item ? historyItemView(item) : null,
       empty: errors.value[source] ? '暂时无法读取' : busy.value ? '正在读取…'
@@ -74,9 +75,25 @@ async function readEvidence(item: HistoryItem) {
     if (run === sequence && evidenceLoadingId.value === item.id) evidenceLoadingId.value = null
   }
 }
-function toggleEvidence(item: HistoryItem) {
+/**
+ * 切换依据会收起另一日期的长内容，使当前按钮随布局大幅上移。
+ * 以点击按钮在视口中的位置为锚点，在 Vue 更新后补偿实际位移；
+ * 等待布局与浏览器本帧滚动处理完成后再测量，并关闭列表的自动锚定，
+ * 避免浏览器在手动补偿后又移动一次；快速切换只保留最后一次位置修正。
+ */
+async function toggleEvidence(item: HistoryItem, event: globalThis.MouseEvent) {
+  const trigger = event.currentTarget as InstanceType<typeof globalThis.HTMLButtonElement>
+  const top = trigger.getBoundingClientRect().top
+  const run = sequence
+  const scrollRun = ++scrollSequence
   expandedId.value = expandedId.value === item.id ? null : item.id
   if (expandedId.value) void readEvidence(item)
+  await nextTick()
+  await new Promise<void>(resolve => globalThis.requestAnimationFrame(() => resolve()))
+  // 切换基金或离开页面后，不再用旧按钮干预新页面的滚动位置。
+  if (run !== sequence || scrollRun !== scrollSequence || !trigger.isConnected) return
+  const offset = trigger.getBoundingClientRect().top - top
+  if (Math.abs(offset) > 1) globalThis.scrollBy({ top: offset, behavior: 'instant' })
 }
 function changeRevision() {
   expandedId.value = null
@@ -103,7 +120,7 @@ onBeforeUnmount(() => { sequence++ })
         <h2 id="prediction-history-title">
           预测历史
         </h2>
-        <p>按预测起始日归组；一日判断保留每次更新及当时依据。</p>
+        <p>{{ fundCode === '002112' ? '每个预测日展示最新判断及当时依据。' : '按预测起始日归组；一日判断保留每次更新及当时依据。' }}</p>
       </div>
       <span
         v-if="days.length"
@@ -175,7 +192,7 @@ onBeforeUnmount(() => { sequence++ })
           </div>
           <template v-if="slot.item && slot.view">
             <label
-              v-if="slot.id === 'T1_V1' && day.revisions.length > 1"
+              v-if="fundCode !== '002112' && slot.id === 'T1_V1' && day.revisions.length > 1"
               class="history-revisions"
             >
               当日历次判断
@@ -199,7 +216,10 @@ onBeforeUnmount(() => { sequence++ })
             >{{ slot.view.direction }}</strong>
             <p class="history-period">
               <template v-if="slot.item.kind === 'daily'">
-                对比 {{ slot.view.dataDate }} 净值
+                对比 {{ slot.view.comparisonDate }} 净值
+                <template v-if="slot.view.dataDate !== slot.view.comparisonDate">
+                  <br>已取得净值：{{ slot.view.dataDate }}
+                </template>
               </template>
               <template v-else-if="slot.view.endDate === '待确认'">
                 到期日待确认
@@ -234,7 +254,7 @@ onBeforeUnmount(() => { sequence++ })
               :aria-expanded="expandedId === slot.item.id"
               :aria-controls="expandedId === slot.item.id ? `history-basis-${day.date}` : undefined"
               :aria-label="`${day.date} ${slot.label}预测依据`"
-              @click="toggleEvidence(slot.item)"
+              @click="toggleEvidence(slot.item, $event)"
             >
               {{ expandedId === slot.item.id ? '收起依据' : '查看依据' }}
               <span aria-hidden="true">{{ expandedId === slot.item.id ? '−' : '+' }}</span>
@@ -320,7 +340,7 @@ onBeforeUnmount(() => { sequence++ })
 </template>
 
 <style scoped>
-.prediction-history { min-width: 0; margin-top: 24px; container: prediction-history / inline-size; }
+.prediction-history { min-width: 0; margin-top: 24px; container: prediction-history / inline-size; overflow-anchor: none; }
 .history-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 18px; }
 .prediction-history .history-heading h2 { margin: 0 0 6px; font-size: 20px; }
 .history-heading p { margin: 0; color: #536c63; font-size: 13px; }

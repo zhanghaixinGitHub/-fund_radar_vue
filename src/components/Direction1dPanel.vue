@@ -22,7 +22,7 @@ const forecastId = computed(() => forecast.value ? latest.value?.forecastId : un
 const forecast = computed(() => latest.value && !latest.value.status ? latest.value.forecast : null)
 const summary = computed(() => forecast.value ? direction1dSummary(forecast.value) : null)
 const isPrevious = computed(() => forecast.value && (forecast.value.targetNavDate !== value.value?.window.targetNavDate
-  || forecast.value.schemaVersion !== 'DIRECTION_1D_EXPERIMENT_V2'))
+  || !['DIRECTION_1D_EXPERIMENT_V2', 'DIRECTION_1D_ANALYSIS_V1'].includes(forecast.value.schemaVersion)))
 const canGenerate = computed(() => value.value?.window.status === 'OPEN'
   && value.value.coverage.status === 'READY_EXPERIMENTAL')
 /** 不能生成时保留真实原因，页面用展开说明承接，不堆叠禁用按钮。 */
@@ -32,7 +32,8 @@ const generateHint = computed(() => {
   if (forecast.value && !isPrevious.value) return '截止前可检查新资料；没有变化时保留原判断和时间。'
   if (current.coverage.status !== 'READY_EXPERIMENTAL') return direction1dReason(current.coverage.status)
   if (current.window.status !== 'OPEN') return '目标估值日已收盘，等待最新净值后预测下一估值日。'
-  return `所需净值截至 ${current.window.baseNavDate}，本期预测目标为 ${current.window.targetNavDate}。`
+  return props.fundCode === '002112' ? `按当前可用资料判断 ${current.window.targetNavDate} 的涨跌倾向。`
+    : `所需净值截至 ${current.window.baseNavDate}，本期预测目标为 ${current.window.targetNavDate}。`
 })
 
 /** 没有预测时只说明阻止当前判断的原因，不向用户罗列内部检查状态。 */
@@ -81,11 +82,20 @@ async function generate() {
     const target = value.value?.window.targetNavDate
     if (!target) return
     if (!pendingRequest || pendingRequest.target !== target) pendingRequest = { target, id: createUUID() }
-    const result = await generateDirection1d(props.fundCode, target, pendingRequest.id)
+    const fundCode = props.fundCode
+    const requestId = pendingRequest.id
+    let result = await generateDirection1d(fundCode, target, requestId)
+    // 仅延续用户这一次点击，复用同一请求编号；切换基金或离开页面即停止跟进。
+    for (let attempts = 0; current === sequence && ['QUEUED', 'RUNNING'].includes(result.status) && attempts < 180; attempts++) {
+      notice.value = '正在整理资料并核对判断，请稍候。'
+      await new Promise(resolve => globalThis.setTimeout(resolve, 5000))
+      if (current !== sequence) return
+      result = await generateDirection1d(fundCode, target, requestId)
+    }
     if (current !== sequence) return
     notice.value = result.status === 'PREDICTED'
       ? result.reused ? '已检查，暂无新的判断。' : ''
-      : direction1dReason(result.reason ?? result.status)
+      : ['QUEUED', 'RUNNING'].includes(result.status) ? '分析仍在进行，稍后点击更新查看结果。' : direction1dReason(result.reason ?? result.status)
     if (!['QUEUED', 'RUNNING'].includes(result.status)) pendingRequest = null
     await load()
   } catch (e) { if (current === sequence) error.value = e instanceof Error ? e.message : '请求失败。' }
@@ -112,20 +122,20 @@ onBeforeUnmount(() => { sequence++ })
     :aria-pressed="selected"
     :aria-busy="busy"
     aria-controls="prediction-evidence"
-    aria-label="查看下一交易日的预测依据"
+    aria-label="查看一天的预测依据"
     @click="emit('select')"
   >
-    <span class="forecast-card-title">下一交易日</span>
+    <span class="forecast-card-title">一天预测</span>
     <span class="forecast-duration">看一天的涨跌</span>
     <strong
       class="forecast-direction"
       :class="`tone-${summary?.tone ?? 'neutral'}`"
     >
-      {{ busy && !value ? '正在读取…' : error && !forecast ? '暂不可用' : summary && !['暂无预测', '方向不明确'].includes(summary.direction)
+      {{ busy && !value ? '正在读取…' : error && !forecast ? '暂不可用' : summary && !['暂无预测', '方向不明确', '暂不判断'].includes(summary.direction)
         ? `预计${summary.direction}` : summary?.direction ?? '暂无预测' }}
     </strong>
     <span class="forecast-period">{{ forecast?.targetNavDate ?? value?.window.targetNavDate ?? '日期待确认' }}</span>
-    <span class="forecast-data-date">{{ forecast ? `依据净值截至 ${forecast.baseNavDate}` : '所需数据暂未齐全' }}</span>
+    <span class="forecast-data-date">{{ forecast ? `已取得净值截至 ${forecast.schemaVersion === 'DIRECTION_1D_ANALYSIS_V1' ? forecast.latestNavDate ?? '暂缺' : forecast.baseNavDate}` : '所需数据暂未齐全' }}</span>
     <span
       v-if="isPrevious"
       class="forecast-card-status"

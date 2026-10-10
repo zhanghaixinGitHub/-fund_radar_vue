@@ -7,6 +7,24 @@ import { URL } from 'node:url'
 
 const source = stripTypeScriptTypes(readFileSync(new URL('../src/utils/predictionEvidence.ts', import.meta.url), 'utf8'))
 const { multiPredictionEvidence, dailyPredictionEvidence } = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`)
+
+test('综合信息按实际覆盖说明依据，缺新闻政策不冒充利好', () => {
+  const forecast = {
+    fundCode: '002112', baseNavDate: '2026-10-08', targetNavDate: '2026-10-09', inputHash: 'source',
+    input: { featureVersion: '002112_FULL_INFORMATION_V1', information: {
+      version: '002112_FULL_INFORMATION_V1', marketDate: '2026-10-08', holdingReportDate: '2026-06-30',
+      holdingCoverage: .63, counts: { ANNOUNCEMENT: 4, NEWS: 0, POLICY: 0 }, limitations: ['资料覆盖不完整'],
+    } },
+    branches: [{ branchId: 'FIXED', modelId: 'model', modelHash: 'hash', status: 'AVAILABLE', score: .6, predictedDirection: 'UP' }],
+  }
+  const result = dailyPredictionEvidence(forecast)
+  assert.match(result.summary, /净值、持仓行情、公告/)
+  assert.doesNotMatch(result.summary, /政策|新闻/)
+  assert.ok(result.limitations.some(s => s.includes('未找到可用的相关政策、新闻')))
+  assert.ok(result.facts.some(f => f.value === '2026-06-30'))
+  const fake = { fundCode: '001412', inputHash: 'source', branches: [] }
+  assert.match(dailyPredictionEvidence(forecast, fake).summary, /不一致/)
+})
 const baseline = (momentum = .0253, direction = 'UP') => ({
   fundCode: '008888', dataAsOf: '2026-09-23', direction,
   featureSnapshot: { fundCode: '008888', dataAsOf: '2026-09-23', features: { momentum, actualLookbackReturns: 20 } },

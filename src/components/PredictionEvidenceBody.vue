@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { post } from '@/api/http'
-import { readNarrative, safeEvidence } from '@/utils/predictionNarrative'
+import { narrativeGroups, readNarrative, safeEvidence } from '@/utils/predictionNarrative'
 import type { PredictionEvidence, PredictionNarrative, PredictionNarrativeResponse } from '@/types/predictionEvidence'
 
 const props = defineProps<{
@@ -14,6 +14,8 @@ const narrative = ref<PredictionNarrative | null>(null)
 const busy = ref(false)
 const unavailable = ref(false)
 const fallback = computed(() => safeEvidence(props.evidence))
+const detailed = computed(() => narrative.value?.styleVersion === 'PREDICTION_INFORMATION_ZH_V4')
+const groups = computed(() => narrative.value ? narrativeGroups(narrative.value) : [])
 let sequence = 0
 let timer: ReturnType<typeof globalThis.setTimeout> | undefined
 
@@ -63,11 +65,94 @@ onBeforeUnmount(() => { ++sequence; globalThis.clearTimeout(timer) })
         {{ narrative.summary }}
       </p>
       <p
+        v-if="detailed"
+        class="explanation-notice"
+      >
+        本次把握较低，判断效果仍需后续实际结果检验。
+      </p>
+      <template
+        v-for="group in groups"
+        :key="group.title"
+      >
+        <h3
+          v-if="detailed && group.drivers.length"
+          class="reason-group"
+        >
+          {{ group.title }}
+        </h3>
+        <section
+          v-for="(driver, index) in group.drivers"
+          :key="`${driver.category}-${index}`"
+          class="explanation-driver"
+        >
+          <div class="driver-heading">
+            <h3>{{ driver.title }}</h3>
+            <span>{{ driver.assessment }}</span>
+          </div>
+          <details
+            v-if="detailed && driver.observation.length > 500"
+            class="fact-source"
+          >
+            <summary>用到的具体数据与原文</summary>
+            <p class="fact-text">
+              {{ driver.observation }}
+            </p>
+          </details>
+          <p
+            v-else
+            class="fact-text"
+          >
+            <strong v-if="detailed">用到的数据：</strong>{{ driver.observation }}
+          </p>
+          <p v-if="driver.meaning">
+            <strong>这说明什么：</strong>{{ driver.meaning }}
+          </p>
+          <p v-if="driver.relation">
+            <strong>与本基金的关系：</strong>{{ driver.relation }}
+          </p>
+          <p><strong>{{ detailed ? '对本次判断的作用：' : '可能影响：' }}</strong>{{ driver.implication }}</p>
+          <div
+            v-for="source in driver.sources ?? []"
+            :key="source.url"
+          >
+            <a
+              :href="source.url"
+              target="_blank"
+              rel="noopener noreferrer"
+            >{{ source.title }} · {{ source.publishedDate }}</a>
+          </div>
+          <a
+            v-if="driver.source"
+            :href="driver.source.url"
+            :aria-label="`查看原文：${driver.source.title}`"
+            target="_blank"
+            rel="noopener noreferrer"
+          >查看{{ driver.category }}原文 · {{ driver.source.publishedDate }}</a>
+        </section>
+      </template>
+      <h3
+        v-if="detailed"
+        class="reason-group"
+      >
+        为什么综合后这样判断
+      </h3>
+      <p
         v-for="(paragraph, index) in narrative.context.split('\n')"
         :key="index"
       >
         {{ paragraph }}
       </p>
+      <section v-if="narrative.conditions?.length">
+        <h3>什么情况会改变判断</h3>
+        <ul>
+          <li
+            v-for="condition in narrative.conditions"
+            :key="condition"
+          >
+            {{ condition }}
+          </li>
+        </ul>
+      </section>
       <section class="explanation-limits">
         <h3>需要留意</h3>
         <ul>
@@ -79,6 +164,20 @@ onBeforeUnmount(() => { ++sequence; globalThis.clearTimeout(timer) })
           </li>
         </ul>
       </section>
+      <details
+        v-if="narrative.inventory"
+        class="source-inventory"
+      >
+        <summary>查看本次资料范围</summary>
+        <dl>
+          <div
+            v-for="row in narrative.inventory"
+            :key="row.id"
+          >
+            <dt>{{ row.name }}</dt><dd>{{ row.detail }}</dd>
+          </div>
+        </dl>
+      </details>
     </template>
     <template v-else>
       <p
@@ -135,4 +234,17 @@ onBeforeUnmount(() => { ++sequence; globalThis.clearTimeout(timer) })
 .explanation-facts { display: flex; flex-wrap: wrap; gap: 12px 28px; margin: 16px 0; }
 .explanation-facts dt { font-size: 13px; color: #536c63; }
 .explanation-facts dd { margin: 3px 0 0; font-variant-numeric: tabular-nums; font-weight: 600; }
+.explanation-driver { border-top: 1px solid #e2eae6; padding-top: 14px; }
+.driver-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; }
+.driver-heading span { color: #536c63; font-size: 12px; }
+.explanation-driver a { color: #14776e; font-size: 13px; text-underline-offset: 3px; }
+.fact-text { white-space: pre-line; }
+.fact-source { margin: 10px 0; font-size: 14px; }
+.fact-source summary { cursor: pointer; color: #14776e; }
+.prediction-explanation .reason-group { margin-top: 24px; font-size: 15px; }
+.source-inventory { font-size: 13px; margin-top: 18px; color: #536c63; }
+.source-inventory summary { cursor: pointer; }
+.source-inventory dl > div { display: flex; gap: 16px; padding: 6px 0; }
+.source-inventory dt { min-width: 112px; }
+.source-inventory dd { margin: 0; }
 </style>

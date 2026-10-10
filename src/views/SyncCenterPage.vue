@@ -27,7 +27,7 @@ import {
   startSimulationFeeSync,
 } from '@/api/syncJobs'
 import type { SyncJobStatus } from '@/types/syncJob'
-import { predictionProgressNote, savedPredictionLines, syncResultLabel } from '@/utils/syncResult'
+import { hasPendingPrediction, predictionProgressNote, savedPredictionLines, syncResultLabel } from '@/utils/syncResult'
 
 type SyncTaskKey = 'marketNav' | 'freeDataCompletion' | 'featureSnapshot' | 'direction1dPrediction' | 'simulationFees' | 'fundMaterials' | 'fundNews'
 const { section, sectionLabel, sectionTarget } = usePageNavigation()
@@ -87,19 +87,9 @@ const tasks: readonly SyncTaskDefinition[] = [
     loadLatest: getLatestSimulationFeeSync,
   },
   {
-    key: 'direction1dPrediction',
-    jobType: 'MULTI_PREDICTIONS',
-    title: '全部关注基金预测生成',
-    description: '检查全部有效账号关注的基金，按基金去重生成一日、五日、二十日和半年实验预测，并保存到各自的预测历史。每只基金检查四个周期；必要净值缺失或暂不适用时，逐周期列出具体原因，其他周期继续执行。',
-    scheduleNote: '通过手动按钮或一键同步生成，不再定时执行；一键同步在净值、基础资料、指标和费率更新后执行，随后继续更新公告与持仓资料。境内四个周期统一规则：估值日15:00前，上一估值日净值齐全才能预测今天；15:00及之后，取得当天净值后预测下一估值日，否则等待净值。非估值日按估值日历处理；历史缺日先补齐。同一输入复用结果；截止前取得有效新输入可追加判断，旧记录保留。已保存预测按所属日期保留，下一期等待不影响查看上一期结果。',
-    actionLabel: '生成全部关注基金预测',
-    start: startMultiPredictionSync,
-    loadLatest: getLatestMultiPredictionSync,
-  },
-  {
     key: 'fundNews', jobType: 'FUND_NEWS', title: '近期基金公告核验',
     description: '独立核对 002112 近 30 天的基金官方公告，保留原文与取得时间。暂未覆盖所有持仓公司、行业和政策消息，部分失败不会被记成没有事件。',
-    scheduleNote: '手动与一键同步共用流程，十分钟内复用上次检查。公告披露事实尚未进入走势预测，也不代表已经证明有效。',
+    scheduleNote: '手动与一键同步共用流程，十分钟内复用上次检查。先核对公告，再生成预测；取得公告不代表其影响已经确定。',
     actionLabel: '核对近期公告', start: startFundNewsSync, loadLatest: getLatestFundNewsSync,
   },
   {
@@ -107,10 +97,20 @@ const tasks: readonly SyncTaskDefinition[] = [
     jobType: 'FUND_MATERIALS',
     title: '基金持仓与公司资料更新',
     description: '更新 002112（德邦鑫星价值混合 C）的报告、持仓、行情、公司经营、公告和新闻。当前资料更新与历史缺口分别显示，历史资料未齐时保留已核实成果。其他基金暂不支持。',
-    scheduleNote: '通过本页按钮或一键同步更新，不再定时执行。重复执行复用已保存成果，失败可重试；这些资料尚未用于正式预测，已披露持仓不代表实时持仓。',
+    scheduleNote: '通过本页按钮或一键同步更新，更新后再生成预测。重复执行复用已保存成果，失败可重试；已披露持仓不代表实时持仓。',
     actionLabel: '更新资料并补齐历史',
     start: startFundMaterialsSync,
     loadLatest: getLatestFundMaterialsSync,
+  },
+  {
+    key: 'direction1dPrediction',
+    jobType: 'MULTI_PREDICTIONS',
+    title: '全部关注基金预测生成',
+    description: '检查全部有效账号关注的基金，按基金去重生成一日、五日、二十日和半年预测，并保存到各自的预测历史。每只基金检查四个周期；必要资料缺失或暂不适用时，逐周期列出具体原因，其他周期继续执行。',
+    scheduleNote: '一键同步先更新净值、基础资料、公告、持仓行情和分析资料，最后生成预测。同一输入复用结果；15:00前预测当日，之后预测下一估值日，非估值日按日历处理。资料不足或生成失败时保留原有预测，并显示本次未完成原因。',
+    actionLabel: '生成全部关注基金预测',
+    start: startMultiPredictionSync,
+    loadLatest: getLatestMultiPredictionSync,
   },
 ]
 
@@ -291,7 +291,8 @@ async function refreshJobStates(): Promise<void> {
 /** 批次由后端推进；页面只读取状态，读失败时保留任务并继续重试。 */
 function schedulePolling(): void {
   stopPolling()
-  if (disposed || ownPanel.value || (!hasActiveJob.value && stateReady.value)) {
+  const pendingPrediction = Object.values(jobs.value).some(hasPendingPrediction)
+  if (disposed || ownPanel.value || (!hasActiveJob.value && !pendingPrediction && stateReady.value)) {
     return
   }
   pollingTimer = globalThis.setTimeout(async () => {
@@ -304,7 +305,7 @@ function schedulePolling(): void {
     } finally {
       schedulePolling()
     }
-  }, stateReady.value ? 1_000 : 5_000)
+  }, stateReady.value && hasActiveJob.value ? 1_000 : 5_000)
 }
 
 /** 页面首次进入时读取最近任务和持久化的上次成功时间。 */
@@ -428,7 +429,7 @@ onBeforeUnmount(() => {
           <h2 id="sync-all-title">
             一键同步全部
           </h2>
-          <p>依次执行九项任务：标普500 → 净值增量 → 基金资料与市场数据更新 → 历史指标计算 → 模拟费率 → 全部关注基金四周期预测（含综合建议与到期核验） → 近期基金公告核验 → 基金持仓与公司资料 → 002112 分析资料更新与留存。某项失败会记录原因，并继续尝试其余任务。</p>
+          <p>依次执行九项任务：标普500 → 净值增量 → 基金资料与市场数据更新 → 历史指标计算 → 模拟费率 → 近期基金公告核验 → 基金持仓与公司资料 → 002112 分析资料更新与留存 → 全部关注基金四周期预测（含综合建议与到期核验）。某项失败会记录原因，并继续尝试其余任务；预测按实际可用资料判断。</p>
         </div>
         <span
           v-if="allJob"
@@ -551,7 +552,7 @@ onBeforeUnmount(() => {
         </header>
         <div class="admin-table-wrap">
           <table>
-            <thead><tr><th>任务</th><th>最近状态</th><th>上次成功</th><th>操作</th></tr></thead>
+            <thead><tr><th>任务</th><th>最近状态</th><th>上次整项完成</th><th>操作</th></tr></thead>
             <tbody>
               <tr>
                 <td><strong>美国标普500手动同步</strong><span>一键同步首先执行，也可单独手动获取；两个入口共用执行间隔。</span></td>
@@ -582,7 +583,7 @@ onBeforeUnmount(() => {
                     :class="jobs[task.key] ? `is-${jobs[task.key]!.status.toLowerCase()}` : 'is-idle'"
                   >{{ loading ? '读取中…' : errorMessage ? '状态暂不可用' : jobs[task.key] ? syncResultLabel(jobs[task.key]) || statusLabel(jobs[task.key]!.status, false, task.key === 'simulationFees', task.key === 'featureSnapshot', task.key === 'direction1dPrediction', (task.key === 'fundMaterials' || task.key === 'fundNews')) : '尚未运行' }}</span>
                 </td>
-                <td>{{ loading || errorMessage ? '—' : formatTime(lastSuccessfulAt[task.jobType]) }}</td>
+                <td>{{ loading || errorMessage ? '—' : lastSuccessfulAt[task.jobType] ? formatTime(lastSuccessfulAt[task.jobType]) : '尚无整项完成记录' }}</td>
                 <td>
                   <RouterLink
                     class="secondary-link"

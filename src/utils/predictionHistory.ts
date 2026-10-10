@@ -69,7 +69,8 @@ export function groupPredictionHistory(fundCode: string, multi: readonly MultiHi
 function compareDailyHistory(a: HistoryItem, b: HistoryItem): number {
   if (a.kind !== 'daily' || b.kind !== 'daily') return 0
   const fa = a.record.forecast, fb = b.record.forecast
-  const protocol = Number(fa.schemaVersion === 'DIRECTION_1D_EXPERIMENT_V2') - Number(fb.schemaVersion === 'DIRECTION_1D_EXPERIMENT_V2')
+  const rank = (version: string) => version === 'DIRECTION_1D_ANALYSIS_V1' ? 2 : Number(version === 'DIRECTION_1D_EXPERIMENT_V2')
+  const protocol = rank(fa.schemaVersion) - rank(fb.schemaVersion)
   const order = (fa.revisionSequence ?? 0) - (fb.revisionSequence ?? 0)
   return protocol || order || Date.parse(a.generatedAt) - Date.parse(b.generatedAt) || a.id.localeCompare(b.id)
 }
@@ -92,10 +93,11 @@ export function historyItemView(item: HistoryItem) {
   if (item.kind === 'daily') {
     const record = item.record, forecast = record.forecast
     const summary = direction1dSummary(forecast)
-    const available = forecast.branches.filter(branch => branch.status === 'AVAILABLE' && branch.predictedDirection)
+    const analysis = forecast.schemaVersion === 'DIRECTION_1D_ANALYSIS_V1'
+    const available = analysis ? [{ branchId: 'FIXED' as const }] : forecast.branches.filter(branch => branch.status === 'AVAILABLE' && branch.predictedDirection)
     const outcome = record.outcomes[0]
     const conclusions = new Set(available.map(branch => direction1dConclusion(record, branch.branchId)))
-    const result = !available.length ? '暂无有效预测' : summary.direction === '方向不明确' ? '暂不计对错'
+    const result = summary.direction === '暂不判断' ? '暂不计对错' : !available.length ? '暂无有效预测' : summary.direction === '方向不明确' ? '暂不计对错'
       : record.receiptStatus !== 'VERIFIED' ? '暂不计对错' : !outcome ? '等待结果'
         : conclusions.size === 1 && conclusions.has('正确') ? '方向相符'
           : conclusions.size === 1 && conclusions.has('错误') ? '方向不符' : '结果待确认'
@@ -104,12 +106,14 @@ export function historyItemView(item: HistoryItem) {
       actual: outcome ? historyReturnText(outcome.navReturn) : '待公布',
       actualDirection: outcome ? directions[outcome.actualDirection] ?? '方向暂缺' : '',
       result, resultTone: result === '方向相符' ? 'correct' : result === '方向不符' ? 'incorrect' : 'pending',
-      dataDate: forecast.baseNavDate, updatedAt: outcome?.labelObservedAt,
-      rule: forecast.schemaVersion === 'DIRECTION_1D_EXPERIMENT_V2'
+      // 比较日定义涨跌标签；实际取得日期只说明资料新旧，缺净值时不能把比较日向前挪。
+      comparisonDate: forecast.baseNavDate,
+      dataDate: analysis ? forecast.latestNavDate ?? '暂缺' : forecast.baseNavDate, updatedAt: outcome?.labelObservedAt,
+      rule: analysis || forecast.schemaVersion === 'DIRECTION_1D_EXPERIMENT_V2'
         ? '目标日单位净值高于基准日算上涨，相等算持平，低于基准日算下跌。'
         : '本条记录当时只区分“上涨”和“下跌或持平”，后者不能再拆分成单独方向。',
       caution: record.receiptStatus !== 'VERIFIED' ? '本条记录尚未确认在预测截止前保存，暂不计对错。'
-        : available.length === 1 ? '本次只有部分判断可用。' : '',
+        : !analysis && available.length === 1 ? '本次只有部分判断可用。' : '',
     }
   }
   const row = item.record, prediction = row.payload, outcome = row.outcomes?.at(-1)
@@ -122,6 +126,7 @@ export function historyItemView(item: HistoryItem) {
     actual: outcome ? historyReturnText(outcome.totalReturn) : '待公布',
     actualDirection: outcome ? directions[outcome.actualDirection] ?? '方向暂缺' : '',
     result, resultTone: outcome ? (outcome.correct ? 'correct' : 'incorrect') : 'pending',
+    comparisonDate: prediction.baseNavDate || prediction.dataAsOf,
     dataDate: prediction.baseNavDate || prediction.dataAsOf, updatedAt: outcome?.checkedAt,
     rule: isThreeStateTarget(prediction.targetDefinitionId)
       ? `${flatRange(prediction.flatThreshold) || '本条记录的持平范围暂缺。'}实际涨跌按总回报计算，包含分红再投资。`

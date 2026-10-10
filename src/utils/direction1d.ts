@@ -1,6 +1,26 @@
 import type { Direction1dForecast, Direction1dRecord } from '@/types/direction1d'
 
 const reasons: Record<string, string> = {
+  ABSTAINED: '依据不足，暂不判断',
+  NO_DIRECTIONAL_EVENT: '没有可核验的具体事件支持涨跌判断',
+  EVENT_CONFLICT: '相关事件存在明显分歧，暂不判断',
+  MARKET_EVENT_CONFLICT: '事件与持仓行情相互矛盾，暂不判断',
+  WEAK_SIGNAL: '涨跌信号差距较小，暂不判断',
+  EVENT_MODEL_CONFLICT: '缺少同方向的具体事件支持，暂不判断',
+  EVENT_LIMIT: '相关事件尚未完成核对，暂不判断',
+  MARKET_INCOMPLETE: '持仓行情不足，暂不判断',
+  MODEL_UNSUPPORTED: '现有依据尚不足以判断这类事件的影响',
+  VALIDATION_INSUFFICIENT: '现有历史检验尚未证明判断可靠，暂不输出涨跌结论',
+  INFORMATION_MARKET_NOT_READY: '所需的持仓股票或大盘行情尚未齐全，请在同步资料后更新预测',
+  INFORMATION_HOLDINGS_NOT_READY: '可用的持仓报告尚未齐全，请在同步资料后更新预测',
+  INFORMATION_SOURCE_NOT_AVAILABLE: '部分资料尚未可用或已过期，请同步资料后重试',
+  INFORMATION_SOURCE_HASH_MISMATCH: '部分资料无法核对，暂时保留上次结果',
+  INFORMATION_FROZEN_SOURCE_CHANGED: '原有依据发生变化，暂时无法生成新判断',
+  INFORMATION_RECIPE_CHANGED: '预测依据暂时无法核对，请稍后重试',
+  INFORMATION_REGISTRATION_INVALID: '预测暂不可用，请稍后重试',
+  INFORMATION_MODEL_INVALID: '预测暂不可用，请稍后重试',
+  INFORMATION_DOCUMENT_LIMIT: '待核对公告较多，暂时无法生成新判断',
+  INFORMATION_NEWS_LIMIT: '待核对消息较多，暂时无法生成新判断',
   NAV_CURRENT_NOT_READY: '当天净值尚未取得，等待净值后预测下一估值日',
   NAV_LATEST_NOT_READY: '上一估值日净值尚未取得，补齐后再预测',
   NAV_GAP: '历史净值存在缺日，补齐后再预测', WAITING_DATA: '等待所需净值补齐',
@@ -25,7 +45,9 @@ const reasons: Record<string, string> = {
   CN_BOND: '境内债券', CN_EQUITY: '境内股票', CN_MIXED: '境内混合',
   EVIDENCE_CORRUPTED: '原始记录校验失败',
 }
-export const direction1dReason = (code: string) => reasons[code] ?? code
+export const direction1dReason = (code: string) => reasons[code] ?? (code.startsWith('ANALYSIS_')
+  ? '这次分析未完成核对，原判断仍保留，请稍后重试'
+  : code.startsWith('INFORMATION_') ? '相关资料暂时无法核对，请稍后重试' : code)
 export const direction1dDirection = (direction: string | null | undefined) => ({ UP: '上涨', NON_UP: '非上涨（下跌或持平）', DOWN: '下跌', FLAT: '持平' })[direction ?? ''] ?? '暂无方向'
 export const direction1dTime = (time?: string | null) => time ? new Date(time).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false }) : '尚无记录'
 
@@ -34,6 +56,17 @@ export const direction1dTime = (time?: string | null) => time ? new Date(time).t
  * NON_UP 包含下跌和持平；分支分数不作为概率、置信度或收益展示。
  */
 export function direction1dSummary(forecast: Direction1dForecast) {
+  if (forecast.schemaVersion === 'DIRECTION_1D_ANALYSIS_V1') return {
+    direction: forecast.analysis.direction === 'UP' ? '偏上涨' : '偏下跌',
+    tone: forecast.analysis.direction === 'UP' ? 'up' : 'down', evidence: forecast.analysis.summary,
+    history: forecast.latestNavDate ? `已取得净值截至 ${forecast.latestNavDate}` : '尚未取得可用净值',
+  }
+  if (forecast.branches.some(branch => branch.status === 'ABSTAINED')) {
+    const codes = [...new Set(forecast.branches.flatMap(branch => branch.decision?.reasonCodes ?? []))]
+    return { direction: '暂不判断', tone: 'neutral',
+      evidence: codes.map(direction1dReason).join('；') || '当前依据不足，暂不判断涨跌。',
+      history: direction1dInputSummary(forecast) }
+  }
   const available = forecast.branches.filter(branch => branch.status === 'AVAILABLE' && branch.predictedDirection)
   const directions = new Set(available.map(branch => branch.predictedDirection))
   const direction = directions.size === 1 ? available[0]?.predictedDirection : null
@@ -89,7 +122,16 @@ export function assertDirection1dFundHistory(fundCode: string, records: Directio
 /** 新三分类按实际方向逐项核对；旧档保留原二分类含义，未公布和未提前留档均不计对错。 */
 export function direction1dConclusion(record: Direction1dRecord, branchId: 'FIXED' | 'WEEKLY'): string {
   if (record.status) return direction1dReason(record.status)
+  if (record.forecast.schemaVersion === 'DIRECTION_1D_ANALYSIS_V1') {
+    if (record.receiptStatus !== 'VERIFIED') return '未满足提前预测条件'
+    const outcome = record.outcomes[0]
+    if (!outcome) return '等待结果'
+    if (!['UP', 'DOWN', 'FLAT'].includes(outcome.actualDirection)
+      || outcome.y !== (outcome.actualDirection === 'UP' ? 1 : 0)) return '实际结果待核验'
+    return record.forecast.analysis.direction === outcome.actualDirection ? '正确' : '错误'
+  }
   const branch = record.forecast.branches.find(item => item.branchId === branchId)
+  if (branch?.status === 'ABSTAINED') return '暂不计对错'
   if (branch?.status !== 'AVAILABLE' || !branch.predictedDirection) return '暂无有效预测'
   if (record.receiptStatus !== 'VERIFIED') return '未满足提前预测条件'
   const outcome = record.outcomes[0]
@@ -104,6 +146,17 @@ export function direction1dConclusion(record: Direction1dRecord, branchId: 'FIXE
 
 /** 阻止错误版本或不可用分支显示为可用方向；服务端仍承担最终校验。 */
 export function assertDirection1dForecast(value: Direction1dForecast): void {
+  if (value.schemaVersion === 'DIRECTION_1D_ANALYSIS_V1') {
+    if (value.fundCode !== '002112' || value.horizonTradingDays !== 1
+      || value.targetDefinition !== 'UNIT_NAV_DIRECTION_THREE_STATE_V2'
+      || value.directionPolicy !== 'EXACT_UNIT_NAV_CHANGE_V1' || value.modelReleased !== false
+      || value.upProbability !== null || value.validationStatus !== 'UNVALIDATED'
+      || !['UP', 'DOWN'].includes(value.analysis?.direction) || value.analysis.confidence !== 'LOW'
+      || value.narrative?.styleVersion !== 'PREDICTION_INFORMATION_ZH_V4'
+      || value.analysis.summary !== value.narrative.summary || value.analysis.synthesis !== value.narrative.context
+      || !Array.isArray(value.input?.values)) throw new Error('本次判断与依据未通过核对。')
+    return
+  }
   const ternary = value.schemaVersion === 'DIRECTION_1D_EXPERIMENT_V2'
   if ((!ternary && value.schemaVersion !== 'DIRECTION_1D_EXPERIMENT_V1') || value.horizonTradingDays !== 1
     || value.targetDefinition !== (ternary ? 'UNIT_NAV_DIRECTION_THREE_STATE_V2' : 'UNIT_NAV_DIRECTION_V1')
@@ -111,6 +164,11 @@ export function assertDirection1dForecast(value: Direction1dForecast): void {
     || value.branches.length !== 2 || new Set(value.branches.map(b => b.branchId)).size !== 2) throw new Error('1日预测契约未通过校验。')
   for (const b of value.branches) {
     if (!['FIXED', 'WEEKLY'].includes(b.branchId)) throw new Error('分支身份不合法。')
+    if (b.status === 'ABSTAINED') {
+      if (value.fundCode !== '002112' || value.input.featureVersion !== '002112_EVENT_EVIDENCE_V2'
+        || b.decision?.policy !== '002112_EVENT_EVIDENCE_V2' || !b.decision.reasonCodes.length
+        || b.classScores != null || b.score !== null || b.predictedDirection !== null) throw new Error('暂不判断记录暂不可用。')
+    }
     if (b.status === 'AVAILABLE') {
       let expected: string = b.score! > .5 ? 'UP' : 'NON_UP'
       if (ternary) {
