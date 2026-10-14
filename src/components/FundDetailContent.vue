@@ -290,19 +290,20 @@ watch(selectedNavRange, () => {
         :fund-code="fundCode"
         :followed="basic.isWatched"
       />
+      <!-- 预测与历史仅在关注详情展示；市场详情即使已关注也不挂载预测组件。 -->
       <p
-        v-if="['research', 'prediction-history'].includes(section) && !basic.isWatched"
+        v-if="watchContext && ['research', 'prediction-history'].includes(section) && !basic.isWatched"
         class="empty-analysis"
       >
         关注后可持续查看这只基金的预测及历史记录。
       </p>
       <MultiPredictionPanel
-        v-if="section === 'research' && basic.fundCode === fundCode && basic.isWatched"
+        v-if="watchContext && section === 'research' && basic.fundCode === fundCode && basic.isWatched"
         :key="`multi-${basic.fundCode}`"
         :fund-code="basic.fundCode"
       />
       <MultiPredictionHistory
-        v-if="section === 'prediction-history' && basic.fundCode === fundCode && basic.isWatched"
+        v-if="watchContext && section === 'prediction-history' && basic.fundCode === fundCode && basic.isWatched"
         :fund-code="basic.fundCode"
       />
 

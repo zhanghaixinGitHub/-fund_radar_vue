@@ -1,5 +1,6 @@
 import type { Direction1dRecord } from '@/types/direction1d'
 import type { MultiPrediction } from '@/types/multiPrediction'
+import type { AnalysisReview } from '@/types/analysisReview'
 import { direction1dConclusion, direction1dSummary } from './direction1d'
 import { flatRange, isThreeStateTarget } from './predictionDirection'
 
@@ -27,6 +28,8 @@ export interface HistoryDay {
   items: Partial<Record<HistoryPeriod, HistoryItem>>
   /** 一日历次原始判断，按输入顺序排列；展示旧判断不改变当前引用。 */
   dailyRevisions: HistoryItem[]
+  /** 事后回看另列，不能替换正式周期记录，也不能交给对错计算函数。 */
+  reviews: AnalysisReview[]
 }
 
 /**
@@ -34,11 +37,11 @@ export interface HistoryDay {
  * 不按生成日期分组，不按模型版本或最终对错挑选，不改写历史记录或接口翻页顺序。
  * 生成时间按绝对时刻比较，兼容 UTC 与北京时间；同一时刻用编号稳定排序。
  */
-export function groupPredictionHistory(fundCode: string, multi: readonly MultiHistoryRow[], daily: readonly Direction1dRecord[]): HistoryDay[] {
+export function groupPredictionHistory(fundCode: string, multi: readonly MultiHistoryRow[], daily: readonly Direction1dRecord[], reviews: readonly AnalysisReview[] = []): HistoryDay[] {
   const days = new Map<string, HistoryDay>()
   const add = (item: HistoryItem) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(item.date)) return
-    const day = days.get(item.date) ?? { date: item.date, items: {}, dailyRevisions: [] }
+    const day = days.get(item.date) ?? { date: item.date, items: {}, dailyRevisions: [], reviews: [] }
     const previous = day.items[item.period]
     const time = Date.parse(item.generatedAt)
     const previousTime = previous ? Date.parse(previous.generatedAt) : Number.NEGATIVE_INFINITY
@@ -61,6 +64,14 @@ export function groupPredictionHistory(fundCode: string, multi: readonly MultiHi
     if (record.status || record.forecast.fundCode !== fundCode) continue
     add({ kind: 'daily', id: record.forecastId, date: record.forecast.targetNavDate, period: 'T1_V1',
       generatedAt: record.forecast.generatedAt, record })
+  }
+  for (const review of reviews) {
+    if (review.fundCode !== fundCode || review.recordType !== 'COMPREHENSIVE_ASOF_REVIEW'
+      || review.excludedFromAccuracy !== true || !/^\d{4}-\d{2}-\d{2}$/.test(review.targetNavDate)) continue
+    const day = days.get(review.targetNavDate) ?? { date: review.targetNavDate, items: {}, dailyRevisions: [], reviews: [] }
+    if (!day.reviews.some(row => row.reviewId === review.reviewId)) day.reviews.push(review)
+    day.reviews.sort((a, b) => Date.parse(b.actualGeneratedAt) - Date.parse(a.actualGeneratedAt) || a.reviewId.localeCompare(b.reviewId))
+    days.set(day.date, day)
   }
   return [...days.values()].sort((a, b) => b.date.localeCompare(a.date))
 }

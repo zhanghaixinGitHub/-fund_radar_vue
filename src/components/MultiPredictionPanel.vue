@@ -32,7 +32,7 @@ const cards = computed(() => sortPredictionHorizons(current.value?.horizons, h =
   ...h,
   title: periods[h.horizon_id]?.title ?? h.label,
   duration: periods[h.horizon_id]?.duration ?? '以实际预测日期为准',
-  prediction: current.value?.predictions.find(p => p.horizonId === h.horizon_id),
+  prediction: current.value?.predictions.find(p => p.horizonId === h.horizon_id && p.generationMethod === 'COMPREHENSIVE'),
   attempt: current.value?.latestAttempts.find(a => a.horizon_id === h.horizon_id),
 })))
 
@@ -57,6 +57,7 @@ function flatExplanation(threshold?: string): string {
 /** 只转换失败的展示用语；失败不会被掩盖，也不会被当作“看跌”结果。 */
 function failureMessage(failure?: PredictionError): string {
   const code = failure?.code ?? ''
+  if (/COMPREHENSIVE|MANUAL_ANALYSIS|NAV_ONLY_PREDICTION_DISABLED/.test(code)) return '本基金在这个时间段的综合资料分析尚未完成，暂未生成预测。'
   if (/NAV|DATA|HISTORY/.test(code)) return '净值等数据还未准备好，暂时无法更新这个时间段的预测。'
   if (/CALENDAR/.test(code)) return '预测日期还未确认，暂时无法生成结果。'
   if (/MODEL|ARTIFACT/.test(code)) return '这个时间段的预测暂时不可用，请稍后重试。'
@@ -116,8 +117,8 @@ async function poll(id: string, run: number) {
 async function generate() {
   if (updating.value) return
   const canWrite = auth.hasPermission('WATCHLIST_SELF_WRITE')
-  // 002112的一日分析独立更新，查看一天时不连带生成其他周期。
-  if (props.fundCode === '002112' && selectedPeriod.value === 'DAY') {
+  // 所有基金按所选周期更新；一天判断不能代替其他周期的综合分析。
+  if (selectedPeriod.value === 'DAY') {
     await dailyPanel.value?.refresh(canWrite)
     return
   }
@@ -210,7 +211,7 @@ onBeforeUnmount(() => { ++sequence; globalThis.clearTimeout(timer) })
             {{ card.prediction ? direction(card.prediction.direction) : '暂无预测' }}
           </strong>
           <span class="forecast-period">{{ card.prediction ? period(card.prediction) : '尚未生成' }}</span>
-          <span class="forecast-data-date">{{ card.prediction ? `依据净值截至 ${card.prediction.baseNavDate ?? card.prediction.dataAsOf}` : '点击查看当前状态' }}</span>
+          <span class="forecast-data-date">{{ card.prediction ? `资料截至 ${card.prediction.knowledgeCutoff ? time(card.prediction.knowledgeCutoff) : card.prediction.dataAsOf}` : '点击查看当前状态' }}</span>
           <span
             v-if="card.attempt?.payload.generationStatus === 'FAILED'"
             class="forecast-card-status"

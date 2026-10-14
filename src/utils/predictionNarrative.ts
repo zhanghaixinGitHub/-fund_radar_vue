@@ -9,12 +9,13 @@ export function readNarrative(response: PredictionNarrativeResponse, fundCode: s
   }
   if (!['READY', 'PENDING', 'FALLBACK'].includes(response.state)) return null
   const value = response.narrative
-  // 002112综合信息说明沿用同一正文结构，单独标识净值、持仓及消息的实际覆盖。
-  // 仅接受该基金的一日已完成说明；其他基金、周期和旧版因果话术仍按原边界拒绝。
-  const informationVersion = fundCode === '002112' && kind === 'daily' && response.state === 'READY'
-    && ['PREDICTION_INFORMATION_ZH_V1', 'PREDICTION_INFORMATION_ZH_V2', 'PREDICTION_INFORMATION_ZH_V3', 'PREDICTION_INFORMATION_ZH_V4'].includes(value?.styleVersion ?? '')
+  // 所有基金、各周期可恢复同条原文中的完整综合说明；旧版试点说明继续保留原范围。
+  const comprehensive = /^\d{6}$/.test(fundCode) && ['daily', 'multi'].includes(kind)
+    && response.state === 'READY' && value?.styleVersion === 'PREDICTION_INFORMATION_ZH_V4'
+  const informationVersion = comprehensive || (fundCode === '002112' && kind === 'daily' && response.state === 'READY'
+    && ['PREDICTION_INFORMATION_ZH_V1', 'PREDICTION_INFORMATION_ZH_V2', 'PREDICTION_INFORMATION_ZH_V3'].includes(value?.styleVersion ?? ''))
   if (!value || (value.styleVersion !== displayVersion && !informationVersion)) return null
-  // 当前002112说明已由服务端按原文核对；篇幅和条数只是组织目标，不能在前端再次整包拒绝。
+  // 综合说明已由服务端按原文核对；篇幅和条数只是组织目标，不能在前端再次整包拒绝。
   // 基金、期次、来源、安全链接和正文类型仍必须匹配；历史说明沿用原有验证边界。
   const organizedInformation = informationVersion && value.styleVersion === 'PREDICTION_INFORMATION_ZH_V4'
   if (!value.summary || !value.context
@@ -49,7 +50,7 @@ export function readNarrative(response: PredictionNarrativeResponse, fundCode: s
     }
     const validDriver = (d: NonNullable<typeof value.drivers>[number]) => d
       // 经理变更及任期表现由后端按原预测快照保存，前端沿用相同的来源与身份校验。
-      && ['净值', '持仓行情', '公司经营', '公告', '新闻', '政策', '基金经理'].includes(d.category)
+      && ['净值', '基金净值', '持仓行情', '行业行情', '市场行情', '财务', '公司经营', '公告', '新闻', '政策', '基金经理'].includes(d.category)
       && ['支持上涨', '支持下跌', '双向影响', '背景观察'].includes(d.assessment)
       && text(d.title) && text(d.observation) && text(d.meaning) && text(d.implication)
       && typeof d.relation === 'string'

@@ -34,6 +34,7 @@ const pageSections: Record<string, PageSection[]> = {
     { key: 'prediction-history', label: '预测历史' },
     { key: 'rules', label: '我的提醒', group: '我的设置' },
   ],
+  // 市场详情只展示基金资料；走势预测与历史记录统一从“我的关注”进入。
   'fund-detail': [
     { key: 'basic', label: '基础资料', group: '基金资料' },
     { key: 'nav', label: '净值走势' },
@@ -45,8 +46,6 @@ const pageSections: Record<string, PageSection[]> = {
     { key: 'holdings', label: '基金持仓', group: '投资与动态' },
     { key: 'company', label: '持仓公司经营' },
     { key: 'documents', label: '公告与动态' },
-    { key: 'research', label: '走势预测', group: '预测与回看' },
-    { key: 'prediction-history', label: '预测历史' },
   ],
   'portfolio-snapshot': [
     { key: 'overview', label: '总览' },
@@ -75,7 +74,7 @@ const pageSections: Record<string, PageSection[]> = {
     { key: 'fundRatings', label: '基金评级更新' },
     { key: 'fundNews', label: '近期基金公告核验' },
     { key: 'featureSnapshot', label: '历史指标计算' },
-    { key: 'direction1dPrediction', label: '002112 一日预测' },
+    { key: 'direction1dPrediction', label: '一日综合预测' },
     { key: 'simulationFees', label: '模拟费率同步' },
     { key: 'spxManual', label: '标普500手动同步' },
     { key: 'simRecurring', label: '定投手动执行' },

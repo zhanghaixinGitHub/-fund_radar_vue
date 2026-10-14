@@ -22,7 +22,7 @@ export interface PredictionNarrative {
   inventory?: { id: string; name: string; status: string; detail: string }[]
 }
 export interface PredictionDriver {
-  category: '净值' | '持仓行情' | '公告' | '政策' | '新闻' | '公司经营' | '基金经理'
+  category: '净值' | '基金净值' | '持仓行情' | '行业行情' | '市场行情' | '财务' | '公告' | '政策' | '新闻' | '公司经营' | '基金经理'
   title: string
   assessment: string
   observation: string

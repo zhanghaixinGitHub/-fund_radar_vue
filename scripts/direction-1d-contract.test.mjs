@@ -7,6 +7,19 @@ import test from 'node:test'
 
 const code = stripTypeScriptTypes(readFileSync(new URL('../src/utils/direction1d.ts', import.meta.url), 'utf8'))
 const { assertDirection1dForecast, direction1dDirection, direction1dSummary, direction1dConclusion } = await import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`)
+
+test('非试点基金的一日综合判断须有统一规则身份，不能只换基金代码', () => {
+  const value = { schemaVersion: 'DIRECTION_1D_ANALYSIS_V1', fundCode: '016008', horizonTradingDays: 1,
+    targetDefinition: 'UNIT_NAV_DIRECTION_THREE_STATE_V2', directionPolicy: 'EXACT_UNIT_NAV_CHANGE_V1',
+    modelReleased: false, upProbability: null, validationStatus: 'UNVALIDATED', input: { values: [] },
+    generationMethod: 'COMPREHENSIVE', generationSource: 'CODEX_ASSISTED_REVIEW',
+    analysisPolicyVersion: 'FUND_COMPREHENSIVE_REVIEW_V1', analysisPolicyHash: 'a'.repeat(64),
+    analysis: { direction: 'DOWN', confidence: 'LOW', summary: '综合倾向。', synthesis: '取舍。' },
+    narrative: { styleVersion: 'PREDICTION_INFORMATION_ZH_V4', summary: '综合倾向。', context: '取舍。' } }
+  assert.doesNotThrow(() => assertDirection1dForecast(value))
+  assert.throws(() => assertDirection1dForecast({ ...value, analysisPolicyHash: '' }))
+  assert.throws(() => assertDirection1dForecast({ ...value, generationSource: 'OTHER' }))
+})
 const example = () => ({ schemaVersion: 'DIRECTION_1D_EXPERIMENT_V1', horizonTradingDays: 1, targetDefinition: 'UNIT_NAV_DIRECTION_V1', modelReleased: false, upProbability: null,
   branches: ['FIXED', 'WEEKLY'].map(branchId => ({ branchId, status: 'AVAILABLE', score: .5, predictedDirection: 'NON_UP' })) })
 

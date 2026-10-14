@@ -10,7 +10,7 @@ export function direction1dDisplayRecord(current: Direction1dCurrent | null, fun
   if (!targetDate) return null
   return current?.history.items.find(record => !record.status
     && record.forecast.fundCode === fundCode && record.forecast.targetNavDate === targetDate
-    && ['DIRECTION_1D_EXPERIMENT_V2', 'DIRECTION_1D_ANALYSIS_V1'].includes(record.forecast.schemaVersion)) ?? null
+    && record.forecast.schemaVersion === 'DIRECTION_1D_ANALYSIS_V1') ?? null
 }
 
 const reasons: Record<string, string> = {
@@ -40,7 +40,7 @@ const reasons: Record<string, string> = {
   NAV_LATEST_NOT_READY: '上一估值日净值尚未取得，补齐后再预测',
   NAV_GAP: '历史净值存在缺日，补齐后再预测', WAITING_DATA: '等待所需净值补齐',
   WINDOW_CHANGED: '目标估值日已变化，请重新检查后生成',
-  READY_EXPERIMENTAL: '数据与模型已就绪（实验）', DATA_PENDING: '等待官方净值', HISTORY_TOO_SHORT: '完整历史不足61个交易日',
+  READY_EXPERIMENTAL: '本期资料待核对', DATA_PENDING: '等待官方净值', HISTORY_TOO_SHORT: '完整历史不足61个交易日',
   MODEL_PENDING: '当前基金还没有可用模型', GROUP_UNVERIFIED: '基金资料或产品身份待核实', SPECIAL_POLICY_REQUIRED: '现有模型暂不适用',
   CROSS_MARKET_MODEL_REQUIRED: '涉及港股或海外市场，交易日期、净值发布时间和模型适用性尚未验证',
   COMMODITY_MODEL_REQUIRED: '涉及黄金、原油或其他商品，现有三组模型尚未验证适用性',
@@ -62,6 +62,8 @@ const reasons: Record<string, string> = {
 }
 export const direction1dReason = (code: string) => reasons[code] ?? (code.startsWith('ANALYSIS_')
   ? '这次分析未完成核对，暂时无法生成新预测，请稍后重试'
+  : code.startsWith('COMPREHENSIVE_') || ['NAV_ONLY_PREDICTION_DISABLED', 'MANUAL_MODE_REQUIRED'].includes(code)
+    ? '本期综合资料尚未完成核对，暂未生成预测'
   : code.startsWith('INFORMATION_') ? '相关资料暂时无法核对，请稍后重试' : code)
 export const direction1dDirection = (direction: string | null | undefined) => ({ UP: '上涨', NON_UP: '非上涨（下跌或持平）', DOWN: '下跌', FLAT: '持平' })[direction ?? ''] ?? '暂无方向'
 export const direction1dTime = (time?: string | null) => time ? new Date(time).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false }) : '尚无记录'
@@ -162,7 +164,9 @@ export function direction1dConclusion(record: Direction1dRecord, branchId: 'FIXE
 /** 阻止错误版本或不可用分支显示为可用方向；服务端仍承担最终校验。 */
 export function assertDirection1dForecast(value: Direction1dForecast): void {
   if (value.schemaVersion === 'DIRECTION_1D_ANALYSIS_V1') {
-    if (value.fundCode !== '002112' || value.horizonTradingDays !== 1
+    const unified = value.generationMethod === 'COMPREHENSIVE' && value.analysisPolicyVersion === 'FUND_COMPREHENSIVE_REVIEW_V1'
+      && value.generationSource === 'CODEX_ASSISTED_REVIEW' && /^[a-f0-9]{64}$/.test(value.analysisPolicyHash ?? '')
+    if (!/^\d{6}$/.test(value.fundCode) || (value.fundCode !== '002112' && !unified) || value.horizonTradingDays !== 1
       || value.targetDefinition !== 'UNIT_NAV_DIRECTION_THREE_STATE_V2'
       || value.directionPolicy !== 'EXACT_UNIT_NAV_CHANGE_V1' || value.modelReleased !== false
       || value.upProbability !== null || value.validationStatus !== 'UNVALIDATED'

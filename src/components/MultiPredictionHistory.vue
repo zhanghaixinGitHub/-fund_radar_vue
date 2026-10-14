@@ -2,20 +2,23 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { get } from '@/api/http'
 import { getDirection1dEvidence, getDirection1dFundHistory } from '@/api/direction1d'
+import { readAnalysisReviews } from '@/api/multiPrediction'
 import type { Direction1dEvidence } from '@/types/direction1d'
 import { usePredictionHistory } from '@/composables/usePredictionHistory'
 import { groupPredictionHistory, historyItemView, historyPeriods } from '@/utils/predictionHistory'
 import type { HistoryItem, MultiHistoryRow } from '@/utils/predictionHistory'
 import { dailyPredictionEvidence, multiPredictionEvidence } from '@/utils/predictionEvidence'
 import PredictionEvidenceBody from '@/components/PredictionEvidenceBody.vue'
+import AnalysisReviewBody from '@/components/AnalysisReviewBody.vue'
 
 const props = defineProps<{ fundCode: string }>()
-const { multi, daily, busy, errors, more, hasMore, load, dailyDateComplete } = usePredictionHistory(
+const { multi, daily, reviews, busy, errors, more, hasMore, load, dailyDateComplete } = usePredictionHistory(
   () => props.fundCode,
   {
     multi: (code, cursor) => get<{ items: MultiHistoryRow[] }>(`/api/v1/watchlist/${code}/predictions/history${cursor
       ? `?before=${encodeURIComponent(cursor.generatedAt)}&beforeId=${encodeURIComponent(cursor.predictionId)}` : ''}`),
     daily: getDirection1dFundHistory,
+    reviews: readAnalysisReviews,
   },
 )
 const expandedId = ref<string | null>(null)
@@ -27,8 +30,9 @@ let sequence = 0
 let scrollSequence = 0
 
 /** 四个周期保留固定位置；跨页的一日记录读齐前不展示可能已经过时的版本。 */
-const days = computed(() => groupPredictionHistory(props.fundCode, multi.value, daily.value).map(day => ({
+const days = computed(() => groupPredictionHistory(props.fundCode, multi.value, daily.value, reviews.value).map(day => ({
   date: day.date,
+  reviews: day.reviews,
   revisions: dailyDateComplete(day.date) ? day.dailyRevisions : [],
   slots: historyPeriods.map(period => {
     const source = period.id === 'T1_V1' ? 'daily' : 'multi'
@@ -128,7 +132,7 @@ onBeforeUnmount(() => { sequence++ })
       >已展示 {{ days.length }} 个日期</span>
     </header>
     <template
-      v-for="source in (['daily', 'multi'] as const)"
+      v-for="source in (['daily', 'multi', 'reviews'] as const)"
       :key="source"
     >
       <p
@@ -161,7 +165,7 @@ onBeforeUnmount(() => { sequence++ })
       正在读取预测记录…
     </p>
     <p
-      v-else-if="!days.length && !errors.daily && !errors.multi && !invalidDaily"
+      v-else-if="!days.length && !errors.daily && !errors.multi && !errors.reviews && !invalidDaily"
       class="history-empty"
     >
       暂无预测记录，生成预测后可在这里回看。
@@ -177,9 +181,12 @@ onBeforeUnmount(() => { sequence++ })
         <h3 :id="`history-day-${day.date}`">
           {{ day.date }}
         </h3>
-        <span>预测起始日</span>
+        <span>{{ day.slots.some(slot => slot.item) ? '预测起始日' : '回看日期' }}</span>
       </header>
-      <div class="history-periods">
+      <div
+        v-if="day.slots.some(slot => slot.item) || !day.reviews.length"
+        class="history-periods"
+      >
         <section
           v-for="slot in day.slots"
           :key="slot.id"
@@ -268,6 +275,11 @@ onBeforeUnmount(() => { sequence++ })
           </p>
         </section>
       </div>
+      <AnalysisReviewBody
+        v-for="review in day.reviews"
+        :key="review.reviewId"
+        :review="review"
+      />
       <div
         v-if="selected?.item?.date === day.date && selected.view && evidence"
         :id="`history-basis-${day.date}`"

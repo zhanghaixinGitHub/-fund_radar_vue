@@ -1,5 +1,16 @@
 import { get, post } from './http'
 import type { DecisionReport, MultiCurrent, PredictionTask } from '@/types/multiPrediction'
+import type { AnalysisReviewCursor, AnalysisReviewPage } from '@/types/analysisReview'
+
+/** 只读取当前本人关注基金的独立回看，不调用生成或准确率接口。 */
+export async function readAnalysisReviews(code: string, cursor?: AnalysisReviewCursor): Promise<AnalysisReviewPage> {
+  const query = cursor ? `?before=${encodeURIComponent(cursor.before)}&beforeId=${encodeURIComponent(cursor.beforeId)}` : ''
+  const result = await get<AnalysisReviewPage>(`/api/v1/watchlist/${encodeURIComponent(code)}/analysis-reviews${query}`)
+  if (result.items.some(item => item.fundCode !== code || item.recordType !== 'COMPREHENSIVE_ASOF_REVIEW' || item.excludedFromAccuracy !== true)) {
+    throw new Error('综合回看与本基金不一致，已停止展示。')
+  }
+  return result
+}
 
 export const readMultiPrediction = (code: string) => get<MultiCurrent>(`/api/v1/watchlist/${encodeURIComponent(code)}/predictions`)
 export const generateMultiPrediction = (code?: string) => post<PredictionTask>(code

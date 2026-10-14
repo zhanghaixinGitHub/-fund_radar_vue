@@ -75,9 +75,13 @@ export interface Direction1dLegacyForecast extends Direction1dWindow {
     information?: Direction1dInformationSummary & { version: string; sourceIdentity: string }
   }
 }
-/** 002112独立综合分析；不伪造旧统计模型的分支或分数。 */
+/** 各基金统一综合分析；旧档身份可缺省，新导入记录由服务端核对规则版本。 */
 export interface Direction1dAnalysisForecast extends Omit<Direction1dLegacyForecast, 'schemaVersion' | 'branches'> {
   schemaVersion: 'DIRECTION_1D_ANALYSIS_V1'
+  generationMethod?: 'COMPREHENSIVE'
+  generationSource?: 'CODEX_ASSISTED_REVIEW'
+  analysisPolicyVersion?: string
+  analysisPolicyHash?: string
   latestNavDate: string | null
   validationStatus: 'UNVALIDATED'
   analysis: { direction: 'UP' | 'DOWN'; confidence: 'LOW'; summary: string; synthesis: string }

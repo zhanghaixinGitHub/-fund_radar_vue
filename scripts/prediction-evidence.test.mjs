@@ -8,6 +8,15 @@ import { URL } from 'node:url'
 const source = stripTypeScriptTypes(readFileSync(new URL('../src/utils/predictionEvidence.ts', import.meta.url), 'utf8'))
 const { multiPredictionEvidence, dailyPredictionEvidence } = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`)
 
+test('多周期综合判断恢复原分析，不索取或编造净值参数', () => {
+  const prediction = { fundCode: '016008', generationMethod: 'COMPREHENSIVE', direction: 'DOWN',
+    knowledgeCutoff: '2026-10-14T09:35:00+08:00', analysis: { direction: 'DOWN', confidence: 'LOW', summary: '综合偏下跌。' },
+    narrative: { styleVersion: 'PREDICTION_INFORMATION_ZH_V4', summary: '综合偏下跌。', limitations: ['效果尚未验证。'] } }
+  assert.equal(multiPredictionEvidence(prediction).summary, '综合偏下跌。')
+  assert.equal(multiPredictionEvidence(prediction).facts[0].value, prediction.knowledgeCutoff)
+  assert.match(multiPredictionEvidence({ ...prediction, direction: 'UP' }).summary, /无法核对/)
+})
+
 test('综合信息按实际覆盖说明依据，缺新闻政策不冒充利好', () => {
   const forecast = {
     fundCode: '002112', baseNavDate: '2026-10-08', targetNavDate: '2026-10-09', inputHash: 'source',

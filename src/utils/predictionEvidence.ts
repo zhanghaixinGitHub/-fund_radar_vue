@@ -28,6 +28,15 @@ function unavailable(message: string): PredictionEvidence {
  */
 export function multiPredictionEvidence(prediction?: MultiPrediction): PredictionEvidence {
   if (!prediction) return unavailable('这个时间段还没有预测，因此暂时没有对应依据。')
+  if (prediction.generationMethod === 'COMPREHENSIVE') {
+    const { analysis, narrative } = prediction
+    if (!analysis || analysis.direction !== prediction.direction || analysis.confidence !== 'LOW'
+      || narrative?.styleVersion !== 'PREDICTION_INFORMATION_ZH_V4' || narrative.summary !== analysis.summary) {
+      return unavailable('这条综合判断与原始依据暂时无法核对。')
+    }
+    return { summary: analysis.summary, facts: [{ label: '资料截至', value: prediction.knowledgeCutoff ?? prediction.dataAsOf }],
+      supporting: [], opposing: [], limitations: narrative.limitations }
+  }
   const snapshot = prediction.featureSnapshot
   if (!snapshot || snapshot.fundCode !== prediction.fundCode || snapshot.dataAsOf !== prediction.dataAsOf) {
     return unavailable('这条预测没有可核对的原始输入，暂时无法还原系统为什么作出这个判断。')

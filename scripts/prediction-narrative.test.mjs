@@ -93,6 +93,20 @@ test('切换基金、周期或历史版本不能套用另一条解释', () => {
   }
 })
 
+test('各基金和多周期可恢复同条完整综合说明，旧版本仍受原范围约束', () => {
+  for (const [fundCode, kind] of [['016008', 'daily'], ['016008', 'multi'], ['002112', 'multi']]) {
+    const response = { ...ready(), fundCode, kind }
+    response.narrative = { ...response.narrative, styleVersion: 'PREDICTION_INFORMATION_ZH_V4',
+      drivers: [{ category: '市场行情', title: '相关市场', assessment: '支持上涨', observation: '已核实的市场事实。',
+        meaning: '已有支持因素。', implication: '若传导持续可能支撑。', relation: '实际投向关联', sources: [] }],
+      counterpoints: [], conditions: ['相关市场走弱时重新判断。'],
+      inventory: Array.from({ length: 16 }, (_, i) => ({ id: `D${String(i + 1).padStart(2, '0')}`, name: '资料', detail: '已核实' })),
+    }
+    assert.deepEqual(readNarrative(response, fundCode, kind, 'original'), response.narrative)
+    assert.throws(() => readNarrative(response, fundCode, kind, 'other'))
+  }
+})
+
 test('具体事实说明保留来源和可能影响，拒绝危险链接及不完整条目', () => {
   const response = ready()
   response.narrative.styleVersion = 'PREDICTION_INFORMATION_ZH_V2'

@@ -113,10 +113,10 @@ const tasks: readonly SyncTaskDefinition[] = [
   {
     key: 'direction1dPrediction',
     jobType: 'DIRECTION_1D_PREDICTIONS',
-    title: '002112 一日预测',
-    description: '检查并保存德邦鑫星价值混合 C（002112）已经完成资料分析的一日判断。分析尚未完成时明确说明暂无预测，历史记录继续保留。',
+    title: '关注基金一日综合预测',
+    description: '逐只检查并保存有效关注基金已经完成综合资料分析的一日判断。资料分析尚未完成时保留缺口，历史记录继续保留。',
     scheduleNote: '一键同步先更新净值、基础资料、公告、持仓行情和分析资料，再检查本期判断是否可保存。该按钮不会重新进行资料分析。15:00前对应当日，之后对应下一估值日，非估值日按日历处理；同一判断重复执行只复用原记录。',
-    actionLabel: '检查并保存 002112 一日预测',
+    actionLabel: '检查并保存一日综合预测',
     start: startDirection1dPredictionSync,
     loadLatest: getLatestDirection1dPredictionSync,
   },
@@ -237,7 +237,12 @@ function progressPercent(job: SyncJobStatus | null): number {
 }
 
 /** 将服务端任务状态映射为清晰的中文业务含义。 */
-function statusLabel(status: SyncJobStatus['status'] | undefined, isBatch = false, isFee = false, isCalculation = false, isPrediction = false, isMaterials = false): string {
+function statusLabel(status: SyncJobStatus['status'] | undefined, isBatch = false, isFee = false, isCalculation = false, isPrediction = false, isMaterials = false, isRating = false): string {
+  // 检查完成不代表一定生成等级；实际结果仍由下方已评级/暂未评级数量说明。
+  if (isRating) return {
+    QUEUED: '等待检查', RUNNING: '正在检查评级资料', SUCCEEDED: '评级检查完成',
+    PARTIAL_SUCCESS: '部分评级检查未完成', FAILED: '评级检查未完成',
+  }[status ?? 'QUEUED']
   // 资料补充的部分成功与净值、指标无关，避免把缺报告误报成指标计算失败。
   if (isMaterials && status === 'PARTIAL_SUCCESS') return '部分资料尚未补齐'
   if (isPrediction) return {
@@ -448,7 +453,7 @@ onBeforeUnmount(() => {
           <h2 id="sync-all-title">
             一键同步全部
           </h2>
-          <p>依次执行{{ allSyncTaskCount }}项任务：标普500 → 净值增量 → 基金资料与市场数据更新 → 历史指标计算 → 模拟费率 → 近期基金公告核验 → 基金持仓与公司资料 → 002112 分析资料更新与留存 → 基金评级更新 → 002112 一日预测。某项失败会记录原因，并继续尝试其余任务；预测按实际可用资料判断。</p>
+          <p>依次执行{{ allSyncTaskCount }}项任务：标普500 → 净值增量 → 基金资料与市场数据更新 → 历史指标计算 → 模拟费率 → 近期基金公告核验 → 基金持仓与公司资料 → 002112 分析资料更新与留存 → 基金评级更新 → 关注基金一日综合预测。某项失败会记录原因，并继续尝试其余任务；预测按实际可用资料判断。</p>
         </div>
         <span
           v-if="allJob"
@@ -600,7 +605,7 @@ onBeforeUnmount(() => {
                   <span
                     class="sync-status"
                     :class="jobs[task.key] ? `is-${jobs[task.key]!.status.toLowerCase()}` : 'is-idle'"
-                  >{{ loading ? '读取中…' : errorMessage ? '状态暂不可用' : jobs[task.key] ? syncResultLabel(jobs[task.key]) || statusLabel(jobs[task.key]!.status, false, task.key === 'simulationFees', task.key === 'featureSnapshot', task.key === 'direction1dPrediction', (task.key === 'fundMaterials' || task.key === 'fundNews')) : '尚未运行' }}</span>
+                  >{{ loading ? '读取中…' : errorMessage ? '状态暂不可用' : jobs[task.key] ? syncResultLabel(jobs[task.key]) || statusLabel(jobs[task.key]!.status, false, task.key === 'simulationFees', task.key === 'featureSnapshot', task.key === 'direction1dPrediction', (task.key === 'fundMaterials' || task.key === 'fundNews'), task.key === 'fundRatings') : '尚未运行' }}</span>
                 </td>
                 <td>{{ loading || errorMessage ? '—' : lastSuccessfulAt[task.jobType] ? formatTime(lastSuccessfulAt[task.jobType]) : '尚无整项完成记录' }}</td>
                 <td>
@@ -638,7 +643,7 @@ onBeforeUnmount(() => {
           class="sync-status"
           :class="jobs[task.key] ? `is-${jobs[task.key]!.status.toLowerCase()}` : 'is-idle'"
         >
-          {{ jobs[task.key] ? syncResultLabel(jobs[task.key]) || statusLabel(jobs[task.key]!.status, false, task.key === 'simulationFees', task.key === 'featureSnapshot', task.key === 'direction1dPrediction', (task.key === 'fundMaterials' || task.key === 'fundNews')) : task.key === 'direction1dPrediction' ? '尚无执行记录' : '尚未运行' }}
+          {{ jobs[task.key] ? syncResultLabel(jobs[task.key]) || statusLabel(jobs[task.key]!.status, false, task.key === 'simulationFees', task.key === 'featureSnapshot', task.key === 'direction1dPrediction', (task.key === 'fundMaterials' || task.key === 'fundNews'), task.key === 'fundRatings') : task.key === 'direction1dPrediction' ? '尚无执行记录' : '尚未运行' }}
         </span>
       </div>
 

@@ -36,8 +36,7 @@ const generateHint = computed(() => {
   if (!targetDate.value) return '预测日期尚未确认，暂时无法生成预测。'
   if (current.coverage.status !== 'READY_EXPERIMENTAL') return direction1dReason(current.coverage.status)
   if (current.window.status !== 'OPEN') return '目标估值日已收盘，等待最新净值后预测下一估值日。'
-  return props.fundCode === '002112' ? `按当前可用资料判断 ${current.window.targetNavDate} 的涨跌倾向。`
-    : `所需净值截至 ${current.window.baseNavDate}，本期预测目标为 ${current.window.targetNavDate}。`
+  return `核对本期综合资料，预测目标为 ${current.window.targetNavDate}。`
 })
 
 /** 没有预测时只说明阻止当前判断的原因，不向用户罗列内部检查状态。 */
@@ -46,7 +45,7 @@ const emptyReason = computed(() => {
   if (!current) return ''
   if (!targetDate.value) return '预测日期更新中，暂无预测。'
   if (current.coverage.status !== 'READY_EXPERIMENTAL') return direction1dReason(current.coverage.status)
-  return '本期暂无预测。'
+  return '本期综合资料分析尚未完成，暂无预测。'
 })
 
 /**

@@ -1,6 +1,10 @@
 /** 新多周期原始判断；份额/模型/周期数量与去重基金数分别统计。 */
 export interface PredictionError { code: string; stage: string; summary: string; details?: Record<string, unknown>; traceId?: string; nextAction?: string; retryable?: boolean }
 export interface MultiPrediction {
+  generationMethod?: 'COMPREHENSIVE'
+  generationSource?: string; analysisPolicyVersion?: string; analysisPolicyHash?: string; knowledgeCutoff?: string
+  analysis?: { direction: 'UP' | 'DOWN'; confidence: 'LOW'; summary: string; synthesis: string }
+  narrative?: import('./predictionEvidence').PredictionNarrative
   baseNavDate?: string; generationPolicy?: string
   predictionId: string; fundCode: string; horizonId: string; startDate: string; endDate: string | null
   nominalEndDate: string | null; endDateStatus: string; direction: 'UP' | 'FLAT' | 'DOWN' | 'NON_UP'; reason: string

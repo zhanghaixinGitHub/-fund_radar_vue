@@ -14,6 +14,21 @@ const historySource = source('../src/utils/predictionHistory.ts')
   .replace("'./predictionDirection'", JSON.stringify(moduleUrl(source('../src/utils/predictionDirection.ts'))))
 const { groupPredictionHistory, historyItemView, historyReturnText, historyPeriods } = await import(moduleUrl(historySource))
 
+test('事后回看归入原目标日，保留实际生成时刻，不替换正式预测或进入方向对错计算', () => {
+  const daily = dailyRow('original', '2026-10-14', '2026-10-14T09:00:00+08:00')
+  const review = { reviewId: 'review', recordType: 'COMPREHENSIVE_ASOF_REVIEW', fundCode: '008888',
+    targetNavDate: '2026-10-14', actualGeneratedAt: '2026-10-14T16:12:58+08:00', excludedFromAccuracy: true }
+  const [day] = groupPredictionHistory('008888', [], [daily], [review, review, { ...review, fundCode: '002112' }])
+  assert.equal(day.date, '2026-10-14')
+  assert.equal(day.items.T1_V1.id, 'original')
+  assert.equal(day.dailyRevisions.length, 1)
+  assert.deepEqual(day.reviews, [review])
+  assert.equal(day.reviews[0].actualGeneratedAt, '2026-10-14T16:12:58+08:00')
+  const [onlyReview] = groupPredictionHistory('008888', [], [], [review])
+  assert.deepEqual(onlyReview.items, {})
+  assert.equal(onlyReview.reviews.length, 1)
+})
+
 test('002112新分析选择最新输入，净值日期与比较基准分开，实际持平不算预测下跌正确', () => {
   const row = { forecastId: 'new', receiptStatus: 'VERIFIED', outcomes: [], forecast: {
     fundCode: '002112', targetNavDate: '2026-10-12', baseNavDate: '2026-10-09', latestNavDate: '2026-10-08',
@@ -141,6 +156,30 @@ function setup(t, readers) {
   t.after(() => scope.stop())
   return { fund, model, scope }
 }
+
+test('回看独立翻页，失败可单独重试，不重复读取预测，换基金清空旧回看', async t => {
+  const cursor = { before: '2026-10-14T16:12:58+08:00', beforeId: 'review' }
+  const calls = [], review = { reviewId: 'review', fundCode: '008888' }
+  let multiReads = 0
+  const { model, fund } = setup(t, {
+    multi: async () => { multiReads++; return { items: [] } }, daily: async () => page(),
+    reviews: async (...args) => {
+      calls.push(args)
+      if (calls.length === 1) throw new Error('offline')
+      return { items: args[1] ? [] : [review], nextCursor: args[1] ? null : cursor }
+    },
+  })
+  await settle()
+  assert.ok(model.errors.value.reviews)
+  await model.load('reviews')
+  assert.deepEqual(model.reviews.value, [review])
+  await model.load()
+  assert.deepEqual(calls[2], ['008888', cursor])
+  assert.equal(multiReads, 1)
+  assert.equal(model.hasMore.value, false)
+  fund.value = '000001'
+  assert.deepEqual(model.reviews.value, [])
+})
 
 test('多周期翻页用原响应最后一条游标，去重和重新分组不影响游标', async t => {
   const rows = Array.from({ length: 30 }, (_, i) => multiRow(`id-${i}`, '2026-09-24', `2026-09-${String(24 - Math.floor(i / 3)).padStart(2, '0')}T07:00:00Z`))
