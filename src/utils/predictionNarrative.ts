@@ -14,11 +14,14 @@ export function readNarrative(response: PredictionNarrativeResponse, fundCode: s
   const informationVersion = fundCode === '002112' && kind === 'daily' && response.state === 'READY'
     && ['PREDICTION_INFORMATION_ZH_V1', 'PREDICTION_INFORMATION_ZH_V2', 'PREDICTION_INFORMATION_ZH_V3', 'PREDICTION_INFORMATION_ZH_V4'].includes(value?.styleVersion ?? '')
   if (!value || (value.styleVersion !== displayVersion && !informationVersion)) return null
+  // 当前002112说明已由服务端按原文核对；篇幅和条数只是组织目标，不能在前端再次整包拒绝。
+  // 基金、期次、来源、安全链接和正文类型仍必须匹配；历史说明沿用原有验证边界。
+  const organizedInformation = informationVersion && value.styleVersion === 'PREDICTION_INFORMATION_ZH_V4'
   if (!value.summary || !value.context
-    || ![value.summary, value.context, value.supporting, value.opposing].every(item => typeof item === 'string' && item.length <= 1400)
+    || ![value.summary, value.context, value.supporting, value.opposing].every(item => typeof item === 'string' && (organizedInformation || item.length <= 1400))
     || value.supporting !== '' || value.opposing !== ''
-    || !Array.isArray(value.limitations) || value.limitations.length > 5
-    || !value.limitations.every(item => typeof item === 'string' && item.length <= 250)) {
+    || !Array.isArray(value.limitations) || (!organizedInformation && value.limitations.length > 5)
+    || !value.limitations.every(item => typeof item === 'string' && (organizedInformation || item.length <= 250))) {
     throw new Error('解释正文暂不可用')
   }
   if (['PREDICTION_INFORMATION_ZH_V2', 'PREDICTION_INFORMATION_ZH_V3'].includes(value.styleVersion)) {
@@ -37,10 +40,10 @@ export function readNarrative(response: PredictionNarrativeResponse, fundCode: s
         && text(item.title, 200) && text(item.assessment, 30) && text(item.observation, 600)
         && text(item.implication, 300) && validSource(item.source))) throw new Error('具体依据暂不可用')
   } else if (value.styleVersion === 'PREDICTION_INFORMATION_ZH_V4') {
-    const text = (s: unknown, max: number) => typeof s === 'string' && s.length > 0 && s.length <= max
+    const text = (s: unknown) => typeof s === 'string' && s.length > 0
     const validSource = (s: NonNullable<NonNullable<typeof value.drivers>[number]['sources']>[number]) => {
-      // 新说明的原文标题可附带本条已保存的公司关联；仍保持有界文本和原有链接校验。
-      if (!s || !text(s.title, 3000) || !text(s.url, 1500) || !/^\d{4}-\d{2}-\d{2}$/.test(s.publishedDate)) return false
+      // 原文标题和公司关联保留全文；链接仍按安全地址及来源日期核对。
+      if (!s || !text(s.title) || !text(s.url) || s.url.length > 1500 || !/^\d{4}-\d{2}-\d{2}$/.test(s.publishedDate)) return false
       try { const u = new URL(s.url); return ['http:', 'https:'].includes(u.protocol) && !!u.hostname && !u.username && !u.password }
       catch { return false }
     }
@@ -48,15 +51,15 @@ export function readNarrative(response: PredictionNarrativeResponse, fundCode: s
       // 经理变更及任期表现由后端按原预测快照保存，前端沿用相同的来源与身份校验。
       && ['净值', '持仓行情', '公司经营', '公告', '新闻', '政策', '基金经理'].includes(d.category)
       && ['支持上涨', '支持下跌', '双向影响', '背景观察'].includes(d.assessment)
-      && text(d.title, 120) && text(d.observation, 26000) && text(d.meaning, 250) && text(d.implication, 250)
-      && typeof d.relation === 'string' && d.relation.length <= 2500
-      && Array.isArray(d.sources) && d.sources.length <= 5 && d.sources.every(validSource)
-    if (!Array.isArray(value.drivers) || value.drivers.length < 1 || value.drivers.length > 6 || !value.drivers.every(validDriver)
-      || !Array.isArray(value.counterpoints) || value.counterpoints.length > 4 || !value.counterpoints.every(validDriver)
-      || !Array.isArray(value.conditions) || value.conditions.length > 3 || !value.conditions.every(s => text(s, 250))
+      && text(d.title) && text(d.observation) && text(d.meaning) && text(d.implication)
+      && typeof d.relation === 'string'
+      && Array.isArray(d.sources) && d.sources.every(validSource)
+    if (!Array.isArray(value.drivers) || value.drivers.length < 1 || !value.drivers.every(validDriver)
+      || !Array.isArray(value.counterpoints) || !value.counterpoints.every(validDriver)
+      || !Array.isArray(value.conditions) || !value.conditions.every(s => text(s))
       || !Array.isArray(value.inventory) || value.inventory.length !== 16
       || new Set(value.inventory.map(s => s.id)).size !== 16
-      || !value.inventory.every(s => /^D(0[1-9]|1[0-6])$/.test(s.id) && text(s.name, 50) && text(s.detail, 300))) {
+      || !value.inventory.every(s => /^D(0[1-9]|1[0-6])$/.test(s.id) && text(s.name) && text(s.detail))) {
       throw new Error('本次具体依据未通过核对')
     }
   } else if (value.drivers !== undefined) {

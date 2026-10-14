@@ -75,7 +75,7 @@ const pageSections: Record<string, PageSection[]> = {
     { key: 'fundRatings', label: '基金评级更新' },
     { key: 'fundNews', label: '近期基金公告核验' },
     { key: 'featureSnapshot', label: '历史指标计算' },
-    { key: 'direction1dPrediction', label: '全部关注基金预测' },
+    { key: 'direction1dPrediction', label: '002112 一日预测' },
     { key: 'simulationFees', label: '模拟费率同步' },
     { key: 'spxManual', label: '标普500手动同步' },
     { key: 'simRecurring', label: '定投手动执行' },

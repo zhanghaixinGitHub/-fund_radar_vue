@@ -22,9 +22,11 @@ export interface Direction1dCoverage {
 }
 export interface Direction1dWindow {
   baseNavDate: string
+  /** 预测接口按北京时间15点和交易日历确定的当前目标日；页面展示与生成共用。 */
   targetNavDate: string
   deadlineAt: string
   windowOpenAt: string
+  /** 预测目标日下一次切换时刻，页面届时只读刷新，不自行推算另一套交易日。 */
   nextWindowOpenAt: string
   status: string
 }

@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { URL } from 'node:url'
 import { ratingLabel, ratingSourceUrl } from '../src/utils/fundRating.ts'
 
 const current = { status: 'RATED', grade: 'GOOD', validUntil: '2026-11-01T00:00:00+08:00' }

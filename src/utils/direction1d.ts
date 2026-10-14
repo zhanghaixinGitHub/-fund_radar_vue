@@ -1,6 +1,21 @@
-import type { Direction1dForecast, Direction1dRecord } from '@/types/direction1d'
+import type { Direction1dCurrent, Direction1dForecast, Direction1dRecord } from '@/types/direction1d'
+
+/**
+ * 走势卡片只接纳指定基金、预测接口当前目标日的有效记录，方向、日期和依据共用此记录。
+ * 最近成功记录属于过去日期、记录损坏或使用旧协议时，返回 null；历史页面仍可读取旧档。
+ * 不根据旧记录改写目标日，也不因本期缺失而回退到上一期结论。
+ */
+export function direction1dDisplayRecord(current: Direction1dCurrent | null, fundCode: string): Direction1dRecord | null {
+  const targetDate = current?.window.targetNavDate
+  if (!targetDate) return null
+  return current?.history.items.find(record => !record.status
+    && record.forecast.fundCode === fundCode && record.forecast.targetNavDate === targetDate
+    && ['DIRECTION_1D_EXPERIMENT_V2', 'DIRECTION_1D_ANALYSIS_V1'].includes(record.forecast.schemaVersion)) ?? null
+}
 
 const reasons: Record<string, string> = {
+  DEEPSEEK_DISABLED: '付费分析已停用，本次未生成新预测',
+  MANUAL_ANALYSIS_REQUIRED: '本期尚未完成资料分析，暂未生成预测',
   ABSTAINED: '依据不足，暂不判断',
   NO_DIRECTIONAL_EVENT: '没有可核验的具体事件支持涨跌判断',
   EVENT_CONFLICT: '相关事件存在明显分歧，暂不判断',
@@ -14,7 +29,7 @@ const reasons: Record<string, string> = {
   INFORMATION_MARKET_NOT_READY: '所需的持仓股票或大盘行情尚未齐全，请在同步资料后更新预测',
   INFORMATION_HOLDINGS_NOT_READY: '可用的持仓报告尚未齐全，请在同步资料后更新预测',
   INFORMATION_SOURCE_NOT_AVAILABLE: '部分资料尚未可用或已过期，请同步资料后重试',
-  INFORMATION_SOURCE_HASH_MISMATCH: '部分资料无法核对，暂时保留上次结果',
+  INFORMATION_SOURCE_HASH_MISMATCH: '部分资料无法核对，暂时无法生成新预测',
   INFORMATION_FROZEN_SOURCE_CHANGED: '原有依据发生变化，暂时无法生成新判断',
   INFORMATION_RECIPE_CHANGED: '预测依据暂时无法核对，请稍后重试',
   INFORMATION_REGISTRATION_INVALID: '预测暂不可用，请稍后重试',
@@ -46,7 +61,7 @@ const reasons: Record<string, string> = {
   EVIDENCE_CORRUPTED: '原始记录校验失败',
 }
 export const direction1dReason = (code: string) => reasons[code] ?? (code.startsWith('ANALYSIS_')
-  ? '这次分析未完成核对，原判断仍保留，请稍后重试'
+  ? '这次分析未完成核对，暂时无法生成新预测，请稍后重试'
   : code.startsWith('INFORMATION_') ? '相关资料暂时无法核对，请稍后重试' : code)
 export const direction1dDirection = (direction: string | null | undefined) => ({ UP: '上涨', NON_UP: '非上涨（下跌或持平）', DOWN: '下跌', FLAT: '持平' })[direction ?? ''] ?? '暂无方向'
 export const direction1dTime = (time?: string | null) => time ? new Date(time).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false }) : '尚无记录'

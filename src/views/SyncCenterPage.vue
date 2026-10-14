@@ -15,8 +15,8 @@ import {
   getLatestFundNewsSync,
   startFundMaterialsSync,
   getLatestFundMaterialsSync,
-  getLatestMultiPredictionSync,
-  startMultiPredictionSync,
+  getLatestDirection1dPredictionSync,
+  startDirection1dPredictionSync,
   getLatestAllSync,
   getLatestMarketFreeDataCompletionSync,
   getLatestMarketNavIncrementalSync,
@@ -37,7 +37,7 @@ const auth = useAuthStore()
 
 interface SyncTaskDefinition {
   key: SyncTaskKey
-  jobType: 'MARKET_NAV_INCREMENTAL' | 'MARKET_FREE_DATA_COMPLETION' | 'STOCK_FEATURE_SNAPSHOT' | 'MULTI_PREDICTIONS' | 'SIMULATION_FEES' | 'FUND_MATERIALS' | 'FUND_NEWS' | 'FUND_RATINGS'
+  jobType: 'MARKET_NAV_INCREMENTAL' | 'MARKET_FREE_DATA_COMPLETION' | 'STOCK_FEATURE_SNAPSHOT' | 'DIRECTION_1D_PREDICTIONS' | 'SIMULATION_FEES' | 'FUND_MATERIALS' | 'FUND_NEWS' | 'FUND_RATINGS'
   title: string
   description: string
   scheduleNote: string
@@ -83,7 +83,7 @@ const tasks: readonly SyncTaskDefinition[] = [
     jobType: 'SIMULATION_FEES',
     title: '模拟组合申赎费率同步',
     description: '从天天基金抓取申购费率与赎回分档；可刷新单只基金，全量初始化覆盖模拟持仓和定投计划涉及的基金。',
-    scheduleNote: '按需手动执行，也包含在一键同步中，在多周期预测前更新；单只失败会保留原因，其余基金继续。',
+    scheduleNote: '按需手动执行，也包含在一键同步中；单只失败会保留原因，其余基金继续。',
     actionLabel: '全量初始化',
     start: startSimulationFeeSync,
     loadLatest: getLatestSimulationFeeSync,
@@ -112,13 +112,13 @@ const tasks: readonly SyncTaskDefinition[] = [
   },
   {
     key: 'direction1dPrediction',
-    jobType: 'MULTI_PREDICTIONS',
-    title: '全部关注基金预测生成',
-    description: '检查全部有效账号关注的基金，按基金去重生成一日、五日、二十日和半年预测，并保存到各自的预测历史。每只基金检查四个周期；必要资料缺失或暂不适用时，逐周期列出具体原因，其他周期继续执行。',
-    scheduleNote: '一键同步先更新净值、基础资料、公告、持仓行情和分析资料，最后生成预测。同一输入复用结果；15:00前预测当日，之后预测下一估值日，非估值日按日历处理。资料不足或生成失败时保留原有预测，并显示本次未完成原因。',
-    actionLabel: '生成全部关注基金预测',
-    start: startMultiPredictionSync,
-    loadLatest: getLatestMultiPredictionSync,
+    jobType: 'DIRECTION_1D_PREDICTIONS',
+    title: '002112 一日预测',
+    description: '检查并保存德邦鑫星价值混合 C（002112）已经完成资料分析的一日判断。分析尚未完成时明确说明暂无预测，历史记录继续保留。',
+    scheduleNote: '一键同步先更新净值、基础资料、公告、持仓行情和分析资料，再检查本期判断是否可保存。该按钮不会重新进行资料分析。15:00前对应当日，之后对应下一估值日，非估值日按日历处理；同一判断重复执行只复用原记录。',
+    actionLabel: '检查并保存 002112 一日预测',
+    start: startDirection1dPredictionSync,
+    loadLatest: getLatestDirection1dPredictionSync,
   },
 ]
 
@@ -152,7 +152,7 @@ const lastSuccessfulAt = ref<Record<string, string | null>>({
   MARKET_NAV_INCREMENTAL: null,
   MARKET_FREE_DATA_COMPLETION: null,
   STOCK_FEATURE_SNAPSHOT: null,
-  MULTI_PREDICTIONS: null,
+  DIRECTION_1D_PREDICTIONS: null,
   SIMULATION_FEES: null,
 })
 const loading = ref(true)
@@ -448,7 +448,7 @@ onBeforeUnmount(() => {
           <h2 id="sync-all-title">
             一键同步全部
           </h2>
-          <p>依次执行{{ allSyncTaskCount }}项任务：标普500 → 净值增量 → 基金资料与市场数据更新 → 历史指标计算 → 模拟费率 → 近期基金公告核验 → 基金持仓与公司资料 → 002112 分析资料更新与留存 → 基金评级更新 → 全部关注基金四周期预测（含综合建议与到期核验）。某项失败会记录原因，并继续尝试其余任务；预测按实际可用资料判断。</p>
+          <p>依次执行{{ allSyncTaskCount }}项任务：标普500 → 净值增量 → 基金资料与市场数据更新 → 历史指标计算 → 模拟费率 → 近期基金公告核验 → 基金持仓与公司资料 → 002112 分析资料更新与留存 → 基金评级更新 → 002112 一日预测。某项失败会记录原因，并继续尝试其余任务；预测按实际可用资料判断。</p>
         </div>
         <span
           v-if="allJob"
@@ -652,7 +652,7 @@ onBeforeUnmount(() => {
       >
         <div class="sync-progress-meta">
           <strong>{{ jobs[task.key]!.progressMessage }}</strong>
-          <span>{{ jobs[task.key]!.progressCurrent }} / {{ jobs[task.key]!.progressTotal }} {{ task.key === 'direction1dPrediction' ? '个基金周期项' : task.key === 'fundRatings' ? '只基金' : '步' }}</span>
+          <span>{{ jobs[task.key]!.progressCurrent }} / {{ jobs[task.key]!.progressTotal }} {{ task.key === 'direction1dPrediction' || task.key === 'fundRatings' ? '只基金' : '步' }}</span>
         </div>
         <div
           class="sync-progress-track"
@@ -705,7 +705,7 @@ onBeforeUnmount(() => {
       >
         <div><dt>开始时间</dt><dd>{{ formatTime(jobs[task.key]!.startedAt) }}</dd></div>
         <div><dt>结束时间</dt><dd>{{ formatTime(jobs[task.key]!.finishedAt) }}</dd></div>
-        <div><dt>{{ task.key === 'direction1dPrediction' ? '基金周期项数' : ['simulationFees', 'fundRatings'].includes(task.key) ? '检查基金数' : '读取条数' }}</dt><dd>{{ jobs[task.key]!.fetchedCount }}</dd></div>
+        <div><dt>{{ ['direction1dPrediction', 'simulationFees', 'fundRatings'].includes(task.key) ? '检查基金数' : '读取条数' }}</dt><dd>{{ jobs[task.key]!.fetchedCount }}</dd></div>
         <div v-if="task.key === 'fundRatings'">
           <dt>已评级 / 暂未评级</dt><dd>{{ jobs[task.key]!.createdCount }} / {{ jobs[task.key]!.skippedCount }}</dd>
         </div>
