@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import type { RouteLocationRaw } from 'vue-router'
 import type { RatingSummary } from '@/api/fundRating'
 import { ratingLabel } from '@/utils/fundRating'
 
-const props = defineProps<{ value?: RatingSummary; loading: boolean; fundName: string; to: RouteLocationRaw }>()
+/** 列表评级只负责展示；整行的详情跳转由父级链接统一承接，避免出现第二个点击入口。 */
+const props = defineProps<{ value?: RatingSummary | null }>()
 const now = ref(Date.now())
 let timer: ReturnType<typeof globalThis.setTimeout> | undefined
 /** 超过浏览器单次定时上限时继续安排下一段；长期打开也不能保留过期等级。 */
@@ -17,22 +17,17 @@ function refreshExpiry() {
 }
 watch(() => props.value?.validUntil, refreshExpiry, { immediate: true })
 onBeforeUnmount(() => globalThis.clearTimeout(timer))
-const label = computed(() => ratingLabel(props.value, props.loading, now.value))
+// 列表响应已带回评级；这里只展示结果，并继续在页面停留期间检查有效期。
+const label = computed(() => ratingLabel(props.value, false, now.value))
 </script>
 
 <template>
-  <RouterLink
-    class="rating-badge"
-    :to="to"
-    :aria-label="`${fundName}，基金评级：${label}，查看依据`"
-  >
+  <span class="rating-badge">
     <span>基金评级</span><strong>{{ label }}</strong>
-  </RouterLink>
+  </span>
 </template>
 
 <style scoped>
-.rating-badge { display: flex; align-items: center; gap: 8px; padding: 12px 16px; color: var(--text-secondary, #53616b); text-decoration: none; font-size: 13px; }
+.rating-badge { display: flex; align-items: center; gap: 8px; color: var(--text-secondary, #53616b); font-size: 13px; }
 .rating-badge strong { padding: 3px 9px; border-radius: 8px; background: #edf0f8; color: #3e4c78; font-weight: 600; }
-.rating-badge:hover strong { background: #e1e6f4; }
-.rating-badge:focus-visible { outline: 2px solid #536ba5; outline-offset: -3px; border-radius: 8px; }
 </style>

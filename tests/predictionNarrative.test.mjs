@@ -38,6 +38,39 @@ test('当前002112说明超出旧字数及数量目标仍完整展示，原响�
   assert.equal(value.narrative.limitations.length, 6)
 })
 
+test('各基金综合依据包含披露持仓时仍保留完整说明，不与持仓行情混用', () => {
+  for (const fundCode of ['001021', '002112']) {
+    for (const kind of ['daily', 'multi']) {
+      const value = response()
+      Object.assign(value, { fundCode, kind })
+      Object.assign(value.narrative.drivers[0], {
+        category: '披露持仓', title: '报告投向与配置边界',
+        observation: '基金报告披露资产构成，采用报告期末口径。',
+        meaning: '说明基金实际投资方向。', implication: '持仓可能已发生变化，不能视为实时配置。',
+      })
+      value.narrative.drivers[1].category = '持仓行情'
+      value.narrative.counterpoints[0].category = '披露持仓'
+      const before = clone(value)
+      const narrative = readNarrative(value, fundCode, kind, 'record-1')
+      assert.strictEqual(narrative, value.narrative)
+      assert.equal(narrative.drivers[0].category, '披露持仓')
+      assert.equal(narrative.drivers[1].category, '持仓行情')
+      assert.equal(narrative.counterpoints[0].category, '披露持仓')
+      assert.deepEqual(value, before)
+    }
+  }
+})
+
+test('披露持仓依据仍拒绝危险来源与未约定类型', () => {
+  const value = response()
+  value.narrative.drivers[0].category = '披露持仓'
+  value.narrative.drivers[0].sources[0].url = 'javascript:alert(1)'
+  assert.throws(() => readNarrative(value, '002112', 'daily', 'record-1'), /未通过核对/)
+  const unknown = response()
+  unknown.narrative.drivers[0].category = '未约定类型'
+  assert.throws(() => readNarrative(unknown, '002112', 'daily', 'record-1'), /未通过核对/)
+})
+
 test('整理限制放宽后仍核对当前基金、记录及每一个安全来源', () => {
   assert.throws(() => readNarrative(response(), '002112', 'daily', 'other-record'), /当前预测不一致/)
   for (const url of ['javascript:alert(1)', 'https://user:secret@example.com/notice']) {

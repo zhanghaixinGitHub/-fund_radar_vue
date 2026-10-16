@@ -49,8 +49,8 @@ export function readNarrative(response: PredictionNarrativeResponse, fundCode: s
       catch { return false }
     }
     const validDriver = (d: NonNullable<typeof value.drivers>[number]) => d
-      // 经理变更及任期表现由后端按原预测快照保存，前端沿用相同的来源与身份校验。
-      && ['净值', '基金净值', '持仓行情', '行业行情', '市场行情', '财务', '公司经营', '公告', '新闻', '政策', '基金经理'].includes(d.category)
+      // 披露持仓沿用原报告中的配置事实，不转成持仓行情；同样核对原预测身份、正文和安全来源。
+      && ['净值', '基金净值', '披露持仓', '持仓行情', '行业行情', '市场行情', '财务', '公司经营', '公告', '新闻', '政策', '基金经理'].includes(d.category)
       && ['支持上涨', '支持下跌', '双向影响', '背景观察'].includes(d.assessment)
       && text(d.title) && text(d.observation) && text(d.meaning) && text(d.implication)
       && typeof d.relation === 'string'

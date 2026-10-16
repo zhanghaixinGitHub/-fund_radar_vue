@@ -12,7 +12,7 @@ export function ratingLabel(value?: RatingSummary | null, loading = false, now =
     if (Date.parse(value.validUntil) <= now) return '评级待更新'
     return value.grade && labels[value.grade] || '评级暂不可用'
   }
-  return value.status === 'NOT_FOUND' ? '基金不存在' : '暂未评级'
+  return value.status === 'NOT_FOUND' ? '基金不存在' : '暂无评分'
 }
 
 /** 来源链接不允许脚本协议，也不把内部路径当成用户入口。 */

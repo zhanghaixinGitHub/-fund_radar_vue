@@ -1,0 +1,156 @@
+口播数字与来源核对
+数据截止：2026-10-15；关键断言共30项。
+以下为审核依据，不纳入口播。
+
+1. 南方收益与回撤截至10月15日：已核对
+{"unit_nav": "1.94250000", "year_to_date": {"start": "2025-12-31", "end": "2026-10-15", "pct": "-12.84642773767175392002076978"}, "quarter": {"start": "2026-07-15", "end": "2026-10-15", "pct": "-15.52146157731829446484206815"}, "max_drawdown_three_year": {"start": "2023-10-16", "end": "2026-10-15", "observations": 730, "max_drawdown_pct": "-26.50788432767962385891376565", "peak_date": "2026-05-13", "trough_date": "2026-10-15", "annualized_volatility_pct": 24.17809115978922}}
+复权净值比较；区间回撤按区间内此前高点计算。
+Tushare授权净值；database-after.json
+
+2. 景气A收益与回撤截至10月15日：已核对
+{"unit_nav": "1.61280000", "year_to_date": {"start": "2025-12-31", "end": "2026-10-15", "pct": "15.98705501618122977346278320"}, "quarter": {"start": "2026-07-15", "end": "2026-10-15", "pct": "-12.11378126532614026483570378"}, "max_drawdown_three_year": {"start": "2023-10-16", "end": "2026-10-15", "observations": 730, "max_drawdown_pct": "-24.30842530020905245758179785", "peak_date": "2026-06-30", "trough_date": "2026-08-03", "annualized_volatility_pct": 22.158946618335484}}
+复权净值比较；区间回撤按区间内此前高点计算。
+Tushare授权净值；database-after.json
+
+3. 景气C收益与回撤截至10月15日：已核对
+{"unit_nav": "1.54660000", "year_to_date": {"start": "2025-12-31", "end": "2026-10-15", "pct": "15.25448990237722632088829270"}, "quarter": {"start": "2026-07-15", "end": "2026-10-15", "pct": "-12.29443121243053192695928320"}, "max_drawdown_three_year": {"start": "2023-10-16", "end": "2026-10-15", "observations": 730, "max_drawdown_pct": "-24.36396742703960345961256386", "peak_date": "2026-06-30", "trough_date": "2026-08-03", "annualized_volatility_pct": 22.15828264100018}}
+复权净值比较；区间回撤按区间内此前高点计算。
+Tushare授权净值；database-after.json
+
+4. 趋势A收益与回撤截至10月15日：已核对
+{"unit_nav": "1.76550000", "year_to_date": {"start": "2025-12-31", "end": "2026-10-15", "pct": "20.36405781292609762748841010"}, "quarter": {"start": "2026-07-15", "end": "2026-10-15", "pct": "-9.126003705991352686843730700"}, "max_drawdown_three_year": {"start": "2023-10-16", "end": "2026-10-15", "observations": 730, "max_drawdown_pct": "-23.43584792902128442053969567", "peak_date": "2026-06-30", "trough_date": "2026-08-03", "annualized_volatility_pct": 21.030543241403446}}
+复权净值比较；区间回撤按区间内此前高点计算。
+Tushare授权净值；database-after.json
+
+5. 012835持仓日期、股票比例和前十大：已核对
+{"end": "2026-06-30", "stock_pct": "91.39451860413231374238400535", "top10_pct": "37.14", "net_assets_cny": "1006301376.72"}
+股票占净资产；与合同中的占基金资产口径区分。
+https://static.cmfchina.com/fundarticle/20260831/20025327278709.pdf
+
+6. 017960持仓日期、股票比例和前十大：已核对
+{"end": "2026-06-30", "stock_pct": "89.06260011206711790571791154", "top10_pct": "36.28", "net_assets_cny": "358201698.68"}
+股票占净资产；与合同中的占基金资产口径区分。
+https://static.cmfchina.com/fundarticle/20260831/20025432681571.pdf
+
+7. 南方同日目标ETF穿透：已核对
+{"end": "2026-06-30", "target_etf_net_weight_pct": "93.57493617590383309771157058", "parent_direct_stock_pct": "1.777354266309378272664362295", "estimated_total_stock_pct": "90.78973971089354287240919753"}
+母基金直接股票市值 + 持有ETF市值 * ETF股票市值/ETF净资产，再除母基金净资产；非实时持仓。
+https://www.nffund.com/main/files/2026/08/28/223050409776.pdf
+https://www.nffund.com/main/files/2026/08/28/223078883675.pdf
+
+8. 景气与趋势持股重合：已核对
+{"as_of": "2026-06-30", "common_stock_count": 72, "all_holdings_overlap_min_weight_pct": "88.37", "top10_same_codes": true, "same_portfolio": false, "notice": "重合度为每只共同证券的较小净资产权重之和；不代表基金相关系数、未来持仓或全部资产相同。"}
+每只共同证券取双方较小净资产权重后相加；非收益相关系数。
+https://static.cmfchina.com/fundarticle/20260831/20025327278709.pdf
+https://static.cmfchina.com/fundarticle/20260831/20025432681571.pdf
+
+9. 寒武纪半年报revenue：已核对
+{"period": "2026-06-30", "published_date": "2026-08-08", "amount_cny": "5995573619.61", "revenue_yoy_pct": 108.1331, "net_profit_yoy_pct": 122.6135}
+合并报表、年初至6月30日累计；数字按元保存，口播按亿元换算；已对照公告正文。
+https://data.eastmoney.com/notices/detail/688256/AN202608071827759243.html
+
+10. 寒武纪半年报netProfit：已核对
+{"period": "2026-06-30", "published_date": "2026-08-08", "amount_cny": "2310912080.33", "revenue_yoy_pct": 108.1331, "net_profit_yoy_pct": 122.6135}
+合并报表、年初至6月30日累计；数字按元保存，口播按亿元换算；已对照公告正文。
+https://data.eastmoney.com/notices/detail/688256/AN202608071827759243.html
+
+11. 寒武纪半年报operatingCashflow：已核对
+{"period": "2026-06-30", "published_date": "2026-08-08", "amount_cny": "311314642.46", "revenue_yoy_pct": 108.1331, "net_profit_yoy_pct": 122.6135}
+合并报表、年初至6月30日累计；数字按元保存，口播按亿元换算；已对照公告正文。
+https://data.eastmoney.com/notices/detail/688256/AN202608071827759243.html
+
+12. 寒武纪现金流变化及解释：已核对
+{"cashflow_yoy_pct": "-65.83"}
+公司披露的现金流变化原因，不推断整个基金现金流或当日涨跌。
+https://data.eastmoney.com/notices/detail/688256/AN202608071827759243.html
+
+13. 阳光电源半年报revenue：已核对
+{"period": "2026-06-30", "published_date": "2026-08-29", "amount_cny": "30912265605.12", "revenue_yoy_pct": -28.9914, "net_profit_yoy_pct": -32.013}
+合并报表、年初至6月30日累计；数字按元保存，口播按亿元换算；已对照公告正文。
+https://data.eastmoney.com/notices/detail/300274/AN202608280006758151.html
+
+14. 阳光电源半年报netProfit：已核对
+{"period": "2026-06-30", "published_date": "2026-08-29", "amount_cny": "5258509295.38", "revenue_yoy_pct": -28.9914, "net_profit_yoy_pct": -32.013}
+合并报表、年初至6月30日累计；数字按元保存，口播按亿元换算；已对照公告正文。
+https://data.eastmoney.com/notices/detail/300274/AN202608280006758151.html
+
+15. 浪潮信息半年报netProfit：已核对
+{"period": "2026-06-30", "published_date": "2026-08-29", "amount_cny": "2951716875.15", "revenue_yoy_pct": 5.2203, "net_profit_yoy_pct": 269.5907}
+合并报表、年初至6月30日累计；数字按元保存，口播按亿元换算；已对照公告正文。
+https://data.eastmoney.com/notices/detail/000977/AN202608281828642049.html
+
+16. 浪潮信息半年报operatingCashflow：已核对
+{"period": "2026-06-30", "published_date": "2026-08-29", "amount_cny": "-7492771178.12", "revenue_yoy_pct": 5.2203, "net_profit_yoy_pct": 269.5907}
+合并报表、年初至6月30日累计；数字按元保存，口播按亿元换算；已对照公告正文。
+https://data.eastmoney.com/notices/detail/000977/AN202608281828642049.html
+
+17. 浪潮现金流变化及解释：已核对
+{"cashflow_cny": "-7492771178.12"}
+公司披露备货增加、资金占用增多。
+https://data.eastmoney.com/notices/detail/000977/AN202608281828642049.html
+
+18. 源杰科技半年报revenue：已核对
+{"period": "2026-06-30", "published_date": "2026-08-29", "amount_cny": "925150462.56", "revenue_yoy_pct": 351.4011, "net_profit_yoy_pct": 1212.1954}
+合并报表、年初至6月30日累计；数字按元保存，口播按亿元换算；已对照公告正文。
+https://data.eastmoney.com/notices/detail/688498/AN202608281828631602.html
+
+19. 源杰科技半年报netProfit：已核对
+{"period": "2026-06-30", "published_date": "2026-08-29", "amount_cny": "607072892.98", "revenue_yoy_pct": 351.4011, "net_profit_yoy_pct": 1212.1954}
+合并报表、年初至6月30日累计；数字按元保存，口播按亿元换算；已对照公告正文。
+https://data.eastmoney.com/notices/detail/688498/AN202608281828631602.html
+
+20. 浪潮前三季度利润预告38至41亿元：已核对
+{"period": "2026-09-30", "catalog_date": "2026-10-14", "signed_date": "2026-10-13", "net_profit_range_cny": ["3800000000", "4100000000"], "status": "PRELIMINARY_FORECAST_NOT_FINAL_REPORT"}
+单位万元换算亿元；署名日期与公告目录日期分别保留。
+https://data.eastmoney.com/notices/detail/000977/AN202610131830412771.html
+
+21. 南方增聘龚涛，罗文杰继续共同管理：已核对
+{"effective_date": "2026-07-24", "change_type": "增聘"}
+不写成原经理离任。
+https://www.nffund.com/main/files/2026/07/24/953565670409.pdf
+
+22. 012835销售服务费：已核对
+{"sales_service_fee_annual_pct": "不收取", "published_date": "2026-07-17"}
+原始产品资料概要PDF；不假设购买渠道折扣或持有期限。
+https://fund.eastmoney.com/gonggao/012835,AN202607171827040997.html
+
+23. 012836销售服务费：已核对
+{"sales_service_fee_annual_pct": "0.80", "published_date": "2026-07-17"}
+原始产品资料概要PDF；不假设购买渠道折扣或持有期限。
+https://fund.eastmoney.com/gonggao/012836,AN202607171827040995.html
+
+24. 景气2025至2026中报行业变化：已核对
+{"2025H1": {"境内·采矿业": "4.59", "境内·制造业": "39.79", "境内·电力、热力、燃气及水生产和供应业": "5.39", "境内·建筑业": "1.52", "境内·批发和零售业": "1.05", "境内·信息传输、软件和信息技术服务业": "5.86", "境内·金融业": "14.00", "境内·科学研究和技术服务业": "0.00", "境内·水利、环境和公共设施管理业": "0.00", "境内·卫生和社会工作": "0.00", "港股·通信服务": "5.14", "港股·非日常生活消费品": "1.48", "港股·能源": "2.14", "港股·金融": "2.01", "港股·信息技术": "7.34", "港股·原材料": "1.03"}, "2026H1": {"境内·采矿业": "1.01", "境内·制造业": "66.33", "境内·电力、热力、燃气及水生产和供应业": "0.04", "境内·建筑业": "0.00", "境内·批发和零售业": "0.00", "境内·交通运输、仓储和邮政业": "0.00", "境内·信息传输、软件和信息技术服务业": "7.45", "境内·金融业": "5.14", "境内·科学研究和技术服务业": "3.21", "境内·水利、环境和公共设施管理业": "0.00", "境内·卫生和社会工作": "0.00", "港股·日常消费品": "0.16", "港股·信息技术": "8.05"}}
+两个报告时点的境内行业分类，占基金净资产；不推断逐笔调仓日。
+https://static.cmfchina.com/fundarticle/20250828/20018034309631.pdf
+https://static.cmfchina.com/fundarticle/20260831/20025327278709.pdf
+
+25. 0128352025-06-30历史配置公司：已核对
+{"names": ["上海银行", "江苏银行", "紫金矿业", "长江电力"], "report_end": "2025-06-30"}
+只证明报告日披露持有，不推断此前或之后的交易。
+https://static.cmfchina.com/fundarticle/20250828/20018034309631.pdf
+
+26. 0179602025-06-30历史配置公司：已核对
+{"names": ["上海银行", "江苏银行", "紫金矿业", "长江电力"], "report_end": "2025-06-30"}
+只证明报告日披露持有，不推断此前或之后的交易。
+https://static.cmfchina.com/fundarticle/20250828/20018129935466.pdf
+
+27. 0179602023-06-30历史配置公司：已核对
+{"names": ["北方华创", "拓荆科技", "阳光电源"], "report_end": "2023-06-30"}
+只证明报告日披露持有，不推断此前或之后的交易。
+https://static.cmfchina.com/fundarticle/2020830/10063636184033.pdf
+
+28. 5105002025-06-30历史配置公司：已核对
+{"names": ["华工科技", "胜宏科技"], "report_end": "2025-06-30"}
+只证明报告日披露持有，不推断此前或之后的交易。
+https://www.nffund.com/main/files/2025/08/29/742110361683.pdf
+
+29. 趋势A管理费与托管费：已核对
+{"management_annual_pct": "1.20", "custodian_annual_pct": "0.20"}
+按概要列示费率，不能当成投资者全部成本。
+https://fund.eastmoney.com/gonggao/017960,AN202606011823114554.html
+
+30. 基金成立与经理任职时间线：已核对
+{"160119_inception": "2009-09-25", "012835_inception": "2021-07-20", "017960_inception": "2023-03-21", "012835_liang_begin": "2024-05-31"}
+共同管理与独立管理不混用；不同管理阶段成绩不全部归于现任经理。
+Tushare授权基金档案及经理任职记录；database-after.json

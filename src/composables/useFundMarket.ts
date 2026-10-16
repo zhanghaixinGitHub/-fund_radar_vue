@@ -1,7 +1,7 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import { getFunds } from '@/api/funds'
-import type { FundSummary, FundType } from '@/types/fund'
+import type { FundMarketSummary, FundType } from '@/types/fund'
 import { useListLocation } from '@/composables/useListLocation'
 
 /**
@@ -12,7 +12,7 @@ import { useListLocation } from '@/composables/useListLocation'
 export function useFundMarket() {
   const { location, navigate, isCurrent } = useListLocation()
   let requestSequence = 0
-  const funds = ref<FundSummary[]>([])
+  const funds = ref<FundMarketSummary[]>([])
   const keyword = ref('')
   const selectedFundType = ref<FundType | ''>('')
   const loading = ref(false)
@@ -45,6 +45,7 @@ export function useFundMarket() {
         page: targetPage,
       })
       if (sequence !== requestSequence) return
+      // 基础资料与已发布评级同次响应、同时展示，避免每行再经历一次评级加载状态。
       funds.value = response.items
       stale.value = response.stale
       cachedAt.value = response.cachedAt

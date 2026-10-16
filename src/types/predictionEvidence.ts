@@ -22,7 +22,8 @@ export interface PredictionNarrative {
   inventory?: { id: string; name: string; status: string; detail: string }[]
 }
 export interface PredictionDriver {
-  category: '净值' | '基金净值' | '持仓行情' | '行业行情' | '市场行情' | '财务' | '公告' | '政策' | '新闻' | '公司经营' | '基金经理'
+  /** 披露持仓表示报告中的资产构成及占比；持仓行情表示所持资产的市场表现，两者分别保留。 */
+  category: '净值' | '基金净值' | '披露持仓' | '持仓行情' | '行业行情' | '市场行情' | '财务' | '公告' | '政策' | '新闻' | '公司经营' | '基金经理'
   title: string
   assessment: string
   observation: string

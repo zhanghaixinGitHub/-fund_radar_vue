@@ -515,7 +515,7 @@ h2 {
 
 .fund-card {
   display: grid;
-  grid-template-columns: 90px minmax(0, 1fr) auto auto;
+  grid-template-columns: 90px minmax(0, 1fr) auto auto auto;
   gap: 14px;
   align-items: center;
   padding: 18px;
@@ -524,14 +524,6 @@ h2 {
   border: 1px solid rgb(20 68 57 / 12%);
   border-radius: 14px;
   text-decoration: none;
-}
-
-/* 主内容和评级为同级链接，键盘可分别访问；窄屏评级自然换行。 */
-.fund-market-entry { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
-.fund-market-entry > .fund-card { min-width: 0; }
-@media (max-width: 720px) {
-  .fund-market-entry { grid-template-columns: minmax(0, 1fr); }
-  .fund-market-entry > .rating-badge { padding-top: 0; }
 }
 
 .fund-card:hover,

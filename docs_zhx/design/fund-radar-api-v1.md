@@ -29,6 +29,10 @@
 
 查询参数：`keyword`（可选，最多 50 字符）、`pageSize`（默认 20）、`page`（可选，1 起始）或 `cursor`（可选）。浏览器列表使用 `page`；`cursor` 仅兼容已有调用方。两者同时传入返回 `400/VALIDATION_ERROR`。
 
+2026-10-16 兼容性扩展：每个 `items[]` 新增可空 `rating`，与基金基础资料在同一响应返回。非空对象沿用评级摘要字段 `fundCode/status/grade/gradeLabel/asOfDate/validUntil/ratingRef/message`；只读取已经发布的评级，不触发采集或重新评分。前端不再发起独立的列表评级请求，列表与评级一起展示。
+
+Java 对本页最多 100 只基金只做一次评级批量读取，按代码匹配，不改变筛选、排序、分页及本人关注状态。评级故障或结果缺项时该行 `rating=null`，界面显示“评级暂不可用”，不能解释为“暂无评分”；明确的 `NOT_RATED/UNSUPPORTED` 及过期、撤回状态继续沿用评级原语义。Redis 仅保留基础资料，缓存降级时也重新读取当前评级；评级不复用旧缓存。列表响应使用 `Cache-Control: no-store`，避免浏览器复用已撤回的等级或旧的本人关注状态。
+
 ```json
 {
   "success": true,
@@ -209,3 +213,11 @@ Vue 以服务端返回的 `role` 和 `displayName` 组合展示：`FUND_USER →
 | Python 内部 API | `POST /internal/v1/funds/sync-jobs/market-nav-incremental` | `GET /internal/v1/funds/sync-jobs/market-nav-incremental/latest` |
 
 创建任务不接收基金代码、关注列表、日期或凭证。Python 服务端从基金市场读取全部启用 Tushare 份额；Java 继续完成会话与 `SYNC_JOB_START` / `SYNC_JOB_READ` 权限校验，浏览器不能直连内部接口。重复运行返回 `409/MARKET_SYNC_IN_PROGRESS`，任务中出现基线或精确来源代码问题时以任务状态 `FAILED/MARKET_SYNC_BASELINE_MISSING` 返回。
+
+### 6.1 基金公开资料的证券代码与报告身份
+
+`GET /api/v1/funds/{fundCode}/materials` 及其 `/documents` 子接口保留原有登录、`FUND_READ` 和基金资料归属校验。`stockCode` 支持六位沪深北代码加 `.SH`、`.SZ`、`.BJ`，以及五位港股代码加 `.HK`；原报告中交易市场尚未核实的历史证券，仅保留原六位代码，不自动推定市场。其他格式仍拒绝，合法格式但不属于该基金资料集的公司也不能借此读取。
+
+`reportId` 继续使用64位十六进制内容摘要。离线整理资料时必须转换为该身份，不能直接把外部公告号作为页面选择报告的编号。招商景气精选A/C共用投资组合资料，各自保留份额净值与费用文件。
+
+`/news-facts` 可只读各基金独立发布、经过来源和数字核对的资料要点；002112原有采集与资格规则保持不变。检查时间、资料截止日、披露日期和实际取得时间分别保留，不能用检查时间冒充公开日。`complete=false` 的资料即使存在可读要点，也不能宣称全量消息齐备；业务展示不取得预测或训练资格。此次不扩大资料同步任务支持的基金范围，也不引入自动取数或模型调用。

@@ -1,3 +1,5 @@
+import type { RatingSummary } from '@/api/fundRating'
+
 /** Java 核心服务使用的稳定基金类型枚举。 */
 export type FundType = 'BOND' | 'STOCK' | 'MIXED' | 'INDEX' | 'MONEY' | 'QDII' | 'FOF' | 'OTHER'
 
@@ -16,6 +18,11 @@ export interface FundSummary {
   monthChangeRate: number | string | null
   /** 当前登录用户是否已关注；仅由服务端按会话用户计算。 */
   isWatched: boolean
+}
+
+/** 市场列表与评级同次返回；null 表示评级读取失败或缺项，不能冒充“暂无评分”。 */
+export interface FundMarketSummary extends FundSummary {
+  rating: RatingSummary | null
 }
 
 /** 基金公开详情；`M0_MOCK` 仅用于演示，界面不得将其描述为真实行情。 */
@@ -153,7 +160,7 @@ export interface FundSameTypeComparison {
 
 /** 基金列表响应；页码模式返回总数，游标模式仅为兼容已发布调用方保留。 */
 export interface FundPage {
-  items: FundSummary[]
+  items: FundMarketSummary[]
   nextCursor: string | null
   page: number | null
   pageSize: number
