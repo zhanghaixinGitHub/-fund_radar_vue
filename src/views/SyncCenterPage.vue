@@ -107,7 +107,7 @@ const tasks: readonly SyncTaskDefinition[] = [
   {
     key: 'fundRatings', jobType: 'FUND_RATINGS', title: '基金评级更新',
     description: '核验市场目录内基金的八维资料，按完整比较类别更新评级。缺少必要资料时保留具体原因，不生成等级。',
-    scheduleNote: '仅手动或一键同步执行；打开基金页面只读取已有结果。',
+    scheduleNote: '一键同步每月检查一次，重大事项及时复核；本月已有评级时直接保留。此处可手动复核，打开基金页面只读取已有结果。',
     actionLabel: '检查并更新评级', start: startFundRatingsSync, loadLatest: getLatestFundRatingsSync,
   },
   {
@@ -122,7 +122,7 @@ const tasks: readonly SyncTaskDefinition[] = [
   },
 ]
 
-/** 一键同步还包含独立面板的标普500，以及只随批次执行的002112分析资料留存。 */
+/** 一键同步还包含独立面板的标普500，以及市场范围的分析资料核验与留存。 */
 const allSyncTaskCount = tasks.length + 2
 
 const jobs = ref<Record<SyncTaskKey, SyncJobStatus | null>>({
@@ -453,7 +453,7 @@ onBeforeUnmount(() => {
           <h2 id="sync-all-title">
             一键同步全部
           </h2>
-          <p>依次执行{{ allSyncTaskCount }}项任务：标普500 → 净值增量 → 基金资料与市场数据更新 → 历史指标计算 → 模拟费率 → 近期基金公告核验 → 基金持仓与公司资料 → 002112 分析资料更新与留存 → 基金评级更新 → 关注基金一日综合预测。某项失败会记录原因，并继续尝试其余任务；预测按实际可用资料判断。</p>
+          <p>先更新基金市场的净值、公告、持仓及分析所需资料，再逐只检查是否齐备。资料齐备后才处理你的关注基金预测；缺项会保留原因。评级每月检查一次，重大事项及时复核，本月已有结果时保留原评级。</p>
         </div>
         <span
           v-if="allJob"
@@ -821,7 +821,7 @@ onBeforeUnmount(() => {
         运行说明
       </h2>
       <ul>
-        <li>一键同步更新基金资料、净值和预测；某项未完成时，其余任务继续，已成功的成果保留。</li>
+        <li>一键同步先补资料，再检查分析条件；单只基金缺资料不影响其他基金更新，已成功的成果保留。</li>
         <li>净值和预测通过本页按钮或一键同步更新；同一基金、日期和周期已有预测时直接复用。</li>
         <li>下一期资料未齐时显示等待，已保存的预测按所属日期保留；等待不代表本期已完成。</li>
         <li>当前资料与历史资料缺口分别显示；部分成功不代表所有资料均已补齐，可单独重试未完成项。</li>

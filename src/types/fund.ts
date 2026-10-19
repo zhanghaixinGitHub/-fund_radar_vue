@@ -1,4 +1,5 @@
 import type { RatingSummary } from '@/api/fundRating'
+import type { RatingFilter } from '@/utils/fundRating'
 
 /** Java 核心服务使用的稳定基金类型枚举。 */
 export type FundType = 'BOND' | 'STOCK' | 'MIXED' | 'INDEX' | 'MONEY' | 'QDII' | 'FOF' | 'OTHER'
@@ -174,6 +175,8 @@ export interface FundPage {
 export interface FundListQuery {
   keyword?: string
   fundType?: FundType
+  /** 已发布评级筛选，在服务端分页前应用。 */
+  rating?: RatingFilter
   pageSize?: number
   cursor?: string
   page?: number

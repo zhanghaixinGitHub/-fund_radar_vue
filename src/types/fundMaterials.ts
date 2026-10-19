@@ -8,8 +8,11 @@ export interface MaterialHolding {
 }
 export interface MaterialAllocation { name: string; weightPct: number; value?: number }
 export interface MaterialReport extends MaterialReportOption {
-  stockWeightPct: number; disclosedWeightPct: number
+  stockWeightPct: number | null; disclosedWeightPct: number
   holdings: MaterialHolding[]; assets: MaterialAllocation[]; industries: MaterialAllocation[]
+  /** 原报告直接持有的债券、基金等；可仅披露前五/前十名，不等于底层穿透持仓。 */
+  investmentGroups?: { name: string; notice: string; holdings: MaterialHolding[] }[] | null
+  holdingsNotice?: string | null
 }
 export interface MaterialCompanyOption { stockCode: string; stockName: string; latestHeld: boolean }
 export interface MaterialFinancial {

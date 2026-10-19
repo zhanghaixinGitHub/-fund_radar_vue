@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { getFunds } from '@/api/funds'
 import type { FundMarketSummary, FundType } from '@/types/fund'
 import { useListLocation } from '@/composables/useListLocation'
+import type { RatingFilter } from '@/utils/fundRating'
 
 /**
  * 基金市场列表的页面状态与分页逻辑。
@@ -15,6 +16,7 @@ export function useFundMarket() {
   const funds = ref<FundMarketSummary[]>([])
   const keyword = ref('')
   const selectedFundType = ref<FundType | ''>('')
+  const selectedRating = ref<RatingFilter | ''>('')
   const loading = ref(false)
   const errorMessage = ref('')
   const stale = ref(false)
@@ -41,6 +43,7 @@ export function useFundMarket() {
       const response = await getFunds({
         keyword: keyword.value.trim() || undefined,
         fundType: selectedFundType.value || undefined,
+        rating: selectedRating.value || undefined,
         pageSize: pageSize.value,
         page: targetPage,
       })
@@ -68,7 +71,7 @@ export function useFundMarket() {
   }
 
   async function loadPage(targetPage: number): Promise<void> {
-    if (!await navigate(selectedFundType.value, keyword.value, targetPage, pageSize.value)) {
+    if (!await navigate(selectedFundType.value, keyword.value, targetPage, pageSize.value, selectedRating.value)) {
       await fetchPage(targetPage)
     }
   }
@@ -76,6 +79,7 @@ export function useFundMarket() {
   watch(location, (value) => {
     if (!isCurrent.value) return
     selectedFundType.value = value.type as FundType | ''
+    selectedRating.value = value.rating
     keyword.value = value.keyword
     pageSize.value = value.size
     currentPage.value = value.page
@@ -84,7 +88,7 @@ export function useFundMarket() {
   }, { immediate: true })
   onBeforeUnmount(() => { ++requestSequence })
 
-  /** 以当前关键字从第一页重新检索。 */
+  /** 关键字或评级改变后从第一页重新检索，避免旧页码超过筛选后的总页数。 */
   async function search(): Promise<void> {
     currentPage.value = 1
     pageInput.value = '1'
@@ -147,6 +151,7 @@ export function useFundMarket() {
     previousPage,
     search,
     selectedFundType,
+    selectedRating,
     stale,
     totalCount,
     totalPages,

@@ -15,6 +15,12 @@ const reportId = ref('')
 const stockCode = ref('')
 let sequence = 0
 const report = computed(() => data.value?.report)
+/** 股票与债券/基金分表展示，避免把联接基金持有的 ETF 当作直接持有股票。 */
+const holdingTables = computed(() => [
+  ...(report.value?.holdings.length ? [{ name: '股票持仓', notice: '', holdings: report.value.holdings }] : []),
+  ...(report.value?.investmentGroups ?? []),
+])
+const companyCodes = computed(() => new Set(data.value?.companies.map(c => c.stockCode) ?? []))
 /** latestHeld 只表示最新报告披露持有；历史公司仍留在后台资料中，不作为此处的候选。 */
 const currentCompanies = computed(() => data.value?.companies.filter(c => c.latestHeld === true) ?? [])
 const company = computed(() => {
@@ -125,7 +131,7 @@ watch(() => [props.fundCode, props.view, route.query.stock], () => {
             v-model="reportId"
             @change="load"
           >
-            <option value="">最新披露</option>
+            <option value="">最新收录报告</option>
             <option
               v-for="r in data.reports"
               :key="r.id"
@@ -134,42 +140,54 @@ watch(() => [props.fundCode, props.view, route.query.stock], () => {
           </select>
         </label>
         <p class="materials-note">
-          持仓截至 <strong>{{ report.endDate }}</strong>，报告公布于 {{ report.publishedDate }}。{{ report.fullDisclosure ? '本报告披露全部股票持仓。' : '本报告仅披露部分股票持仓。' }} 不代表实时持仓。
+          持仓截至 <strong>{{ report.endDate }}</strong>，报告公布于 {{ report.publishedDate }}。{{ report.holdingsNotice || (report.fullDisclosure ? '本报告披露全部股票持仓，不代表实时持仓。' : '本报告仅披露部分股票持仓，不代表实时持仓。') }}
         </p>
         <div class="material-stat-line">
           <span>股票仓位 <strong>{{ pct(report.stockWeightPct) }}</strong></span>
           <span>已披露股票 <strong>{{ report.holdings.length }} 只</strong></span>
         </div>
-        <div class="material-table-wrap">
+        <div
+          v-for="table in holdingTables"
+          :key="table.name"
+          class="material-table-wrap"
+        >
           <table class="material-table">
-            <caption>股票持仓 · 占基金净资产比例</caption>
+            <caption>{{ table.name }} · 占基金净资产比例<span v-if="table.notice"> · {{ table.notice }}</span></caption>
             <thead>
               <tr>
                 <th scope="col">
-                  股票
+                  {{ table.name === '股票持仓' ? '股票' : '名称' }}
                 </th><th scope="col">
                   占比
                 </th><th scope="col">
-                  持仓市值（元）
-                </th><th scope="col">
+                  持仓市值
+                </th><th
+                  v-if="table.holdings.some(h => companyCodes.has(h.stockCode))"
+                  scope="col"
+                >
                   相关资料
                 </th>
               </tr>
             </thead>
             <tbody>
               <tr
-                v-for="h in report.holdings"
-                :key="h.stockCode"
+                v-for="h in table.holdings"
+                :key="h.stockCode || h.stockName"
               >
                 <td><strong>{{ h.stockName }}</strong><small>{{ h.stockCode }}</small></td>
                 <td>{{ pct(h.weightPct) }}</td><td>{{ money(h.marketValue) }}</td>
-                <td class="material-actions">
+                <td
+                  v-if="table.holdings.some(row => companyCodes.has(row.stockCode))"
+                  class="material-actions"
+                >
                   <button
+                    v-if="companyCodes.has(h.stockCode)"
                     type="button"
                     @click="navigate('company', h.stockCode)"
                   >
                     经营情况
                   </button><button
+                    v-if="companyCodes.has(h.stockCode)"
                     type="button"
                     @click="navigate('documents', h.stockCode)"
                   >
@@ -180,6 +198,12 @@ watch(() => [props.fundCode, props.view, route.query.stock], () => {
             </tbody>
           </table>
         </div>
+        <p
+          v-if="!holdingTables.length"
+          class="materials-note"
+        >
+          {{ report.stockWeightPct === 0 ? '本报告期末未直接持有股票，可查看下方资产配置。' : '持仓明细暂缺，可查看下方已披露的资产配置。' }}
+        </p>
         <div class="allocation-columns">
           <div>
             <h3>资产配置 <small>占总资产</small></h3>
@@ -210,7 +234,7 @@ watch(() => [props.fundCode, props.view, route.query.stock], () => {
       <template v-if="view === 'company'">
         <p class="materials-note">
           <template v-if="report">
-            最新披露持仓截至 <strong>{{ report.endDate || '日期暂缺' }}</strong>，报告公布于 {{ report.publishedDate || '日期暂缺' }}。{{ report.fullDisclosure ? '本报告披露全部股票持仓。' : '本报告仅披露部分股票持仓。' }}
+            当前报告持仓截至 <strong>{{ report.endDate || '日期暂缺' }}</strong>，报告公布于 {{ report.publishedDate || '日期暂缺' }}。{{ report.holdingsNotice || (report.fullDisclosure ? '本报告披露全部股票持仓。' : '本报告仅披露部分股票持仓。') }}
           </template>
           <template v-else>
             最新披露持仓日期暂缺。

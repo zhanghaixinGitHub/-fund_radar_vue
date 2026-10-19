@@ -3,6 +3,7 @@ import { useRoute } from 'vue-router'
 import type { LocationQuery, RouteLocationRaw } from 'vue-router'
 
 import { fundTypeOptions } from '@/utils/fundPresentation'
+import { normalizeRatingFilter } from '@/utils/fundRating'
 import { portfolioReturnPath } from '@/utils/advice'
 import { earningsReturnPath } from '@/utils/simulationEarnings'
 
@@ -116,6 +117,8 @@ export function listReturnTarget(value: unknown, listPath: '/funds' | '/watchlis
     const item = params.get(key)
     if (item) query[key] = item
   }
+  const rating = listPath === '/funds' ? normalizeRatingFilter(params.get('rating')) : ''
+  if (rating) query.rating = rating
   return { path: listPath, query }
 }
 

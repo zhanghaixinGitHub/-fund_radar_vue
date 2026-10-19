@@ -1,6 +1,22 @@
-import type { RatingSummary } from '../api/fundRating'
+import type { RatingGrade, RatingSummary } from '../api/fundRating'
 
 const labels = { WEAK: '偏弱', AVERAGE: '一般', GOOD: '良好', EXCELLENT: '优质' } as const
+
+/** 市场筛选复用已发布等级；无评分和待更新分别对应页面的两种业务状态。 */
+export type RatingFilter = RatingGrade | 'UNRATED' | 'PENDING'
+export const ratingFilterOptions: { value: RatingFilter; label: string }[] = [
+  { value: 'EXCELLENT', label: labels.EXCELLENT },
+  { value: 'GOOD', label: labels.GOOD },
+  { value: 'AVERAGE', label: labels.AVERAGE },
+  { value: 'WEAK', label: labels.WEAK },
+  { value: 'UNRATED', label: '暂无评分' },
+  { value: 'PENDING', label: '评级待更新' },
+]
+
+/** URL 只接受已知选项；未知值恢复全部评级，避免向接口传入非法参数。 */
+export function normalizeRatingFilter(value: unknown): RatingFilter | '' {
+  return ratingFilterOptions.find((option) => option.value === value)?.value ?? ''
+}
 
 /** 仅翻译状态与标签；页面永远不接收或计算评分。过期判定也覆盖页面停留期间。 */
 export function ratingLabel(value?: RatingSummary | null, loading = false, now = Date.now()): string {

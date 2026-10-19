@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 
 import { useFundMarket } from '@/composables/useFundMarket'
 import FundRatingBadge from '@/components/FundRatingBadge.vue'
+import { ratingFilterOptions } from '@/utils/fundRating'
 import {
   changeRateTone,
   formatChangeRate,
@@ -34,11 +35,19 @@ const {
   pageSizeOptions,
   previousPage,
   search,
+  selectedRating,
   stale,
   totalCount,
   totalPages,
 } = useFundMarket()
 const route = useRoute()
+
+/** 清除评级并从第一页查询，名称关键字及基金类型继续沿用当前条件。 */
+async function clearRating(): Promise<void> {
+  if (loading.value) return
+  selectedRating.value = ''
+  await search()
+}
 
 /** 后端已按基金类型稳定排序；此处只把相邻类型组织为可读的分组。 */
 const fundGroups = computed(() => {
@@ -76,25 +85,59 @@ const fundGroups = computed(() => {
     </p>
 
     <form
-      class="search-panel"
+      class="search-panel market-search-panel"
       @submit.prevent="search"
     >
-      <label for="fund-keyword">基金代码或名称</label>
-      <div class="search-row">
-        <input
-          id="fund-keyword"
-          v-model="keyword"
-          maxlength="50"
-          placeholder="例如：000001"
-          type="search"
-        >
-        <button
-          class="primary-button"
-          :disabled="loading"
-          type="submit"
-        >
-          {{ loading ? '查询中…' : '查询基金' }}
-        </button>
+      <div class="market-keyword-filter">
+        <label for="fund-keyword">基金代码或名称</label>
+        <div class="search-row">
+          <input
+            id="fund-keyword"
+            v-model="keyword"
+            maxlength="50"
+            placeholder="例如：000001"
+            type="search"
+          >
+          <button
+            class="primary-button"
+            :disabled="loading"
+            type="submit"
+          >
+            {{ loading ? '查询中…' : '查询基金' }}
+          </button>
+        </div>
+      </div>
+      <div class="market-rating-filter">
+        <label for="fund-rating">基金评级</label>
+        <div class="market-rating-control">
+          <select
+            id="fund-rating"
+            v-model="selectedRating"
+            :disabled="loading"
+            @change="search"
+          >
+            <option value="">
+              全部评级
+            </option>
+            <option
+              v-for="option in ratingFilterOptions"
+              :key="option.value"
+              :value="option.value"
+            >
+              {{ option.label }}
+            </option>
+          </select>
+          <button
+            class="market-rating-clear"
+            :disabled="loading"
+            type="button"
+            aria-label="查询全部评级"
+            title="查询全部评级"
+            @click="clearRating"
+          >
+            <span aria-hidden="true">×</span>
+          </button>
+        </div>
       </div>
     </form>
 
@@ -247,3 +290,21 @@ const fundGroups = computed(() => {
     </nav>
   </section>
 </template>
+
+<style scoped>
+/* 查询与评级共用现有表单视觉；窄屏自然换行，避免挤压输入框和按钮。 */
+.market-search-panel { grid-template-columns: minmax(0, 1fr) minmax(180px, 280px); gap: 24px; align-items: end; }
+.market-keyword-filter, .market-rating-filter { display: grid; gap: 10px; min-width: 0; }
+.market-keyword-filter { max-width: 660px; }
+/* 清除图标放在下拉框内部，右侧保留原生箭头的位置，文字也预留空间避免重叠。 */
+.market-rating-control { position: relative; display: flex; }
+.market-rating-filter select { flex: 1; width: 100%; min-width: 0; min-height: 44px; padding: 10px 64px 10px 12px; color: #17332e; font: inherit; background: #fff; border: 1px solid #b9d5c5; border-radius: 10px; }
+.market-rating-clear { position: absolute; top: 50%; right: 28px; display: grid; place-items: center; width: 24px; height: 28px; padding: 0; color: #38639b; font-size: 20px; font-weight: 700; line-height: 1; background: transparent; border: 0; border-radius: 4px; transform: translateY(-50%); cursor: pointer; }
+.market-rating-clear:hover:not(:disabled) { color: #1b457e; }
+.market-rating-clear:disabled { opacity: .65; cursor: wait; }
+.market-rating-filter select:focus-visible, .market-rating-clear:focus-visible { outline: 2px solid #0f766e; outline-offset: 3px; }
+@media (max-width: 900px) {
+  .market-search-panel { grid-template-columns: 1fr; gap: 16px; }
+  .market-keyword-filter { max-width: none; }
+}
+</style>

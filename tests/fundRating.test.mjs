@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { URL } from 'node:url'
-import { ratingLabel, ratingSourceUrl } from '../src/utils/fundRating.ts'
+import { normalizeRatingFilter, ratingFilterOptions, ratingLabel, ratingSourceUrl } from '../src/utils/fundRating.ts'
 
 const current = { status: 'RATED', grade: 'GOOD', validUntil: '2026-11-01T00:00:00+08:00' }
 test('四种等级仅翻译服务端结果，过期和故障不冒充偏弱', () => {
@@ -21,6 +21,12 @@ test('来源只接受安全的 HTTPS 页面', () => {
   assert.equal(ratingSourceUrl('javascript:alert(1)'), undefined)
   assert.equal(ratingSourceUrl('https://user:secret@example.org'), undefined)
   assert.equal(ratingSourceUrl('https://example.org/report'), 'https://example.org/report')
+})
+
+test('评级筛选白名单包含四档和两种业务状态，未知或多值参数恢复全部', () => {
+  for (const { value } of ratingFilterOptions) assert.equal(normalizeRatingFilter(value), value)
+  for (const value of ['', null, undefined, 'unknown', ['GOOD'], '良好'])
+    assert.equal(normalizeRatingFilter(value), '')
 })
 test('评级随列表展示，不再补发评级请求，且保留详情导航', () => {
   const source = readFileSync(new URL('../src/views/FundMarketPage.vue', import.meta.url), 'utf8')
