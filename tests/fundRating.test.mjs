@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { URL } from 'node:url'
-import { normalizeRatingFilter, ratingFilterOptions, ratingLabel, ratingSourceUrl } from '../src/utils/fundRating.ts'
+import { formatRatingScore, normalizeRatingFilter, ratingFilterOptions, ratingLabel, ratingSourceUrl } from '../src/utils/fundRating.ts'
 
 const current = { status: 'RATED', grade: 'GOOD', validUntil: '2026-11-01T00:00:00+08:00' }
 test('四种等级仅翻译服务端结果，过期和故障不冒充偏弱', () => {
@@ -21,6 +21,22 @@ test('来源只接受安全的 HTTPS 页面', () => {
   assert.equal(ratingSourceUrl('javascript:alert(1)'), undefined)
   assert.equal(ratingSourceUrl('https://user:secret@example.org'), undefined)
   assert.equal(ratingSourceUrl('https://example.org/report'), 'https://example.org/report')
+})
+
+test('部分评分独立标注，到期不继续显示当前结果，也不伪造综合等级', () => {
+  const now = Date.parse('2026-10-23T00:00:00+08:00')
+  const partial = { ...current, status: 'PARTIAL', grade: null, partialScore: '67.11' }
+  assert.equal(ratingLabel(partial, false, now), '部分评分')
+  assert.equal(ratingLabel(partial, false, Date.parse(current.validUntil)), '评级待更新')
+  assert.equal(ratingLabel({ ...partial, validUntil: null }, false, now), '评级暂不可用')
+})
+
+test('数字分仅格式化服务端结果，零分保留，缺失和非法值不补零', () => {
+  assert.equal(formatRatingScore('64.124959252060'), '64.12')
+  assert.equal(formatRatingScore('0'), '0.00')
+  assert.equal(formatRatingScore(100), '100.00')
+  for (const value of [null, undefined, '', ' ', true, false, 'NaN', 'Infinity', -1, 101])
+    assert.equal(formatRatingScore(value), null)
 })
 
 test('评级筛选白名单包含四档和两种业务状态，未知或多值参数恢复全部', () => {

@@ -23,9 +23,10 @@ export function ratingLabel(value?: RatingSummary | null, loading = false, now =
   if (loading) return '评级读取中'
   if (!value) return '评级暂不可用'
   if (value.status === 'STALE' || value.status === 'WITHDRAWN') return '评级待更新'
-  if (value.status === 'RATED') {
+  if (value.status === 'RATED' || value.status === 'PARTIAL') {
     if (!value.validUntil || !Number.isFinite(Date.parse(value.validUntil))) return '评级暂不可用'
     if (Date.parse(value.validUntil) <= now) return '评级待更新'
+    if (value.status === 'PARTIAL') return '部分评分'
     return value.grade && labels[value.grade] || '评级暂不可用'
   }
   return value.status === 'NOT_FOUND' ? '基金不存在' : '暂无评分'
@@ -37,4 +38,12 @@ export function ratingSourceUrl(value: string): string | undefined {
     const url = new URL(value)
     return url.protocol === 'https:' && !url.username && !url.password ? url.href : undefined
   } catch { return undefined }
+}
+
+/** 只格式化服务端正式分数；兼容旧响应，空值、布尔及越界值均不显示为0分。 */
+export function formatRatingScore(value: unknown): string | null {
+  if ((typeof value !== 'string' && typeof value !== 'number') || value === '') return null
+  if (typeof value === 'string' && !value.trim()) return null
+  const point = Number(value)
+  return Number.isFinite(point) && point >= 0 && point <= 100 ? point.toFixed(2) : null
 }

@@ -13,6 +13,7 @@ import SimulationFundActions from '@/components/SimulationFundActions.vue'
 import FieldHelpTooltip from '@/components/FieldHelpTooltip.vue'
 import FundNavHistoryChart from '@/components/FundNavHistoryChart.vue'
 import FundShareHistoryChart from '@/components/FundShareHistoryChart.vue'
+import FundShareClassLinks from '@/components/FundShareClassLinks.vue'
 import MultiPredictionPanel from '@/components/MultiPredictionPanel.vue'
 import MultiPredictionHistory from '@/components/MultiPredictionHistory.vue'
 import { usePageNavigation } from '@/composables/usePageNavigation'
@@ -204,7 +205,7 @@ watch(selectedNavRange, () => {
 <template>
   <section
     class="market-page watchlist-detail-page"
-    aria-labelledby="watchlist-fund-detail-title"
+    :aria-label="`${basic?.fundName || fundCode} · ${sectionLabel}`"
   >
     <RouterLink
       class="back-link"
@@ -227,34 +228,38 @@ watch(selectedNavRange, () => {
       {{ errorMessage }}
     </p>
     <template v-else-if="basic && detail">
-      <p class="eyebrow">
-        {{ moduleTitle }} · {{ sectionLabel }}
-      </p>
-      <h1 id="watchlist-fund-detail-title">
-        {{ basic.fundName }}
-      </h1>
-      <p class="lead">
-        {{ basic.fundCode }} · {{ fundTypeLabel(basic.fundType) }} · {{ fundStatusLabel(basic.status) }}
-      </p>
-      <div class="fund-detail-topline">
-        <div><span>单位净值</span><strong>{{ formatNetValue(basic.unitNav) }}</strong><small>截至 {{ basic.asOfDate || '日期暂缺' }}</small></div>
-        <div><span>单位净值变化</span><strong :class="changeRateTone(basic.dayChangeRate)">{{ formatChangeRate(basic.dayChangeRate) }}</strong><small>较上一条净值，不含分红和买卖费用</small></div>
-        <button
-          type="button"
-          class="secondary-button"
-          :disabled="changingWatchlist"
-          @click="toggleWatchlist"
+      <!-- 基金概览只在基础资料页展示，其他子页直接呈现对应内容。 -->
+      <template v-if="section === 'basic'">
+        <p class="eyebrow">
+          {{ moduleTitle }} · {{ sectionLabel }}
+        </p>
+        <h1 id="watchlist-fund-detail-title">
+          {{ basic.fundName }}
+        </h1>
+        <p class="lead">
+          {{ basic.fundCode }} · {{ fundTypeLabel(basic.fundType) }} · {{ fundStatusLabel(basic.status) }}
+        </p>
+        <div class="fund-detail-topline">
+          <div><span>单位净值</span><strong>{{ formatNetValue(basic.unitNav) }}</strong><small>截至 {{ basic.asOfDate || '日期暂缺' }}</small></div>
+          <div><span>单位净值变化</span><strong :class="changeRateTone(basic.dayChangeRate)">{{ formatChangeRate(basic.dayChangeRate) }}</strong><small>较上一条净值，不含分红和买卖费用</small></div>
+          <button
+            type="button"
+            class="secondary-button"
+            :disabled="changingWatchlist"
+            @click="toggleWatchlist"
+          >
+            {{ changingWatchlist ? '处理中…' : basic.isWatched ? '取消关注' : '加入关注' }}
+          </button>
+        </div>
+        <p
+          v-if="actionMessage"
+          role="status"
         >
-          {{ changingWatchlist ? '处理中…' : basic.isWatched ? '取消关注' : '加入关注' }}
-        </button>
-      </div>
-      <p
-        v-if="actionMessage"
-        role="status"
-      >
-        {{ actionMessage }}
-      </p>
-      <SimulationFundActions :fund-code="basic.fundCode" />
+          {{ actionMessage }}
+        </p>
+        <SimulationFundActions :fund-code="basic.fundCode" />
+        <FundShareClassLinks :fund-code="basic.fundCode" />
+      </template>
       <p
         v-if="detail.stale"
         class="notice-banner"
@@ -314,9 +319,6 @@ watch(selectedNavRange, () => {
       >
         <div class="section-heading">
           <div>
-            <p class="eyebrow">
-              产品资料
-            </p>
             <h2 id="watchlist-profile-title">
               完整基础资料
             </h2>

@@ -1,22 +1,36 @@
 import { get } from '@/api/http'
 
 export type RatingGrade = 'WEAK' | 'AVERAGE' | 'GOOD' | 'EXCELLENT'
+export interface RatingScoreRange { lower: string; upper: string }
+/** 原八维权重覆盖率；只展示服务端已发布结果，不在前端重新加权。 */
+export interface RatingCoverage {
+  pointWeight: string; intervalWeight: string; missingWeight: string
+  pointDimensions: number; intervalDimensions: number
+}
 export interface RatingSummary {
   fundCode: string
-  status: 'RATED' | 'NOT_RATED' | 'UNSUPPORTED' | 'STALE' | 'NOT_FOUND' | 'WITHDRAWN'
+  status: 'RATED' | 'PARTIAL' | 'NOT_RATED' | 'UNSUPPORTED' | 'STALE' | 'NOT_FOUND' | 'WITHDRAWN'
   grade: RatingGrade | null
   gradeLabel: string | null
   asOfDate: string | null
   validUntil: string | null
   ratingRef: string | null
   message: string | null
+  scoreRange?: RatingScoreRange | null
+  partialScore?: string | null
+  scoreCoverage?: RatingCoverage | null
 }
 export interface RatingDimension {
   key: string; name: string; grade: RatingGrade | null; gradeLabel: string | null; explanation: string
+  /** 服务端同正式批次的展示分；缺失不补零，前端不计算评分。 */
+  score?: string | null
+  scoreRange?: RatingScoreRange | null
   metrics: { name: string; value: string; unit: string; period: string }[]
   sources: { title: string; url: string; publishedOn: string | null }[]
 }
 export interface RatingDetail extends RatingSummary {
+  /** 当前有效正式综合分；旧服务响应暂缺时保留为空。 */
+  score?: string | null
   summary: string
   comparison: { category: string; currency: string | null; productCount: number; scope: string; period: string }
   dimensions: RatingDimension[]

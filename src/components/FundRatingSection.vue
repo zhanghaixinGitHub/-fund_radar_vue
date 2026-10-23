@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { readFundRating, type RatingDetail } from '@/api/fundRating'
-import { ratingLabel, ratingSourceUrl } from '@/utils/fundRating'
+import { formatRatingScore, ratingLabel, ratingSourceUrl } from '@/utils/fundRating'
 
 const props = defineProps<{ fundCode: string; ratingRef?: string }>()
 const value = ref<RatingDetail | null>(null)
@@ -33,6 +33,8 @@ watch(() => [props.fundCode, props.ratingRef], load, { immediate: true })
 onBeforeUnmount(() => { sequence++; globalThis.clearTimeout(timer) })
 const label = computed(() => ratingLabel(value.value, loading.value, now.value))
 const rated = computed(() => value.value?.status === 'RATED' && ['偏弱', '一般', '良好', '优质'].includes(label.value))
+const partial = computed(() => value.value?.status === 'PARTIAL' && label.value === '部分评分')
+const available = computed(() => partial.value || (value.value?.status === 'NOT_RATED' && !!value.value.scoreCoverage))
 const sources = computed(() => [...new Map(value.value?.dimensions.flatMap(d => d.sources)
   .filter(s => ratingSourceUrl(s.url)).map(s => [s.url, s]) ?? []).values()])
 </script>
@@ -46,7 +48,24 @@ const sources = computed(() => [...new Map(value.value?.dimensions.flatMap(d => 
     <div class="section-heading">
       <h2 id="rating-title">
         基金评级
-      </h2><strong class="rating-level">{{ label }}</strong>
+      </h2>
+      <div class="rating-result">
+        <span
+          v-if="partial && value?.scoreRange"
+          class="rating-score"
+        >综合评分范围约 {{ value.scoreRange.lower }}—{{ value.scoreRange.upper }} 分</span>
+        <span
+          v-else-if="partial && formatRatingScore(value?.partialScore)"
+          class="rating-score"
+        >可评部分 {{ formatRatingScore(value?.partialScore) }} 分</span>
+        <span
+          v-else-if="rated && formatRatingScore(value?.score)"
+          class="rating-score"
+        >
+          综合评分 {{ formatRatingScore(value?.score) }} 分
+        </span>
+        <strong class="rating-level">{{ label }}</strong>
+      </div>
     </div>
     <p
       v-if="loading"
@@ -69,6 +88,16 @@ const sources = computed(() => [...new Map(value.value?.dimensions.flatMap(d => 
     </div>
     <template v-else-if="value">
       <p>{{ label === '评级待更新' ? '评级依据需要更新，当前不展示综合等级。' : value.summary }}</p>
+      <p
+        v-if="available && value.scoreCoverage"
+        class="section-note"
+      >
+        已确定 {{ value.scoreCoverage.pointDimensions }}/8 个维度，权重覆盖 {{ value.scoreCoverage.pointWeight }}%；
+        <template v-if="value.scoreCoverage.intervalDimensions">
+          另有 {{ value.scoreCoverage.intervalDimensions }} 个维度保留范围，覆盖 {{ value.scoreCoverage.intervalWeight }}%；
+        </template>
+        未评分权重 {{ value.scoreCoverage.missingWeight }}%。部分分不代表完整总分。
+      </p>
       <p class="section-note">
         {{ value.comparison.category }} · {{ value.comparison.scope }}
         <span v-if="value.comparison.productCount > 0"> · {{ value.comparison.productCount }} 个产品</span>
@@ -86,7 +115,12 @@ const sources = computed(() => [...new Map(value.value?.dimensions.flatMap(d => 
           class="rating-dimension"
         >
           <div class="dimension-heading">
-            <h3>{{ dimension.name }}</h3><span>{{ rated ? dimension.gradeLabel : '待核验' }}</span>
+            <h3>{{ dimension.name }}</h3>
+            <div class="dimension-result">
+              <strong v-if="(rated || available) && formatRatingScore(dimension.score)">{{ formatRatingScore(dimension.score) }} 分</strong>
+              <strong v-else-if="available && dimension.scoreRange">约 {{ dimension.scoreRange.lower }}—{{ dimension.scoreRange.upper }} 分</strong>
+              <span>{{ rated ? dimension.gradeLabel : (available && (dimension.score || dimension.scoreRange)) ? '已评部分' : '资料待补齐' }}</span>
+            </div>
           </div>
           <dl v-if="dimension.metrics.length">
             <div
@@ -128,7 +162,7 @@ const sources = computed(() => [...new Map(value.value?.dimensions.flatMap(d => 
         v-if="value.dataDates.holdings || value.dataDates.fees"
         class="section-note"
       >
-        <span v-if="value.dataDates.holdings">持仓报告期 {{ value.dataDates.holdings }} </span>
+        <span v-if="value.dataDates.holdings">持仓及流动性资料截至 {{ value.dataDates.holdings }} </span>
         <span v-if="value.dataDates.manager"> · 经理资料核对 {{ value.dataDates.manager }}</span>
         <span v-if="value.dataDates.fees"> · 费用核对 {{ value.dataDates.fees }}</span>
       </p>
@@ -171,6 +205,9 @@ const sources = computed(() => [...new Map(value.value?.dimensions.flatMap(d => 
 
 <style scoped>
 .rating-level { color: #3e4c78; background: #edf0f8; border-radius: 8px; padding: 6px 12px; }
+.rating-result, .dimension-result { display: flex; align-items: baseline; justify-content: flex-end; gap: 12px; flex-wrap: wrap; }
+.rating-score { color: var(--text-secondary, #53616b); }
+.dimension-result strong { font-size: 15px; color: var(--text-primary, #193733); white-space: nowrap; }
 .rating-dimensions { margin: 20px 0; border-top: 1px solid var(--border-color, #e0e5e9); }
 .rating-dimension { padding: 16px 0; border-bottom: 1px solid var(--border-color, #e0e5e9); }
 .dimension-heading { display: flex; gap: 16px; align-items: baseline; justify-content: space-between; }
