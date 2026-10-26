@@ -1,0 +1,35 @@
+/* 延续现有工作区颜色与密度；公共经理页面不承载后台任务和调试信息。 */
+.manager-panel { min-width: 0; padding: 24px; background: var(--workspace-surface, #fff); border: 1px solid var(--workspace-border, #dfe8e3); border-radius: 8px; }
+.manager-page-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+.manager-page-heading h1 { margin: 4px 0 0; font-size: 23px; }
+.manager-page-heading > p, .manager-note { color: #647b72; font-size: 13px; line-height: 1.8; }
+.manager-eyebrow { margin: 0; color: #0f766e; font-size: 12px; font-weight: 600; }
+.manager-search { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin: 24px 0 18px; }
+.manager-search label { display: grid; flex: 1; gap: 6px; min-width: 150px; }
+.manager-search input, .manager-search select, .manager-select select { width: 100%; min-height: 40px; padding: 8px 10px; color: #203a34; background: #fff; border: 1px solid #cbdcd3; border-radius: 5px; font: inherit; }
+.manager-search button, .manager-pagination button { min-height: 40px; padding: 8px 16px; color: #0f766e; background: #edf6f1; border: 1px solid #cbdcd3; border-radius: 5px; font: inherit; }
+.manager-search button:disabled, .manager-pagination button:disabled { opacity: .5; cursor: default; }
+.manager-table-scroll { max-width: 100%; overflow-x: auto; }
+.manager-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.manager-table th { padding: 12px 10px; color: #647b72; font-weight: 500; text-align: left; white-space: nowrap; border-bottom: 1px solid #dfe8e3; }
+.manager-table td { padding: 17px 10px; color: #203a34; border-bottom: 1px solid #e5ede8; vertical-align: top; overflow-wrap: anywhere; }
+.manager-table a, .manager-panel a { color: #0f766e; text-underline-offset: 3px; }
+.manager-table small, .manager-source-list small { display: block; margin-top: 5px; color: #647b72; font-size: 12px; }
+.manager-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 20px; font-size: 13px; }
+.manager-empty { padding: 24px 0; color: #647b72; line-height: 1.8; }
+.manager-meta { display: flex; flex-wrap: wrap; gap: 10px 24px; color: #536e63; }
+.manager-section { padding-top: 20px; margin-top: 22px; border-top: 1px solid #dfe8e3; }
+.manager-section h2, .manager-panel > h2 { margin: 0 0 20px; font-size: 18px; }
+.manager-resume { max-width: 72em; line-height: 2; white-space: pre-wrap; overflow-wrap: anywhere; }
+.manager-source-list { display: grid; gap: 16px; padding-left: 20px; margin-top: 24px; }
+.manager-select { display: grid; gap: 10px; max-width: 700px; margin-bottom: 20px; }
+.manager-performance-facts, .manager-basic-facts { display: flex; flex-wrap: wrap; gap: 20px 40px; margin: 24px 0; }
+.manager-performance-facts dt, .manager-basic-facts dt { margin-bottom: 7px; color: #647b72; font-size: 13px; }
+.manager-performance-facts dd, .manager-basic-facts dd { margin: 0; font-size: 20px; font-variant-numeric: tabular-nums; }
+.manager-basic-facts dd { font-size: 15px; }
+@media (max-width: 700px) {
+  .manager-panel { padding: 18px 14px; }
+  .manager-page-heading h1 { font-size: 21px; }
+  .manager-table { min-width: 580px; }
+  .manager-pagination { justify-content: flex-start; }
+}

@@ -139,8 +139,11 @@ onBeforeUnmount(() => {
       <p class="nav-history-caption">
         {{ earliestDate }} 至 {{ latestPoint?.navDate }} · 共 {{ validPoints.length }} 个交易日数据点 · 最新单位净值 {{ formatNetValue(latestPoint?.unitNav ?? null) }}
       </p>
-      <details class="nav-history-table">
-        <summary>查看最近 12 条净值数据表</summary>
+      <details
+        class="nav-history-table"
+        open
+      >
+        <summary>最近 12 条净值数据表</summary>
         <table>
           <thead>
             <tr><th>净值日期</th><th>单位净值</th><th>累计净值</th></tr>

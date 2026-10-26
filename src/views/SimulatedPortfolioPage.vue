@@ -982,7 +982,7 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
               <strong>{{ ledgerLabels[entry.entryType] ?? entry.entryType }} · {{ entry.fundCode }}</strong><span>{{ simTime(entry.createdAt) }}</span><p v-if="entry.entryType.startsWith('DIVIDEND')">
                 分红 {{ simMoney(entry.payload.amount as string) }} 元 · 除息 {{ entry.payload.exDate }} · 派息 {{ entry.payload.payDate }}
               </p><p v-else-if="entry.entryType === 'NAV_CORRECTION'">
-                来源净值已更正，保留旧版本，并已重新核对份额、成本及历史收益。
+                净值已更正，保留旧版本，并已重新核对份额、成本及历史收益。
               </p><p v-else-if="entry.payload.message">
                 {{ entry.payload.message }}
               </p>

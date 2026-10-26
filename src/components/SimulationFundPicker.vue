@@ -50,7 +50,7 @@ onBeforeUnmount(() => { alive = false; dialog.value?.close() })
     </header>
     <div
       class="sim-actions"
-      aria-label="选择来源"
+      aria-label="选择基金范围"
     >
       <button
         class="secondary-button"

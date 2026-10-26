@@ -25,6 +25,21 @@ export const router = createRouter({
   routes: [
     { path: '/', redirect: { name: 'fund-market' } },
     {
+      path: '/fund-managers', name: 'fund-managers',
+      component: () => import('@/views/FundManagersPage.vue'),
+      meta: { title: '基金经理', appArea: 'user', permissions: ['FUND_READ'] },
+    },
+    {
+      path: '/fund-managers/:managerId', name: 'fund-manager-detail',
+      component: () => import('@/views/FundManagerDetailPage.vue'),
+      meta: { title: '经理详情', appArea: 'user', permissions: ['FUND_READ'] },
+    },
+    {
+      path: '/fund-managers/:managerId/funds/:relatedFundId', name: 'manager-related-fund',
+      component: () => import('@/views/ManagerRelatedFundPage.vue'),
+      meta: { title: '关联基金资料', appArea: 'user', permissions: ['FUND_READ'] },
+    },
+    {
       path: '/login',
       name: 'login',
       component: () => import('@/views/LoginPage.vue'),

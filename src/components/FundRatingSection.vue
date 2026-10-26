@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { readFundRating, type RatingDetail } from '@/api/fundRating'
-import { formatRatingScore, ratingLabel, ratingSourceUrl } from '@/utils/fundRating'
+import { formatRatingScore, ratingLabel } from '@/utils/fundRating'
 
 const props = defineProps<{ fundCode: string; ratingRef?: string }>()
 const value = ref<RatingDetail | null>(null)
@@ -35,8 +35,6 @@ const label = computed(() => ratingLabel(value.value, loading.value, now.value))
 const rated = computed(() => value.value?.status === 'RATED' && ['偏弱', '一般', '良好', '优质'].includes(label.value))
 const partial = computed(() => value.value?.status === 'PARTIAL' && label.value === '部分评分')
 const available = computed(() => partial.value || (value.value?.status === 'NOT_RATED' && !!value.value.scoreCoverage))
-const sources = computed(() => [...new Map(value.value?.dimensions.flatMap(d => d.sources)
-  .filter(s => ratingSourceUrl(s.url)).map(s => [s.url, s]) ?? []).values()])
 </script>
 
 <template>
@@ -181,24 +179,6 @@ const sources = computed(() => [...new Map(value.value?.dimensions.flatMap(d => 
       >
         历史评价不代表未来收益。
       </p>
-      <div
-        v-if="sources.length"
-        class="rating-sources"
-      >
-        <h3>来源资料</h3>
-        <ul>
-          <li
-            v-for="source in sources"
-            :key="source.url"
-          >
-            <a
-              :href="ratingSourceUrl(source.url)"
-              target="_blank"
-              rel="noopener noreferrer"
-            >{{ source.title }}</a><span v-if="source.publishedOn"> · {{ source.publishedOn }}</span>
-          </li>
-        </ul>
-      </div>
     </template>
   </section>
 </template>
@@ -218,5 +198,5 @@ const sources = computed(() => [...new Map(value.value?.dimensions.flatMap(d => 
 .rating-dimension dd { margin: 0; }
 .rating-dimension small, .rating-dimension p { color: var(--text-secondary, #53616b); }
 .rating-observations { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 20px; }
-.rating-section li, .rating-sources a { overflow-wrap: anywhere; }
+.rating-section li { overflow-wrap: anywhere; }
 </style>

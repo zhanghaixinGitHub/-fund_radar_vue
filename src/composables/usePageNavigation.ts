@@ -6,6 +6,7 @@ import { fundTypeOptions } from '@/utils/fundPresentation'
 import { normalizeRatingFilter } from '@/utils/fundRating'
 import { portfolioReturnPath } from '@/utils/advice'
 import { earningsReturnPath } from '@/utils/simulationEarnings'
+import { managerReturnPath } from '@/utils/fundManagerNavigation'
 
 export interface PageSection {
   key: string
@@ -14,6 +15,15 @@ export interface PageSection {
 }
 
 const pageSections: Record<string, PageSection[]> = {
+  'fund-managers': [{ key: 'directory', label: '经理查找' }],
+  'fund-manager-detail': [
+    { key: 'funds', label: '在管基金' },
+    { key: 'history', label: '历史任职' },
+    { key: 'profile', label: '职业履历' },
+    { key: 'performance', label: '任期表现' },
+    { key: 'disclosures', label: '相关披露' },
+  ],
+  'manager-related-fund': [{ key: 'basic', label: '基础资料' }],
   'portfolio-advice': [
     { key: 'latest', label: '最新建议', group: '持仓分析' },
     { key: 'diagnosis', label: '诊断详情' },
@@ -23,8 +33,8 @@ const pageSections: Record<string, PageSection[]> = {
   ],
   'watchlist-fund-detail': [
     { key: 'basic', label: '基础资料', group: '关注资料' },
-    { key: 'nav', label: '净值走势' },
     { key: 'manager', label: '基金经理' },
+    { key: 'nav', label: '净值走势' },
     { key: 'share', label: '份额规模' },
     { key: 'dividend', label: '分红记录' },
     { key: 'rating', label: '基金评级' },
@@ -38,8 +48,8 @@ const pageSections: Record<string, PageSection[]> = {
   // 市场详情只展示基金资料；走势预测与历史记录统一从“我的关注”进入。
   'fund-detail': [
     { key: 'basic', label: '基础资料', group: '基金资料' },
-    { key: 'nav', label: '净值走势' },
     { key: 'manager', label: '基金经理' },
+    { key: 'nav', label: '净值走势' },
     { key: 'share', label: '份额规模' },
     { key: 'dividend', label: '分红记录' },
     { key: 'comparison', label: '同类对比' },
@@ -71,6 +81,7 @@ const pageSections: Record<string, PageSection[]> = {
     { key: 'overview', label: '任务总览' },
     { key: 'marketNav', label: '净值增量同步', group: '任务分类' },
     { key: 'freeDataCompletion', label: '基金资料与市场数据更新' },
+    { key: 'fundManagers', label: '基金经理资料更新' },
     { key: 'fundMaterials', label: '基金持仓与公司资料更新' },
     { key: 'fundRatings', label: '基金评级更新' },
     { key: 'fundNews', label: '近期基金公告核验' },
@@ -91,6 +102,7 @@ const pageSections: Record<string, PageSection[]> = {
 }
 
 const moduleNames: Record<string, string> = {
+  'fund-managers': '基金经理', 'fund-manager-detail': '基金经理', 'manager-related-fund': '基金经理',
   'fund-market': '基金市场', 'fund-detail': '基金市场',
   watchlist: '我的关注', 'watchlist-fund-detail': '我的关注',
   'portfolio-snapshot': '我的持仓', notifications: '站内提醒', profile: '个人信息',
@@ -102,6 +114,7 @@ const moduleNames: Record<string, string> = {
 
 /** 返回链接指向的模块名称；持仓分析从持仓卡片进入，返回到「我的持仓」。 */
 const returnLabels: Record<string, string> = {
+  'fund-manager-detail': '上一页', 'manager-related-fund': '经理详情',
   'portfolio-advice': '我的持仓',
   'watchlist-fund-detail': '我的关注',
   'fund-detail': '基金市场',
@@ -144,6 +157,10 @@ export function usePageNavigation() {
   const sectionLabel = computed(() => sections.value.find((item) => item.key === section.value)?.label ?? '')
   const moduleLabel = computed(() => moduleNames[routeName.value] ?? String(route.meta.title ?? '基金雷达'))
   const returnTarget = computed(() => {
+    if (routeName.value === 'fund-manager-detail') return managerReturnPath(route.query.from)
+    if (routeName.value === 'manager-related-fund') return managerReturnPath(route.query.from, `/fund-managers/${route.params.managerId}`)
+    if (routeName.value === 'fund-detail' && typeof route.query.from === 'string'
+      && route.query.from.startsWith('/fund-managers')) return managerReturnPath(route.query.from)
     if (routeName.value === 'portfolio-earnings') return earningsReturnPath(route.query.from)
     // 从顶栏直接进入持仓分析时没有来源页，不显示返回链接。
     if (routeName.value === 'portfolio-advice') {

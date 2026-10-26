@@ -67,6 +67,17 @@ export interface FundDetail extends FundSummary {
   cachedAt: string | null
 }
 
+/** 后端按具体任期计算的本基金回报；returnRate 为小数比例，未知保留空值。 */
+export interface FundManagerPerformance {
+  status: 'AVAILABLE' | 'UNAVAILABLE'
+  returnRate: number | string | null
+  startDate: string | null
+  endDate: string | null
+  reason: string | null
+  includesCoManagement: boolean
+  calculationBasis: string
+}
+
 /** 关注后可展示的基金经理任职资料；不包含简历正文或其他非必要个人资料。 */
 export interface FundManager {
   managerName: string
@@ -75,6 +86,7 @@ export interface FundManager {
   endDate: string | null
   education: string | null
   dataSource: string
+  tenurePerformance?: FundManagerPerformance | null
 }
 
 /** 关注后可展示的最新基金份额规模快照，单位为来源定义的万份。 */
@@ -104,11 +116,20 @@ export interface FundDividend {
   dataSource: string
 }
 
-/** 当前用户已关注后，由 Java 服务端授权返回的完整基金详情。 */
+/** 同一团队管理阶段的基金回报；展示日期与performance中的实际净值日期分别保留。 */
+export interface FundManagerPeriodReturn {
+  beginDate: string
+  endDate: string | null
+  managerNames: string[]
+  performance: FundManagerPerformance | null
+}
+
+/** 市场及关注详情共用资料，阶段回报与每位经理的完整任期回报分别提供。 */
 export interface WatchlistFundDetail {
   basic: FundDetail
   managersStatus: string
   managers: FundManager[]
+  managerPeriods?: FundManagerPeriodReturn[]
   latestShareStatus: string
   latestShare: FundShareSnapshot | null
   dividendsStatus: string

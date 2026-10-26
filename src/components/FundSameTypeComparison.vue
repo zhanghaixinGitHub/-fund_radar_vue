@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 
 import type { FundSameTypeComparison } from '@/types/fund'
-import { changeRateTone, dataSourceLabel, formatChangeRate } from '@/utils/fundPresentation'
+import { changeRateTone, formatChangeRate, fundTypeLabel } from '@/utils/fundPresentation'
 
 const props = defineProps<{
   comparison: FundSameTypeComparison | null
@@ -11,15 +11,36 @@ const props = defineProps<{
   errorMessage: string
 }>()
 
-/** 当前只有大类归属，尚未通过同类样本准入。按代码列事实，不展示旧位置或排名。 */
+/** 当前接口仅按基金大类筛选；直接使用响应分类说明范围，未知分类不猜测为其他类型。 */
+const sameTypeLabel = computed(() => {
+  const comparison = props.comparison
+  if (comparison?.scope !== 'CURRENT_MARKET_ACTIVE_TUSHARE_PRO_FUND') {
+    return '本次同类：比较范围暂不可用'
+  }
+  const typeLabel = fundTypeLabel(comparison.fundType)
+  if (typeLabel === '其他类型' && comparison.fundType !== 'OTHER') {
+    return '本次同类：基金分类暂缺'
+  }
+  return `本次同类：${typeLabel}（按基金大类划分）`
+})
+
+/** 仅对已收录样本按近一月净值变化降序展示；同值时按代码升序，不代表全市场同类排名。 */
 const orderedItems = computed(() => [...(props.comparison?.items ?? [])]
-  .sort((left, right) => left.fundCode.localeCompare(right.fundCode)))
-const visibleItems = computed(() => orderedItems.value.slice(0, 5))
-const remainingItems = computed(() => orderedItems.value.slice(5))
+  .sort((left, right) => sortableMonthChange(right.monthChangeRate) - sortableMonthChange(left.monthChangeRate)
+    || left.fundCode.localeCompare(right.fundCode)))
+
+/** 涨跌幅兼容接口返回的小数和数字字符串；缺失或无效值排在末尾，不能当作零涨跌。 */
+function sortableMonthChange(value: number | string | null | undefined): number {
+  if (value === null || value === undefined || String(value).trim() === '') {
+    return Number.NEGATIVE_INFINITY
+  }
+  const numericValue = Number(value)
+  return Number.isFinite(numericValue) ? numericValue : Number.NEGATIVE_INFINITY
+}
 
 function scopeLabel(scope: string | undefined): string {
   return scope === 'CURRENT_MARKET_ACTIVE_TUSHARE_PRO_FUND'
-    ? '以下按基金代码列出已收录的同类型资料，尚不具备同类排名条件。单位净值变化不含分红和买卖费用。'
+    ? '仅比较已收录且截至同一天的基金，按近一月单位净值变化从高到低排列，不含分红和买卖费用。'
     : '比较范围信息暂不可用。'
 }
 
@@ -51,6 +72,9 @@ function statusMessage(status: string | undefined): string {
       {{ errorMessage }}
     </p>
     <template v-else-if="comparison">
+      <p class="same-type-category">
+        {{ sameTypeLabel }}
+      </p>
       <p class="same-type-scope">
         {{ scopeLabel(comparison.scope) }}
       </p>
@@ -62,41 +86,29 @@ function statusMessage(status: string | undefined): string {
         {{ statusMessage(comparison.status) }}
       </p>
       <template v-else>
-        <dl class="same-type-summary">
-          <div><dt>本次可查基金</dt><dd>{{ comparison.comparableCount }} 只</dd></div>
-          <div><dt>比较净值日期</dt><dd>{{ comparison.asOfDate || '暂缺' }}</dd></div>
-          <div><dt>比较指标</dt><dd>近一月单位净值变化</dd></div>
-        </dl>
+        <!-- 所有可比基金共用同一统计截止日，仅在列表顶部展示，避免逐行重复。 -->
+        <div class="same-type-summary">
+          <p>
+            近一月单位净值变化 ·
+            <template v-if="comparison.asOfDate">
+              截至 {{ comparison.asOfDate }}
+            </template>
+            <template v-else>
+              截止日期暂缺
+            </template>
+          </p>
+          <span>本次比较 {{ comparison.comparableCount }} 只基金</span>
+        </div>
         <ol class="same-type-list">
           <li
-            v-for="item in visibleItems"
+            v-for="item in orderedItems"
             :key="item.fundCode"
             :class="{ 'is-current': item.fundCode === currentFundCode }"
           >
-            <strong>{{ item.fundName }}</strong>
-            <span>{{ item.fundCode }} · {{ item.asOfDate }}</span>
+            <strong>{{ item.fundName }} ({{ item.fundCode }})</strong>
             <span :class="['change-rate', changeRateTone(item.monthChangeRate)]">{{ formatChangeRate(item.monthChangeRate) }}</span>
-            <span>{{ dataSourceLabel(item.dataSource) }}</span>
           </li>
         </ol>
-        <details
-          v-if="remainingItems.length > 0"
-          class="same-type-details"
-        >
-          <summary>查看其余 {{ remainingItems.length }} 只同类样本</summary>
-          <ol class="same-type-list">
-            <li
-              v-for="item in remainingItems"
-              :key="item.fundCode"
-              :class="{ 'is-current': item.fundCode === currentFundCode }"
-            >
-              <strong>{{ item.fundName }}</strong>
-              <span>{{ item.fundCode }} · {{ item.asOfDate }}</span>
-              <span :class="['change-rate', changeRateTone(item.monthChangeRate)]">{{ formatChangeRate(item.monthChangeRate) }}</span>
-              <span>{{ dataSourceLabel(item.dataSource) }}</span>
-            </li>
-          </ol>
-        </details>
       </template>
     </template>
   </div>
@@ -111,6 +123,13 @@ function statusMessage(status: string | undefined): string {
   border-radius: 14px;
 }
 
+.same-type-category {
+  margin: 0 0 6px;
+  color: #17332e;
+  font-weight: 700;
+  line-height: 1.7;
+}
+
 .same-type-scope,
 .same-type-state {
   margin: 0;
@@ -123,31 +142,24 @@ function statusMessage(status: string | undefined): string {
 }
 
 .same-type-summary {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: baseline;
+  justify-content: space-between;
   margin: 16px 0 0;
 }
 
-.same-type-summary div {
-  min-width: 0;
-  padding: 11px;
-  background: #f4faf7;
-  border: 1px solid #d7e9df;
-  border-radius: 9px;
-}
-
-.same-type-summary dt {
-  margin-bottom: 4px;
-  color: #71847e;
-  font-size: 12px;
-}
-
-.same-type-summary dd {
+.same-type-summary p {
   margin: 0;
   color: #17332e;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+
+.same-type-summary > span {
+  color: #71847e;
+  font-size: 13px;
 }
 
 .same-type-list {
@@ -160,7 +172,7 @@ function statusMessage(status: string | undefined): string {
 
 .same-type-list li {
   display: grid;
-  grid-template-columns: auto minmax(150px, 1.3fr) minmax(130px, 1fr) auto minmax(120px, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
   padding: 12px;
@@ -177,39 +189,12 @@ function statusMessage(status: string | undefined): string {
 }
 
 .same-type-list strong {
+  min-width: 0;
   color: #17332e;
+  overflow-wrap: anywhere;
 }
 
-.same-type-rank {
-  color: #49635c;
-  font-variant-numeric: tabular-nums;
+.same-type-list .change-rate {
   white-space: nowrap;
-}
-
-.same-type-details {
-  margin-top: 14px;
-}
-
-.same-type-details summary {
-  min-height: 44px;
-  cursor: pointer;
-  color: #0d5e57;
-  font-weight: 700;
-  line-height: 44px;
-}
-
-@media (max-width: 760px) {
-  .same-type-summary {
-    grid-template-columns: 1fr;
-  }
-
-  .same-type-list li {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .same-type-list li > :first-child,
-  .same-type-list li > strong {
-    grid-column: span 1;
-  }
 }
 </style>

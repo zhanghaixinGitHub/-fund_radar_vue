@@ -8,6 +8,8 @@ import { getSpxManualStatus } from '@/api/spxManual'
 import type { SpxManualStatus } from '@/types/spxManual'
 
 import {
+  startFundManagersSync,
+  getLatestFundManagersSync,
   getLastSuccessfulSyncTimes,
   startFundRatingsSync,
   getLatestFundRatingsSync,
@@ -31,13 +33,13 @@ import {
 import type { SyncJobStatus } from '@/types/syncJob'
 import { hasPendingPrediction, predictionProgressNote, savedPredictionLines, syncResultLabel } from '@/utils/syncResult'
 
-type SyncTaskKey = 'marketNav' | 'freeDataCompletion' | 'featureSnapshot' | 'direction1dPrediction' | 'simulationFees' | 'fundMaterials' | 'fundNews' | 'fundRatings'
+type SyncTaskKey = 'marketNav' | 'freeDataCompletion' | 'featureSnapshot' | 'direction1dPrediction' | 'simulationFees' | 'fundMaterials' | 'fundNews' | 'fundRatings' | 'fundManagers'
 const { section, sectionLabel, sectionTarget } = usePageNavigation()
 const auth = useAuthStore()
 
 interface SyncTaskDefinition {
   key: SyncTaskKey
-  jobType: 'MARKET_NAV_INCREMENTAL' | 'MARKET_FREE_DATA_COMPLETION' | 'STOCK_FEATURE_SNAPSHOT' | 'DIRECTION_1D_PREDICTIONS' | 'SIMULATION_FEES' | 'FUND_MATERIALS' | 'FUND_NEWS' | 'FUND_RATINGS'
+  jobType: 'MARKET_NAV_INCREMENTAL' | 'MARKET_FREE_DATA_COMPLETION' | 'STOCK_FEATURE_SNAPSHOT' | 'DIRECTION_1D_PREDICTIONS' | 'SIMULATION_FEES' | 'FUND_MATERIALS' | 'FUND_NEWS' | 'FUND_RATINGS' | 'FUND_MANAGERS'
   title: string
   description: string
   scheduleNote: string
@@ -48,6 +50,12 @@ interface SyncTaskDefinition {
 
 /** 单项任务按一键同步的相对顺序展示；完整资料由资料更新覆盖，不再重复提供入口。 */
 const tasks: readonly SyncTaskDefinition[] = [
+  {
+    key: 'fundManagers', jobType: 'FUND_MANAGERS', title: '基金经理资料更新',
+    description: '核对已登记经理的职业履历、在管及历史基金。同名关系证据不足时保留待核对，不自动增加日常净值与预测范围。',
+    scheduleNote: '与一键资料流程共用任务队列，也可单独重试；不新增独立定时器。',
+    actionLabel: '更新经理资料', start: startFundManagersSync, loadLatest: getLatestFundManagersSync,
+  },
   {
     key: 'marketNav',
     jobType: 'MARKET_NAV_INCREMENTAL',
@@ -82,7 +90,7 @@ const tasks: readonly SyncTaskDefinition[] = [
     key: 'simulationFees',
     jobType: 'SIMULATION_FEES',
     title: '模拟组合申赎费率同步',
-    description: '从天天基金抓取申购费率与赎回分档；可刷新单只基金，全量初始化覆盖模拟持仓和定投计划涉及的基金。',
+    description: '更新申购费率与赎回分档；可刷新单只基金，全量初始化覆盖模拟持仓和定投计划涉及的基金。',
     scheduleNote: '按需手动执行，也包含在一键同步中；单只失败会保留原因，其余基金继续。',
     actionLabel: '全量初始化',
     start: startSimulationFeeSync,
@@ -122,8 +130,8 @@ const tasks: readonly SyncTaskDefinition[] = [
   },
 ]
 
-/** 一键同步还包含独立面板的标普500，以及市场范围的分析资料核验与留存。 */
-const allSyncTaskCount = tasks.length + 2
+/** 一键同步另含标普500、分析资料留存和历史预测到期核对；核对结果沿用预测历史展示。 */
+const allSyncTaskCount = tasks.length + 3
 
 const jobs = ref<Record<SyncTaskKey, SyncJobStatus | null>>({
   fundRatings: null,

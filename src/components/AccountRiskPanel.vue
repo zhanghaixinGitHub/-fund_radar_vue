@@ -137,11 +137,7 @@ onBeforeUnmount(() => sequence++)
               v-for="source in result.sources"
               :key="source.fundCode"
             >
-              {{ source.fundCode }}：报告期 {{ source.reportDate }}，披露日期 {{ source.publishedDate }}，<a
-                :href="source.sourceUrl"
-                target="_blank"
-                rel="noopener noreferrer"
-              >查看原文 ↗</a>。
+              {{ source.fundCode }}：报告期 {{ source.reportDate }}，披露日期 {{ source.publishedDate }}。
             </li>
           </ul>
         </details>

@@ -74,19 +74,30 @@ body:has(.app-shell) { min-width: 0; }
   display: flex;
   flex-direction: column;
   gap: 16px;
-  /* 侧栏滚动区域止于固定风险提示上方，底部菜单和说明始终可以滚动到可见位置。 */
+  /* 侧栏止于固定风险提示上方，顶部信息不参与下方菜单的滚动。 */
   max-height: calc(100dvh - 68px - var(--app-risk-footer-height, 47px));
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  min-height: 0;
+  overflow: hidden;
   padding: 24px 12px 16px;
   background: #fff;
   border-right: 1px solid var(--workspace-border);
+}
+.sidebar-header { display: flex; flex: none; flex-direction: column; gap: 16px; }
+/* 允许菜单缩到剩余高度并独立滚动；底部说明也随菜单滚动，避免挤占菜单空间。 */
+.sidebar-scroll-area {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .sidebar-heading { padding: 0 12px; font-size: 15px; }
 .sidebar-back { padding: 8px 12px; color: var(--workspace-muted); font-size: 12px; text-decoration: none; }
 .sidebar-back:hover { color: #0f766e; }
 .sidebar-context { margin: -6px 12px 0; padding-bottom: 14px; border-bottom: 1px solid var(--workspace-border); color: var(--workspace-muted); font-size: 12px; }
-.sidebar-nav { display: flex; flex-direction: column; gap: 4px; }
+.sidebar-nav { display: flex; flex: none; flex-direction: column; gap: 4px; }
 .sidebar-nav a {
   display: flex;
   align-items: center;
@@ -100,7 +111,7 @@ body:has(.app-shell) { min-width: 0; }
 .sidebar-nav a:hover { background: #f2f6f4; }
 .sidebar-nav a.is-selected { color: #0f766e; background: #e8f4ee; box-shadow: inset 3px 0 #0f766e; font-weight: 600; }
 .sidebar-group { padding: 14px 14px 5px; color: var(--workspace-muted); font-size: 11px; }
-.sidebar-footer { margin-top: auto; padding: 16px 12px 0; border-top: 1px solid var(--workspace-border); color: var(--workspace-muted); font-size: 11px; }
+.sidebar-footer { flex: none; margin-top: auto; padding: 16px 12px 0; border-top: 1px solid var(--workspace-border); color: var(--workspace-muted); font-size: 11px; }
 .sidebar-toggle { display: none; }
 .app-shell .page-content { width: 100%; max-width: 1680px; min-width: 0; padding: 22px 32px 48px; margin: 0 auto; }
 .workspace-location { display: flex; align-items: center; gap: 12px; min-height: 24px; margin-bottom: 18px; }

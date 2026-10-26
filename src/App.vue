@@ -152,6 +152,13 @@ async function signOut(): Promise<void> {
           基金市场
         </RouterLink>
         <RouterLink
+          v-if="can('FUND_READ')"
+          :class="{ 'is-active-module': moduleLabel === '基金经理' }"
+          to="/fund-managers"
+        >
+          基金经理
+        </RouterLink>
+        <RouterLink
           v-if="can('WATCHLIST_SELF_READ')"
           :class="{ 'is-active-module': moduleLabel === '我的关注' }"
           to="/watchlist"
@@ -283,42 +290,47 @@ async function signOut(): Promise<void> {
         :class="{ 'is-open': sidebarOpen }"
         aria-label="当前模块子菜单"
       >
-        <strong class="sidebar-heading">{{ moduleLabel }}</strong>
-        <RouterLink
-          v-if="returnTarget"
-          class="sidebar-back"
-          :to="returnTarget"
-        >
-          ← 返回{{ returnLabel }}
-        </RouterLink>
-        <p
-          v-if="fundContext"
-          class="sidebar-context"
-        >
-          当前基金 · {{ fundContext }}
-        </p>
-        <nav
-          class="sidebar-nav"
-          :aria-label="`${moduleLabel}子导航`"
-        >
-          <template
-            v-for="item in sections"
-            :key="item.key"
+        <!-- 模块名称、返回入口和当前基金独立于滚动区，浏览长菜单时仍可随时查看和返回。 -->
+        <div class="sidebar-header">
+          <strong class="sidebar-heading">{{ moduleLabel }}</strong>
+          <RouterLink
+            v-if="returnTarget"
+            class="sidebar-back"
+            :to="returnTarget"
           >
-            <span
-              v-if="item.group"
-              class="sidebar-group"
-            >{{ item.group }}</span>
-            <RouterLink
-              :to="sectionTarget(item.key)"
-              :class="{ 'is-selected': section === item.key }"
-              :aria-current="section === item.key ? 'page' : undefined"
+            ← 返回{{ returnLabel }}
+          </RouterLink>
+          <p
+            v-if="fundContext"
+            class="sidebar-context"
+          >
+            当前基金 · {{ fundContext }}
+          </p>
+        </div>
+        <div class="sidebar-scroll-area">
+          <nav
+            class="sidebar-nav"
+            :aria-label="`${moduleLabel}子导航`"
+          >
+            <template
+              v-for="item in sections"
+              :key="item.key"
             >
-              {{ item.label }}
-            </RouterLink>
-          </template>
-        </nav>
-        <small class="sidebar-footer">基金雷达 · {{ isAdminArea ? '后台管理' : '个人工作区' }}</small>
+              <span
+                v-if="item.group"
+                class="sidebar-group"
+              >{{ item.group }}</span>
+              <RouterLink
+                :to="sectionTarget(item.key)"
+                :class="{ 'is-selected': section === item.key }"
+                :aria-current="section === item.key ? 'page' : undefined"
+              >
+                {{ item.label }}
+              </RouterLink>
+            </template>
+          </nav>
+          <small class="sidebar-footer">基金雷达 · {{ isAdminArea ? '后台管理' : '个人工作区' }}</small>
+        </div>
       </aside>
       <main
         id="main-content"

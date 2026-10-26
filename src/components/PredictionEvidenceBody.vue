@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { post } from '@/api/http'
 import { narrativeGroups, readNarrative, safeEvidence } from '@/utils/predictionNarrative'
-import type { PredictionEvidence, PredictionNarrative, PredictionNarrativeResponse } from '@/types/predictionEvidence'
+import type { PredictionDriver, PredictionEvidence, PredictionNarrative, PredictionNarrativeResponse } from '@/types/predictionEvidence'
 
 const props = defineProps<{
   fundCode: string
@@ -18,6 +18,12 @@ const detailed = computed(() => narrative.value?.styleVersion === 'PREDICTION_IN
 const groups = computed(() => narrative.value ? narrativeGroups(narrative.value) : [])
 let sequence = 0
 let timer: ReturnType<typeof globalThis.setTimeout> | undefined
+
+/** 隐去资料出处，只保留去重后的披露日期，便于判断依据的时效性；原始校验和留档不变。 */
+function disclosureDates(driver: PredictionDriver): string {
+  const dates = [...(driver.sources ?? []).map(source => source.publishedDate), driver.source?.publishedDate]
+  return [...new Set(dates.filter((date): date is string => !!date))].join('、')
+}
 
 /** 只整理所选原记录的文案；服务端缓存成功结果，最多有限等待，不生成新预测。 */
 async function load(run: number, attempts = 0) {
@@ -93,7 +99,7 @@ onBeforeUnmount(() => { ++sequence; globalThis.clearTimeout(timer) })
             v-if="detailed && driver.observation.length > 500"
             class="fact-source"
           >
-            <summary>用到的具体数据与原文</summary>
+            <summary>查看具体数据</summary>
             <p class="fact-text">
               {{ driver.observation }}
             </p>
@@ -111,23 +117,12 @@ onBeforeUnmount(() => { ++sequence; globalThis.clearTimeout(timer) })
             <strong>与本基金的关系：</strong>{{ driver.relation }}
           </p>
           <p><strong>{{ detailed ? '对本次判断的作用：' : '可能影响：' }}</strong>{{ driver.implication }}</p>
-          <div
-            v-for="source in driver.sources ?? []"
-            :key="source.url"
+          <p
+            v-if="disclosureDates(driver)"
+            class="disclosure-dates"
           >
-            <a
-              :href="source.url"
-              target="_blank"
-              rel="noopener noreferrer"
-            >{{ source.title }} · {{ source.publishedDate }}</a>
-          </div>
-          <a
-            v-if="driver.source"
-            :href="driver.source.url"
-            :aria-label="`查看原文：${driver.source.title}`"
-            target="_blank"
-            rel="noopener noreferrer"
-          >查看{{ driver.category }}原文 · {{ driver.source.publishedDate }}</a>
+            披露日期：{{ disclosureDates(driver) }}
+          </p>
         </section>
       </template>
       <h3
@@ -164,20 +159,6 @@ onBeforeUnmount(() => { ++sequence; globalThis.clearTimeout(timer) })
           </li>
         </ul>
       </section>
-      <details
-        v-if="narrative.inventory"
-        class="source-inventory"
-      >
-        <summary>查看本次资料范围</summary>
-        <dl>
-          <div
-            v-for="row in narrative.inventory"
-            :key="row.id"
-          >
-            <dt>{{ row.name }}</dt><dd>{{ row.detail }}</dd>
-          </div>
-        </dl>
-      </details>
     </template>
     <template v-else>
       <p
@@ -237,14 +218,9 @@ onBeforeUnmount(() => { ++sequence; globalThis.clearTimeout(timer) })
 .explanation-driver { border-top: 1px solid #e2eae6; padding-top: 14px; }
 .driver-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; }
 .driver-heading span { color: #536c63; font-size: 12px; }
-.explanation-driver a { color: #14776e; font-size: 13px; text-underline-offset: 3px; }
+.prediction-explanation .disclosure-dates { color: #536c63; font-size: 13px; }
 .fact-text { white-space: pre-line; }
 .fact-source { margin: 10px 0; font-size: 14px; }
 .fact-source summary { cursor: pointer; color: #14776e; }
 .prediction-explanation .reason-group { margin-top: 24px; font-size: 15px; }
-.source-inventory { font-size: 13px; margin-top: 18px; color: #536c63; }
-.source-inventory summary { cursor: pointer; }
-.source-inventory dl > div { display: flex; gap: 16px; padding: 6px 0; }
-.source-inventory dt { min-width: 112px; }
-.source-inventory dd { margin: 0; }
 </style>

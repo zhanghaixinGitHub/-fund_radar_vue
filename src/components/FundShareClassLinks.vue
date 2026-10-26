@@ -9,28 +9,18 @@ const otherShares = computed(() => product.value?.shares.filter(share => share.f
 </script>
 
 <template>
-  <section
-    v-if="product && otherShares.length"
-    class="analysis-section share-class-links"
-    aria-label="同一基金的其他份额"
+  <!-- 直接作为基础资料 dl 的末尾字段：每种份额占一格，空列表不生成容器或占位。 -->
+  <div
+    v-for="share in otherShares"
+    :key="share.fundCode"
+    class="share-class-item"
   >
-    <div class="section-heading">
-      <h2>其他份额</h2>
-    </div>
-    <dl class="detail-grid share-class-grid">
-      <div
-        v-for="share in otherShares"
-        :key="share.fundCode"
-      >
-        <dt>{{ share.shareClass }}类</dt>
-        <dd>{{ share.fundCode }}</dd>
-      </div>
-    </dl>
-  </section>
+    <dt>{{ share.shareClass }}类份额</dt>
+    <dd>{{ share.fundCode }}</dd>
+  </div>
 </template>
 
 <style scoped>
-/* 沿用基础资料的三列网格和窄屏布局，每个份额各占一格，多于三项时整行续排。 */
-.share-class-grid { margin-top: 0; }
-.share-class-grid dd { font-variant-numeric: tabular-nums; letter-spacing: .025em; }
+/* 网格、分隔线和窄屏换行由基础资料统一控制，仅保留基金代码的等宽数字排版。 */
+.share-class-item dd { font-variant-numeric: tabular-nums; letter-spacing: .025em; }
 </style>

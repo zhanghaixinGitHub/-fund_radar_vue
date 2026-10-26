@@ -279,8 +279,11 @@ watch(() => [props.fundCode, props.view, route.query.stock], () => {
               查看公司公告 →
             </button>
           </div>
-          <p class="materials-note">
-            来源：{{ company.sourceName }}。{{ company.notice }}
+          <p
+            v-if="company.notice"
+            class="materials-note"
+          >
+            {{ company.notice }}
           </p>
           <div
             v-if="company.history.length"
@@ -288,7 +291,7 @@ watch(() => [props.fundCode, props.view, route.query.stock], () => {
           >
             <table class="material-table financial-table">
               <caption>最近已取得的财务期间 · 金额换算为亿元显示</caption>
-              <thead><tr><th>报告期末</th><th>营业收入</th><th>收入同比</th><th>归母净利润</th><th>利润同比</th><th>经营现金净流量</th><th>总资产</th><th>来源公告日</th></tr></thead>
+              <thead><tr><th>报告期末</th><th>营业收入</th><th>收入同比</th><th>归母净利润</th><th>利润同比</th><th>经营现金净流量</th><th>总资产</th><th>公告日期</th></tr></thead>
               <tbody>
                 <tr
                   v-for="f in company.history"
@@ -311,7 +314,7 @@ watch(() => [props.fundCode, props.view, route.query.stock], () => {
           >
             <summary>主营业务构成 · {{ company.business[0]?.endDate }}</summary>
             <p class="materials-note">
-              按来源逐项列示；产品和地区口径可能重叠，不计算合计。缺失币种不换算。
+              按披露项目逐项列示；产品和地区口径可能重叠，不计算合计。缺失币种不换算。
             </p>
             <ul class="business-list">
               <li

@@ -1,5 +1,14 @@
 import { get, post } from '@/api/http'
+import { createUUID } from '@/utils/uuid'
 import type { SyncJobLastSuccess, SyncJobStatus } from '@/types/syncJob'
+
+/** 未知结果读取最近任务，不在网络失败时自动重发POST。 */
+export function startFundManagersSync(): Promise<SyncJobStatus> {
+  return post('/api/v1/sync-jobs/fund-managers', { managerIds: [], requestId: createUUID() })
+}
+export function getLatestFundManagersSync(): Promise<SyncJobStatus | null> {
+  return get('/api/v1/sync-jobs/fund-managers/latest')
+}
 
 /** 单只与全量使用明确不同路径，空的单只代码不会被默认为全量。 */
 export function startFundRatingsSync(fundCode?: string): Promise<SyncJobStatus> {

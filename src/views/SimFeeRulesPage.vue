@@ -224,7 +224,6 @@ onBeforeUnmount(clearSuccessMessage)
                 费率
               </th>
               <th>折扣说明</th>
-              <th>来源</th>
               <th>生效期</th>
               <th>版本</th>
               <th>更新时间</th>
@@ -273,7 +272,6 @@ onBeforeUnmount(clearSuccessMessage)
                 </template>
               </td>
               <td>{{ rule.discountInfo ?? '—' }}</td>
-              <td>{{ rule.dataSource === 'EASTMONEY_F10' ? '天天基金抓取' : '人工维护' }}</td>
               <td>{{ rule.effectiveFrom }}{{ rule.effectiveTo ? ` 至 ${rule.effectiveTo}` : ' 起' }}</td>
               <td>{{ rule.version }}</td>
               <td>{{ formatTime(rule.updatedAt) }}</td>
@@ -314,7 +312,7 @@ onBeforeUnmount(clearSuccessMessage)
             </tr>
             <tr v-if="!loading && rules.length === 0">
               <td
-                colspan="10"
+                colspan="9"
                 class="empty"
               >
                 {{ appliedFilter ? '未找到匹配的费率规则，请更换关键词或清空后查询。' : '暂无费率规则，请前往数据同步中的“模拟费率同步”执行抓取。' }}

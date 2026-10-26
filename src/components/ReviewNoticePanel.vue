@@ -26,10 +26,6 @@ const stateLabel = (value: State) => ({ ACTIVE: '待复查', RESOLVED: '条件�
 /** 复查入口由已知页面和基金代码形成，不执行载荷中的任意网址。 */
 const destination = (item: Notice) => item.fundCode && /^\d{6}$/.test(item.fundCode)
   ? `/funds/${item.fundCode}?section=documents` : '/portfolio?section=funding'
-const sourceUrl = (value?: string) => {
-  try { const url = new globalThis.URL(value ?? ''); return url.protocol === 'https:' && url.hostname === 'www.dbfund.com.cn' ? url.href : null }
-  catch { return null }
-}
 async function load(page = 1) {
   const ticket = ++sequence
   busy.value = true; error.value = ''
@@ -113,12 +109,6 @@ onBeforeUnmount(() => sequence++)
           <RouterLink :to="destination(item)">
             前往复查
           </RouterLink>
-          <a
-            v-if="sourceUrl(item.payload.sourceUrl)"
-            :href="sourceUrl(item.payload.sourceUrl)!"
-            target="_blank"
-            rel="noopener noreferrer"
-          >{{ item.payload.sourceName }}原文</a>
           <button
             v-if="!item.read"
             type="button"

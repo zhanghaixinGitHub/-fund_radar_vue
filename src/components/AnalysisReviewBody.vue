@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AnalysisReview, AnalysisReviewEvidence } from '@/types/analysisReview'
+import type { AnalysisReview } from '@/types/analysisReview'
 
 defineProps<{ review: AnalysisReview }>()
 
@@ -9,16 +9,6 @@ function timeText(value: string) {
     day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
-/** 多份行情留档合并成一个资料提示；原来源和原判断仍由后台完整保留。 */
-function displaySources(sources: AnalysisReviewEvidence['sources']) {
-  const seen = new Set<string>()
-  return sources.map(source => ({ ...source, title: source.url ? source.title : '历史行情资料' })).filter(source => {
-    const key = `${source.title}:${source.url ?? ''}`
-    if (seen.has(key)) return false
-    seen.add(key)
-    return true
-  })
-}
 </script>
 
 <template>
@@ -57,20 +47,6 @@ function displaySources(sources: AnalysisReviewEvidence['sources']) {
           <p class="review-meaning">
             {{ item.interpretation }}
           </p>
-          <div class="review-sources">
-            <template
-              v-for="(source, sourceIndex) in displaySources(item.sources)"
-              :key="sourceIndex"
-            >
-              <a
-                v-if="source.url"
-                :href="source.url"
-                target="_blank"
-                rel="noopener noreferrer"
-              >{{ source.title }}</a>
-              <span v-else>{{ source.title }}</span>
-            </template>
-          </div>
         </section>
       </template>
       <h5>什么情况会改变判断</h5>
@@ -108,11 +84,9 @@ header strong { font-size: 20px; }
 .review-time { font-size: 12px; font-variant-numeric: tabular-nums; }
 .review-notice { margin: 6px 0; }
 summary { width: fit-content; min-height: 44px; padding: 10px 0; color: #0f766e; cursor: pointer; }
-summary:focus-visible, a:focus-visible { outline: 2px solid #0f766e; outline-offset: 3px; }
+summary:focus-visible { outline: 2px solid #0f766e; outline-offset: 3px; }
 h5 { margin: 16px 0 8px; font-size: 14px; }
 .review-evidence { max-width: 90ch; margin-bottom: 16px; }
 .review-evidence p { margin: 6px 0; }
-.review-sources { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 12px; color: #647b72; }
-a { color: #0f766e; }
 ul { max-width: 90ch; padding-left: 20px; }
 </style>

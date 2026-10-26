@@ -121,7 +121,6 @@ onBeforeUnmount(() => ++sequence)
             class="news-company"
           >{{ item.company }}</span>
           <time :datetime="item.publishedDate">{{ item.publishedDate || '披露日期暂缺' }}</time>
-          <span>{{ item.sourceName }}</span>
         </div>
         <h3>{{ item.subject }}</h3>
         <ul class="news-points">

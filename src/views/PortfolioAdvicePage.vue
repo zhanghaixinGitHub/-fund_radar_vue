@@ -16,7 +16,7 @@ import type { AdviceDetail, AdviceHistory, DiagnosisHistory, HoldingRulesView, R
 import type { SimPosition } from '@/types/simulation'
 import {
   adviceLabel, diagnosisItemLabel, diagnosisItemOrder, diagnosisStale, diagnosisVerdictLabel, diagnosisVerdictTone,
-  evidenceUrl, reviewLabel, ruleAdjustedValue, ruleAdjustMaxSteps, rulePctText, ruleStatsUpdated, ruleStatusLabel,
+  reviewLabel, ruleAdjustedValue, ruleAdjustMaxSteps, rulePctText, ruleStatsUpdated, ruleStatusLabel,
   ruleTierLabel, ruleTriggerText,
 } from '@/utils/advice'
 import { shanghaiDate, simMoney, simPercent, simShares, simTime, simTone } from '@/utils/simulation'
@@ -417,11 +417,12 @@ onBeforeUnmount(() => { alive = false; generation++ })
                       :class="diagnosisVerdictTone(item.verdict)"
                     >{{ diagnosisVerdictLabel(item.verdict) }}</span>
                   </div>
-                  <p>{{ item.evidence || '未提供具体说明，请以数据来源为准。' }}</p>
-                  <div class="sim-muted">
-                    来源：{{ item.source }}<template v-if="item.dataAsOfDate">
-                      · 数据截至：{{ item.dataAsOfDate }}
-                    </template>
+                  <p>{{ item.evidence || '暂无具体说明。' }}</p>
+                  <div
+                    v-if="item.dataAsOfDate"
+                    class="sim-muted"
+                  >
+                    数据截至：{{ item.dataAsOfDate }}
                   </div>
                 </li>
               </ol>
@@ -561,7 +562,7 @@ onBeforeUnmount(() => { alive = false; generation++ })
             </dl>
             <p class="sim-muted">
               规则版本：{{ activeRule.ruleVersion }}<template v-if="!statsUpdated && draft.statsCutoffDate">
-                · 来源草案统计截止：{{ draft.statsCutoffDate }}
+                · 草案统计截止：{{ draft.statsCutoffDate }}
               </template>
             </p>
             <div class="sim-actions">
@@ -975,16 +976,11 @@ onBeforeUnmount(() => { alive = false; generation++ })
                 <h3>{{ item.title }}</h3><span :class="{ 'advice-against': item.relation === 'AGAINST' }">{{ item.relation === 'AGAINST' ? '反对依据' : item.relation === 'SUPPORT' ? '支持依据' : '说明' }}</span>
               </div>
               <p>{{ item.content }}</p>
-              <div class="sim-muted">
-                来源：{{ item.source }}<template v-if="item.sourceDate">
-                  · {{ item.sourceDate }}
-                </template>
-                <a
-                  v-if="evidenceUrl(item.sourceUrl)"
-                  :href="evidenceUrl(item.sourceUrl)"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >查看原文</a>
+              <div
+                v-if="item.sourceDate"
+                class="sim-muted"
+              >
+                资料日期：{{ item.sourceDate }}
               </div>
             </li>
           </ol>
@@ -1046,12 +1042,6 @@ onBeforeUnmount(() => { alive = false; generation++ })
             class="sim-muted"
           >
             主模型版本：{{ detail.snapshot.experiment.models[0]?.modelHash }}
-          </p>
-          <p
-            v-if="detail.outcome?.evidenceHash"
-            class="sim-muted"
-          >
-            核验来源版本：{{ detail.outcome.evidenceHash }}
           </p>
         </details>
       </template>
