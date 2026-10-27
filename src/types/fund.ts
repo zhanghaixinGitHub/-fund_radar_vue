@@ -178,6 +178,14 @@ export interface FundSameTypeComparison {
   targetRank: number | null
   comparableCount: number
   items: FundSameTypeComparisonItem[]
+  /** 服务端核实的实际同类标准；旧接口缺失时继续明确说明按大类对照。 */
+  comparisonGroup?: { name: string; description: string; basis: string } | null
+  /** 所有返回项共用的统计起点，日期缺失时不编造相同区间。 */
+  comparisonStartDate?: string | null
+  sampleUnit?: 'SHARE_CLASS' | 'PRODUCT'
+  /** 经来源证实并去重后的产品数；未经核实保持为空。 */
+  comparableProductCount?: number | null
+  reason?: string | null
 }
 
 /** 基金列表响应；页码模式返回总数，游标模式仅为兼容已发布调用方保留。 */

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { get } from '@/api/http'
+import { getFundMaterials } from '@/api/fundMaterials'
 import { holdingContext, newsHeading, readingPoints, type NewsFact } from '@/utils/newsFacts'
 
 /** 只展示已经保存的公开事实；消息与预测依据分开，不在读取页面时触发采集。 */
@@ -9,18 +11,29 @@ interface NewsFacts {
   items: NewsFact[]
 }
 const props = defineProps<{ fundCode: string }>()
+const route = useRoute()
+/** 公司经营页和持仓表均通过 stock 传递公司范围，直接打开或前进后退也沿用该范围。 */
+const requestedStock = computed(() => typeof route.query.stock === 'string' ? route.query.stock : '')
 const result = ref<NewsFacts | null>(null)
 const busy = ref(false)
 const error = ref('')
 const page = ref(1)
 const selectedCompany = ref('')
+/** 链接指定的公司即使没有公告，也保留筛选项，不能悄悄退回全部公告。 */
+const linkedCompany = ref<{ value: string; label: string } | null>(null)
+const selectedCompanyLabel = computed(() => linkedCompany.value?.value === selectedCompany.value
+  ? linkedCompany.value.label : selectedCompany.value)
 const heading = ref<InstanceType<typeof globalThis.HTMLHeadingElement> | null>(null)
 const pageSize = 8
 const preparedItems = computed(() => (result.value?.items ?? [])
   .map(item => ({ ...item, ...newsHeading(item.title), points: readingPoints(item), context: holdingContext(item.relation) })))
 // 沿用公告卡片中的关联公司，不把筛选选项解释为基金当前持仓；暂无要点的公司也保留，明确告知资料状态。
-const companies = computed(() => [...new Set(preparedItems.value.map(item => item.company).filter(Boolean))]
-  .sort((left, right) => left.localeCompare(right, 'zh-CN')))
+const companies = computed(() => {
+  const options = new Map(preparedItems.value.filter(item => item.company).map(item => [item.company, item.company]))
+  if (linkedCompany.value) options.set(linkedCompany.value.value, linkedCompany.value.label)
+  return [...options].map(([value, label]) => ({ value, label }))
+    .sort((left, right) => left.label.localeCompare(right.label, 'zh-CN'))
+})
 const filteredItems = computed(() => preparedItems.value
   .filter(item => !selectedCompany.value || item.company === selectedCompany.value))
 const readableItems = computed(() => filteredItems.value.filter(item => item.points.length > 0))
@@ -38,17 +51,33 @@ async function turnPage(delta: number) {
 }
 async function load() {
   const ticket = ++sequence
-  result.value = null; busy.value = true; error.value = ''; page.value = 1; selectedCompany.value = ''
+  const fundCode = props.fundCode
+  const stockCode = requestedStock.value
+  result.value = null; busy.value = true; error.value = ''; page.value = 1
+  selectedCompany.value = ''; linkedCompany.value = null
   try {
-    const value = await get<NewsFacts>(`/api/v1/funds/${encodeURIComponent(props.fundCode)}/news-facts`)
-    if (ticket === sequence && value.fundCode === props.fundCode) result.value = value
+    // 要点接口沿用公告标题中的公司简称；以同一基金的公司名单把股票代码准确映射到简称，不模糊匹配。
+    // 只在链接指定公司时读取名单；名单读取失败则提示重试，避免展示其他公司的公告。
+    const [value, materials] = await Promise.all([
+      get<NewsFacts>(`/api/v1/funds/${encodeURIComponent(fundCode)}/news-facts`),
+      stockCode ? getFundMaterials(fundCode) : Promise.resolve(null),
+    ])
+    if (ticket !== sequence) return
+    if (value.fundCode !== fundCode || (materials && materials.fundCode !== fundCode)) throw new Error('基金资料归属不一致')
+    if (stockCode) {
+      const companyName = materials?.companies.find(company => company.stockCode === stockCode)?.stockName
+      // 未识别的旧代码也保留独立空态，不把“无法识别公司”解释为“未选择公司”。
+      linkedCompany.value = { value: companyName || stockCode, label: companyName || '所选公司' }
+      selectedCompany.value = linkedCompany.value.value
+    }
+    result.value = value
   } catch {
     if (ticket === sequence) error.value = '近期消息暂时无法读取，请稍后重试。'
   } finally { if (ticket === sequence) busy.value = false }
 }
 // 筛选后从第一页开始，公告数量、分页和暂缺提示都使用相同的公司范围。
 watch(selectedCompany, () => { page.value = 1 })
-watch(() => props.fundCode, load, { immediate: true })
+watch(() => [props.fundCode, requestedStock.value], load, { immediate: true })
 onBeforeUnmount(() => ++sequence)
 </script>
 
@@ -101,14 +130,14 @@ onBeforeUnmount(() => ++sequence)
             <option value="">全部公告</option>
             <option
               v-for="company in companies"
-              :key="company"
-              :value="company"
-            >{{ company }}</option>
+              :key="company.value"
+              :value="company.value"
+            >{{ company.label }}</option>
           </select>
         </label>
       </div>
       <p v-if="!readableItems.length">
-        {{ selectedCompany ? `${selectedCompany}的公告暂未整理出可靠要点。` : '近期公告暂未整理出可靠要点。' }}
+        {{ selectedCompany ? `${selectedCompanyLabel}的公告暂未整理出可靠要点。` : '近期公告暂未整理出可靠要点。' }}
       </p>
       <article
         v-for="item in visibleItems"

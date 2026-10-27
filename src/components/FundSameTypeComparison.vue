@@ -11,9 +11,14 @@ const props = defineProps<{
   errorMessage: string
 }>()
 
-/** 当前接口仅按基金大类筛选；直接使用响应分类说明范围，未知分类不猜测为其他类型。 */
+/** 优先展示后端已核实的细类；旧响应仍说明按大类划分，不能由名称猜测投资方向。 */
 const sameTypeLabel = computed(() => {
   const comparison = props.comparison
+  if (comparison?.scope === 'VERIFIED_CURRENT_MARKET_PEER_GROUP') {
+    return comparison.comparisonGroup?.basis === 'VERIFIED_DISCLOSURE'
+      ? `本次同类：${comparison.comparisonGroup.name}`
+      : '本次同类：暂未确定'
+  }
   if (comparison?.scope !== 'CURRENT_MARKET_ACTIVE_TUSHARE_PRO_FUND') {
     return '本次同类：比较范围暂不可用'
   }
@@ -39,12 +44,22 @@ function sortableMonthChange(value: number | string | null | undefined): number 
 }
 
 function scopeLabel(scope: string | undefined): string {
+  if (scope === 'VERIFIED_CURRENT_MARKET_PEER_GROUP') {
+    const description = props.comparison?.comparisonGroup?.description
+    return description
+      ? `${description}仅比较已收录基金的单位净值变化，不含分红和买卖费用。`
+      : ''
+  }
   return scope === 'CURRENT_MARKET_ACTIVE_TUSHARE_PRO_FUND'
     ? '仅比较已收录且截至同一天的基金，按近一月单位净值变化从高到低排列，不含分红和买卖费用。'
     : '比较范围信息暂不可用。'
 }
 
 function statusMessage(status: string | undefined): string {
+  if (['CLASSIFICATION_INSUFFICIENT', 'DATA_INSUFFICIENT', 'NO_PEERS', 'OUT_OF_SCOPE'].includes(status ?? '')
+    && props.comparison?.reason) {
+    return props.comparison.reason
+  }
   if (status === 'OUT_OF_SCOPE') {
     return '当前基金不在已收录的可比基金范围内，暂不比较。'
   }
@@ -75,22 +90,35 @@ function statusMessage(status: string | undefined): string {
       <p class="same-type-category">
         {{ sameTypeLabel }}
       </p>
-      <p class="same-type-scope">
+      <p
+        v-if="scopeLabel(comparison.scope)"
+        class="same-type-scope"
+      >
         {{ scopeLabel(comparison.scope) }}
       </p>
       <p
-        v-if="comparison.status !== 'SYNCED'"
+        v-if="!['SYNCED', 'NO_PEERS'].includes(comparison.status)"
         class="same-type-state"
         role="status"
       >
         {{ statusMessage(comparison.status) }}
       </p>
       <template v-else>
+        <p
+          v-if="comparison.status === 'NO_PEERS'"
+          class="same-type-state"
+          role="status"
+        >
+          {{ statusMessage(comparison.status) }}
+        </p>
         <!-- 所有可比基金共用同一统计截止日，仅在列表顶部展示，避免逐行重复。 -->
         <div class="same-type-summary">
           <p>
             近一月单位净值变化 ·
-            <template v-if="comparison.asOfDate">
+            <template v-if="comparison.comparisonStartDate && comparison.asOfDate">
+              {{ comparison.comparisonStartDate }} 至 {{ comparison.asOfDate }}
+            </template>
+            <template v-else-if="comparison.asOfDate">
               截至 {{ comparison.asOfDate }}
             </template>
             <template v-else>
