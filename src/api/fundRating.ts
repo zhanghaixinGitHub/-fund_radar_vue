@@ -9,7 +9,9 @@ export interface RatingCoverage {
 }
 export interface RatingSummary {
   fundCode: string
-  status: 'RATED' | 'PARTIAL' | 'NOT_RATED' | 'UNSUPPORTED' | 'STALE' | 'NOT_FOUND' | 'WITHDRAWN'
+  status: 'RATED' | 'SCORED' | 'PARTIAL' | 'NOT_RATED' | 'UNSUPPORTED' | 'STALE' | 'NOT_FOUND' | 'WITHDRAWN'
+  /** 完整数字分可先于等级发布；部分分仍使用独立字段。 */
+  score?: string | null
   grade: RatingGrade | null
   gradeLabel: string | null
   asOfDate: string | null

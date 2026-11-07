@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ListPagination from '@/components/ListPagination.vue'
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import SimulationFundActions from '@/components/SimulationFundActions.vue'
@@ -13,24 +14,15 @@ import {
 
 /** 当前登录用户的关注列表页面；数据范围、类型排序与基金摘要均由服务端统一控制。 */
 const {
-  changePageSize,
   currentPage,
   errorMessage,
-  goToPage,
-  hasNextPage,
-  hasPreviousPage,
   keyword,
   loading,
   marketDataUnavailable,
-  nextPage,
-  pageInput,
   pageSize,
-  pageSizeOptions,
-  previousPage,
   quota,
   search,
   totalCount,
-  totalPages,
   watchlist,
 } = useWatchlist()
 const route = useRoute()
@@ -195,80 +187,14 @@ function formatCreatedAt(value: string): string {
         </ul>
       </section>
     </div>
-    <nav
+    <ListPagination
       v-if="!loading && !errorMessage && watchlist.length > 0"
-      class="pagination"
-      aria-label="关注列表分页"
-    >
-      <p
-        class="pagination-summary"
-        aria-live="polite"
-      >
-        共 {{ totalCount }} 条
-      </p>
-      <div class="pagination-controls">
-        <label
-          class="page-size-control"
-          for="watchlist-page-size"
-        >
-          每页
-          <select
-            id="watchlist-page-size"
-            v-model.number="pageSize"
-            :disabled="loading"
-            @change="changePageSize"
-          >
-            <option
-              v-for="option in pageSizeOptions"
-              :key="option"
-              :value="option"
-            >
-              {{ option }}
-            </option>
-          </select>
-          条
-        </label>
-        <button
-          :disabled="loading || !hasPreviousPage"
-          type="button"
-          @click="previousPage"
-        >
-          上一页
-        </button>
-        <span class="page-position">第 {{ currentPage }} / {{ totalPages }} 页</span>
-        <button
-          :disabled="loading || !hasNextPage"
-          type="button"
-          @click="nextPage"
-        >
-          下一页
-        </button>
-        <label
-          class="page-jump-control"
-          for="watchlist-page-jump"
-        >
-          跳至
-          <input
-            id="watchlist-page-jump"
-            v-model="pageInput"
-            :disabled="loading"
-            inputmode="numeric"
-            min="1"
-            :max="totalPages"
-            step="1"
-            type="number"
-            @keyup.enter="goToPage"
-          >
-          页
-        </label>
-        <button
-          :disabled="loading"
-          type="button"
-          @click="goToPage"
-        >
-          跳转
-        </button>
-      </div>
-    </nav>
+      :page="currentPage"
+      :page-size="pageSize"
+      :total="totalCount"
+      :loading="loading"
+      label="关注列表分页"
+      @change="(page, size) => { pageSize = size; loadPage(page) }" 
+    />
   </section>
 </template>

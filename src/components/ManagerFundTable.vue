@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ListPagination from '@/components/ListPagination.vue'
 import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import type { ManagerFund } from '@/types/fundManager'
@@ -7,9 +8,8 @@ import { managerFundTarget, managerRate } from '@/utils/fundManagerNavigation'
 const props = defineProps<{ funds: ManagerFund[]; managerId: string }>()
 const route = useRoute()
 const page = ref(1)
-const pageSize = 20
-const totalPages = computed(() => Math.ceil(props.funds.length / pageSize))
-const visible = computed(() => props.funds.slice((page.value - 1) * pageSize, page.value * pageSize))
+const pageSize = ref(10)
+const visible = computed(() => props.funds.slice((page.value - 1) * pageSize.value, page.value * pageSize.value))
 watch(() => props.funds, () => { page.value = 1 })
 </script>
 
@@ -50,26 +50,14 @@ watch(() => props.funds, () => { page.value = 1 })
         </tbody>
       </table>
     </div>
-    <nav
-      v-if="totalPages > 1"
-      class="manager-pagination"
-      aria-label="基金列表分页"
-    >
-      <button
-        type="button"
-        :disabled="page <= 1"
-        @click="page--"
-      >
-        上一页
-      </button>
-      <span>{{ page }} / {{ totalPages }}</span>
-      <button
-        type="button"
-        :disabled="page >= totalPages"
-        @click="page++"
-      >
-        下一页
-      </button>
-    </nav>
+    <ListPagination
+      v-if="funds.length > 0"
+      :page="page"
+      :page-size="pageSize"
+      :total="funds.length"
+      :loading="false"
+      label="任职基金分页"
+      @change="(value, size) => { pageSize = size; page = value }" 
+    />
   </template>
 </template>

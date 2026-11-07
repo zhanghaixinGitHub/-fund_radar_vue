@@ -3,12 +3,13 @@ import type { RatingGrade, RatingSummary } from '../api/fundRating'
 const labels = { WEAK: '偏弱', AVERAGE: '一般', GOOD: '良好', EXCELLENT: '优质' } as const
 
 /** 市场筛选复用已发布等级；无评分和待更新分别对应页面的两种业务状态。 */
-export type RatingFilter = RatingGrade | 'UNRATED' | 'PENDING'
+export type RatingFilter = RatingGrade | 'SCORED' | 'UNRATED' | 'PENDING'
 export const ratingFilterOptions: { value: RatingFilter; label: string }[] = [
   { value: 'EXCELLENT', label: labels.EXCELLENT },
   { value: 'GOOD', label: labels.GOOD },
   { value: 'AVERAGE', label: labels.AVERAGE },
   { value: 'WEAK', label: labels.WEAK },
+  { value: 'SCORED', label: '已有完整评分' },
   { value: 'UNRATED', label: '暂无评分' },
   { value: 'PENDING', label: '评级待更新' },
 ]
@@ -23,10 +24,11 @@ export function ratingLabel(value?: RatingSummary | null, loading = false, now =
   if (loading) return '评级读取中'
   if (!value) return '评级暂不可用'
   if (value.status === 'STALE' || value.status === 'WITHDRAWN') return '评级待更新'
-  if (value.status === 'RATED' || value.status === 'PARTIAL') {
+  if (value.status === 'RATED' || value.status === 'SCORED' || value.status === 'PARTIAL') {
     if (!value.validUntil || !Number.isFinite(Date.parse(value.validUntil))) return '评级暂不可用'
     if (Date.parse(value.validUntil) <= now) return '评级待更新'
     if (value.status === 'PARTIAL') return '部分评分'
+    if (value.status === 'SCORED') return formatRatingScore(value.score) ? `${formatRatingScore(value.score)} 分` : '评分暂不可用'
     return value.grade && labels[value.grade] || '评级暂不可用'
   }
   return value.status === 'NOT_FOUND' ? '基金不存在' : '暂无评分'

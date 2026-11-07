@@ -1,16 +1,22 @@
 <script setup lang="ts">
+import ListPagination from '@/components/ListPagination.vue'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { generateDecision, readDecision, readDecisionHistory, readDecisionOutcomes, readStrategyPreference, saveStrategyPreference } from '@/api/multiPrediction'
 import type { DecisionOutcome } from '@/api/multiPrediction'
 import type { DecisionReport } from '@/types/multiPrediction'
 import { useAuthStore } from '@/stores/auth'
 import { sortPredictionEvidence, sortPredictionHorizons } from '@/utils/predictionHorizon'
+import { findLastPage, readFixedPage } from '@/utils/pagination'
 const props = defineProps<{ fundCode: string; compact?: boolean; historyOnly?: boolean; initialReport?: DecisionReport | null }>()
 const auth = useAuthStore()
 const report = ref<DecisionReport | null>(null), history = ref<DecisionReport[]>([])
 const error = ref(''), busy = ref(false), preference = ref('BALANCED'), isDefault = ref(true)
 const page = ref(1), outcomes = ref<Record<string, DecisionOutcome>>({}), outcomeError = ref('')
 const historyVersion = ref('HOLDING_ADVICE_V3_THREE_STATE')
+const historyLoading = ref(false)
+const pageSize = ref(10)
+const historyTotal = ref<number | undefined>()
+const historyHasMore = ref(false)
 // 保留摘要原有的每类最多两条依据，合并后统一排序，避免涨跌分类打乱周期顺序。
 const summaryEvidence = computed(() => sortPredictionEvidence([
   ...(report.value?.supportingEvidence.slice(0, 2) ?? []),
@@ -19,15 +25,45 @@ const summaryEvidence = computed(() => sortPredictionEvidence([
 let sequence = 0
 const labels: Record<string, string> = { BUY: '建议买入', AVOID: '不建议买入', ADD: '建议加仓', HOLD: '继续持有', REDUCE: '建议减仓', SELL: '建议卖出' }
 const time = (value: string) => new Date(value).toLocaleString('zh-CN', { hour12: false })
+/** 历史接口按二十条读取，展示窗口和核对结果同步合并，避免切换条数后记录错配。 */
 async function load() {
-  const run = ++sequence; error.value = ''
+  const run = ++sequence; error.value = ''; outcomeError.value = ''
+  historyLoading.value = props.historyOnly === true
+  const code = props.fundCode
+  const version = historyVersion.value
+  const size = pageSize.value
+  const checks: Record<string, DecisionOutcome> = {}
+  const read = (target: number) => readFixedPage(async serverPage => {
+    const [items, outcomes] = await Promise.all([
+      readDecisionHistory(code, serverPage, version),
+      readDecisionOutcomes(code, serverPage, version).catch(() => {
+        if (run === sequence) outcomeError.value = '到期核验暂时无法读取，已保存原文仍可查看'
+        return {}
+      }),
+    ])
+    Object.assign(checks, outcomes)
+    return { items, hasMore: items.length === 20 }
+  }, target, size)
   try {
-    const [value, prefs, records, checks] = await Promise.all([props.historyOnly ? Promise.resolve(null) : readDecision(props.fundCode), props.compact || props.historyOnly ? Promise.resolve({preference:'BALANCED',defaultPreference:true}) : readStrategyPreference(),
-      props.historyOnly ? readDecisionHistory(props.fundCode, page.value, historyVersion.value) : Promise.resolve([]),
-      props.historyOnly ? readDecisionOutcomes(props.fundCode, page.value, historyVersion.value).catch(() => { outcomeError.value='到期核验暂时无法读取，已保存原文仍可查看'; return {} }) : Promise.resolve({})])
+    const [value, prefs, initial] = await Promise.all([
+      props.historyOnly ? Promise.resolve(null) : readDecision(code),
+      props.compact || props.historyOnly ? Promise.resolve({ preference: 'BALANCED', defaultPreference: true }) : readStrategyPreference(),
+      props.historyOnly ? read(page.value) : Promise.resolve(null),
+    ])
+    let records = initial
+    if (records && !records.items.length && records.page > 1) {
+      records = (await findLastPage(read, row => row.items.length > 0, row => row.hasMore, () => run === sequence))?.value ?? null
+    }
     if (run !== sequence) return
-    report.value = value; preference.value = prefs.preference; isDefault.value = prefs.defaultPreference; history.value = records; outcomes.value = checks
+    report.value = value; preference.value = prefs.preference; isDefault.value = prefs.defaultPreference
+    history.value = records?.items ?? []; outcomes.value = checks
+    if (records) {
+      page.value = records.page
+      if (!records.hasMore) historyTotal.value = (records.page - 1) * size + records.items.length
+      historyHasMore.value = historyTotal.value === undefined ? records.hasMore : records.page * size < historyTotal.value
+    }
   } catch (e) { if (run === sequence) error.value = e instanceof Error ? e.message : '建议读取失败' }
+  finally { if (run === sequence) historyLoading.value = false }
 }
 async function generate() {
   const code = props.fundCode; busy.value = true; error.value = ''
@@ -39,14 +75,39 @@ async function changePreference() {
   try { await saveStrategyPreference(preference.value); isDefault.value = false }
   catch (e) { error.value = e instanceof Error ? e.message : '策略偏好保存失败' }
 }
-async function historyPage(value: number) { page.value=value; await load() }
-watch(() => [props.fundCode, props.initialReport, props.historyOnly] as const, () => { page.value=1; report.value = props.initialReport ?? null; history.value = []; if (props.fundCode && !props.compact) void load() }, { immediate: true })
+async function historyPage(value: number, size = pageSize.value) {
+  if (historyLoading.value || value < 1) return
+  page.value = value; pageSize.value = size
+  await load()
+}
+/** 历史接口没有总数，按非空页定位尾页；只读取报告，不触发生成或保存。 */
+async function lastHistoryPage() {
+  if (historyLoading.value || !historyHasMore.value) return
+  const run = ++sequence
+  const code = props.fundCode
+  const version = historyVersion.value
+  const size = pageSize.value
+  historyLoading.value = true
+  error.value = ''
+  try {
+    const last = await findLastPage(target => readFixedPage(async serverPage => {
+      const items = await readDecisionHistory(code, serverPage, version)
+      return { items, hasMore: items.length === 20 }
+    }, target, size), rows => rows.items.length > 0, rows => rows.hasMore, () => run === sequence)
+    if (!last || run !== sequence) return
+    page.value = last.page
+    historyTotal.value = (last.page - 1) * size + last.value.items.length
+    await load()
+  } catch { if (run === sequence) error.value = '暂时无法跳至尾页，请稍后重试。' }
+  finally { if (run === sequence) historyLoading.value = false }
+}
+watch(() => [props.fundCode, props.initialReport, props.historyOnly] as const, () => { page.value=1; historyTotal.value = undefined; historyHasMore.value = false; report.value = props.initialReport ?? null; history.value = []; if (props.fundCode && !props.compact) void load() }, { immediate: true })
 onBeforeUnmount(() => { ++sequence })
 </script>
 <template>
   <section
     class="decision-panel"
-    :aria-busy="busy"
+    :aria-busy="busy || historyLoading"
     aria-label="持仓综合建议"
   >
     <div class="section-heading">
@@ -185,6 +246,7 @@ onBeforeUnmount(() => { ++sequence })
     <div v-if="historyOnly">
       <label>建议版本 <select
         v-model="historyVersion"
+        :disabled="historyLoading"
         @change="historyPage(1)"
       ><option value="HOLDING_ADVICE_V3_THREE_STATE">三分类综合建议</option><option value="HOLDING_ADVICE_V2_EXPERIMENTAL">旧版二分类综合建议</option></select></label>
       <p>保留当时动作、依据和模型版本。下面核验的是所引用预测的方向与区间总回报，不是模拟交易收益；扣费策略对照在历史研究中单独记录。</p>
@@ -224,21 +286,16 @@ onBeforeUnmount(() => { ++sequence })
           </div>
         </details>
       </article>
-      <div class="preference">
-        <button
-          class="secondary-button"
-          :disabled="page===1"
-          @click="historyPage(page-1)"
-        >
-          上一页
-        </button><span>第 {{ page }} 页</span><button
-          class="secondary-button"
-          :disabled="history.length<20"
-          @click="historyPage(page+1)"
-        >
-          下一页
-        </button>
-      </div>
+      <ListPagination 
+        :page="page"
+        :page-size="pageSize"
+        :total="historyTotal"
+        :loading="historyLoading"
+        label="综合建议历史分页"
+        :has-next="historyHasMore"
+        @change="historyPage"
+        @last="lastHistoryPage"
+      />
     </div>
     <RouterLink
       v-if="compact"

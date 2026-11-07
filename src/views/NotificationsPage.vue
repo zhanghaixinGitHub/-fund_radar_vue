@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ListPagination from '@/components/ListPagination.vue'
 import { usePageNavigation } from '@/composables/usePageNavigation'
 import ReviewNoticePanel from '@/components/ReviewNoticePanel.vue'
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
@@ -12,9 +13,9 @@ import { alertAvailabilityNote, alertDescriptions } from '@/utils/alertPresentat
 import type { NotificationItem, NotificationPage } from '@/types/notification'
 import { riskLevelLabel, signalDirectionLabel } from '@/utils/fundPresentation'
 
-const pageSize = 20
+const pageSize = ref(10)
 const notificationPage = ref<NotificationPage | null>(null)
-const rulePageSize = 10
+const rulePageSize = ref(10)
 const rulePage = ref<AlertRulePage | null>(null)
 const ruleStatus = ref<'all' | 'enabled' | 'disabled'>('all')
 const rulesLoading = ref(true)
@@ -35,11 +36,6 @@ const emptyRulesMessage = computed(() => ruleStatus.value === 'enabled'
     : '暂无提醒设置。关注基金后会默认开启两类提醒，你可以随时分别关闭。')
 
 const currentPage = computed(() => notificationPage.value?.page ?? 1)
-const hasPreviousPage = computed(() => currentPage.value > 1)
-const hasNextPage = computed(() => {
-  const page = notificationPage.value
-  return page ? page.page < page.totalPages : false
-})
 
 /** 将内部提醒类型转换为用户可理解的资讯提示文案。 */
 function ruleTypeLabel(ruleType: AlertRule['ruleType']): string {
@@ -76,7 +72,7 @@ async function load(page = 1): Promise<void> {
   loading.value = true
   notificationError.value = ''
   const [notificationsResult, abilityResult] = await Promise.allSettled([
-    getNotifications(page, pageSize),
+    getNotifications(page, pageSize.value),
     getAlertAvailability(),
   ])
   if (notificationsResult.status === 'fulfilled') {
@@ -96,7 +92,7 @@ async function loadRules(page = 1): Promise<void> {
   rulesError.value = ''
   const enabled = ruleStatus.value === 'all' ? undefined : ruleStatus.value === 'enabled'
   try {
-    const result = await getAlertRulePage(page, rulePageSize, enabled)
+    const result = await getAlertRulePage(page, rulePageSize.value, enabled)
     if (disposed || request !== rulesRequest) return
     rulePage.value = result
   } catch (error) {
@@ -122,7 +118,7 @@ async function changePage(page: number): Promise<void> {
   loading.value = true
   notificationError.value = ''
   try {
-    notificationPage.value = await getNotifications(page, pageSize)
+    notificationPage.value = await getNotifications(page, pageSize.value)
   } catch (error) {
     notificationError.value = displayRequestError(error, '站内提醒暂时不可用。')
   } finally {
@@ -283,29 +279,15 @@ const { section, sectionLabel } = usePageNavigation()
         >
           暂无已有基金分析提醒。这不代表没有风险。
         </p>
-        <nav
-          v-if="notificationPage.totalPages > 1"
-          class="pagination"
-          aria-label="提醒分页"
-        >
-          <button
-            class="secondary-button"
-            :disabled="loading || !hasPreviousPage"
-            type="button"
-            @click="changePage(currentPage - 1)"
-          >
-            上一页
-          </button>
-          <span>第 {{ currentPage }} / {{ notificationPage.totalPages }} 页</span>
-          <button
-            class="secondary-button"
-            :disabled="loading || !hasNextPage"
-            type="button"
-            @click="changePage(currentPage + 1)"
-          >
-            下一页
-          </button>
-        </nav>
+        <ListPagination
+          v-if="notificationPage.totalCount > 0"
+          :page="currentPage"
+          :page-size="pageSize"
+          :total="notificationPage.totalCount"
+          :loading="loading"
+          label="站内提醒分页"
+          @change="(value, size) => { pageSize = size; changePage(value) }" 
+        />
       </section>
     </template>
 
@@ -386,30 +368,15 @@ const { section, sectionLabel } = usePageNavigation()
         >
           {{ emptyRulesMessage }}
         </p>
-        <nav
-          v-if="rulePage && rulePage.totalCount > 0"
-          class="pagination rule-pagination"
-          aria-label="提醒规则分页"
-        >
-          <span>每页 {{ rulePageSize }} 条</span>
-          <button
-            class="secondary-button"
-            :disabled="currentRulePage <= 1"
-            type="button"
-            @click="loadRules(currentRulePage - 1)"
-          >
-            上一页
-          </button>
-          <span>第 {{ currentRulePage }} / {{ rulePage.totalPages }} 页</span>
-          <button
-            class="secondary-button"
-            :disabled="currentRulePage >= rulePage.totalPages"
-            type="button"
-            @click="loadRules(currentRulePage + 1)"
-          >
-            下一页
-          </button>
-        </nav>
+        <ListPagination
+          v-if="rulePage.totalCount > 0"
+          :page="currentRulePage"
+          :page-size="rulePageSize"
+          :total="rulePage.totalCount"
+          :loading="rulesLoading"
+          label="提醒设置分页"
+          @change="(value, size) => { rulePageSize = size; loadRules(value) }" 
+        />
       </template>
     </section>
   </section>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ListPagination from '@/components/ListPagination.vue'
 import { getDirection1dFundHistory } from '@/api/direction1d'
 import { useDirection1dFundHistory } from '@/composables/useDirection1dFundHistory'
 import type { Direction1dRecord } from '@/types/direction1d'
@@ -6,7 +7,7 @@ import { direction1dConclusion, direction1dDirection, direction1dReason, directi
 import { formatChangeRate } from '@/utils/fundPresentation'
 
 const props = defineProps<{ fundCode: string }>()
-const { history, page, loading, error, canPrevious, canNext, refresh, retry, next, previous } = useDirection1dFundHistory(
+const { history, page, loading, error, pageSize, changePage, refresh, retry } = useDirection1dFundHistory(
   () => props.fundCode, getDirection1dFundHistory,
 )
 const branches = [{ id: 'FIXED', label: '固定模型' }, { id: 'WEEKLY', label: '每周更新模型' }] as const
@@ -137,31 +138,15 @@ function actualChange(record: Direction1dRecord): string {
         </tbody>
       </table>
     </div>
-    <nav
-      v-if="page > 1 || (history?.totalCount ?? 0) > 20"
-      class="pagination"
-      aria-label="本基金预测历史分页"
-    >
-      <p class="pagination-summary">
-        第 {{ page }} 页<span v-if="history"> · 共 {{ history.totalCount }} 条</span>
-      </p>
-      <div class="pagination-controls">
-        <button
-          type="button"
-          :disabled="!canPrevious"
-          @click="previous"
-        >
-          上一页
-        </button>
-        <button
-          type="button"
-          :disabled="!canNext"
-          @click="next"
-        >
-          下一页
-        </button>
-      </div>
-    </nav>
+    <ListPagination
+      v-if="history && history.totalCount > 0"
+      :page="page"
+      :page-size="pageSize"
+      :total="history?.totalCount ?? 0"
+      :loading="loading"
+      label="本基金预测历史分页"
+      @change="changePage" 
+    />
   </section>
 </template>
 

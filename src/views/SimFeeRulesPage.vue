@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ListPagination from '@/components/ListPagination.vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { usePageNavigation } from '@/composables/usePageNavigation'
 import { useAuthStore } from '@/stores/auth'
@@ -11,7 +12,7 @@ const { sectionLabel } = usePageNavigation()
 const rules = ref<SimFeeRuleRow[]>([])
 const total = ref(0)
 const page = ref(0)
-const pageSize = 20
+const pageSize = ref(10)
 const loading = ref(false)
 const keyword = ref('')
 const appliedFilter = ref('')
@@ -44,14 +45,12 @@ const edits = ref<Record<number, FeeRuleEdit>>({})
 const hasSaving = computed(() => Object.values(edits.value).some((edit) => edit.saving))
 
 const canMaintain = computed(() => auth.hasPermission('SIM_FEE_RULE_ADMIN'))
-const hasPreviousPage = computed(() => page.value > 0)
-const hasNextPage = computed(() => (page.value + 1) * pageSize < total.value)
 
 async function load(resetEdits = true): Promise<void> {
   loading.value = true
   errorMessage.value = ''
   try {
-    const data = await getSimFeeRules(page.value + 1, appliedFilter.value || undefined)
+    const data = await getSimFeeRules(page.value + 1, appliedFilter.value || undefined, pageSize.value)
     rules.value = data.items
     total.value = data.totalCount
     // 查询或翻页成功后丢弃上一列表的草稿；冲突刷新保留其他行尚未提交的内容。
@@ -62,8 +61,12 @@ async function load(resetEdits = true): Promise<void> {
     loading.value = false
   }
 }
-function previousPage(): void { if (!loading.value && !hasSaving.value && hasPreviousPage.value) { page.value -= 1; load() } }
-function nextPage(): void { if (!loading.value && !hasSaving.value && hasNextPage.value) { page.value += 1; load() } }
+function changePage(value: number, size: number): void {
+  if (loading.value || hasSaving.value) return
+  pageSize.value = size; page.value = value - 1
+  void load()
+}
+/** 翻到首尾页时沿用已提交的关键词；保存尚未结束时保持当前编辑页。 */
 /** 提交后固定本次关键词，翻页沿用它；清空后提交恢复全部规则。 */
 function search(): void {
   if (loading.value || hasSaving.value) return
@@ -321,25 +324,14 @@ onBeforeUnmount(clearSuccessMessage)
           </tbody>
         </table>
       </div>
-      <div class="admin-pagination">
-        <button
-          class="text-button"
-          :disabled="loading || hasSaving || !hasPreviousPage"
-          type="button"
-          @click="previousPage"
-        >
-          上一页
-        </button>
-        <span>第 {{ page + 1 }} 页 · 共 {{ total }} 条</span>
-        <button
-          class="text-button"
-          :disabled="loading || hasSaving || !hasNextPage"
-          type="button"
-          @click="nextPage"
-        >
-          下一页
-        </button>
-      </div>
+      <ListPagination 
+        :page="page + 1"
+        :page-size="pageSize"
+        :total="total"
+        :loading="loading || hasSaving"
+        label="费率列表分页"
+        @change="changePage" 
+      />
     </section>
   </section>
 </template>

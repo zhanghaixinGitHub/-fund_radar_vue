@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ListPagination from '@/components/ListPagination.vue'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { get } from '@/api/http'
 import { getDirection1dEvidence, getDirection1dFundHistory } from '@/api/direction1d'
@@ -28,6 +29,11 @@ const evidenceLoadingId = ref<string | null>(null)
 const evidenceErrorId = ref<string | null>(null)
 let sequence = 0
 let scrollSequence = 0
+const historyPage = ref(1)
+const historyPageSize = ref(10)
+const pagingBusy = ref(false)
+const pagingError = ref('')
+let pagingGeneration = 0
 
 /** 四个周期保留固定位置；跨页的一日记录读齐前不展示可能已经过时的版本。 */
 const days = computed(() => groupPredictionHistory(props.fundCode, multi.value, daily.value, reviews.value).map(day => ({
@@ -46,6 +52,45 @@ const days = computed(() => groupPredictionHistory(props.fundCode, multi.value, 
     }
   }),
 })))
+// 按日期分组分页，不拆散同一天的四个预测周期和修订记录。
+const visibleDays = computed(() => days.value.slice((historyPage.value - 1) * historyPageSize.value, historyPage.value * historyPageSize.value))
+const historyTotal = computed(() => hasMore.value ? undefined : days.value.length)
+const hasNextHistory = computed(() => hasMore.value || historyPage.value * historyPageSize.value < days.value.length)
+
+/**
+ * 游标接口无法随机读取，按需补齐目标页；返回已读页直接使用缓存。
+ * 单次最多读一百批，并在基金切换、卸载或任一来源失败时停止，不能无界请求或伪造完整总数。
+ */
+async function changeHistoryPage(value: number, size: number, toLast = false) {
+  if (pagingBusy.value || busy.value) return
+  const run = ++pagingGeneration
+  const code = props.fundCode
+  pagingBusy.value = true; pagingError.value = ''
+  try {
+    for (let batch = 0; batch < 100 && hasMore.value; batch++) {
+      const lastDate = days.value[value * size - 1]?.date
+      if (!toLast && days.value.length > value * size && (!lastDate || dailyDateComplete(lastDate))) break
+      await load()
+      if (run !== pagingGeneration || code !== props.fundCode) return
+      if (Object.values(errors.value).some(Boolean)) return
+    }
+    if (toLast && hasMore.value) {
+      pagingError.value = '较早记录较多，暂时无法跳至尾页。已读取的记录可继续翻页查看。'
+      return
+    }
+    historyPageSize.value = size
+    historyPage.value = toLast ? Math.max(1, Math.ceil(days.value.length / size))
+      : Math.min(value, Math.max(1, Math.ceil(days.value.length / size)))
+  } finally { if (run === pagingGeneration) pagingBusy.value = false }
+}
+watch(() => props.fundCode, () => {
+  ++pagingGeneration; historyPage.value = 1; pagingBusy.value = false; pagingError.value = ''
+})
+watch(busy, value => {
+  if (!value && !pagingBusy.value && historyPage.value === 1 && days.value.length < historyPageSize.value && hasMore.value
+    && !Object.values(errors.value).some(Boolean)) void changeHistoryPage(1, historyPageSize.value)
+})
+onBeforeUnmount(() => { ++pagingGeneration })
 const selected = computed(() => days.value.flatMap(day => day.slots).find(slot => slot.item?.id === expandedId.value))
 const evidence = computed(() => {
   const item = selected.value?.item
@@ -172,7 +217,7 @@ onBeforeUnmount(() => { sequence++ })
     </p>
 
     <article
-      v-for="day in days"
+      v-for="day in visibleDays"
       :key="day.date"
       class="history-day"
       :aria-labelledby="`history-day-${day.date}`"
@@ -339,14 +384,22 @@ onBeforeUnmount(() => { sequence++ })
       <p v-if="days.length">
         到期且数据齐备后显示结果；预测仅供参考，不代表收益承诺。
       </p>
-      <button
-        v-if="hasMore"
-        class="secondary-button"
-        :disabled="busy"
-        @click="load()"
+      <p
+        v-if="pagingError"
+        role="status"
       >
-        {{ busy ? '正在加载…' : '加载更早记录' }}
-      </button>
+        {{ pagingError }}
+      </p>
+      <ListPagination
+        :page="historyPage"
+        :page-size="historyPageSize"
+        :total="historyTotal"
+        :has-next="hasNextHistory"
+        :loading="busy || pagingBusy"
+        label="预测日期分页"
+        @change="changeHistoryPage"
+        @last="changeHistoryPage(1, historyPageSize, true)"
+      />
     </footer>
   </section>
 </template>

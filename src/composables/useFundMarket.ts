@@ -117,6 +117,16 @@ export function useFundMarket() {
     await loadPage(normalizedPage)
   }
 
+  /** 在未加载且不在首页时，直接返回第一页。 */
+  async function firstPage(): Promise<void> {
+    if (!loading.value && hasPreviousPage.value) await loadPage(1)
+  }
+
+  /** 沿用当前搜索和评级条件，直接读取服务端返回的最后一页。 */
+  async function lastPage(): Promise<void> {
+    if (!loading.value && hasNextPage.value) await loadPage(totalPages.value)
+  }
+
   /** 在未加载且存在下一页时，加载下一页。 */
   async function nextPage(): Promise<void> {
     if (loading.value || !hasNextPage.value) {
@@ -139,11 +149,14 @@ export function useFundMarket() {
     currentPage,
     errorMessage,
     funds,
+    firstPage,
     goToPage,
     hasNextPage,
     hasPreviousPage,
     keyword,
     loading,
+    loadPage,
+    lastPage,
     nextPage,
     pageInput,
     pageSize,

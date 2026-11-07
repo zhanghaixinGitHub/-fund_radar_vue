@@ -33,8 +33,15 @@ watch(() => [props.fundCode, props.ratingRef], load, { immediate: true })
 onBeforeUnmount(() => { sequence++; globalThis.clearTimeout(timer) })
 const label = computed(() => ratingLabel(value.value, loading.value, now.value))
 const rated = computed(() => value.value?.status === 'RATED' && ['偏弱', '一般', '良好', '优质'].includes(label.value))
+// 完整数字分尚无已验证等级时仍正常展示；失效数字由服务端和有效期共同保护。
+const scored = computed(() => value.value?.status === 'SCORED' && !!formatRatingScore(value.value.score) && label.value.endsWith(' 分'))
 const partial = computed(() => value.value?.status === 'PARTIAL' && label.value === '部分评分')
 const available = computed(() => partial.value || (value.value?.status === 'NOT_RATED' && !!value.value.scoreCoverage))
+/** 评价截止日与说明中的同一日期只展示一次；不同的实际观察窗口继续保留。 */
+const comparisonPeriod = computed(() => {
+  const period = value.value?.comparison.period ?? ''
+  return period.replace(/\s/g, '') === `截至${value.value?.asOfDate}` ? '' : period
+})
 </script>
 
 <template>
@@ -49,20 +56,23 @@ const available = computed(() => partial.value || (value.value?.status === 'NOT_
       </h2>
       <div class="rating-result">
         <span
-          v-if="partial && value?.scoreRange"
-          class="rating-score"
-        >综合评分范围约 {{ value.scoreRange.lower }}—{{ value.scoreRange.upper }} 分</span>
-        <span
-          v-else-if="partial && formatRatingScore(value?.partialScore)"
+          v-if="partial && formatRatingScore(value?.partialScore)"
           class="rating-score"
         >可评部分 {{ formatRatingScore(value?.partialScore) }} 分</span>
         <span
-          v-else-if="rated && formatRatingScore(value?.score)"
+          v-else-if="partial && value?.scoreRange"
+          class="rating-score"
+        >综合评分范围约 {{ value.scoreRange.lower }}—{{ value.scoreRange.upper }} 分</span>
+        <span
+          v-else-if="(rated || scored) && formatRatingScore(value?.score)"
           class="rating-score"
         >
           综合评分 {{ formatRatingScore(value?.score) }} 分
         </span>
-        <strong class="rating-level">{{ label }}</strong>
+        <strong
+          v-if="!scored"
+          class="rating-level"
+        >{{ label }}</strong>
       </div>
     </div>
     <p
@@ -101,7 +111,10 @@ const available = computed(() => partial.value || (value.value?.status === 'NOT_
         <span v-if="value.comparison.productCount > 0"> · {{ value.comparison.productCount }} 个产品</span>
       </p>
       <p class="section-note">
-        <span v-if="value.asOfDate">评价截至 {{ value.asOfDate }} · </span>{{ value.comparison.period }}
+        <span v-if="value.asOfDate">评价截至 {{ value.asOfDate }}</span>
+        <template v-if="comparisonPeriod">
+          {{ value.asOfDate ? ' · ' : '' }}{{ comparisonPeriod }}
+        </template>
       </p>
       <p v-if="value.previousRating">
         上次评级：{{ value.previousRating.gradeLabel }}（{{ value.previousRating.asOfDate }}，已过有效期）
@@ -115,9 +128,9 @@ const available = computed(() => partial.value || (value.value?.status === 'NOT_
           <div class="dimension-heading">
             <h3>{{ dimension.name }}</h3>
             <div class="dimension-result">
-              <strong v-if="(rated || available) && formatRatingScore(dimension.score)">{{ formatRatingScore(dimension.score) }} 分</strong>
+              <strong v-if="(rated || scored || available) && formatRatingScore(dimension.score)">{{ formatRatingScore(dimension.score) }} 分</strong>
               <strong v-else-if="available && dimension.scoreRange">约 {{ dimension.scoreRange.lower }}—{{ dimension.scoreRange.upper }} 分</strong>
-              <span>{{ rated ? dimension.gradeLabel : (available && (dimension.score || dimension.scoreRange)) ? '已评部分' : '资料待补齐' }}</span>
+              <span>{{ rated ? dimension.gradeLabel : scored ? '已评分' : (available && (dimension.score || dimension.scoreRange)) ? '已评部分' : '资料待补齐' }}</span>
             </div>
           </div>
           <dl v-if="dimension.metrics.length">

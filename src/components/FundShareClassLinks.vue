@@ -1,22 +1,52 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { findVerifiedFundProduct } from '@/data/fundShareClasses'
+import type { FundShareClasses, RelatedFundShare } from '@/types/fund'
 
-const props = defineProps<{ fundCode: string }>()
-const product = computed(() => findVerifiedFundProduct(props.fundCode))
-const otherShares = computed(() => product.value?.shares.filter(share => share.fundCode !== props.fundCode) ?? [])
-// 只展示原件已确认的其他份额；当前份额、未核实关系和不存在的类别不占位。
+const props = defineProps<{
+  fundCode: string
+  relations: FundShareClasses | null
+  loading: boolean
+  failed: boolean
+}>()
+const otherShares = computed(() => props.relations?.shares.filter(share => share.fundCode !== props.fundCode) ?? [])
+
+/** 币种也是份额身份的一部分；名称未明确类别时直接显示来源名称。 */
+function shareLabel(share: RelatedFundShare): string {
+  if (!share.shareClass) return share.fundName
+  return `${share.shareClass}类份额${share.currency ? `（${share.currency}）` : ''}`
+}
 </script>
 
 <template>
-  <!-- 直接作为基础资料 dl 的末尾字段：每种份额占一格，空列表不生成容器或占位。 -->
+  <!-- 作为基础资料 dl 的末尾字段；各份额占一格，未知与请求失败有明确业务提示。 -->
   <div
     v-for="share in otherShares"
     :key="share.fundCode"
     class="share-class-item"
   >
-    <dt>{{ share.shareClass }}类份额</dt>
+    <dt>{{ shareLabel(share) }}</dt>
     <dd>{{ share.fundCode }}</dd>
+  </div>
+  <div
+    v-if="!otherShares.length || relations?.status === 'STALE'"
+    class="share-class-item"
+  >
+    <dt>{{ otherShares.length ? '份额资料' : '其他份额' }}</dt>
+    <dd v-if="loading">
+      正在获取
+    </dd>
+    <dd v-else-if="failed">
+      暂时无法获取
+    </dd>
+    <dd v-else-if="relations?.status === 'UNVERIFIED'">
+      暂未核实
+    </dd>
+    <dd v-else-if="relations?.status === 'STALE'">
+      截至 {{ relations.asOfDate }}，待更新
+    </dd>
+    <dd v-else>
+      截至 {{ relations?.asOfDate }} 未列出其他份额
+    </dd>
   </div>
 </template>
 

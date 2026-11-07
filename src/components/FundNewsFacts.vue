@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ListPagination from '@/components/ListPagination.vue'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { get } from '@/api/http'
@@ -24,7 +25,7 @@ const linkedCompany = ref<{ value: string; label: string } | null>(null)
 const selectedCompanyLabel = computed(() => linkedCompany.value?.value === selectedCompany.value
   ? linkedCompany.value.label : selectedCompany.value)
 const heading = ref<InstanceType<typeof globalThis.HTMLHeadingElement> | null>(null)
-const pageSize = 8
+const pageSize = ref(10)
 const preparedItems = computed(() => (result.value?.items ?? [])
   .map(item => ({ ...item, ...newsHeading(item.title), points: readingPoints(item), context: holdingContext(item.relation) })))
 // 沿用公告卡片中的关联公司，不把筛选选项解释为基金当前持仓；暂无要点的公司也保留，明确告知资料状态。
@@ -39,8 +40,8 @@ const filteredItems = computed(() => preparedItems.value
 const readableItems = computed(() => filteredItems.value.filter(item => item.points.length > 0))
 // 没有可靠摘要的文件不继续占用正文卡片，统一说明数量，避免页面再次退化成标题目录。
 const unavailableCount = computed(() => filteredItems.value.length - readableItems.value.length)
-const pages = computed(() => Math.max(1, Math.ceil(readableItems.value.length / pageSize)))
-const visibleItems = computed(() => readableItems.value.slice((page.value - 1) * pageSize, page.value * pageSize))
+const pages = computed(() => Math.max(1, Math.ceil(readableItems.value.length / pageSize.value)))
+const visibleItems = computed(() => readableItems.value.slice((page.value - 1) * pageSize.value, page.value * pageSize.value))
 let sequence = 0
 /** 翻页后把阅读起点和键盘焦点移回标题，避免用户停在下一页底部。 */
 async function turnPage(delta: number) {
@@ -167,25 +168,15 @@ onBeforeUnmount(() => ++sequence)
           {{ item.context }}
         </p>
       </article>
-      <nav
-        v-if="pages > 1"
-        class="news-pagination"
-        aria-label="近期消息翻页"
-      >
-        <button
-          :disabled="page === 1"
-          @click="turnPage(-1)"
-        >
-          上一页
-        </button>
-        <span>第 {{ page }} / {{ pages }} 页 · {{ readableItems.length }} 条</span>
-        <button
-          :disabled="page === pages"
-          @click="turnPage(1)"
-        >
-          下一页
-        </button>
-      </nav>
+      <ListPagination
+        v-if="readableItems.length > 0"
+        :page="page"
+        :page-size="pageSize"
+        :total="readableItems.length"
+        :loading="busy"
+        label="公告分页"
+        @change="(value, size) => { pageSize = size; turnPage(value - page) }" 
+      />
       <p class="coverage-note">
         <span v-if="unavailableCount">另有 {{ unavailableCount }} 条公告暂未能提取可靠要点。</span>
         仅展示已取得的近期公告{{ result.complete ? '，未列出不代表没有重要事项。' : '，部分资料暂缺，未列出不代表没有重要事项。' }}

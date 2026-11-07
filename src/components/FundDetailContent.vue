@@ -14,6 +14,7 @@ import FieldHelpTooltip from '@/components/FieldHelpTooltip.vue'
 import FundNavHistoryChart from '@/components/FundNavHistoryChart.vue'
 import FundShareHistoryChart from '@/components/FundShareHistoryChart.vue'
 import FundShareClassLinks from '@/components/FundShareClassLinks.vue'
+import { useFundShareClasses } from '@/composables/useFundShareClasses'
 import FundManagerCard from '@/components/FundManagerCard.vue'
 import { getManagerLinks } from '@/api/fundManagers'
 import MultiPredictionPanel from '@/components/MultiPredictionPanel.vue'
@@ -54,6 +55,9 @@ const shareNavUnavailable = ref(false)
 const selectedNavRange = ref<'THREE_MONTHS' | 'ONE_YEAR' | 'THREE_YEARS' | 'ALL'>('ONE_YEAR')
 const fundCode = computed(() => String(route.params.fundCode ?? ''))
 const basic = computed(() => detail.value?.basic ?? null)
+const shareClassCode = computed(() => section.value === 'basic' ? fundCode.value : '')
+const { relations: shareClasses, loading: shareClassesLoading, failed: shareClassesFailed } =
+  useFundShareClasses(shareClassCode)
 /** 市场与关注入口共用团队分期，经理加入或离任时才切换到下一时期。 */
 const managerTimeline = computed(() => {
   const managers = detail.value?.managers ?? []
@@ -531,7 +535,12 @@ watch(section, (selectedSection) => {
               description="已披露的赎回开始日期。可用于了解合同安排；实际赎回状态仍应以当前公告为准。"
             />
           </div>
-          <FundShareClassLinks :fund-code="basic.fundCode" />
+          <FundShareClassLinks
+            :fund-code="basic.fundCode"
+            :relations="shareClasses"
+            :loading="shareClassesLoading"
+            :failed="shareClassesFailed"
+          />
         </dl>
       </section>
 

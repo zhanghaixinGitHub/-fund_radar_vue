@@ -11,6 +11,11 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   ...pluginVue.configs['flat/recommended'],
   {
+    files: ['tests/**/*.mjs'],
+    // 测试由Node 24执行，structuredClone是运行环境提供的全局函数。
+    languageOptions: { globals: { structuredClone: 'readonly' } },
+  },
+  {
     files: ['**/*.vue'],
     languageOptions: {
       parserOptions: {

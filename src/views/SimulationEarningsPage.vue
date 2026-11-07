@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import ListPagination from '@/components/ListPagination.vue'
+import { normalizePageSize } from '@/utils/pagination'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getSimEarnings, getSimEarningsDetails, getSimEarningsFunds } from '@/api/simulation'
@@ -28,8 +30,11 @@ const range = computed(() => ranges.find(r => r.value === route.query.range)?.va
 const code = computed(() => typeof route.query.fundCode === 'string' ? route.query.fundCode : '')
 const start = ref(String(route.query.startDate ?? shanghaiDate(-29)))
 const end = ref(String(route.query.endDate ?? shanghaiDate()))
+const pageSize = computed(() => normalizePageSize(route.query.size))
+const searchPageSize = ref(10)
+const detailPageSize = ref(10)
 const page = computed(() => Math.max(1, Math.min(100000, Number(route.query.page) || 1)))
-const totalPages = computed(() => Math.max(1, Math.ceil((result.value?.days.totalCount ?? 0) / 20)))
+const totalPages = computed(() => Math.max(1, Math.ceil((result.value?.days.totalCount ?? 0) / pageSize.value)))
 const returnTarget = computed(() => earningsReturnPath(route.query.from))
 let generation = 0
 let searchGeneration = 0
@@ -53,7 +58,7 @@ async function load() {
   ++detailGeneration
   result.value = null; expanded.value = ''; details.value = null; detailError.value = ''
   loading.value = true; error.value = ''
-  const params = new globalThis.URLSearchParams({ range: range.value, page: String(page.value), pageSize: '20' })
+  const params = new globalThis.URLSearchParams({ range: range.value, page: String(page.value), pageSize: String(pageSize.value) })
   if (code.value) params.set('fundCode', code.value)
   if (range.value === 'CUSTOM') {
     params.set('startDate', String(route.query.startDate ?? start.value))
@@ -80,7 +85,7 @@ async function search(pageNumber = 1) {
   const current = ++searchGeneration
   searching.value = true; searchError.value = ''
   try {
-    const data = await getSimEarningsFunds(keyword.value.trim(), pageNumber)
+    const data = await getSimEarningsFunds(keyword.value.trim(), pageNumber, searchPageSize.value)
     if (alive && current === searchGeneration) matches.value = data
   } catch (reason) {
     diagnoseRequest('fund-search', reason)
@@ -105,7 +110,7 @@ async function expand(date: string, pageNumber?: number) {
   const current = ++detailGeneration
   expanded.value = date; details.value = null; detailLoading.value = true; detailError.value = ''
   try {
-    const data = await getSimEarningsDetails(date, pageNumber ?? 1)
+    const data = await getSimEarningsDetails(date, pageNumber ?? 1, detailPageSize.value)
     if (alive && current === detailGeneration) details.value = data
   } catch (reason) {
     diagnoseRequest('day-details', reason)
@@ -212,24 +217,15 @@ onBeforeUnmount(() => { alive = false; ++generation; ++searchGeneration; ++detai
             </button>
           </li>
         </ul>
-        <div
-          v-if="matches.totalCount > matches.pageSize"
-          class="sim-pagination"
-        >
-          <button
-            class="secondary-button"
-            :disabled="searching || matches.page <= 1"
-            @click="search(matches.page - 1)"
-          >
-            上一页
-          </button><span>第 {{ matches.page }} 页</span><button
-            class="secondary-button"
-            :disabled="searching || matches.page * matches.pageSize >= matches.totalCount"
-            @click="search(matches.page + 1)"
-          >
-            下一页
-          </button>
-        </div>
+        <ListPagination
+          v-if="matches.totalCount > 0"
+          :page="matches.page"
+          :page-size="searchPageSize"
+          :total="matches.totalCount"
+          :loading="searching"
+          label="收益基金查询分页"
+          @change="(value, size) => { searchPageSize = size; search(value) }" 
+        />
       </div>
       <div
         class="earnings-range"
@@ -429,50 +425,30 @@ onBeforeUnmount(() => { alive = false; ++generation; ++searchGeneration; ++detai
                           {{ fund.fundName }} <small>{{ fund.fundCode }}</small>
                         </RouterLink><span :class="simTone(fund.dailyGain)">{{ earningsMoney(fund.dailyGain) }}</span><small>{{ earningsStatus(fund.status) }}</small>
                       </li>
-                    </ul><nav
-                      v-if="details && details.totalCount > details.pageSize"
-                      class="sim-pagination"
-                      aria-label="当天基金构成分页"
-                    >
-                      <button
-                        class="secondary-button"
-                        :disabled="detailLoading || details.page <= 1"
-                        @click="expand(day.date, details.page - 1)"
-                      >
-                        上一页
-                      </button><span>第 {{ details.page }} 页</span><button
-                        class="secondary-button"
-                        :disabled="detailLoading || details.page * details.pageSize >= details.totalCount"
-                        @click="expand(day.date, details.page + 1)"
-                      >
-                        下一页
-                      </button>
-                    </nav>
+                    </ul><ListPagination
+                      v-if="details && details.totalCount > 0"
+                      :page="details.page"
+                      :page-size="detailPageSize"
+                      :total="details.totalCount"
+                      :loading="detailLoading"
+                      label="当日收益明细分页"
+                      @change="(value, size) => { detailPageSize = size; expand(day.date, value) }" 
+                    />
                   </td>
                 </tr>
               </template>
             </tbody>
           </table>
         </div>
-        <nav
-          v-if="totalPages > 1"
-          class="sim-pagination"
-          aria-label="收益日期分页"
-        >
-          <button
-            class="secondary-button"
-            :disabled="loading || page <= 1"
-            @click="navigate({ page: String(page - 1) })"
-          >
-            上一页
-          </button><span>第 {{ page }} / {{ totalPages }} 页</span><button
-            class="secondary-button"
-            :disabled="loading || page >= totalPages"
-            @click="navigate({ page: String(page + 1) })"
-          >
-            下一页
-          </button>
-        </nav>
+        <ListPagination
+          v-if="result.days.totalCount > 0"
+          :page="page"
+          :page-size="pageSize"
+          :total="result.days.totalCount"
+          :loading="loading"
+          label="收益日期分页"
+          @change="(value, size) => navigate({ page: String(value), size: String(size) })" 
+        />
       </section>
       <section
         v-if="result.curve.length"

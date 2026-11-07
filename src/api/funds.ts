@@ -8,6 +8,7 @@ import type {
   FundPage,
   FundSameTypeComparison,
   FundSignalPage,
+  FundShareClasses,
 } from '@/types/fund'
 import type { FundAnalysisSummary } from '@/types/analysis'
 
@@ -42,6 +43,11 @@ export function getFunds(query: FundListQuery = {}): Promise<FundPage> {
 /** 通过 Java 核心服务查询单只基金的公开详情。 */
 export function getFundDetail(fundCode: string): Promise<FundDetail> {
   return get<FundDetail>(`/api/v1/funds/${encodeURIComponent(fundCode)}`)
+}
+
+/** 读取后台统一核验的同产品份额，不再依赖前端手工名单。 */
+export function getFundShareClasses(fundCode: string): Promise<FundShareClasses> {
+  return get<FundShareClasses>(`/api/v1/funds/${encodeURIComponent(fundCode)}/share-classes`)
 }
 
 /** 查询已落库的历史净值窗口，不在浏览器直接访问 Tushare 或 Python 服务。 */

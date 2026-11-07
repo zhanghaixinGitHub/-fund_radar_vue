@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ListPagination from '@/components/ListPagination.vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { readLatestDecisions } from '@/api/multiPrediction'
@@ -16,6 +17,7 @@ import { useListLocation } from '@/composables/useListLocation'
 import { usePageNavigation } from '@/composables/usePageNavigation'
 import { useAuthStore } from '@/stores/auth'
 import type { SimLedger, SimOrder, SimOverview, SimPage, SimPeriod, SimPlan } from '@/types/simulation'
+import { buildPortfolioList, sortPortfolioList } from '@/utils/portfolioList'
 import { planFrequency, simMoney, simPercent, simShares, simTime, simTone } from '@/utils/simulation'
 
 const route = useRoute()
@@ -45,17 +47,22 @@ const showHistory = computed(() => route.query.showHistory === '1')
 const orderPage = ref(1)
 const ledgerPage = ref(1)
 const periodPage = ref(1)
+const orderPageSize = ref(10)
+const ledgerPageSize = ref(10)
+const periodPageSize = ref(10)
+const detailsLoading = ref(false)
+const periodsLoading = ref(false)
 const recordMode = ref<'orders' | 'ledger'>('orders')
 // 已提交的关键词由 URL 保存，输入框草稿在点击查询或按回车后才生效，返回持仓时可恢复。
 const appliedKeyword = computed(() => listLocation.value.keyword.trim())
 const keyword = ref(appliedKeyword.value)
 const selectedCode = computed(() => /^\d{6}$/.test(String(route.query.fundCode ?? '')) ? String(route.query.fundCode) : '')
-const selectedPosition = computed(() => overview.value?.positions.find(p => p.fundCode === selectedCode.value) ?? null)
-// 接口已返回当前账号的全部持仓；兼容单基金详情链接和已清仓条件，账户汇总仍按全部持仓计算。
+const selectedPosition = computed(() => overview.value ? buildPortfolioList(overview.value).find(p => p.fundCode === selectedCode.value) ?? null : null)
+// 本人确认持仓但尚无模拟记录的基金只补列名单；资产汇总仍使用实际账本，不把未知值补零。
 const positions = computed(() => {
   const query = appliedKeyword.value.toLocaleLowerCase()
-  return (overview.value?.positions ?? []).filter(p => (!selectedCode.value || p.fundCode === selectedCode.value) &&
-    (showHistory.value || selectedCode.value || Number(p.shares) > 0 || (Number(p.totalBuy) === 0 && Number(p.totalSell) === 0)) &&
+  return (overview.value ? buildPortfolioList(overview.value) : []).filter(p => (!selectedCode.value || p.fundCode === selectedCode.value) &&
+    (p.kind !== 'recorded' || showHistory.value || selectedCode.value || Number(p.shares) > 0 || (!p.estimatedShares && Number(p.totalBuy) === 0 && Number(p.totalSell) === 0)) &&
     (!query || p.fundCode.includes(query) || p.fundName.toLocaleLowerCase().includes(query)))
 })
 // 排序状态进入 URL，查看建议后返回持仓仍保持所选排序；均按数值降序。
@@ -66,13 +73,12 @@ const holdingSortOptions = [
 ] as const
 type HoldingSort = (typeof holdingSortOptions)[number]['value']
 const holdingSort = computed<HoldingSort>(() => holdingSortOptions.find(o => o.value === route.query.sort)?.value ?? 'marketValue')
-const sortedPositions = computed(() => [...positions.value].sort((a, b) => Number(b[holdingSort.value]) - Number(a[holdingSort.value])))
+const sortedPositions = computed(() => sortPortfolioList(positions.value, holdingSort.value))
 // 先按当前搜索与持仓状态筛选，再分页展示；沿用市场和关注页的 URL 页码、每页条数规则。
 const holdingPageSizeOptions = [10, 20, 50]
 const holdingPageSize = computed(() => listLocation.value.size)
 const holdingTotalPages = computed(() => Math.max(1, Math.ceil(positions.value.length / holdingPageSize.value)))
 const holdingPage = computed(() => Math.min(listLocation.value.page, holdingTotalPages.value))
-const holdingPageInput = ref(String(holdingPage.value))
 const pagedPositions = computed(() => {
   const start = (holdingPage.value - 1) * holdingPageSize.value
   return sortedPositions.value.slice(start, start + holdingPageSize.value)
@@ -92,15 +98,12 @@ const filteredPlans = computed(() => plans.value.filter(p =>
   (!planStatus.value || (planStatus.value === 'ended' ? p.status === 'ENDED' : p.status !== 'ENDED'))))
 const planTotalPages = computed(() => Math.max(1, Math.ceil(filteredPlans.value.length / planPageSize.value)))
 const planPage = computed(() => Math.min(listLocation.value.page, planTotalPages.value))
-const planPageInput = ref(String(planPage.value))
 const pagedPlans = computed(() => {
   const start = (planPage.value - 1) * planPageSize.value
   return filteredPlans.value.slice(start, start + planPageSize.value)
 })
 const canWrite = computed(() => auth.hasPermission('SIM_PORTFOLIO_SELF_WRITE'))
 const canPlan = computed(() => auth.hasPermission('SIM_PLAN_SELF_WRITE'))
-// 账户级最近一期收益由后端按已公布净值的持仓合计；仍有份额但净值未更新的持仓不含在内，需要提示合计不完整。
-const dailyGainPending = computed(() => (overview.value?.positions ?? []).some(p => Number(p.shares) > 0 && p.dailyGain === null))
 const jobStale = computed(() => !overview.value?.job?.completedAt || Date.now() - Date.parse(overview.value.job.completedAt) > 5 * 60_000)
 const planLabels = { ACTIVE: '执行中', PAUSED: '已暂停', ENDED: '已结束' }
 const orderLabels = { PENDING: '待确认', CONFIRMED: '已确认', CANCELLED: '已撤销' }
@@ -130,19 +133,21 @@ async function load(silent = false) {
 }
 async function loadDetails() {
   const current = ++detailGeneration
+  detailsLoading.value = true
   detailError.value = ''
   const code = selectedCode.value || undefined
   try {
     if (section.value === 'orders') {
       if (recordMode.value === 'orders') {
-        const result = await getSimOrders(orderPage.value, code)
+        const result = await getSimOrders(orderPage.value, code, orderPageSize.value)
         if (alive && current === detailGeneration) orders.value = result
       } else {
-        const result = await getSimLedger(ledgerPage.value, code)
+        const result = await getSimLedger(ledgerPage.value, code, ledgerPageSize.value)
         if (alive && current === detailGeneration) ledger.value = result
       }
     }
   } catch (reason) { if (alive && current === detailGeneration) detailError.value = reason instanceof Error ? reason.message : '记录加载失败。' }
+  finally { if (alive && current === detailGeneration) detailsLoading.value = false }
 }
 function selectCode(code: string) { void router.replace({ path: route.path, query: { ...route.query, fundCode: code || undefined, page: undefined } }) }
 function earningsTarget(code?: string) { return { name: 'portfolio-earnings', query: { ...(code ? { fundCode: code } : {}), from: route.fullPath } } }
@@ -195,24 +200,14 @@ function changeHoldingPage(page: number, size = holdingPageSize.value) {
   if (loading.value || !Number.isInteger(page) || !holdingPageSizeOptions.includes(size)) return
   const total = Math.max(1, Math.ceil(positions.value.length / size))
   const target = Math.min(Math.max(1, page), total)
-  holdingPageInput.value = String(target)
   void navigateList('', appliedKeyword.value, target, size)
-}
-function goToHoldingPage() {
-  const page = Number(holdingPageInput.value)
-  changeHoldingPage(Number.isInteger(page) ? page : holdingPage.value)
 }
 /** 定投翻页只更新页码与每页条数，保留基金范围等其余查询参数。 */
 function changePlanPage(page: number, size = planPageSize.value) {
   if (loading.value || !Number.isInteger(page) || !planPageSizeOptions.includes(size)) return
   const total = Math.max(1, Math.ceil(filteredPlans.value.length / size))
   const target = Math.min(Math.max(1, page), total)
-  planPageInput.value = String(target)
   void router.push({ path: route.path, query: { ...route.query, page: target > 1 ? String(target) : undefined, size: size !== 10 ? String(size) : undefined } })
-}
-function goToPlanPage() {
-  const page = Number(planPageInput.value)
-  changePlanPage(Number.isInteger(page) ? page : planPage.value)
 }
 function openPicker(mode: 'BUY' | 'PLAN') { pickerMode.value = mode; picker.value = true }
 function picked(code: string) { picker.value = false; trade.value = { fundCode: code, mode: pickerMode.value } }
@@ -237,11 +232,13 @@ async function act(plan: SimPlan, action: 'PAUSE' | 'RESUME' | 'END') {
   finally { busy.value = false }
 }
 async function viewPeriods(plan: SimPlan, page = 1) {
+  periodsLoading.value = true
   periodPlan.value = plan; periodPage.value = page; periods.value = null; detailError.value = ''
   try {
-    const result = await getSimPeriods(plan.planId, page)
+    const result = await getSimPeriods(plan.planId, page, periodPageSize.value)
     if (alive && periodPlan.value?.planId === plan.planId && periodPage.value === page) periods.value = result
   } catch (reason) { detailError.value = reason instanceof Error ? reason.message : '执行记录加载失败。' }
+  finally { periodsLoading.value = false }
 }
 watch([section, selectedCode], () => {
   endingPlan.value = null
@@ -249,14 +246,12 @@ watch([section, selectedCode], () => {
   if (!['funding', 'account-risk', 'options'].includes(section.value) && !overview.value) void load()
   else void loadDetails()
 })
-watch([orderPage, ledgerPage, recordMode], () => void loadDetails())
+watch([orderPage, ledgerPage, orderPageSize, ledgerPageSize, recordMode], () => void loadDetails())
 watch(appliedKeyword, value => { keyword.value = value })
 watch(selectedCode, code => {
   scopeKeyword.value = code ? (selectedPosition.value ? `${selectedPosition.value.fundName} · ${code}` : code) : ''
   scopeHint.value = ''
 }, { immediate: true })
-watch(holdingPage, value => { holdingPageInput.value = String(value) })
-watch(planPage, value => { planPageInput.value = String(value) })
 // 等持仓实际加载后才修正越界页码，避免刷新或详情返回时被尚未加载的空列表重置到第一页。
 watch([() => listLocation.value.page, holdingPage, section, overview], () => {
   if (!isCurrent.value || section.value !== 'holdings' || !overview.value) return
@@ -389,12 +384,7 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
       <!-- 账户汇总集中在总览，明细页直接展示当前功能，减少首屏重复信息。 -->
       <template v-if="section === 'overview'">
         <div class="sim-metrics">
-          <article><span>持仓市值（元）</span><strong>{{ simMoney(overview.marketValue) }}</strong><small>{{ overview.complete ? '按已公布净值计算' : '部分数据待核对，汇总含上次估值' }}</small></article>
-          <article>
-            <span>最近一期收益（元）</span><strong :class="simTone(overview.dailyGain)">{{ simMoney(overview.dailyGain) }}</strong><small>{{ dailyGainPending ? '部分基金净值待更新，暂未计入合计' : '各基金最新净值日的收益合计' }}</small><RouterLink :to="earningsTarget()">
-              查看收益明细 ›
-            </RouterLink>
-          </article>
+          <article><span>持有金额（元）</span><strong>{{ simMoney(overview.marketValue) }}</strong><small>{{ overview.confirmedBaseline ? '部分持仓份额待补全，金额暂未随净值更新' : overview.complete ? '按已公布净值计算' : '部分数据待核对，汇总含上次估值' }}</small></article>
           <article><span>持有收益（元）</span><strong :class="simTone(overview.holdingGain)">{{ simMoney(overview.holdingGain) }}</strong><small>当前剩余份额的浮动盈亏</small></article>
           <article><span>累计收益（元）</span><strong :class="simTone(overview.cumulativeGain)">{{ simMoney(overview.cumulativeGain) }}</strong><small>包含卖出盈亏与现金分红</small></article>
         </div>
@@ -515,176 +505,205 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
             :key="p.fundCode"
             class="sim-position-card sim-earnings-card"
             @click.capture="protectEarningsSelection"
-            @click="openEarnings($event, p.fundCode)"
+            @click="p.kind === 'recorded' && openEarnings($event, p.fundCode)"
           >
-            <header>
-              <div>
+            <template v-if="p.kind === 'unrecorded'">
+              <header>
+                <div>
+                  <RouterLink
+                    class="sim-fund-link"
+                    :to="`/watchlist/${p.fundCode}`"
+                  >
+                    {{ p.fundName }}
+                  </RouterLink>
+                  <p>{{ p.fundCode }}</p>
+                </div>
+              </header>
+              <p class="sim-muted">
+                暂无模拟持仓数据，金额、份额和收益暂不可用。
+              </p>
+            </template>
+            <template v-else-if="p.kind === 'confirmed'">
+              <header>
+                <div>
+                  <RouterLink
+                    class="sim-fund-link"
+                    :to="`/watchlist/${p.fundCode}`"
+                  >
+                    {{ p.fundName }}
+                  </RouterLink>
+                  <p>{{ p.fundCode }}{{ p.dataAsOfDate ? ` · 截至 ${p.dataAsOfDate}` : '' }}</p>
+                </div>
+                <span
+                  v-if="planFor(p.fundCode)"
+                  class="sim-badge"
+                >定投{{ planLabels[planFor(p.fundCode)!.status] }}</span>
+              </header>
+              <dl class="sim-position-values">
+                <div><dt>持有金额</dt><dd>{{ simMoney(p.marketValue) }}</dd></div>
+                <div>
+                  <dt>昨日收益</dt><dd :class="simTone(p.yesterdayGain)">
+                    {{ simMoney(p.yesterdayGain) }}
+                    <small>{{ p.yesterdayDate }}{{ p.yesterdayGain == null ? ' · 暂不可用' : '' }}</small>
+                  </dd>
+                </div>
+                <div>
+                  <dt>持有收益 / 收益率</dt><dd :class="simTone(p.holdingGain)">
+                    {{ simMoney(p.holdingGain) }} <small>{{ simPercent(p.holdingGainRate) }}</small>
+                  </dd>
+                </div>
+                <div>
+                  <dt>累计收益</dt><dd :class="simTone(p.cumulativeGain)">
+                    {{ simMoney(p.cumulativeGain) }}
+                  </dd>
+                </div>
+              </dl>
+              <p class="sim-muted">
+                持仓份额待补全，暂不能更新全部持仓估值或卖出原持仓。
+              </p>
+              <div
+                class="sim-actions"
+                data-earnings-exclude
+              >
+                <button
+                  v-if="canWrite"
+                  class="primary-button"
+                  type="button"
+                  @click="trade = { fundCode: p.fundCode, mode: 'BUY' }"
+                >
+                  加仓
+                </button>
+                <button
+                  v-if="canWrite && p.additionalPosition"
+                  class="secondary-button"
+                  type="button"
+                  :disabled="!!p.additionalPosition.issue || Number(p.additionalPosition.availableShares) <= 0"
+                  @click="trade = { fundCode: p.fundCode, mode: 'SELL' }"
+                >
+                  卖出
+                </button>
+                <button
+                  v-if="canPlan"
+                  class="secondary-button"
+                  type="button"
+                  @click="openPlan(p.fundCode)"
+                >
+                  {{ planFor(p.fundCode) ? '管理定投' : '设置定投' }}
+                </button>
                 <RouterLink
-                  class="sim-fund-link"
-                  data-earnings-link
+                  v-if="p.additionalPosition"
+                  class="secondary-button"
                   :to="earningsTarget(p.fundCode)"
                 >
-                  {{ p.fundName }}
-                </RouterLink><p>{{ p.fundCode }} · {{ p.navDate ? `净值 ${p.navDate} / ${p.unitNav}` : '等待首笔交易确认' }}</p>
-              </div><span
-                v-if="planFor(p.fundCode)"
-                class="sim-badge"
-              >定投{{ planLabels[planFor(p.fundCode)!.status] }}</span><span
-                v-else-if="Number(p.shares) === 0 && Number(p.totalBuy) > 0"
-                class="sim-badge"
-              >已清仓</span>
-            </header>
-            <p
-              v-if="p.issue"
-              class="notice-banner"
-              role="status"
-            >
-              {{ p.issue }} 当前显示上次有效估值。
-            </p>
-            <dl class="sim-position-values">
-              <div><dt>市值</dt><dd>{{ simMoney(p.marketValue) }}</dd></div><div>
-                <dt>最近一期收益 · {{ p.navDate ?? '待更新' }}</dt><dd :class="simTone(p.dailyGain)">
-                  {{ simMoney(p.dailyGain) }}
-                </dd>
-              </div><div>
-                <dt>持有收益 / 收益率</dt><dd :class="simTone(p.holdingGain)">
-                  {{ simMoney(p.holdingGain) }} <small>{{ simPercent(p.holdingGainRate) }}</small>
-                </dd>
-              </div><div>
-                <dt>累计收益</dt><dd :class="simTone(p.cumulativeGain)">
-                  {{ simMoney(p.cumulativeGain) }}
-                </dd>
+                  查看收益明细
+                </RouterLink>
               </div>
-            </dl>
-            <p class="sim-muted">
-              持有 {{ simShares(p.shares) }} 份 · 可卖 {{ simShares(p.availableShares) }} 份 · 冻结 {{ simShares(p.frozenShares) }} 份 · 剩余成本 {{ simMoney(p.cost) }} 元
-            </p>
-            <RouterLink
-              class="sim-earnings-link"
-              data-earnings-link
-              :to="earningsTarget(p.fundCode)"
-            >
-              查看收益明细 ›
-            </RouterLink>
-            <div data-earnings-exclude>
-              <DecisionPanelV2
-                :fund-code="p.fundCode"
-                :initial-report="adviceByFund.get(p.fundCode) ?? null"
-                compact
-              />
-            </div>
-            <div
-              class="sim-actions"
-              data-earnings-exclude
-            >
-              <button
-                v-if="canWrite"
-                class="primary-button"
-                type="button"
-                :disabled="!!p.issue"
-                @click="trade = { fundCode: p.fundCode, mode: 'BUY' }"
+            </template>
+            <template v-else>
+              <header>
+                <div>
+                  <RouterLink
+                    class="sim-fund-link"
+                    data-earnings-link
+                    :to="earningsTarget(p.fundCode)"
+                  >
+                    {{ p.fundName }}
+                  </RouterLink><p>{{ p.fundCode }} · {{ p.navDate ? `净值 ${p.navDate} / ${p.unitNav}` : '等待首笔交易确认' }}</p>
+                </div><span
+                  v-if="planFor(p.fundCode)"
+                  class="sim-badge"
+                >定投{{ planLabels[planFor(p.fundCode)!.status] }}</span><span
+                  v-else-if="Number(p.shares) === 0 && (Number(p.totalBuy) > 0 || p.estimatedShares)"
+                  class="sim-badge"
+                >已清仓</span>
+              </header>
+              <p
+                v-if="p.issue"
+                class="notice-banner"
+                role="status"
               >
-                {{ Number(p.shares) > 0 ? '加仓' : '买入' }}
-              </button><button
-                v-if="canWrite"
-                class="secondary-button"
-                type="button"
-                :disabled="!!p.issue || Number(p.availableShares) <= 0"
-                @click="trade = { fundCode: p.fundCode, mode: 'SELL' }"
+                {{ p.issue }} 当前显示上次有效估值。
+              </p>
+              <dl class="sim-position-values">
+                <div><dt>市值</dt><dd>{{ simMoney(p.marketValue) }}</dd></div><div>
+                  <dt>昨日收益</dt><dd :class="simTone(p.yesterdayGain)">
+                    {{ simMoney(p.yesterdayGain) }}
+                    <small>{{ p.yesterdayDate }}{{ p.yesterdayGain == null ? ' · 暂不可用' : '' }}</small>
+                  </dd>
+                </div><div>
+                  <dt>持有收益 / 收益率</dt><dd :class="simTone(p.holdingGain)">
+                    {{ simMoney(p.holdingGain) }} <small>{{ simPercent(p.holdingGainRate) }}</small>
+                  </dd>
+                </div><div>
+                  <dt>累计收益</dt><dd :class="simTone(p.cumulativeGain)">
+                    {{ simMoney(p.cumulativeGain) }}
+                  </dd>
+                </div>
+              </dl>
+              <p class="sim-muted">
+                持有 {{ simShares(p.shares) }} 份 · 可卖 {{ simShares(p.availableShares) }} 份 · 冻结 {{ simShares(p.frozenShares) }} 份 · 剩余成本 {{ simMoney(p.cost) }} 元{{ p.estimatedShares ? ' · 份额按金额折算' : '' }}
+              </p>
+              <RouterLink
+                class="sim-earnings-link"
+                data-earnings-link
+                :to="earningsTarget(p.fundCode)"
               >
-                卖出
-              </button><button
-                v-if="canPlan"
-                class="secondary-button"
-                type="button"
-                @click="openPlan(p.fundCode)"
+                查看收益明细 ›
+              </RouterLink>
+              <div data-earnings-exclude>
+                <DecisionPanelV2
+                  :fund-code="p.fundCode"
+                  :initial-report="adviceByFund.get(p.fundCode) ?? null"
+                  compact
+                />
+              </div>
+              <div
+                class="sim-actions"
+                data-earnings-exclude
               >
-                {{ planFor(p.fundCode) ? '管理定投' : '设置定投' }}
-              </button><button
-                class="secondary-button"
-                type="button"
-                @click="router.replace({ path: route.path, query: { section: 'orders', fundCode: p.fundCode } })"
-              >
-                交易记录
-              </button>
-            </div>
+                <button
+                  v-if="canWrite"
+                  class="primary-button"
+                  type="button"
+                  :disabled="!!p.issue"
+                  @click="trade = { fundCode: p.fundCode, mode: 'BUY' }"
+                >
+                  {{ Number(p.shares) > 0 ? '加仓' : '买入' }}
+                </button><button
+                  v-if="canWrite"
+                  class="secondary-button"
+                  type="button"
+                  :disabled="!!p.issue || Number(p.availableShares) <= 0"
+                  @click="trade = { fundCode: p.fundCode, mode: 'SELL' }"
+                >
+                  卖出
+                </button><button
+                  v-if="canPlan"
+                  class="secondary-button"
+                  type="button"
+                  @click="openPlan(p.fundCode)"
+                >
+                  {{ planFor(p.fundCode) ? '管理定投' : '设置定投' }}
+                </button><button
+                  class="secondary-button"
+                  type="button"
+                  @click="router.replace({ path: route.path, query: { section: 'orders', fundCode: p.fundCode } })"
+                >
+                  交易记录
+                </button>
+              </div>
+            </template>
           </article>
         </div>
-        <nav
+        <ListPagination
           v-if="positions.length > 0"
-          class="pagination"
-          aria-label="持仓列表分页"
-        >
-          <p
-            class="pagination-summary"
-            aria-live="polite"
-          >
-            共 {{ positions.length }} 条
-          </p>
-          <div class="pagination-controls">
-            <label
-              class="page-size-control"
-              for="portfolio-page-size"
-            >
-              每页
-              <select
-                id="portfolio-page-size"
-                :value="holdingPageSize"
-                :disabled="loading"
-                @change="changeHoldingPage(1, Number(($event.target as HTMLSelectElement).value))"
-              >
-                <option
-                  v-for="option in holdingPageSizeOptions"
-                  :key="option"
-                  :value="option"
-                >
-                  {{ option }}
-                </option>
-              </select>
-              条
-            </label>
-            <button
-              :disabled="loading || holdingPage <= 1"
-              type="button"
-              @click="changeHoldingPage(holdingPage - 1)"
-            >
-              上一页
-            </button>
-            <span class="page-position">第 {{ holdingPage }} / {{ holdingTotalPages }} 页</span>
-            <button
-              :disabled="loading || holdingPage >= holdingTotalPages"
-              type="button"
-              @click="changeHoldingPage(holdingPage + 1)"
-            >
-              下一页
-            </button>
-            <label
-              class="page-jump-control"
-              for="portfolio-page-jump"
-            >
-              跳至
-              <input
-                id="portfolio-page-jump"
-                v-model="holdingPageInput"
-                :disabled="loading"
-                inputmode="numeric"
-                min="1"
-                :max="holdingTotalPages"
-                step="1"
-                type="number"
-                @keyup.enter="goToHoldingPage"
-              >
-              页
-            </label>
-            <button
-              :disabled="loading"
-              type="button"
-              @click="goToHoldingPage"
-            >
-              跳转
-            </button>
-          </div>
-        </nav>
+          :page="holdingPage"
+          :page-size="holdingPageSize"
+          :total="positions.length"
+          :loading="loading"
+          label="持仓分页"
+          @change="changeHoldingPage"
+        />
       </template>
 
       <template v-else-if="section === 'plans'">
@@ -775,81 +794,15 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
             </div>
           </article>
         </div>
-        <nav
+        <ListPagination
           v-if="filteredPlans.length > 0"
-          class="pagination"
-          aria-label="定投计划分页"
-        >
-          <p
-            class="pagination-summary"
-            aria-live="polite"
-          >
-            共 {{ filteredPlans.length }} 条
-          </p>
-          <div class="pagination-controls">
-            <label
-              class="page-size-control"
-              for="plan-page-size"
-            >
-              每页
-              <select
-                id="plan-page-size"
-                :value="planPageSize"
-                :disabled="loading"
-                @change="changePlanPage(1, Number(($event.target as HTMLSelectElement).value))"
-              >
-                <option
-                  v-for="option in planPageSizeOptions"
-                  :key="option"
-                  :value="option"
-                >
-                  {{ option }}
-                </option>
-              </select>
-              条
-            </label>
-            <button
-              :disabled="loading || planPage <= 1"
-              type="button"
-              @click="changePlanPage(planPage - 1)"
-            >
-              上一页
-            </button>
-            <span class="page-position">第 {{ planPage }} / {{ planTotalPages }} 页</span>
-            <button
-              :disabled="loading || planPage >= planTotalPages"
-              type="button"
-              @click="changePlanPage(planPage + 1)"
-            >
-              下一页
-            </button>
-            <label
-              class="page-jump-control"
-              for="plan-page-jump"
-            >
-              跳至
-              <input
-                id="plan-page-jump"
-                v-model="planPageInput"
-                :disabled="loading"
-                inputmode="numeric"
-                min="1"
-                :max="planTotalPages"
-                step="1"
-                type="number"
-                @keyup.enter="goToPlanPage"
-              >
-              页
-            </label>
-            <button
-              :disabled="loading"
-              type="button"
-              @click="goToPlanPage"
-            >
-              跳转
-            </button>
-          </div>
-        </nav>
+          :page="planPage"
+          :page-size="planPageSize"
+          :total="filteredPlans.length"
+          :loading="loading"
+          label="定投计划分页"
+          @change="changePlanPage"
+        />
         <section
           v-if="periodPlan"
           class="sim-detail-panel"
@@ -877,27 +830,15 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
             >
               <strong>{{ item.scheduledDate }} → {{ item.executionDate }}</strong><span>{{ item.status === 'ORDERED' ? '已生成买单' : item.status === 'MISSED' ? '错过执行' : '已跳过' }}</span><p>{{ item.message }}</p>
             </li>
-          </ul><nav
-            v-if="periods && periods.totalCount > 20"
-            class="sim-pagination"
-            aria-label="定投记录分页"
-          >
-            <button
-              class="secondary-button"
-              type="button"
-              :disabled="periodPage <= 1"
-              @click="viewPeriods(periodPlan, periodPage - 1)"
-            >
-              上一页
-            </button><span>{{ periodPage }}</span><button
-              class="secondary-button"
-              type="button"
-              :disabled="periodPage * 20 >= periods.totalCount"
-              @click="viewPeriods(periodPlan, periodPage + 1)"
-            >
-              下一页
-            </button>
-          </nav>
+          </ul><ListPagination
+            v-if="periods && periodPlan && periods.totalCount > 0"
+            :page="periodPage"
+            :page-size="periodPageSize"
+            :total="periods.totalCount"
+            :loading="periodsLoading"
+            label="定投执行记录分页"
+            @change="(value, size) => { periodPageSize = size; viewPeriods(periodPlan!, value) }"
+          />
         </section>
       </template>
 
@@ -941,27 +882,15 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
                 撤销订单
               </button>
             </article>
-          </div><nav
-            v-if="orders && orders.totalCount > 20"
-            class="sim-pagination"
-            aria-label="买卖记录分页"
-          >
-            <button
-              class="secondary-button"
-              type="button"
-              :disabled="orderPage <= 1"
-              @click="orderPage--"
-            >
-              上一页
-            </button><span>第 {{ orderPage }} 页</span><button
-              class="secondary-button"
-              type="button"
-              :disabled="orderPage * 20 >= orders.totalCount"
-              @click="orderPage++"
-            >
-              下一页
-            </button>
-          </nav>
+          </div><ListPagination
+            v-if="orders && orders.totalCount > 0"
+            :page="orderPage"
+            :page-size="orderPageSize"
+            :total="orders.totalCount"
+            :loading="detailsLoading || busy"
+            label="交易记录分页"
+            @change="(value, size) => { orderPageSize = size; orderPage = value }"
+          />
         </template>
         <template v-else>
           <p v-if="!ledger">
@@ -987,27 +916,15 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
                 {{ entry.payload.message }}
               </p>
             </li>
-          </ul><nav
-            v-if="ledger && ledger.totalCount > 20"
-            class="sim-pagination"
-            aria-label="账务记录分页"
-          >
-            <button
-              class="secondary-button"
-              type="button"
-              :disabled="ledgerPage <= 1"
-              @click="ledgerPage--"
-            >
-              上一页
-            </button><span>第 {{ ledgerPage }} 页</span><button
-              class="secondary-button"
-              type="button"
-              :disabled="ledgerPage * 20 >= ledger.totalCount"
-              @click="ledgerPage++"
-            >
-              下一页
-            </button>
-          </nav>
+          </ul><ListPagination
+            v-if="ledger && ledger.totalCount > 0"
+            :page="ledgerPage"
+            :page-size="ledgerPageSize"
+            :total="ledger.totalCount"
+            :loading="detailsLoading"
+            label="资金流水分页"
+            @change="(value, size) => { ledgerPageSize = size; ledgerPage = value }"
+          />
         </template>
       </template>
     </template>

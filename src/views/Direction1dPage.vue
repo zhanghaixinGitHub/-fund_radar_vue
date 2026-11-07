@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ListPagination from '@/components/ListPagination.vue'
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { getDirection1dCoverage, getDirection1dHistory, getDirection1dMetrics } from '@/api/direction1d'
 import type { Direction1dCoverage, Direction1dPage, Direction1dRecord, Direction1dCursor } from '@/types/direction1d'
@@ -8,6 +9,8 @@ const coverage = ref<(Direction1dPage<Direction1dCoverage> & { checkedCount: num
 const history = ref<Direction1dPage<Direction1dRecord> | null>(null)
 const metrics = ref<Awaited<ReturnType<typeof getDirection1dMetrics>> | null>(null)
 const page = ref(1)
+const pageSize = ref(10)
+const historyPageSize = ref(10)
 const historyPage = ref(1)
 const cursors = ref<(Direction1dCursor | undefined)[]>([undefined])
 const historyFund = ref('')
@@ -26,7 +29,7 @@ async function load() {
   busy.value = true
   error.value = ''
   try {
-    const [c, h, m] = await Promise.all([getDirection1dCoverage(page.value, keyword.value), getDirection1dHistory(historyPage.value, historyFund.value, cursors.value[historyPage.value - 1], { assessment: assessment.value, branch: historyBranch.value, startDate: startDate.value, endDate: endDate.value }), getDirection1dMetrics(labelBasis.value, predictionBasis.value)])
+    const [c, h, m] = await Promise.all([getDirection1dCoverage(page.value, keyword.value, pageSize.value), getDirection1dHistory(historyPage.value, historyFund.value, cursors.value[historyPage.value - 1], { assessment: assessment.value, branch: historyBranch.value, startDate: startDate.value, endDate: endDate.value }, historyPageSize.value), getDirection1dMetrics(labelBasis.value, predictionBasis.value)])
     h.items.forEach(r => { if (!r.status) assertDirection1dForecast(r.forecast) })
     if (request !== sequence) return
     coverage.value = c; history.value = h; metrics.value = m
@@ -53,10 +56,7 @@ function availability(fund: Direction1dCoverage) {
 }
 onMounted(load)
 onBeforeUnmount(() => { sequence++ })
-function nextHistory() {
-  cursors.value[historyPage.value] = history.value?.nextCursor
-  historyPage.value++; void load()
-}
+/** 尾页跳转清空中间页游标，避免仍读取该游标之后的下一页。 */
 function filterHistory() { historyPage.value = 1; cursors.value = [undefined]; void load() }
 const percent = (value: number | null | undefined) => value == null ? '尚无有效结果' : `${(Number(value) * 100).toFixed(2)}%`
 </script>
@@ -119,19 +119,14 @@ const percent = (value: number | null | undefined) => value == null ? '尚无有
           </tbody>
         </table>
       </div>
-      <div class="pager">
-        <button
-          :disabled="busy || page === 1"
-          @click="page--; load()"
-        >
-          上一页
-        </button><span>第 {{ page }} 页 · {{ coverage?.totalCount ?? 0 }} 只</span><button
-          :disabled="busy || page * 20 >= (coverage?.totalCount ?? 0)"
-          @click="page++; load()"
-        >
-          下一页
-        </button>
-      </div>
+      <ListPagination 
+        :page="page"
+        :page-size="pageSize"
+        :total="coverage?.totalCount ?? 0"
+        :loading="busy"
+        label="关注覆盖分页"
+        @change="(value, size) => { page = value; pageSize = size; load() }" 
+      />
     </section>
     <section class="card">
       <h2>历史判断与实际结果</h2><p>核对单位净值的涨跌；分红不加回，不能当作持有收益。旧记录中的“下跌或持平”保留当时含义。</p>
@@ -184,19 +179,14 @@ const percent = (value: number | null | undefined) => value == null ? '尚无有
           </p>
         </template>
       </article>
-      <div class="pager">
-        <button
-          :disabled="busy || historyPage === 1"
-          @click="historyPage--; load()"
-        >
-          上一页
-        </button><span>第 {{ historyPage }} 页</span><button
-          :disabled="busy || historyPage * 20 >= (history?.totalCount ?? 0)"
-          @click="nextHistory"
-        >
-          下一页
-        </button>
-      </div>
+      <ListPagination 
+        :page="historyPage"
+        :page-size="historyPageSize"
+        :total="history?.totalCount ?? 0"
+        :loading="busy"
+        label="预测历史分页"
+        @change="(value, size) => { historyPage = value; historyPageSize = size; cursors = [undefined]; load() }" 
+      />
     </section>
     <section class="card">
       <label>核对统计口径 <select
@@ -221,6 +211,8 @@ const percent = (value: number | null | undefined) => value == null ? '尚无有
 .d1-page { max-width: 1200px; margin: auto; padding: 24px; color: #24374b; }.eyebrow { margin-top: 28px; color: #836017; font-size: 13px; }h1 { font-size: 32px; margin: 12px 0; }.lead { color: #576a7f; line-height: 1.8; }
 .summary,.card { padding: 24px; margin: 24px 0; border: 1px solid #dce4ec; border-radius: 14px; background: #fff; }.summary { display: flex; flex-wrap: wrap; gap: 20px 36px; background: #f2f7fb; }.summary p { margin: 8px 0; }.summary > p { width: 100%; }.counts { display: flex; gap: 10px; flex-wrap: wrap; }.counts span { padding: 7px 10px; background: #f0f4f8; border-radius: 6px; font-size: 13px; }
 button,input { padding: 9px 12px; border: 1px solid #c2cdda; border-radius: 7px; background: white; }button { cursor: pointer; }button:disabled { opacity: .45; cursor: default; }form { display: flex; align-items: center; gap: 12px; margin: 20px 0; }input { min-width: 220px; }.table-wrap { overflow: auto; }table { border-collapse: collapse; width: 100%; }th,td { padding: 15px 10px; text-align: left; border-bottom: 1px solid #e4eaf0; }th { background: #f7f9fc; font-size: 13px; }small { display: block; color: #62758a; margin-top: 6px; }.pager { display: flex; align-items: center; gap: 18px; margin-top: 20px; }.record { border-top: 1px solid #dce4ec; padding: 16px 0; }.empty { padding: 28px; background: #f7f9fc; }.error { color: #ac2d36; }p { line-height: 1.7; }pre { white-space: pre-wrap; overflow-wrap: anywhere; }@media(max-width:650px) { .d1-page { padding: 12px; }.card,.summary { padding: 16px; }form { flex-wrap: wrap; }th,td { min-width: 130px; }h1 { font-size: 26px; } }
+/* 分页增加首尾入口后允许自然换行，保持窄屏内可操作。 */
+.pager { flex-wrap: wrap; }
 </style>
 
 <style scoped>

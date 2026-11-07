@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ListPagination from '@/components/ListPagination.vue'
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
@@ -20,25 +21,17 @@ import {
  */
 const {
   cachedAt,
-  changePageSize,
   currentPage,
   errorMessage,
   funds,
-  goToPage,
-  hasNextPage,
-  hasPreviousPage,
   keyword,
   loading,
-  nextPage,
-  pageInput,
+  loadPage,
   pageSize,
-  pageSizeOptions,
-  previousPage,
   search,
   selectedRating,
   stale,
   totalCount,
-  totalPages,
 } = useFundMarket()
 const route = useRoute()
 
@@ -213,81 +206,15 @@ const fundGroups = computed(() => {
         </ul>
       </section>
     </div>
-    <nav
+    <ListPagination
       v-if="!loading && !errorMessage && funds.length > 0"
-      class="pagination"
-      aria-label="基金列表分页"
-    >
-      <p
-        class="pagination-summary"
-        aria-live="polite"
-      >
-        共 {{ totalCount }} 条
-      </p>
-      <div class="pagination-controls">
-        <label
-          class="page-size-control"
-          for="fund-page-size"
-        >
-          每页
-          <select
-            id="fund-page-size"
-            v-model.number="pageSize"
-            :disabled="loading"
-            @change="changePageSize"
-          >
-            <option
-              v-for="option in pageSizeOptions"
-              :key="option"
-              :value="option"
-            >
-              {{ option }}
-            </option>
-          </select>
-          条
-        </label>
-        <button
-          :disabled="loading || !hasPreviousPage"
-          type="button"
-          @click="previousPage"
-        >
-          上一页
-        </button>
-        <span class="page-position">第 {{ currentPage }} / {{ totalPages }} 页</span>
-        <button
-          :disabled="loading || !hasNextPage"
-          type="button"
-          @click="nextPage"
-        >
-          下一页
-        </button>
-        <label
-          class="page-jump-control"
-          for="fund-page-jump"
-        >
-          跳至
-          <input
-            id="fund-page-jump"
-            v-model="pageInput"
-            :disabled="loading"
-            inputmode="numeric"
-            min="1"
-            :max="totalPages"
-            step="1"
-            type="number"
-            @keyup.enter="goToPage"
-          >
-          页
-        </label>
-        <button
-          :disabled="loading"
-          type="button"
-          @click="goToPage"
-        >
-          跳转
-        </button>
-      </div>
-    </nav>
+      :page="currentPage"
+      :page-size="pageSize"
+      :total="totalCount"
+      :loading="loading"
+      label="基金列表分页"
+      @change="(page, size) => { pageSize = size; loadPage(page) }" 
+    />
   </section>
 </template>
 

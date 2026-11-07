@@ -111,6 +111,15 @@ export function useWatchlist() {
     }
   }
 
+  /** 首尾跳转沿用当前关注筛选，通过原有 URL 导航读取目标页。 */
+  async function firstPage(): Promise<void> {
+    if (!loading.value && hasPreviousPage.value) await loadPage(1)
+  }
+
+  async function lastPage(): Promise<void> {
+    if (!loading.value && hasNextPage.value) await loadPage(totalPages.value)
+  }
+
   async function previousPage(): Promise<void> {
     if (!loading.value && hasPreviousPage.value) {
       await loadPage(currentPage.value - 1)
@@ -121,12 +130,14 @@ export function useWatchlist() {
     changePageSize,
     currentPage,
     errorMessage,
+    firstPage,
     goToPage,
     hasNextPage,
     hasPreviousPage,
     keyword,
     loadPage,
     loading,
+    lastPage,
     marketDataUnavailable,
     nextPage,
     pageInput,

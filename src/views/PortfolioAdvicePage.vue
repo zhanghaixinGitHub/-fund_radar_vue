@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ListPagination from '@/components/ListPagination.vue'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
@@ -8,6 +9,7 @@ import {
 import { getSimOverview } from '@/api/simulation'
 import { getWatchlist } from '@/api/watchlist'
 import type { WatchlistItem } from '@/types/watchlist'
+import { normalizePageSize } from '@/utils/pagination'
 import { usePageNavigation } from '@/composables/usePageNavigation'
 import { useAuthStore } from '@/stores/auth'
 import DecisionPanelV2 from '@/components/DecisionPanelV2.vue'
@@ -78,6 +80,7 @@ const error = ref('')
 const message = ref('')
 const start = ref('')
 const end = ref('')
+const pageSize = computed(() => normalizePageSize(route.query.size))
 const page = computed(() => Math.max(1, Math.min(10000, Number(route.query.page) || 1)))
 const reportId = computed(() => typeof route.query.report === 'string' ? route.query.report : '')
 const showReport = computed(() => section.value === 'latest' || !!reportId.value)
@@ -197,7 +200,7 @@ async function load() {
   if (fundInvalid.value) { loading.value = false; return }
   try {
     if (section.value === 'diagnosis') {
-      const result = await fetchFundDiagnosis(fund, { page: page.value })
+      const result = await fetchFundDiagnosis(fund, { page: page.value, pageSize: pageSize.value })
       if (!alive || current !== generation) return
       diagnosis.value = result
       expandedDiagnosisId.value = ''
@@ -213,7 +216,7 @@ async function load() {
     }
     if (section.value === 'latest' || section.value === 'review') return // 结果与效果组件独立读取，不依赖旧V1历史接口。
     const result = await getAdviceHistory(fund, section.value === 'latest' ? 1 : page.value,
-      section.value === 'latest' ? '' : start.value, section.value === 'latest' ? '' : end.value)
+      section.value === 'latest' ? '' : start.value, section.value === 'latest' ? '' : end.value, pageSize.value)
     if (!alive || current !== generation) return
     history.value = result
     const id = section.value === 'latest' ? result.reports.items[0]?.reportId : reportId.value
@@ -243,8 +246,8 @@ function filter() {
   void router.replace({ query: { ...route.query, start: start.value || undefined, end: end.value || undefined, page: undefined, report: undefined } })
 }
 function selectReport(id?: string) { void router.replace({ query: { ...route.query, report: id } }) }
-function changePage(value: number) { void router.replace({ query: { ...route.query, page: value, report: undefined } }) }
-watch([code, section, () => route.query.page, () => route.query.start, () => route.query.end, reportId], () => void load(), { immediate: true })
+function changePage(value: number, size = pageSize.value) { void router.replace({ query: { ...route.query, page: value, size: String(size), report: undefined } }) }
+watch([code, section, () => route.query.page, () => route.query.size, () => route.query.start, () => route.query.end, reportId], () => void load(), { immediate: true })
 onBeforeUnmount(() => { alive = false; generation++ })
 </script>
 
@@ -503,28 +506,15 @@ onBeforeUnmount(() => { alive = false; generation++ })
               </tbody>
             </table>
           </div>
-          <div
-            v-if="diagnosis.reports.totalCount > 20"
-            class="sim-pagination"
-          >
-            <button
-              class="secondary-button"
-              type="button"
-              :disabled="loading || page <= 1"
-              @click="changePage(page - 1)"
-            >
-              上一页
-            </button>
-            <span>第 {{ page }} / {{ Math.ceil(diagnosis.reports.totalCount / 20) }} 页</span>
-            <button
-              class="secondary-button"
-              type="button"
-              :disabled="loading || page * 20 >= diagnosis.reports.totalCount"
-              @click="changePage(page + 1)"
-            >
-              下一页
-            </button>
-          </div>
+          <ListPagination
+            v-if="diagnosis.reports.totalCount > 0"
+            :page="page"
+            :page-size="pageSize"
+            :total="diagnosis.reports.totalCount"
+            :loading="loading"
+            label="诊断历史分页"
+            @change="changePage" 
+          />
         </template>
         <div
           v-else-if="!loading && !error"
@@ -910,28 +900,15 @@ onBeforeUnmount(() => { alive = false; generation++ })
         >
           <strong>当前日期范围没有建议记录</strong><p>每天生成的内容会保留在这里，同一天的不同版本也可以逐份查看。</p>
         </div>
-        <div
-          v-if="history && history.reports.totalCount > 20"
-          class="sim-pagination"
-        >
-          <button
-            class="secondary-button"
-            type="button"
-            :disabled="loading || page <= 1"
-            @click="changePage(page - 1)"
-          >
-            上一页
-          </button>
-          <span>第 {{ page }} / {{ Math.ceil(history.reports.totalCount / 20) }} 页</span>
-          <button
-            class="secondary-button"
-            type="button"
-            :disabled="loading || page * 20 >= history.reports.totalCount"
-            @click="changePage(page + 1)"
-          >
-            下一页
-          </button>
-        </div>
+        <ListPagination
+          v-if="history.reports.totalCount > 0"
+          :page="page"
+          :page-size="pageSize"
+          :total="history.reports.totalCount"
+          :loading="loading"
+          label="建议历史分页"
+          @change="changePage" 
+        />
       </template>
 
       <template v-else-if="detail && !loading">

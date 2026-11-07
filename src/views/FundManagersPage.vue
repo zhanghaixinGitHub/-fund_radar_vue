@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import ListPagination from '@/components/ListPagination.vue'
+import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { getFundManagers } from '@/api/fundManagers'
+import { normalizePageSize } from '@/utils/pagination'
 import type { ManagerPage } from '@/types/fundManager'
 import { useManagerRefresh } from '@/composables/useManagerRefresh'
 import { managerDate } from '@/utils/fundManagerNavigation'
 
 const route = useRoute()
 const router = useRouter()
+const pageSize = computed(() => normalizePageSize(route.query.size))
 const keyword = ref('')
 const company = ref('')
 const state = ref('all')
@@ -24,7 +27,7 @@ async function load(quiet = false): Promise<void> {
   try {
     const value = await getFundManagers({ keyword: String(route.query.keyword ?? ''), company: String(route.query.company ?? ''),
       state: String(route.query.state ?? 'all'), fundType: String(route.query.fundType ?? ''),
-      page: Math.max(1, Number(route.query.page) || 1), pageSize: 20,
+      page: Math.max(1, Number(route.query.page) || 1), pageSize: pageSize.value,
       snapshotId: !quiet && route.query.snapshotId ? String(route.query.snapshotId) : undefined })
     if (current === request) result.value = value
   } catch (error) {
@@ -33,13 +36,14 @@ async function load(quiet = false): Promise<void> {
 }
 async function search(): Promise<void> {
   await router.push({ name: 'fund-managers', query: {
+    size: String(pageSize.value),
     ...(keyword.value.trim() ? { keyword: keyword.value.trim() } : {}),
     ...(company.value.trim() ? { company: company.value.trim() } : {}), ...(state.value !== 'all' ? { state: state.value } : {}),
     ...(fundType.value ? { fundType: fundType.value } : {}),
   } })
 }
-async function changePage(page: number): Promise<void> {
-  await router.push({ query: { ...route.query, page: String(page), snapshotId: result.value?.snapshotId ?? undefined } })
+async function changePage(page: number, size = pageSize.value): Promise<void> {
+  await router.push({ query: { ...route.query, page: String(page), size: String(size), snapshotId: size === pageSize.value ? result.value?.snapshotId ?? undefined : undefined } })
 }
 watch(() => route.fullPath, () => {
   keyword.value = String(route.query.keyword ?? '')
@@ -148,28 +152,15 @@ useManagerRefresh(() => load(true))
           </tbody>
         </table>
       </div>
-      <nav
-        v-if="result.totalPages > 1"
-        class="manager-pagination"
-        aria-label="经理目录分页"
-      >
-        <span>共 {{ result.totalCount }} 条已收录资料</span>
-        <button
-          type="button"
-          :disabled="loading || result.page <= 1"
-          @click="changePage(result.page - 1)"
-        >
-          上一页
-        </button>
-        <span>{{ result.page }} / {{ result.totalPages }}</span>
-        <button
-          type="button"
-          :disabled="loading || result.page >= result.totalPages"
-          @click="changePage(result.page + 1)"
-        >
-          下一页
-        </button>
-      </nav>
+      <ListPagination
+        v-if="result.totalCount > 0"
+        :page="result.page"
+        :page-size="result.pageSize"
+        :total="result.totalCount"
+        :loading="loading"
+        label="经理目录分页"
+        @change="changePage" 
+      />
     </template>
   </section>
 </template>

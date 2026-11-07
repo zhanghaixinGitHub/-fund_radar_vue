@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import ListPagination from '@/components/ListPagination.vue'
+import { readFixedPage } from '@/utils/pagination'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { get, post, ApiRequestError } from '@/api/http'
 import { useAuthStore } from '@/stores/auth'
@@ -14,6 +16,7 @@ const auth = useAuthStore()
 const scope = ref<Scope>('CONFIRMED')
 const result = ref<Page | null>(null)
 const page = ref(1)
+const pageSize = ref(10)
 const loading = ref(false)
 const saving = ref(false)
 const error = ref('')
@@ -30,7 +33,14 @@ async function load(copyToForm = true) {
   const ticket = ++sequence
   loading.value = true; error.value = ''
   try {
-    const value = await get<Page>(`/api/v1/account/funding?scope=${scope.value}&page=${page.value}`)
+    const selectedScope = scope.value
+    let metadata: Page | null = null
+    const window = await readFixedPage(async target => {
+      const value = await get<Page>(`/api/v1/account/funding?scope=${selectedScope}&page=${target}`)
+      metadata = value
+      return { items: value.history, hasMore: value.hasMore }
+    }, page.value, pageSize.value)
+    const value = { ...metadata!, history: window.items, hasMore: window.hasMore } as Page
     if (ticket !== sequence || value.scope !== scope.value) return
     result.value = value
     if (copyToForm) {
@@ -187,22 +197,15 @@ onBeforeUnmount(() => { sequence++ })
             <p>愿意接受损失：{{ item.input.willingLossPct == null ? '未知' : `${item.input.willingLossPct}%` }}；现实可承担损失：{{ item.input.affordableLossAmount == null ? '未知' : `${item.input.affordableLossAmount} 元` }}；复查间隔：{{ item.input.reviewIntervalDays == null ? '未知' : `${item.input.reviewIntervalDays} 天` }}。</p>
           </template>
         </article>
-        <nav
-          v-if="page > 1 || result.hasMore"
-          aria-label="资金安排历史分页"
-        >
-          <button
-            :disabled="page === 1 || loading || saving"
-            @click="page--; load(false)"
-          >
-            上一页
-          </button><span>第 {{ page }} 页</span><button
-            :disabled="!result.hasMore || loading || saving"
-            @click="page++; load(false)"
-          >
-            下一页
-          </button>
-        </nav>
+        <ListPagination
+          v-if="result.current"
+          :page="page"
+          :page-size="pageSize"
+          :total="result.current?.revision ?? 0"
+          :loading="loading || saving"
+          label="资金安排历史分页"
+          @change="(value, size) => { pageSize = size; page = value; load(false) }" 
+        />
       </details>
     </template>
   </section>
@@ -216,7 +219,7 @@ fieldset label { display: flex; flex-direction: column; gap: .5rem; line-height:
 input, select, button { font: inherit; padding: .65rem; border: 1px solid #baccc4; border-radius: .4rem; }
 input { min-width: 0; } input[type=checkbox] { width: auto; }
 .confirmation { display: flex; align-items: flex-start; gap: .5rem; margin: 1rem 0; line-height: 1.7; }
-.actions, nav { display: flex; gap: .75rem; align-items: center; } button { cursor: pointer; } button:disabled { opacity: .5; cursor: default; }
+.actions, nav { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; } button { cursor: pointer; } button:disabled { opacity: .5; cursor: default; }
 .history { margin-top: 1.5rem; } article { border-bottom: 1px solid #dfe8e3; padding: .7rem 0; }
 summary { cursor: pointer; }
 @media(max-width: 650px) { fieldset { grid-template-columns: 1fr; } select { max-width: 100%; } }

@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import ListPagination from '@/components/ListPagination.vue'
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { get, post } from '@/api/http'
 import { direction1dTime } from '@/utils/direction1d'
+import { findLastPage, readFixedPage } from '@/utils/pagination'
 
 type State = 'ACTIVE' | 'RESOLVED' | 'RETRACTED' | 'EXPIRED'
 interface Basis {
@@ -16,6 +18,9 @@ interface Notice {
 interface Revision { revision: number; lifecycle: State; payload: Basis; recordedAt: string }
 interface Page<T> { items: T[]; page: number; hasMore: boolean }
 const result = ref<Page<Notice> | null>(null)
+const pageSize = ref(10)
+const total = ref<number | undefined>()
+const historySizes = ref<Record<string, number>>({})
 const busy = ref(false)
 const error = ref('')
 const historyError = ref<Record<string, string>>({})
@@ -26,14 +31,29 @@ const stateLabel = (value: State) => ({ ACTIVE: '待复查', RESOLVED: '条件�
 /** 复查入口由已知页面和基金代码形成，不执行载荷中的任意网址。 */
 const destination = (item: Notice) => item.fundCode && /^\d{6}$/.test(item.fundCode)
   ? `/funds/${item.fundCode}?section=documents` : '/portfolio?section=funding'
-async function load(page = 1) {
+async function load(page = 1, toLast = false) {
   const ticket = ++sequence
   busy.value = true; error.value = ''
   try {
-    const value = await get<Page<Notice>>(`/api/v1/notifications/reviews?page=${page}`)
-    if (ticket === sequence) { result.value = value; histories.value = {}; historyError.value = {} }
+    const size = pageSize.value
+    const read = (target: number) => readFixedPage(async serverPage => {
+      return get<Page<Notice>>(`/api/v1/notifications/reviews?page=${serverPage}`)
+    }, target, size)
+    // 列表没有总条数；尾页定位仅保留最终页，过期请求不再继续探测。
+    let value = toLast
+      ? (await findLastPage(read, value => value.items.length > 0, value => value.hasMore, () => ticket === sequence))?.value
+      : await read(page)
+    // 输入超过尾页时定位实际尾页，避免空页被当成真实页码与总数。
+    if (value && !value.items.length && value.page > 1) {
+      value = (await findLastPage(read, row => row.items.length > 0, row => row.hasMore, () => ticket === sequence))?.value
+    }
+    if (!value) return
+    if (ticket === sequence) { if (!value.hasMore) total.value = (value.page - 1) * size + value.items.length; result.value = value; histories.value = {}; historyError.value = {} }
   } catch { if (ticket === sequence) error.value = '复查提醒暂时无法读取，请稍后重试。' }
   finally { if (ticket === sequence) busy.value = false }
+}
+function loadLast() {
+  if (!busy.value && result.value?.hasMore) void load(1, true)
 }
 async function markRead(item: Notice) {
   if (pending.value.has(item.noticeId)) return
@@ -47,7 +67,7 @@ async function markRead(item: Notice) {
 async function history(item: Notice, page = 1) {
   if (pending.value.has(item.noticeId)) return
   pending.value.add(item.noticeId); historyError.value[item.noticeId] = ''
-  try { histories.value[item.noticeId] = await get<Page<Revision>>(`/api/v1/notifications/reviews/${item.noticeId}/history?page=${page}`) }
+  try { histories.value[item.noticeId] = await readFixedPage(target => get<Page<Revision>>(`/api/v1/notifications/reviews/${item.noticeId}/history?page=${target}`), page, historySizes.value[item.noticeId] ?? 10) }
   catch { historyError.value[item.noticeId] = '变化历史暂时无法读取。' }
   finally { pending.value.delete(item.noticeId) }
 }
@@ -144,47 +164,27 @@ onBeforeUnmount(() => sequence++)
               <p>{{ revision.payload.changeExplanation || revision.payload.explanation }}</p>
             </li>
           </ol>
-          <div class="review-actions">
-            <button
-              v-if="histories[item.noticeId]!.page > 1"
-              type="button"
-              :disabled="pending.has(item.noticeId)"
-              @click="history(item, histories[item.noticeId]!.page - 1)"
-            >
-              较新变化
-            </button>
-            <button
-              v-if="histories[item.noticeId]!.hasMore"
-              type="button"
-              :disabled="pending.has(item.noticeId)"
-              @click="history(item, histories[item.noticeId]!.page + 1)"
-            >
-              更早变化
-            </button>
-          </div>
+          <ListPagination 
+            :page="histories[item.noticeId]!.page"
+            :page-size="historySizes[item.noticeId] ?? 10"
+            :total="item.revision"
+            :loading="pending.has(item.noticeId)"
+            label="提醒变化历史分页"
+            @change="(value, size) => { historySizes[item.noticeId] = size; history(item, value) }" 
+          />
         </template>
       </article>
-      <nav
-        class="review-actions"
-        aria-label="复查提醒分页"
-      >
-        <button
-          v-if="result.page > 1"
-          type="button"
-          :disabled="busy"
-          @click="load(result.page - 1)"
-        >
-          上一页
-        </button>
-        <button
-          v-if="result.hasMore"
-          type="button"
-          :disabled="busy"
-          @click="load(result.page + 1)"
-        >
-          下一页
-        </button>
-      </nav>
+      <ListPagination
+        v-if="result.items.length || result.page > 1"
+        :page="result.page"
+        :page-size="pageSize"
+        :total="total"
+        :loading="busy"
+        label="复查提醒分页"
+        :has-next="result.hasMore"
+        @change="(value, size) => { pageSize = size; load(value) }"
+        @last="loadLast"
+      />
     </template>
   </section>
 </template>

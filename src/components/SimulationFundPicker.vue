@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ListPagination from '@/components/ListPagination.vue'
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { getFunds } from '@/api/funds'
 import { getWatchlist } from '@/api/watchlist'
@@ -8,6 +9,7 @@ const dialog = ref<InstanceType<typeof globalThis.HTMLDialogElement> | null>(nul
 const source = ref<'watchlist' | 'market'>('watchlist')
 const keyword = ref('')
 const page = ref(1)
+const pageSize = ref(10)
 const total = ref(0)
 const items = ref<{ fundCode: string; fundName: string }[]>([])
 const loading = ref(false)
@@ -19,13 +21,13 @@ async function load(reset = false) {
   const current = ++request
   loading.value = true; error.value = ''; items.value = []
   try {
-    const result = await (source.value === 'watchlist' ? getWatchlist : getFunds)({ keyword: keyword.value, page: page.value, pageSize: 10 })
+    const result = await (source.value === 'watchlist' ? getWatchlist : getFunds)({ keyword: keyword.value, page: page.value, pageSize: pageSize.value })
     if (alive && current === request) { items.value = result.items; total.value = result.totalCount ?? result.items.length }
   } catch (reason) { if (alive && current === request) error.value = reason instanceof Error ? reason.message : '加载失败。' }
   finally { if (alive && current === request) loading.value = false }
 }
 function switchSource(value: 'watchlist' | 'market') { source.value = value; void load(true) }
-function move(delta: number) { page.value += delta; void load() }
+function move(value: number, size: number) { pageSize.value = size; page.value = value; void load() }
 onMounted(() => { dialog.value?.showModal(); void load() })
 onBeforeUnmount(() => { alive = false; dialog.value?.close() })
 </script>
@@ -121,25 +123,14 @@ onBeforeUnmount(() => { alive = false; dialog.value?.close() })
         </button>
       </li>
     </ul>
-    <nav
-      class="sim-pagination"
-      aria-label="基金选择分页"
-    >
-      <button
-        class="secondary-button"
-        type="button"
-        :disabled="loading || page <= 1"
-        @click="move(-1)"
-      >
-        上一页
-      </button><span>第 {{ page }} 页</span><button
-        class="secondary-button"
-        type="button"
-        :disabled="loading || page * 10 >= total"
-        @click="move(1)"
-      >
-        下一页
-      </button>
-    </nav>
+    <ListPagination
+      v-if="total > 0"
+      :page="page"
+      :page-size="pageSize"
+      :total="total"
+      :loading="loading"
+      label="选择基金分页"
+      @change="move" 
+    />
   </dialog>
 </template>

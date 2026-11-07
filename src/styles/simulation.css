@@ -6,7 +6,7 @@
 .sim-page h3 { font-size: 16px; margin: 0; }
 .sim-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .sim-actions button, .sim-dialog-footer button { min-height: 40px; }
-.sim-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin: 18px 0; }
+.sim-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 18px 0; }
 .sim-metrics article { background: #fff; padding: 20px; border: 1px solid var(--workspace-border, #dfe8e3); border-radius: 10px; }
 .sim-metrics span, .sim-metrics small { display: block; color: #647b72; }
 .sim-metrics strong { display: block; font-size: 27px; font-variant-numeric: tabular-nums; margin: 12px 0; overflow-wrap: anywhere; }
@@ -34,7 +34,8 @@
 .sim-record-list > article, .sim-record-list > li { padding: 19px; background: #fff; border: 1px solid #dfe8e3; border-radius: 8px; }
 .sim-record-list > li > span { display: block; margin-top: 7px; color: #647b72; font-size: 13px; }
 .sim-record-list p { line-height: 1.7; }.sim-break { overflow-wrap: anywhere; }
-.sim-pagination { display: flex; justify-content: center; align-items: center; gap: 15px; margin: 22px 0 5px; }
+/* 首尾页按钮随可用宽度换行，避免弹窗和手机上的分页横向溢出。 */
+.sim-pagination { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 15px; margin: 22px 0 5px; }
 .sim-dialog { width: min(590px, calc(100vw - 32px)); max-height: calc(100dvh - 40px); overflow-y: auto; border: 1px solid #dfe8e3; border-radius: 14px; background: #fff; color: #203a34; padding: 26px; box-sizing: border-box; box-shadow: 0 15px 65px #15332635; }
 .sim-dialog::backdrop { background: #102a2266; }
 .sim-form { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }.sim-form p { margin: 4px 0 8px; line-height: 1.65; }.sim-form > label { font-size: 14px; font-weight: 500; }

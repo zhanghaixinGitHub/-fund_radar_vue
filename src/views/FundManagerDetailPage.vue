@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { getFundManager } from '@/api/fundManagers'
 import ManagerFundTable from '@/components/ManagerFundTable.vue'
 import { usePageNavigation } from '@/composables/usePageNavigation'
 import { useManagerRefresh } from '@/composables/useManagerRefresh'
 import type { ManagerDetail } from '@/types/fundManager'
-import { managerDate, managerFundTarget, managerRate } from '@/utils/fundManagerNavigation'
+import { managerDate, managerRate } from '@/utils/fundManagerNavigation'
 
 const route = useRoute()
 const { section } = usePageNavigation()
@@ -161,9 +161,6 @@ useManagerRefresh(() => load(true))
             计算区间：{{ selectedPerformance.startDate }} 至 {{ selectedPerformance.endDate }}。{{ selectedPerformance.includesCoManagement ? '任期包含共同管理，不能将全部业绩归于个人。' : '' }}基金净值表现不等于个人账户实际收益。
           </p>
         </template>
-        <RouterLink :to="managerFundTarget(detail.managerId, selected, route.fullPath)">
-          查看基金资料
-        </RouterLink>
       </template>
     </section>
     <section

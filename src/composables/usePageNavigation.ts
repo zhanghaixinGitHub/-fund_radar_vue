@@ -5,7 +5,6 @@ import type { LocationQuery, RouteLocationRaw } from 'vue-router'
 import { fundTypeOptions } from '@/utils/fundPresentation'
 import { normalizeRatingFilter } from '@/utils/fundRating'
 import { portfolioReturnPath } from '@/utils/advice'
-import { earningsReturnPath } from '@/utils/simulationEarnings'
 import { managerReturnPath } from '@/utils/fundManagerNavigation'
 
 export interface PageSection {
@@ -37,6 +36,7 @@ const pageSections: Record<string, PageSection[]> = {
     { key: 'nav', label: '净值走势' },
     { key: 'share', label: '份额规模' },
     { key: 'dividend', label: '分红记录' },
+    { key: 'comparison', label: '同类对比' },
     { key: 'rating', label: '基金评级' },
     { key: 'holdings', label: '基金持仓', group: '投资与动态' },
     { key: 'company', label: '持仓公司经营' },
@@ -60,13 +60,13 @@ const pageSections: Record<string, PageSection[]> = {
   ],
   'portfolio-snapshot': [
     { key: 'overview', label: '总览' },
-    { key: 'funding', label: '本人资金安排' },
-    { key: 'account-risk', label: '已录入持仓检查' },
-    { key: 'options', label: '调整前的条件比较' },
     { key: 'holdings', label: '持仓' },
     { key: 'earnings', label: '收益明细' },
     { key: 'plans', label: '定投计划' },
     { key: 'orders', label: '交易记录' },
+    { key: 'funding', label: '本人资金安排' },
+    { key: 'account-risk', label: '已录入持仓检查' },
+    { key: 'options', label: '调整前的条件比较' },
   ],
   notifications: [
     { key: 'messages', label: '已触发提醒' },
@@ -161,7 +161,8 @@ export function usePageNavigation() {
     if (routeName.value === 'manager-related-fund') return managerReturnPath(route.query.from, `/fund-managers/${route.params.managerId}`)
     if (routeName.value === 'fund-detail' && typeof route.query.from === 'string'
       && route.query.from.startsWith('/fund-managers')) return managerReturnPath(route.query.from)
-    if (routeName.value === 'portfolio-earnings') return earningsReturnPath(route.query.from)
+    // 收益明细属于“我的持仓”的同级菜单，通过子菜单切换，不重复显示模块返回入口。
+    if (routeName.value === 'portfolio-earnings') return null
     // 从顶栏直接进入持仓分析时没有来源页，不显示返回链接。
     if (routeName.value === 'portfolio-advice') {
       return typeof route.query.from === 'string' ? portfolioReturnPath(route.query.from) : null

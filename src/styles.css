@@ -2276,6 +2276,7 @@ h2 {
 }
 
 .admin-pagination {
+  flex-wrap: wrap;
   justify-content: flex-end;
   margin-top: 16px;
 }

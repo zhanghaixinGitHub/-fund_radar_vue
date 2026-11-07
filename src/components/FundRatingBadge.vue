@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import type { RatingSummary } from '@/api/fundRating'
-import { ratingLabel } from '@/utils/fundRating'
+import { formatRatingScore, ratingLabel } from '@/utils/fundRating'
 
 /** 列表评级只负责展示；整行的详情跳转由父级链接统一承接，避免出现第二个点击入口。 */
 const props = defineProps<{ value?: RatingSummary | null }>()
@@ -19,15 +19,23 @@ watch(() => props.value?.validUntil, refreshExpiry, { immediate: true })
 onBeforeUnmount(() => globalThis.clearTimeout(timer))
 // 列表响应已带回评级；这里只展示结果，并继续在页面停留期间检查有效期。
 const label = computed(() => ratingLabel(props.value, false, now.value))
+/** 部分分必须同时显示原权重覆盖率，避免把只评费用或管理的结果当作完整总分。 */
+const partialLabel = computed(() => {
+  if (label.value !== '部分评分') return null
+  const score = formatRatingScore(props.value?.partialScore)
+  const coverage = props.value?.scoreCoverage?.pointWeight
+  return score && coverage && Number(coverage) > 0 && Number(coverage) <= 100
+    ? `可评部分 ${score} 分 · 覆盖 ${coverage}%` : null
+})
 </script>
 
 <template>
   <span class="rating-badge">
-    <span>基金评级</span><strong>{{ label }}</strong>
+    <span>基金评级</span><strong>{{ partialLabel || label }}</strong>
   </span>
 </template>
 
 <style scoped>
-.rating-badge { display: flex; align-items: center; gap: 8px; color: var(--text-secondary, #53616b); font-size: 13px; }
+.rating-badge { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: var(--text-secondary, #53616b); font-size: 13px; }
 .rating-badge strong { padding: 3px 9px; border-radius: 8px; background: #edf0f8; color: #3e4c78; font-weight: 600; }
 </style>

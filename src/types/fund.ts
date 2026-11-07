@@ -4,6 +4,23 @@ import type { RatingFilter } from '@/utils/fundRating'
 /** Java 核心服务使用的稳定基金类型枚举。 */
 export type FundType = 'BOND' | 'STOCK' | 'MIXED' | 'INDEX' | 'MONEY' | 'QDII' | 'FOF' | 'OTHER'
 
+/** 正式披露确认的同产品份额；类别或币种未知时保留完整名称，不按后缀猜归属。 */
+export interface RelatedFundShare {
+  fundCode: string
+  fundName: string
+  shareClass: string | null
+  currency: string | null
+}
+
+export interface FundShareClasses {
+  fundCode: string
+  status: 'VERIFIED' | 'STALE' | 'UNVERIFIED'
+  /** 来源报告的统计截至日，不代表当前申赎状态或净值日期。 */
+  asOfDate: string | null
+  checkedAt: string | null
+  shares: RelatedFundShare[]
+}
+
 /** Java 核心服务返回的基金列表项契约。 */
 export interface FundSummary {
   fundCode: string

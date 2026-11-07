@@ -176,6 +176,12 @@ onBeforeUnmount(() => { alive = false; generation++; globalThis.clearTimeout(tim
           :disabled="saving"
         >
         <p>可卖 {{ simShares(preview.availableShares) }} 份 · 预计金额 {{ shares && preview.referenceNav ? simMoney(Number(shares) * Number(preview.referenceNav)) : '—' }} 元</p>
+        <p
+          v-if="preview.estimatedShares"
+          class="sim-muted"
+        >
+          期初份额按金额折算；原持有期限未知，相关卖出费用按已配置最高档估算。
+        </p>
         <div class="sim-actions">
           <button
             v-for="part in [4, 2, 1] as const"

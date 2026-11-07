@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ListPagination from '@/components/ListPagination.vue'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { get } from '@/api/http'
 
@@ -18,7 +19,8 @@ const result = ref<Result | null>(null)
 const loading = ref(false)
 const error = ref('')
 const page = ref(1)
-const visibleHoldings = computed(() => result.value?.holdings.slice((page.value - 1) * 20, page.value * 20) ?? [])
+const pageSize = ref(10)
+const visibleHoldings = computed(() => result.value?.holdings.slice((page.value - 1) * pageSize.value, page.value * pageSize.value) ?? [])
 let sequence = 0
 const amount = (value: string | null) => value == null ? '未知' : new Intl.NumberFormat('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value))
 const pct = (value: number | null) => value == null ? '未知' : `${Number(value).toFixed(2)}%`
@@ -116,22 +118,14 @@ onBeforeUnmount(() => sequence++)
               {{ holding.fundName }} · {{ holding.fundCode }}：{{ amount(holding.amount) }} 元，{{ holding.date ?? '日期未知' }}<span v-if="holding.issue">，估值待核对</span>。
             </li>
           </ul>
-          <nav
-            v-if="result.holdings.length > 20"
-            aria-label="账户持仓分页"
-          >
-            <button
-              :disabled="page === 1"
-              @click="page--"
-            >
-              上一页
-            </button><span>第 {{ page }} 页</span><button
-              :disabled="page * 20 >= result.holdings.length"
-              @click="page++"
-            >
-              下一页
-            </button>
-          </nav>
+          <ListPagination 
+            :page="page"
+            :page-size="pageSize"
+            :total="result.holdings.length"
+            :loading="loading"
+            label="账户持仓分页"
+            @change="(value, size) => { pageSize = size; page = value }" 
+          />
           <ul>
             <li
               v-for="source in result.sources"

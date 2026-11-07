@@ -7,16 +7,33 @@ export interface SimPosition {
   dividendGain: DecimalValue; receivableDividend: DecimalValue; paidDividend: DecimalValue
   cumulativeGain: DecimalValue; dailyGain: DecimalValue | null; totalBuy: DecimalValue; totalSell: DecimalValue
   unitNav: DecimalValue | null; navDate: string | null; issue: string | null
+  /** 期初份额经用户同意按金额折算；openingDate 是开始统计日，不是原始购买日。 */
+  estimatedShares?: boolean; openingDate?: string | null
 }
 export interface SimOverview {
+  /** 明确采用的截图基数；日期未知时为空，原持仓的份额与成本不由金额反推。 */
+  confirmedBaseline?: {
+    snapshotId: string; dataAsOfDate: string | null; recordedAt: string
+    holdings: ConfirmedHolding[]
+  } | null
+  /** 本人最新确认名单中尚无模拟账本的基金；只补列名称，不提供或推算持仓数值。 */
+  unrecordedHoldings?: { fundCode: string; fundName: string }[]
   positions: SimPosition[]; marketValue: DecimalValue; holdingGain: DecimalValue; cumulativeGain: DecimalValue
   dailyGain: DecimalValue | null; pendingBuyAmount: DecimalValue; pendingOrders: number; complete: boolean; rules: string
   job: { status: string; attemptedAt: string; completedAt: string | null; message: string | null } | null
+  /** 北京时间前一自然日的逐基金收益；缺少完整记录时为空，不借用其他日期。 */
+  yesterdayIncome?: { date: string; funds: SimEarningsDetail[] }
+}
+export interface ConfirmedHolding {
+  fundCode: string; fundName: string; reportedAmount: DecimalValue; reportedWeightPct: DecimalValue
+  reportedDailyGainAmount: DecimalValue; reportedHoldingGainAmount: DecimalValue
+  reportedHoldingGainPct: DecimalValue; reportedCumulativeGainAmount: DecimalValue
 }
 export interface SimPreview {
   fundCode: string; fundName: string; supported: boolean; reason: string | null
   referenceNav: DecimalValue | null; referenceDate: string | null; tradeDate: string; eligibleDate: string
   availableShares: DecimalValue; pendingBuys: number; rules: string
+  estimatedShares?: boolean
 }
 export interface SimExecution {
   shares: DecimalValue; unitNav: DecimalValue; grossAmount: DecimalValue

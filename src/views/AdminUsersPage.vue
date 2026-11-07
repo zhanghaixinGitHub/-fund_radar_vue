@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import ListPagination from '@/components/ListPagination.vue'
+import { normalizePageSize } from '@/utils/pagination'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { usePageNavigation } from '@/composables/usePageNavigation'
@@ -31,7 +33,7 @@ let usersRequest = 0
 let searchRequest = 0
 const total = ref(0)
 const page = ref(Math.max(0, Number.isInteger(Number(route.query.page)) ? Number(route.query.page) - 1 : 0))
-const pageSize = 20
+const pageSize = computed(() => normalizePageSize(route.query.size))
 const loading = ref(false)
 const actionUserId = ref<string | null>(null)
 const errorMessage = ref('')
@@ -48,7 +50,7 @@ const creditLedgerUser = ref<AdminUser | null>(null)
 const creditLedger = ref<WatchlistCreditLedgerPage | null>(null)
 const creditLedgerPage = ref(0)
 const creditLedgerLoading = ref(false)
-const creditLedgerPageSize = 10
+const creditLedgerPageSize = ref(10)
 const searchKeyword = ref('')
 const searchResults = ref<AdminUser[]>([])
 const searchLoading = ref(false)
@@ -57,8 +59,6 @@ const searchMessage = ref('')
 const roleOptions = ACCOUNT_ROLE_OPTIONS
 
 const activeUsers = computed(() => users.value.filter((user) => !user.legacyRecord && user.status === 'ACTIVE'))
-const hasPreviousPage = computed(() => page.value > 0)
-const hasNextPage = computed(() => (page.value + 1) * pageSize < total.value)
 const isLedgerSection = computed(() => section.value === 'ledger')
 const isPortfolioSection = computed(() => section.value === 'sim-portfolio')
 const isUserPickerSection = computed(() => isLedgerSection.value || isPortfolioSection.value)
@@ -76,7 +76,7 @@ async function loadUsers(): Promise<void> {
   loading.value = true
   errorMessage.value = ''
   try {
-    const response = await getAdminUsers(page.value, pageSize)
+    const response = await getAdminUsers(page.value, pageSize.value)
     if (sequence !== usersRequest) return
     users.value = response.items
     total.value = response.total
@@ -241,7 +241,7 @@ async function loadCreditLedger(): Promise<void> {
     const response = await getAdminUserWatchlistCreditLedger(
       creditLedgerUser.value.userId,
       creditLedgerPage.value,
-      creditLedgerPageSize,
+      creditLedgerPageSize.value,
     )
     if (sequence !== detailRequest) return
     creditLedger.value = response
@@ -297,7 +297,7 @@ async function searchUsers(): Promise<void> {
   searchLoading.value = true
   searchMessage.value = ''
   try {
-    const response = await getAdminUsers(0, pageSize, keyword)
+    const response = await getAdminUsers(0, pageSize.value, keyword)
     if (sequence !== searchRequest) return
     searchResults.value = response.items
     if (!response.items.length) searchMessage.value = '未找到匹配的账户，请更换姓名或手机号。'
@@ -333,19 +333,6 @@ async function openUserInsight(userId: string): Promise<void> {
   else if (isPortfolioSection.value) await viewSimPortfolio(user)
 }
 
-function previousCreditLedgerPage(): void {
-  if (creditLedgerPage.value > 0 && !creditLedgerLoading.value) {
-    creditLedgerPage.value -= 1
-    void loadCreditLedger()
-  }
-}
-
-function nextCreditLedgerPage(): void {
-  if (creditLedger.value && creditLedgerPage.value + 1 < creditLedger.value.totalPages && !creditLedgerLoading.value) {
-    creditLedgerPage.value += 1
-    void loadCreditLedger()
-  }
-}
 
 function creditLedgerTypeLabel(entryType: string): string {
   switch (entryType) {
@@ -366,16 +353,12 @@ function formatCreditDelta(creditDelta: number): string {
   return creditDelta > 0 ? `+${creditDelta}` : '—'
 }
 
-function previousPage(): void {
-  if (hasPreviousPage.value) {
-    void router.push({ path: route.path, query: { ...route.query, page: String(page.value), user: undefined, tab: undefined } })
-  }
+function changeUserPage(value: number, size: number): void {
+  void router.push({ path: route.path, query: { ...route.query, page: String(value), size: String(size), user: undefined, tab: undefined } })
 }
-
-function nextPage(): void {
-  if (hasNextPage.value) {
-    void router.push({ path: route.path, query: { ...route.query, page: String(page.value + 2), user: undefined, tab: undefined } })
-  }
+function changeLedgerPage(value: number, size: number): void {
+  creditLedgerPageSize.value = size; creditLedgerPage.value = value - 1
+  void loadCreditLedger()
 }
 
 function openUser(user: AdminUser): void {
@@ -390,7 +373,7 @@ function goUserInsight(target: 'ledger' | 'sim-portfolio', userId?: string): voi
   })
 }
 
-watch(() => route.query.page, () => {
+watch(() => `${route.query.page}:${route.query.size}`, () => {
   if (route.name !== 'admin-users') return
   page.value = Math.max(0, Number.isInteger(Number(route.query.page)) ? Number(route.query.page) - 1 : 0)
   void loadUsers()
@@ -550,25 +533,14 @@ onMounted(() => {
         </h2>
         <p>仅迁移旧本机账户的关注列表；提醒规则和个人持仓不会被自动迁移。</p>
       </div>
-      <div class="admin-pagination">
-        <button
-          class="text-button"
-          :disabled="loading || !hasPreviousPage"
-          type="button"
-          @click="previousPage"
-        >
-          上一页用户
-        </button>
-        <span>接收用户来自账户列表第 {{ page + 1 }} 页</span>
-        <button
-          class="text-button"
-          :disabled="loading || !hasNextPage"
-          type="button"
-          @click="nextPage"
-        >
-          下一页用户
-        </button>
-      </div>
+      <ListPagination 
+        :page="page + 1"
+        :page-size="pageSize"
+        :total="total"
+        :loading="loading"
+        label="用户列表分页"
+        @change="changeUserPage" 
+      />
       <div class="admin-inline-form">
         <label for="legacy-target">接收用户</label>
         <select
@@ -794,25 +766,14 @@ onMounted(() => {
         </table>
       </div>
 
-      <footer class="admin-pagination">
-        <button
-          class="secondary-button"
-          :disabled="!hasPreviousPage || loading"
-          type="button"
-          @click="previousPage"
-        >
-          上一页
-        </button>
-        <span>第 {{ page + 1 }} 页</span>
-        <button
-          class="secondary-button"
-          :disabled="!hasNextPage || loading"
-          type="button"
-          @click="nextPage"
-        >
-          下一页
-        </button>
-      </footer>
+      <ListPagination 
+        :page="page + 1"
+        :page-size="pageSize"
+        :total="total"
+        :loading="loading"
+        label="用户列表分页"
+        @change="changeUserPage" 
+      />
     </section>
 
     <section
@@ -943,28 +904,15 @@ onMounted(() => {
           </tbody>
         </table>
       </div>
-      <footer
-        v-if="creditLedger && creditLedger.totalPages > 1"
-        class="admin-pagination"
-      >
-        <button
-          class="secondary-button"
-          :disabled="creditLedgerPage === 0 || creditLedgerLoading"
-          type="button"
-          @click="previousCreditLedgerPage"
-        >
-          上一页
-        </button>
-        <span>第 {{ creditLedgerPage + 1 }} / {{ creditLedger.totalPages }} 页，共 {{ creditLedger.totalCount }} 条</span>
-        <button
-          class="secondary-button"
-          :disabled="creditLedgerPage + 1 >= creditLedger.totalPages || creditLedgerLoading"
-          type="button"
-          @click="nextCreditLedgerPage"
-        >
-          下一页
-        </button>
-      </footer>
+      <ListPagination
+        v-if="creditLedger && creditLedger.totalCount > 0"
+        :page="creditLedgerPage + 1"
+        :page-size="creditLedgerPageSize"
+        :total="creditLedger.totalCount"
+        :loading="creditLedgerLoading"
+        label="积分流水分页"
+        @change="changeLedgerPage" 
+      />
     </section>
 
     <section
