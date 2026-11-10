@@ -171,21 +171,26 @@ const fundGroups = computed(() => {
               class="fund-card"
               :to="{ name: 'fund-detail', params: { fundCode: fund.fundCode }, query: { from: route.fullPath } }"
             >
-              <span class="fund-code">{{ fund.fundCode }}</span>
-              <span class="fund-primary">
-                <strong>{{ fund.fundName }}</strong>
-                <span class="fund-tags">
+              <span class="fund-identity">
+                <span class="fund-code">{{ fund.fundCode }}</span>
+                <span class="fund-primary">
+                  <strong>{{ fund.fundName }}</strong>
                   <span
-                    v-if="shouldDisplayFundStatus(fund.status)"
-                    class="fund-status-tag"
+                    v-if="fund.isWatched || shouldDisplayFundStatus(fund.status)"
+                    class="fund-tags"
                   >
-                    {{ fundStatusLabel(fund.status) }}
-                  </span>
-                  <span
-                    v-if="fund.isWatched"
-                    class="watched-tag"
-                  >
-                    已关注
+                    <span
+                      v-if="shouldDisplayFundStatus(fund.status)"
+                      class="fund-status-tag"
+                    >
+                      {{ fundStatusLabel(fund.status) }}
+                    </span>
+                    <span
+                      v-if="fund.isWatched"
+                      class="watched-tag"
+                    >
+                      已关注
+                    </span>
                   </span>
                 </span>
               </span>
@@ -219,6 +224,37 @@ const fundGroups = computed(() => {
 </template>
 
 <style scoped>
+/* 按列表实际宽度换行，侧栏占宽和页面缩放时也能保留基金全名。 */
+.fund-market-entry { container-type: inline-size; }
+.fund-market-entry .fund-card {
+  grid-template: "identity changes date rating" / minmax(0, 1fr) auto auto auto;
+}
+.fund-identity {
+  grid-area: identity;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 12px;
+  min-width: 0;
+}
+.fund-market-entry .fund-primary strong { overflow: visible; white-space: normal; overflow-wrap: anywhere; }
+.fund-market-entry .fund-tags > span { white-space: nowrap; }
+.fund-market-entry .change-rate-list { grid-area: changes; justify-content: flex-start; flex-wrap: wrap; }
+.fund-market-entry .change-rate { white-space: nowrap; }
+.fund-market-entry .fund-card > .as-of-date { grid-area: date; }
+.fund-market-entry .rating-badge { grid-area: rating; }
+@container (max-width: 72rem) {
+  .fund-market-entry .fund-card {
+    grid-template: "identity rating" "changes date" / minmax(0, 1fr) auto;
+    row-gap: 10px;
+  }
+  .fund-market-entry .rating-badge { justify-content: flex-end; }
+}
+@container (max-width: 40rem) {
+  .fund-market-entry .fund-card { grid-template: "identity" "changes" "date" "rating" / minmax(0, 1fr); }
+  .fund-market-entry .rating-badge { justify-content: flex-start; }
+}
+
 /* 查询与评级共用现有表单视觉；窄屏自然换行，避免挤压输入框和按钮。 */
 .market-search-panel { grid-template-columns: minmax(0, 1fr) minmax(180px, 280px); gap: 24px; align-items: end; }
 .market-keyword-filter, .market-rating-filter { display: grid; gap: 10px; min-width: 0; }

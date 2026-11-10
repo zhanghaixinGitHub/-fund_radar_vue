@@ -19,23 +19,29 @@ watch(() => props.value?.validUntil, refreshExpiry, { immediate: true })
 onBeforeUnmount(() => globalThis.clearTimeout(timer))
 // 列表响应已带回评级；这里只展示结果，并继续在页面停留期间检查有效期。
 const label = computed(() => ratingLabel(props.value, false, now.value))
-/** 部分分必须同时显示原权重覆盖率，避免把只评费用或管理的结果当作完整总分。 */
+/** 列表标明是可评部分，权重覆盖率留在评级详情。 */
 const partialLabel = computed(() => {
   if (label.value !== '部分评分') return null
   const score = formatRatingScore(props.value?.partialScore)
   const coverage = props.value?.scoreCoverage?.pointWeight
   return score && coverage && Number(coverage) > 0 && Number(coverage) <= 100
-    ? `可评部分 ${score} 分 · 覆盖 ${coverage}%` : null
+    ? `可评部分 ${score} 分` : null
 })
 </script>
 
 <template>
   <span class="rating-badge">
     <span>基金评级</span><strong>{{ partialLabel || label }}</strong>
+    <span
+      v-if="value?.incompleteReviewedOn && label !== '评级待更新'"
+      class="rating-review"
+    >已核查，暂无法补全</span>
   </span>
 </template>
 
 <style scoped>
 .rating-badge { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: var(--text-secondary, #53616b); font-size: 13px; }
 .rating-badge strong { padding: 3px 9px; border-radius: 8px; background: #edf0f8; color: #3e4c78; font-weight: 600; }
+.rating-review { padding: 3px 9px; border-radius: 8px; background: #f7efde; color: #6d4c1f; }
+.rating-badge > * { white-space: nowrap; }
 </style>

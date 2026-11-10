@@ -21,6 +21,7 @@ export interface RatingSummary {
   scoreRange?: RatingScoreRange | null
   partialScore?: string | null
   scoreCoverage?: RatingCoverage | null
+  incompleteReviewedOn?: string | null
 }
 export interface RatingDimension {
   key: string; name: string; grade: RatingGrade | null; gradeLabel: string | null; explanation: string
