@@ -100,7 +100,7 @@ export function historyReturnText(value: string | null | undefined): string {
  * 统一的是页面表达，不合并收益口径。一日沿用原有首次公布净值的核对结果与提前保存约束；
  * 较长周期沿用总回报及最新修订。一天判断存在分歧时保留“方向不明确”，不能任选一路算对错。
  */
-export function historyItemView(item: HistoryItem) {
+export function historyItemView(item: HistoryItem, today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai' }).format(new Date())) {
   if (item.kind === 'daily') {
     const record = item.record, forecast = record.forecast
     const summary = direction1dSummary(forecast)
@@ -108,13 +108,14 @@ export function historyItemView(item: HistoryItem) {
     const available = analysis ? [{ branchId: 'FIXED' as const }] : forecast.branches.filter(branch => branch.status === 'AVAILABLE' && branch.predictedDirection)
     const outcome = record.outcomes[0]
     const conclusions = new Set(available.map(branch => direction1dConclusion(record, branch.branchId)))
+    const waiting = pendingHistoryResult(forecast.targetNavDate, record.outcomeCheck?.status, today)
     const result = summary.direction === '暂不判断' ? '暂不计对错' : !available.length ? '暂无有效预测' : summary.direction === '方向不明确' ? '暂不计对错'
-      : record.receiptStatus !== 'VERIFIED' ? '暂不计对错' : !outcome ? '等待结果'
+      : record.receiptStatus !== 'VERIFIED' ? '暂不计对错' : !outcome ? waiting
         : conclusions.size === 1 && conclusions.has('正确') ? '方向相符'
           : conclusions.size === 1 && conclusions.has('错误') ? '方向不符' : '结果待确认'
     return {
       direction: summary.direction, tone: summary.tone, endDate: forecast.targetNavDate, estimated: false,
-      actual: outcome ? historyReturnText(outcome.navReturn) : '待公布',
+      actual: outcome ? historyReturnText(outcome.navReturn) : waiting === '缺少数据' ? '净值暂缺' : '—',
       actualDirection: outcome ? directions[outcome.actualDirection] ?? '方向暂缺' : '',
       result, resultTone: result === '方向相符' ? 'correct' : result === '方向不符' ? 'incorrect' : 'pending',
       // 比较日定义涨跌标签；实际取得日期只说明资料新旧，缺净值时不能把比较日向前挪。
@@ -129,12 +130,12 @@ export function historyItemView(item: HistoryItem) {
   }
   const row = item.record, prediction = row.payload, outcome = row.outcomes?.at(-1)
   const endDate = row.resolution?.endDate || prediction.endDate
-  const result = outcome ? (outcome.correct ? '方向相符' : '方向不符')
-    : !endDate ? '日期待确认' : row.outcomeCheck?.status === 'PENDING_DATA' ? '等待数据' : '等待结果'
+  const waiting = pendingHistoryResult(endDate, row.outcomeCheck?.status, today)
+  const result = outcome ? (outcome.correct ? '方向相符' : '方向不符') : waiting
   return {
     direction: directions[prediction.direction] ?? '暂无法判断', tone: prediction.direction.toLowerCase(),
     endDate: endDate || prediction.nominalEndDate || '待确认', estimated: !endDate,
-    actual: outcome ? historyReturnText(outcome.totalReturn) : '待公布',
+    actual: outcome ? historyReturnText(outcome.totalReturn) : waiting === '缺少数据' ? '净值或分红资料暂缺' : '—',
     actualDirection: outcome ? directions[outcome.actualDirection] ?? '方向暂缺' : '',
     result, resultTone: outcome ? (outcome.correct ? 'correct' : 'incorrect') : 'pending',
     comparisonDate: prediction.baseNavDate || prediction.dataAsOf,
@@ -146,4 +147,13 @@ export function historyItemView(item: HistoryItem) {
         : '本条记录的涨跌判断口径暂无法确认。',
     caution: '',
   }
+}
+
+/** 到期日结束后才等待核对；没有核对回执时不能声称官方净值尚未公布。 */
+export function pendingHistoryResult(endDate: string | null | undefined, status: string | undefined, today: string): string {
+  if (!endDate) return '日期待确认'
+  if (endDate >= today) return '尚未到期'
+  if (status === 'PENDING_DATA') return '缺少数据'
+  if (status === 'FAILED') return '核对未完成'
+  return '尚未核对'
 }

@@ -30,6 +30,7 @@ export interface RatingDimension {
   scoreRange?: RatingScoreRange | null
   metrics: { name: string; value: string; unit: string; period: string }[]
   sources: { title: string; url: string; publishedOn: string | null }[]
+  assessment?: { conclusion: string; paragraphs: string[]; limitations: string[] } | null
 }
 export interface RatingDetail extends RatingSummary {
   /** 当前有效正式综合分；旧服务响应暂缺时保留为空。 */

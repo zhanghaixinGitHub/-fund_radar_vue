@@ -139,6 +139,12 @@ const comparisonPeriod = computed(() => {
               <span>{{ rated ? dimension.gradeLabel : scored ? '已评分' : (available && (dimension.score || dimension.scoreRange)) ? '已评部分' : '资料待补齐' }}</span>
             </div>
           </div>
+          <p
+            v-if="dimension.assessment"
+            class="dimension-conclusion"
+          >
+            {{ dimension.assessment.conclusion }}
+          </p>
           <dl v-if="dimension.metrics.length">
             <div
               v-for="metric in dimension.metrics"
@@ -147,11 +153,49 @@ const comparisonPeriod = computed(() => {
               <dt>{{ metric.name }}</dt><dd>{{ metric.value }}{{ metric.unit }} <small>（{{ metric.period }}）</small></dd>
             </div>
           </dl>
-          <p>{{ dimension.explanation }}</p>
+          <template v-if="dimension.assessment">
+            <p
+              v-for="paragraph in dimension.assessment.paragraphs"
+              :key="paragraph"
+            >
+              {{ paragraph }}
+            </p>
+            <p
+              v-for="note in dimension.assessment.limitations"
+              :key="note"
+              class="section-note"
+            >
+              {{ note }}
+            </p>
+          </template>
+          <p v-else>
+            {{ dimension.explanation }}
+          </p>
+          <details
+            v-if="dimension.sources.length"
+            class="dimension-sources"
+          >
+            <summary>查看资料依据</summary>
+            <ul>
+              <li
+                v-for="source in dimension.sources"
+                :key="`${source.url}-${source.title}`"
+              >
+                <a
+                  v-if="/^https?:\/\//i.test(source.url)"
+                  :href="source.url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >{{ source.title }}</a>
+                <span v-else>{{ source.title }}</span>
+                <span v-if="source.publishedOn"> · {{ source.publishedOn }}</span>
+              </li>
+            </ul>
+          </details>
         </article>
       </div>
       <div
-        v-if="rated"
+        v-if="rated || scored || partial"
         class="rating-observations"
       >
         <div v-if="value.strengths.length">
@@ -215,6 +259,9 @@ const comparisonPeriod = computed(() => {
 .rating-dimension p, .rating-dimension dl { margin: 8px 0 0; }
 .rating-dimension dl > div { display: flex; gap: 12px; flex-wrap: wrap; }
 .rating-dimension dd { margin: 0; }
+.rating-dimension .dimension-conclusion { color: var(--text-primary, #193733); font-weight: 600; }
+.dimension-sources { margin-top: 10px; color: var(--text-secondary, #53616b); }
+.dimension-sources summary { cursor: pointer; }
 .rating-dimension small, .rating-dimension p { color: var(--text-secondary, #53616b); }
 .rating-observations { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 20px; }
 .rating-section li { overflow-wrap: anywhere; }

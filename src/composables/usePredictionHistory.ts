@@ -8,6 +8,7 @@ type Readers = {
   multi: (code: string, cursor?: MultiCursor) => Promise<{ items: MultiHistoryRow[] }>
   daily: (code: string, page: number, cursor?: Direction1dCursor) => Promise<Direction1dPage<Direction1dRecord>>
   reviews?: (code: string, cursor?: AnalysisReviewCursor) => Promise<AnalysisReviewPage>
+  days?: (code: string, dates: string[]) => Promise<{ items: MultiHistoryRow[]; dates: string[] }>
 }
 type Source = 'multi' | 'daily' | 'reviews'
 
@@ -18,6 +19,8 @@ type Source = 'multi' | 'daily' | 'reviews'
 export function usePredictionHistory(fundCode: () => string, readers: Readers) {
   const multi = ref<MultiHistoryRow[]>([]), daily = ref<Direction1dRecord[]>([])
   const reviews = ref<AnalysisReview[]>([])
+  const exactMulti = ref<MultiHistoryRow[]>([]), completeDates = ref<string[]>([])
+  const dayBusy = ref(false), dayError = ref('')
   const busy = ref(false)
   const errors = ref({ multi: '', daily: '', reviews: '' })
   const more = ref({ multi: true, daily: true, reviews: !!readers.reviews })
@@ -26,6 +29,24 @@ export function usePredictionHistory(fundCode: () => string, readers: Readers) {
   let reviewCursor: AnalysisReviewCursor | undefined
   let dailyPage = 0
   let sequence = 0
+
+  async function loadDays(dates: string[]) {
+    if (!readers.days || dayBusy.value) return
+    const wanted = [...new Set(dates)].filter(date => !completeDates.value.includes(date)).slice(0, 50)
+    if (!wanted.length) return
+    const run = sequence, code = fundCode()
+    dayBusy.value = true; dayError.value = ''
+    try {
+      const result = await readers.days(code, wanted)
+      if (run !== sequence) return
+      if (result.dates.length !== wanted.length || wanted.some(date => !result.dates.includes(date))
+        || result.items.some(row => row.payload.fundCode !== code || !wanted.includes(row.payload.startDate))) throw new Error('日期记录不一致')
+      exactMulti.value.push(...result.items)
+      completeDates.value.push(...wanted)
+    } catch {
+      if (run === sequence) dayError.value = '这些日期的预测暂时无法读取。'
+    } finally { if (run === sequence) dayBusy.value = false }
+  }
 
   async function load(only?: Source) {
     if (busy.value) return
@@ -81,6 +102,7 @@ export function usePredictionHistory(fundCode: () => string, readers: Readers) {
     multi.value = []
     daily.value = []
     reviews.value = []
+    exactMulti.value = []; completeDates.value = []; dayBusy.value = false; dayError.value = ''
     multiCursor = undefined
     reviewCursor = undefined
     dailyCursor.value = undefined
@@ -91,6 +113,7 @@ export function usePredictionHistory(fundCode: () => string, readers: Readers) {
     void load()
   }, { immediate: true, flush: 'sync' })
   onScopeDispose(() => { sequence++ })
-  return { multi, daily, reviews, busy, errors, more, load, dailyDateComplete,
+  return { multi: computed(() => [...multi.value, ...exactMulti.value]), daily, reviews, busy, errors, more, load, dailyDateComplete,
+    loadDays, dayBusy, dayError, multiDateComplete: (date: string) => completeDates.value.includes(date),
     hasMore: computed(() => more.value.multi || more.value.daily || more.value.reviews) }
 }

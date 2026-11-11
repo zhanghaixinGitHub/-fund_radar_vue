@@ -97,6 +97,7 @@ export interface Direction1dOutcome {
   labelObservedAt: string
 }
 export interface Direction1dRecord {
+  outcomeCheck?: { status?: string }
   status?: string
   forecastId: string
   forecast: Direction1dForecast

@@ -40,7 +40,7 @@ test('002112新分析选择最新输入，净值日期与比较基准分开，�
   assert.equal(view.direction, '偏下跌')
   assert.equal(view.dataDate, '2026-10-08')
   assert.equal(view.comparisonDate, '2026-10-09')
-  assert.equal(view.result, '等待结果')
+  assert.equal(view.result, '尚未核对')
   row.outcomes.push({ actualDirection: 'FLAT', y: 0, navReturn: '0' })
   assert.equal(historyItemView(item).result, '方向不符')
 })
@@ -237,5 +237,55 @@ test('换基金或卸载后，旧请求不能回填记录、错误或加载状�
   fund.value = '008888'
   scope.stop()
   await settle()
+  assert.deepEqual(model.multi.value, [])
+})
+
+
+test('区分尚未到期、缺数据、尚未核对与核对失败，未核对不能冒充净值待公布', () => {
+  const daily = dailyRow('one', '2026-11-05', '2026-11-05T10:00:00+08:00')
+  const item = groupPredictionHistory('008888', [], [daily])[0].items.T1_V1
+  assert.equal(historyItemView(item, '2026-11-05').result, '尚未到期')
+  assert.equal(historyItemView(item, '2026-11-11').result, '尚未核对')
+  assert.equal(historyItemView(item, '2026-11-11').actual, '—')
+  daily.outcomeCheck = { status: 'PENDING_DATA' }
+  assert.equal(historyItemView(item, '2026-11-11').result, '缺少数据')
+  daily.outcomeCheck = { status: 'FAILED' }
+  assert.equal(historyItemView(item, '2026-11-11').result, '核对未完成')
+  const multi = multiRow('long', '2026-11-05', '2026-11-05T10:00:00+08:00', 'T20_V1')
+  multi.payload.endDate = '2026-12-02'
+  const longer = groupPredictionHistory('008888', [multi], [])[0].items.T20_V1
+  assert.equal(historyItemView(longer, '2026-11-11').result, '尚未到期')
+  multi.payload.endDate = '2026-11-09'
+  multi.outcomeCheck = { status: 'PENDING_DATA' }
+  assert.equal(historyItemView(longer, '2026-11-11').result, '缺少数据')
+})
+
+test('可见日期一次读齐，不改变原翻页游标；没有记录须等待该日查询成功', async t => {
+  const calls = [], rows = Array.from({ length: 30 }, (_, i) => multiRow(`raw-${i}`, '2026-11-05', '2026-11-05T10:00:00Z'))
+  const { model } = setup(t, { daily: async () => page(), multi: async (...args) => {
+    calls.push(args); return { items: calls.length === 1 ? rows : [] }
+  }, days: async (code, dates) => ({ dates, items: [] }) })
+  await settle()
+  assert.equal(model.multiDateComplete('2026-11-04'), false)
+  await model.loadDays(['2026-11-04', '2026-11-05'])
+  assert.equal(model.multiDateComplete('2026-11-04'), true)
+  await model.load()
+  assert.equal(calls[1][1].predictionId, 'raw-29')
+  assert.equal(model.multi.value.length, 30)
+})
+
+test('按日查询失败不认定没有预测，切换基金拒绝旧结果', async t => {
+  const pending = deferred()
+  let attempts = 0
+  const { model, fund } = setup(t, { multi: async () => ({ items: [] }), daily: async () => page(),
+    days: async () => { if (++attempts === 1) throw new Error('offline'); return pending.promise } })
+  await settle(); await model.loadDays(['2026-11-05'])
+  assert.ok(model.dayError.value)
+  assert.equal(model.multiDateComplete('2026-11-05'), false)
+  const request = model.loadDays(['2026-11-05'])
+  fund.value = '000001'
+  pending.resolve({ dates: ['2026-11-05'], items: [multiRow('old', '2026-11-05', '2026-11-05T10:00:00Z')] })
+  await request; await settle()
+  assert.equal(model.multiDateComplete('2026-11-05'), false)
   assert.deepEqual(model.multi.value, [])
 })

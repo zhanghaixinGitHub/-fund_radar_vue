@@ -13,13 +13,16 @@ import PredictionEvidenceBody from '@/components/PredictionEvidenceBody.vue'
 import AnalysisReviewBody from '@/components/AnalysisReviewBody.vue'
 
 const props = defineProps<{ fundCode: string }>()
-const { multi, daily, reviews, busy, errors, more, hasMore, load, dailyDateComplete } = usePredictionHistory(
+const { multi, daily, reviews, busy, errors, more, hasMore, load, dailyDateComplete,
+  loadDays, dayBusy, dayError, multiDateComplete } = usePredictionHistory(
   () => props.fundCode,
   {
     multi: (code, cursor) => get<{ items: MultiHistoryRow[] }>(`/api/v1/watchlist/${code}/predictions/history${cursor
       ? `?before=${encodeURIComponent(cursor.generatedAt)}&beforeId=${encodeURIComponent(cursor.predictionId)}` : ''}`),
     daily: getDirection1dFundHistory,
     reviews: readAnalysisReviews,
+    days: (code, dates) => get<{ items: MultiHistoryRow[]; dates: string[] }>(
+      `/api/v1/watchlist/${code}/predictions/history-days?${new globalThis.URLSearchParams({ dates: dates.join(',') })}`),
   },
 )
 const expandedId = ref<string | null>(null)
@@ -42,18 +45,23 @@ const days = computed(() => groupPredictionHistory(props.fundCode, multi.value, 
   revisions: dailyDateComplete(day.date) ? day.dailyRevisions : [],
   slots: historyPeriods.map(period => {
     const source = period.id === 'T1_V1' ? 'daily' : 'multi'
-    const complete = source === 'multi' || dailyDateComplete(day.date)
+    const complete = source === 'multi' ? multiDateComplete(day.date) || !more.value.multi : dailyDateComplete(day.date)
     const item = complete ? (source === 'daily'
       ? (props.fundCode === '002112' ? day.items[period.id] : day.dailyRevisions.find(row => row.id === selectedRevision.value[day.date]) ?? day.items[period.id])
       : day.items[period.id]) : undefined
     return { ...period, item, view: item ? historyItemView(item) : null,
-      empty: errors.value[source] ? '暂时无法读取' : busy.value ? '正在读取…'
-        : !complete || more.value[source] ? '还有记录待加载' : '暂无预测',
+      empty: errors.value[source] || (source === 'multi' && dayError.value) ? '暂时无法读取'
+        : busy.value || (source === 'multi' && dayBusy.value) ? '正在读取…'
+          : !complete ? '预测待加载' : '没有预测',
     }
   }),
 })))
 // 按日期分组分页，不拆散同一天的四个预测周期和修订记录。
 const visibleDays = computed(() => days.value.slice((historyPage.value - 1) * historyPageSize.value, historyPage.value * historyPageSize.value))
+const visibleDates = computed(() => visibleDays.value.map(day => day.date))
+watch([busy, dayBusy, () => visibleDates.value.join(',')], () => {
+  if (!busy.value && !dayBusy.value && !dayError.value) void loadDays(visibleDates.value)
+})
 const historyTotal = computed(() => hasMore.value ? undefined : days.value.length)
 const hasNextHistory = computed(() => hasMore.value || historyPage.value * historyPageSize.value < days.value.length)
 
@@ -87,7 +95,8 @@ watch(() => props.fundCode, () => {
   ++pagingGeneration; historyPage.value = 1; pagingBusy.value = false; pagingError.value = ''
 })
 watch(busy, value => {
-  if (!value && !pagingBusy.value && historyPage.value === 1 && days.value.length < historyPageSize.value && hasMore.value
+  if (!value && !pagingBusy.value && historyPage.value === 1 && hasMore.value
+    && (days.value.length < historyPageSize.value || visibleDates.value.some(date => !dailyDateComplete(date)))
     && !Object.values(errors.value).some(Boolean)) void changeHistoryPage(1, historyPageSize.value)
 })
 onBeforeUnmount(() => { ++pagingGeneration })
@@ -201,6 +210,20 @@ onBeforeUnmount(() => { sequence++ })
       role="status"
     >
       部分一日预测记录暂不可用，已停止展示这些记录。
+    </p>
+    <p
+      v-if="dayError"
+      class="history-notice"
+      role="alert"
+    >
+      {{ dayError }}
+      <button
+        class="history-link"
+        :disabled="dayBusy"
+        @click="loadDays(visibleDates)"
+      >
+        重试
+      </button>
     </p>
     <p
       v-if="busy && !days.length"

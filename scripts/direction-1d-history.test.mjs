@@ -30,7 +30,7 @@ test('翻页始终携带当前基金和对应游标，刷新从第一页重新�
     return response([record()], { totalCount: 21, page: args[1], nextCursor: cursor })
   })
   await settle(); await model.next(); await model.previous(); await model.refresh()
-  assert.deepEqual(calls, [['005284', 1, undefined], ['005284', 2, cursor], ['005284', 1, undefined], ['005284', 1, undefined]])
+  assert.deepEqual(calls, [['005284', 1, undefined, 10], ['005284', 2, cursor, 10], ['005284', 1, undefined, 10], ['005284', 1, undefined, 10]])
 })
 
 test('切换基金立即清空旧历史和游标，旧基金晚返回不覆盖新基金', async (t) => {
@@ -43,7 +43,7 @@ test('切换基金立即清空旧历史和游标，旧基金晚返回不覆盖�
   await settle()
   assert.equal(model.history.value.items[0].forecast.fundCode, '001632')
   assert.equal(model.page.value, 1)
-  assert.deepEqual(calls[1], ['001632', 1, undefined])
+  assert.deepEqual(calls[1], ['001632', 1, undefined, 10])
 })
 
 test('空基金代码不发请求，也不退回全部基金；空结果保持空态', async (t) => {
