@@ -26,6 +26,8 @@ export interface WatchlistItem {
 export interface WatchlistQuery {
   keyword?: string
   fundType?: FundType
+  /** 仅保留当前账号仍有模拟持仓份额的关注基金。 */
+  heldOnly?: boolean
   page?: number
   pageSize?: number
 }

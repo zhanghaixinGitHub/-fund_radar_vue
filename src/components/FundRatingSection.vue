@@ -99,7 +99,9 @@ const comparisonPeriod = computed(() => {
       <p
         v-if="value.incompleteReviewedOn && label !== '评级待更新'"
         class="section-note"
-      >已核查，暂无法补全 · 核查日期 {{ value.incompleteReviewedOn }}</p>
+      >
+        已核查，暂无法补全 · 核查日期 {{ value.incompleteReviewedOn }}
+      </p>
       <p
         v-if="available && value.scoreCoverage"
         class="section-note"

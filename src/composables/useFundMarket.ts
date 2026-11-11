@@ -17,6 +17,8 @@ export function useFundMarket() {
   const keyword = ref('')
   const selectedFundType = ref<FundType | ''>('')
   const selectedRating = ref<RatingFilter | ''>('')
+  const watchedOnly = ref(false)
+  const heldOnly = ref(true)
   const loading = ref(false)
   const errorMessage = ref('')
   const stale = ref(false)
@@ -44,6 +46,8 @@ export function useFundMarket() {
         keyword: keyword.value.trim() || undefined,
         fundType: selectedFundType.value || undefined,
         rating: selectedRating.value || undefined,
+        watchedOnly: watchedOnly.value || undefined,
+        heldOnly: heldOnly.value || undefined,
         pageSize: pageSize.value,
         page: targetPage,
       })
@@ -71,7 +75,15 @@ export function useFundMarket() {
   }
 
   async function loadPage(targetPage: number): Promise<void> {
-    if (!await navigate(selectedFundType.value, keyword.value, targetPage, pageSize.value, selectedRating.value)) {
+    if (!await navigate(
+      selectedFundType.value,
+      keyword.value,
+      targetPage,
+      pageSize.value,
+      selectedRating.value,
+      watchedOnly.value,
+      heldOnly.value,
+    )) {
       await fetchPage(targetPage)
     }
   }
@@ -80,6 +92,8 @@ export function useFundMarket() {
     if (!isCurrent.value) return
     selectedFundType.value = value.type as FundType | ''
     selectedRating.value = value.rating
+    watchedOnly.value = value.watchedOnly
+    heldOnly.value = value.heldOnly
     keyword.value = value.keyword
     pageSize.value = value.size
     currentPage.value = value.page
@@ -150,6 +164,7 @@ export function useFundMarket() {
     errorMessage,
     funds,
     firstPage,
+    heldOnly,
     goToPage,
     hasNextPage,
     hasPreviousPage,
@@ -168,5 +183,6 @@ export function useFundMarket() {
     stale,
     totalCount,
     totalPages,
+    watchedOnly,
   }
 }

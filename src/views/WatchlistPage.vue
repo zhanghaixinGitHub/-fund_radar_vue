@@ -16,6 +16,7 @@ import {
 const {
   currentPage,
   errorMessage,
+  heldOnly,
   keyword,
   loading,
   marketDataUnavailable,
@@ -37,18 +38,6 @@ const watchlistGroups = computed(() => {
   }
   return [...groups.entries()].map(([fundType, items]) => ({ fundType, items }))
 })
-
-/** 将服务端时间安全地格式化为本机可读文本；非法时间保留原始值以避免伪造时间。 */
-function formatCreatedAt(value: string): string {
-  const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime())) {
-    return value
-  }
-  return new Intl.DateTimeFormat('zh-CN', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(parsed)
-}
 
 </script>
 
@@ -82,25 +71,55 @@ function formatCreatedAt(value: string): string {
     </section>
 
     <form
-      class="search-panel"
+      class="search-panel watchlist-search-panel"
       @submit.prevent="search"
     >
-      <label for="watchlist-keyword">基金代码或名称</label>
-      <div class="search-row">
-        <input
-          id="watchlist-keyword"
-          v-model="keyword"
-          maxlength="50"
-          placeholder="例如：000001"
-          type="search"
-        >
-        <button
-          class="primary-button"
-          :disabled="loading"
-          type="submit"
-        >
-          {{ loading ? '查询中…' : '查询基金' }}
-        </button>
+      <div class="watchlist-keyword-filter">
+        <label for="watchlist-keyword">基金代码或名称</label>
+        <div class="search-row">
+          <input
+            id="watchlist-keyword"
+            v-model="keyword"
+            maxlength="50"
+            placeholder="例如：000001"
+            type="search"
+          >
+          <button
+            class="primary-button"
+            :disabled="loading"
+            type="submit"
+          >
+            {{ loading ? '查询中…' : '查询基金' }}
+          </button>
+        </div>
+      </div>
+      <div class="watchlist-held-filter">
+        <label for="watchlist-held">持仓状态</label>
+        <div class="watchlist-held-control">
+          <select
+            id="watchlist-held"
+            v-model="heldOnly"
+            :disabled="loading"
+            @change="search"
+          >
+            <option :value="false">
+              全部关注
+            </option>
+            <option :value="true">
+              已持仓
+            </option>
+          </select>
+          <button
+            class="watchlist-held-clear"
+            :disabled="loading"
+            type="button"
+            aria-label="清除持仓筛选"
+            title="清除持仓筛选"
+            @click="heldOnly = false; search()"
+          >
+            <span aria-hidden="true">×</span>
+          </button>
+        </div>
       </div>
     </form>
 
@@ -180,7 +199,6 @@ function formatCreatedAt(value: string): string {
                 <span :class="['change-rate', changeRateTone(item.weekChangeRate)]">近一周 {{ formatChangeRate(item.weekChangeRate) }}</span>
                 <span :class="['change-rate', changeRateTone(item.monthChangeRate)]">近一月 {{ formatChangeRate(item.monthChangeRate) }}</span>
               </span>
-              <time :datetime="item.createdAt">关注于 {{ formatCreatedAt(item.createdAt) }}</time>
             </RouterLink>
             <SimulationFundActions :fund-code="item.fundCode" />
           </li>
@@ -198,3 +216,19 @@ function formatCreatedAt(value: string): string {
     />
   </section>
 </template>
+
+<style scoped>
+.watchlist-search-panel { grid-template-columns: minmax(0, 1fr) minmax(180px, 280px); gap: 24px; align-items: end; }
+.watchlist-keyword-filter, .watchlist-held-filter { display: grid; gap: 10px; min-width: 0; }
+.watchlist-keyword-filter { max-width: 660px; }
+.watchlist-held-control { position: relative; display: flex; }
+.watchlist-held-filter select { flex: 1; width: 100%; min-width: 0; min-height: 44px; padding: 10px 64px 10px 12px; color: #17332e; font: inherit; background: #fff; border: 1px solid #b9d5c5; border-radius: 10px; }
+.watchlist-held-clear { position: absolute; top: 50%; right: 28px; display: grid; place-items: center; width: 24px; height: 28px; padding: 0; color: #38639b; font-size: 20px; font-weight: 700; line-height: 1; background: transparent; border: 0; border-radius: 4px; transform: translateY(-50%); cursor: pointer; }
+.watchlist-held-clear:hover:not(:disabled) { color: #1b457e; }
+.watchlist-held-clear:disabled { opacity: .65; cursor: wait; }
+.watchlist-held-filter select:focus-visible, .watchlist-held-clear:focus-visible { outline: 2px solid #0f766e; outline-offset: 3px; }
+@media (max-width: 900px) {
+  .watchlist-search-panel { grid-template-columns: 1fr; gap: 16px; }
+  .watchlist-keyword-filter { max-width: none; }
+}
+</style>

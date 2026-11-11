@@ -327,7 +327,7 @@ h2 {
 
 .watchlist-card {
   display: grid;
-  grid-template-columns: 90px minmax(0, 1fr) auto auto;
+  grid-template-columns: 90px minmax(0, 1fr) auto;
   gap: 14px;
   align-items: center;
   padding: 18px;
@@ -343,12 +343,6 @@ h2 {
   border-color: #0f766e;
   outline: none;
   box-shadow: 0 0 0 3px rgb(15 118 110 / 18%);
-}
-
-.watchlist-card time {
-  color: #597069;
-  font-size: 14px;
-  white-space: nowrap;
 }
 
 .fund-primary {
@@ -1578,7 +1572,7 @@ h2 {
 
 @media (max-width: 900px) {
   .watchlist-card {
-    grid-template-columns: 90px minmax(0, 1fr) auto;
+    grid-template-columns: 90px minmax(0, 1fr);
   }
 
   .watchlist-card .fund-primary {
@@ -1592,11 +1586,6 @@ h2 {
     justify-content: flex-start;
     flex-wrap: wrap;
     white-space: normal;
-  }
-
-  .watchlist-card time {
-    grid-column: 2 / -1;
-    grid-row: 3;
   }
 }
 

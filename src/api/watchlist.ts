@@ -13,6 +13,9 @@ export function getWatchlist(query: WatchlistQuery = {}): Promise<WatchlistPage>
   if (query.fundType) {
     search.set('fundType', query.fundType)
   }
+  if (query.heldOnly) {
+    search.set('heldOnly', 'true')
+  }
   if (query.page) {
     search.set('page', String(query.page))
   }

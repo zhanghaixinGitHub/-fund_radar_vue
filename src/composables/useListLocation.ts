@@ -15,14 +15,31 @@ export function useListLocation() {
     type: fundTypeOptions.find((item) => item.value === route.query.type)?.value ?? '',
     keyword: typeof route.query.keyword === 'string' ? route.query.keyword.slice(0, 50) : '',
     rating: routeName === 'fund-market' ? normalizeRatingFilter(route.query.rating) : '',
+    watchedOnly: routeName === 'fund-market' && route.query.watchedOnly === 'true',
+    heldOnly: (routeName === 'fund-market' || routeName === 'watchlist') && route.query.heldOnly !== 'false',
     page: Math.min(1_000_000, Math.max(1, Number.isInteger(Number(route.query.page)) ? Number(route.query.page) : 1)),
     size: [10, 20, 50].includes(Number(route.query.size)) ? Number(route.query.size) : 10,
   }))
-  async function navigate(type: string, keyword: string, page: number, size: number, rating?: RatingFilter | ''): Promise<boolean> {
+  async function navigate(
+    type: string,
+    keyword: string,
+    page: number,
+    size: number,
+    rating?: RatingFilter | '',
+    watchedOnly = false,
+    heldOnly = false,
+  ): Promise<boolean> {
     const query = { ...route.query, type: type || undefined, keyword: keyword.trim() || undefined,
       page: page > 1 ? String(page) : undefined, size: size !== 10 ? String(size) : undefined }
-    // 评级仅用于基金市场；其他列表继续沿用各自原有的筛选条件。
-    if (routeName === 'fund-market') Object.assign(query, { rating: rating || undefined })
+    // 个人范围筛选仅用于基金市场和关注列表，不泄漏到其他模块的网址。
+    if (routeName === 'fund-market') Object.assign(query, {
+      rating: rating || undefined,
+      watchedOnly: watchedOnly ? 'true' : undefined,
+      // 基金市场默认只看已持仓；显式保留“全部基金”，供刷新和返回时恢复。
+      heldOnly: heldOnly ? undefined : 'false',
+    })
+    // 我的关注同样默认只看已持仓，切换为“全部基金”后保留选择。
+    if (routeName === 'watchlist') Object.assign(query, { heldOnly: heldOnly ? undefined : 'false' })
     const target = { path: route.path, query }
     if (router.resolve(target).fullPath === route.fullPath) return false
     await router.push(target)

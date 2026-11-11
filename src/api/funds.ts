@@ -27,6 +27,12 @@ export function getFunds(query: FundListQuery = {}): Promise<FundPage> {
   if (query.rating) {
     search.set('rating', query.rating)
   }
+  if (query.watchedOnly) {
+    search.set('watchedOnly', 'true')
+  }
+  if (query.heldOnly) {
+    search.set('heldOnly', 'true')
+  }
   if (query.pageSize) {
     search.set('pageSize', String(query.pageSize))
   }

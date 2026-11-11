@@ -12,6 +12,7 @@ export function useWatchlist() {
   const watchlist = ref<WatchlistItem[]>([])
   const keyword = ref('')
   const selectedFundType = ref<FundType | ''>('')
+  const heldOnly = ref(true)
   const loading = ref(false)
   const errorMessage = ref('')
   const marketDataUnavailable = ref(false)
@@ -34,6 +35,7 @@ export function useWatchlist() {
       const response = await getWatchlist({
         keyword: keyword.value.trim() || undefined,
         fundType: selectedFundType.value || undefined,
+        heldOnly: heldOnly.value || undefined,
         page: targetPage,
         pageSize: pageSize.value,
       })
@@ -60,7 +62,9 @@ export function useWatchlist() {
   }
 
   async function loadPage(targetPage: number): Promise<void> {
-    if (!await navigate(selectedFundType.value, keyword.value, targetPage, pageSize.value)) {
+    if (!await navigate(
+      selectedFundType.value, keyword.value, targetPage, pageSize.value, undefined, false, heldOnly.value
+    )) {
       await fetchPage(targetPage)
     }
   }
@@ -68,6 +72,7 @@ export function useWatchlist() {
   watch(location, (value) => {
     if (!isCurrent.value) return
     selectedFundType.value = value.type as FundType | ''
+    heldOnly.value = value.heldOnly
     keyword.value = value.keyword
     pageSize.value = value.size
     currentPage.value = value.page
@@ -134,6 +139,7 @@ export function useWatchlist() {
     goToPage,
     hasNextPage,
     hasPreviousPage,
+    heldOnly,
     keyword,
     loadPage,
     loading,

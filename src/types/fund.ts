@@ -223,6 +223,10 @@ export interface FundListQuery {
   fundType?: FundType
   /** 已发布评级筛选，在服务端分页前应用。 */
   rating?: RatingFilter
+  /** 仅查询当前账号已关注的基金。 */
+  watchedOnly?: boolean
+  /** 仅查询当前账号仍有模拟持仓份额的基金。 */
+  heldOnly?: boolean
   pageSize?: number
   cursor?: string
   page?: number

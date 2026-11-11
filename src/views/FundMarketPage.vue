@@ -24,6 +24,7 @@ const {
   currentPage,
   errorMessage,
   funds,
+  heldOnly,
   keyword,
   loading,
   loadPage,
@@ -32,6 +33,7 @@ const {
   selectedRating,
   stale,
   totalCount,
+  watchedOnly,
 } = useFundMarket()
 const route = useRoute()
 
@@ -130,6 +132,64 @@ const fundGroups = computed(() => {
           >
             <span aria-hidden="true">×</span>
           </button>
+        </div>
+      </div>
+      <div class="market-personal-filters">
+        <div class="market-rating-filter">
+          <label for="fund-watched">关注状态</label>
+          <div class="market-rating-control">
+            <select
+              id="fund-watched"
+              v-model="watchedOnly"
+              :disabled="loading"
+              @change="search"
+            >
+              <option :value="false">
+                全部基金
+              </option>
+              <option :value="true">
+                已关注
+              </option>
+            </select>
+            <button
+              class="market-rating-clear"
+              :disabled="loading"
+              type="button"
+              aria-label="清除关注筛选"
+              title="清除关注筛选"
+              @click="watchedOnly = false; search()"
+            >
+              <span aria-hidden="true">×</span>
+            </button>
+          </div>
+        </div>
+        <div class="market-rating-filter">
+          <label for="fund-held">持仓状态</label>
+          <div class="market-rating-control">
+            <select
+              id="fund-held"
+              v-model="heldOnly"
+              :disabled="loading"
+              @change="search"
+            >
+              <option :value="false">
+                全部基金
+              </option>
+              <option :value="true">
+                已持仓
+              </option>
+            </select>
+            <button
+              class="market-rating-clear"
+              :disabled="loading"
+              type="button"
+              aria-label="清除持仓筛选"
+              title="清除持仓筛选"
+              @click="heldOnly = false; search()"
+            >
+              <span aria-hidden="true">×</span>
+            </button>
+          </div>
         </div>
       </div>
     </form>
@@ -258,6 +318,8 @@ const fundGroups = computed(() => {
 /* 查询与评级共用现有表单视觉；窄屏自然换行，避免挤压输入框和按钮。 */
 .market-search-panel { grid-template-columns: minmax(0, 1fr) minmax(180px, 280px); gap: 24px; align-items: end; }
 .market-keyword-filter, .market-rating-filter { display: grid; gap: 10px; min-width: 0; }
+.market-rating-filter { width: 100%; max-width: 280px; }
+.market-personal-filters { display: flex; flex-wrap: wrap; gap: 24px; }
 .market-keyword-filter { max-width: 660px; }
 /* 清除图标放在下拉框内部，右侧保留原生箭头的位置，文字也预留空间避免重叠。 */
 .market-rating-control { position: relative; display: flex; }
@@ -268,6 +330,6 @@ const fundGroups = computed(() => {
 .market-rating-filter select:focus-visible, .market-rating-clear:focus-visible { outline: 2px solid #0f766e; outline-offset: 3px; }
 @media (max-width: 900px) {
   .market-search-panel { grid-template-columns: 1fr; gap: 16px; }
-  .market-keyword-filter { max-width: none; }
+  .market-keyword-filter, .market-rating-filter { max-width: none; }
 }
 </style>

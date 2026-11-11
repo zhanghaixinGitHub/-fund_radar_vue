@@ -173,7 +173,6 @@ body:has(.app-shell) { min-width: 0; }
 .app-shell .fund-type-group { margin-top: 22px; }
 .app-shell .fund-type-group h2 { font-size: 15px; }
 .app-shell .fund-type-group h2::after { background: var(--workspace-border); }
-.app-shell .watchlist-card time,
 .app-shell .as-of-date,
 .app-shell .fund-card > .as-of-date { font-size: 12px; }
 .app-shell .pagination { gap: 14px; padding: 14px 0; background: transparent; border: 0; }
