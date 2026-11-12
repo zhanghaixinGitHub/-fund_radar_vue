@@ -60,7 +60,7 @@ export interface SimPeriod {
 }
 export interface SimDaily { date: string; marketValue: DecimalValue; cumulativeGain: DecimalValue; dailyGain: DecimalValue | null }
 /** 收益状态与金额分开：未知金额为 null，真实零收益仍为十进制零。 */
-export type SimEarningsStatus = 'COMPLETE' | 'PARTIAL' | 'PENDING' | 'MISSING' | 'NON_TRADING' | 'CALENDAR_UNKNOWN' | 'REVIEW'
+export type SimEarningsStatus = 'COMPLETE' | 'PARTIAL' | 'PENDING' | 'MISSING' | 'NON_TRADING' | 'CALENDAR_UNKNOWN' | 'REVIEW' | 'VALUATION_PENDING' | 'NAV_PENDING' | 'NAV_MISSING' | 'BASELINE'
 export interface SimEarningsFund {
   fundCode: string; fundName: string; firstDate: string; lastDate: string | null
   closed: boolean; marketValue: DecimalValue | null; navDate: string | null; reviewRequired: boolean
@@ -70,6 +70,7 @@ export interface SimEarningsDay {
   dailyGain: DecimalValue | null; knownGain: DecimalValue | null; cumulativeGain: DecimalValue | null
 }
 export interface SimEarningsDetail {
+  message?: string | null
   fundCode: string; fundName: string; status: SimEarningsStatus
   dailyGain: DecimalValue | null; cumulativeGain: DecimalValue | null
 }

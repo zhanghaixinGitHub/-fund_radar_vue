@@ -27,8 +27,7 @@
 .sim-check { display: flex; align-items: center; gap: 8px; font-size: 14px; }.sim-check input { width: 17px; height: 17px; margin: 0; }
 .sim-empty { background: #fff; border: 1px dashed #b9cdc2; padding: 35px 24px; border-radius: 10px; }.sim-empty p { color: #647b72; line-height: 1.8; }
 .sim-success { padding: 14px 18px; border-radius: 8px; background: #eaf6ef; color: #086747; }
-.sim-rules { margin-top: 24px; padding: 18px 0; border-top: 1px solid #dfe8e3; color: #536e63; line-height: 1.8; font-size: 13px; }
-.sim-rules summary, .sim-record-list summary { cursor: pointer; }
+.sim-record-list summary { cursor: pointer; }
 .sim-detail-panel { margin-top: 20px; }.sim-chart { width: 100%; height: 280px; }
 .sim-record-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
 .sim-record-list > article, .sim-record-list > li { padding: 19px; background: #fff; border: 1px solid #dfe8e3; border-radius: 8px; }

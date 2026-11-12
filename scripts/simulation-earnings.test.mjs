@@ -12,6 +12,13 @@ test('正负收益有符号，未知不能冒充零', () => {
   assert.notEqual(earningsStatus('PENDING'), earningsStatus('MISSING'))
   assert.notEqual(earningsStatus('NON_TRADING'), earningsStatus('COMPLETE'))
 })
+test('提示区分净值未到、收益未更新、历史缺失和期初日', () => {
+  assert.equal(earningsStatus('NAV_PENDING'), '等待该日净值')
+  assert.equal(earningsStatus('VALUATION_PENDING'), '收益待更新')
+  assert.equal(earningsStatus('NAV_MISSING'), '该日净值缺失')
+  assert.equal(earningsStatus('BASELINE'), '期初日，不计当日收益')
+  assert.equal(earningsStatus('PENDING'), '收益数据待更新')
+})
 test('返回保留筛选排序分页历史条件，拒绝外部路径及越权字段', () => {
   const path = '/portfolio?section=holdings&keyword=测试%20基金&sort=cumulativeGain&page=2&size=20&showHistory=1'
   const value = earningsReturnPath(path)

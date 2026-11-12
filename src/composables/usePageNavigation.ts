@@ -61,9 +61,9 @@ const pageSections: Record<string, PageSection[]> = {
   'portfolio-snapshot': [
     { key: 'overview', label: '总览' },
     { key: 'holdings', label: '持仓' },
+    { key: 'orders', label: '交易记录' },
     { key: 'earnings', label: '收益明细' },
     { key: 'plans', label: '定投计划' },
-    { key: 'orders', label: '交易记录' },
     { key: 'funding', label: '本人资金安排' },
     { key: 'account-risk', label: '已录入持仓检查' },
     { key: 'options', label: '调整前的条件比较' },

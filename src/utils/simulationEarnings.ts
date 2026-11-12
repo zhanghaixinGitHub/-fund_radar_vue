@@ -25,8 +25,9 @@ export function earningsFailureMessage(status: number | null, code: string | nul
     : scope === 'day-details' ? '当天基金构成暂时无法获取，请稍后重试。' : '收益明细暂时无法获取，请稍后重试。'
 }
 export function earningsStatus(status: SimEarningsStatus): string {
-  return ({ COMPLETE: '已更新', PARTIAL: '部分数据未完整', PENDING: '净值待更新', MISSING: '历史数据缺失',
-    NON_TRADING: '非交易日', CALENDAR_UNKNOWN: '该日数据待确认', REVIEW: '收益待核对' })[status] ?? '数据待确认'
+  return ({ COMPLETE: '已更新', PARTIAL: '部分基金待更新', PENDING: '收益数据待更新', MISSING: '历史收益待补',
+    VALUATION_PENDING: '收益待更新', NAV_PENDING: '等待该日净值', NAV_MISSING: '该日净值缺失', BASELINE: '期初日，不计当日收益',
+    NON_TRADING: '非交易日', CALENDAR_UNKNOWN: '交易日历待确认', REVIEW: '收益待核对' })[status] ?? '数据待确认'
 }
 /** 返回目标仅限持仓页，保留原 URL 参数顺序以匹配滚动位置；拒绝外部地址和未知字段。 */
 export function earningsReturnPath(value: unknown): string {
