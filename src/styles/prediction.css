@@ -39,6 +39,7 @@
 .forecast-facts dd { margin: 6px 0 0; font-size: 19px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .forecast-reasons { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 20px; }
 .forecast-basis h3 { margin: 0 0 10px; font-size: 15px; }
+.forecast-basis .forecast-reasons p { margin: 0; font-size: 14px; line-height: 1.9; }
 .forecast-basis ul { padding-left: 20px; margin: 0; }
 .forecast-basis li { margin: 6px 0; line-height: 1.8; font-size: 14px; }
 .forecast-limitations { margin-top: 20px; padding-top: 16px; border-top: 1px solid #e2eae6; color: #536c63; }

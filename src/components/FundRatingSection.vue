@@ -171,27 +171,6 @@ const comparisonPeriod = computed(() => {
           <p v-else>
             {{ dimension.explanation }}
           </p>
-          <details
-            v-if="dimension.sources.length"
-            class="dimension-sources"
-          >
-            <summary>查看资料依据</summary>
-            <ul>
-              <li
-                v-for="source in dimension.sources"
-                :key="`${source.url}-${source.title}`"
-              >
-                <a
-                  v-if="/^https?:\/\//i.test(source.url)"
-                  :href="source.url"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >{{ source.title }}</a>
-                <span v-else>{{ source.title }}</span>
-                <span v-if="source.publishedOn"> · {{ source.publishedOn }}</span>
-              </li>
-            </ul>
-          </details>
         </article>
       </div>
       <div
@@ -260,8 +239,6 @@ const comparisonPeriod = computed(() => {
 .rating-dimension dl > div { display: flex; gap: 12px; flex-wrap: wrap; }
 .rating-dimension dd { margin: 0; }
 .rating-dimension .dimension-conclusion { color: var(--text-primary, #193733); font-weight: 600; }
-.dimension-sources { margin-top: 10px; color: var(--text-secondary, #53616b); }
-.dimension-sources summary { cursor: pointer; }
 .rating-dimension small, .rating-dimension p { color: var(--text-secondary, #53616b); }
 .rating-observations { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 20px; }
 .rating-section li { overflow-wrap: anywhere; }

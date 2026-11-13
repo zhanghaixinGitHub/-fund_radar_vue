@@ -1,152 +1,86 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import { generateMultiPrediction, readMultiPrediction, readPredictionTask, readLatestPredictionTask } from '@/api/multiPrediction'
-import Direction1dPanel from '@/components/Direction1dPanel.vue'
-import PredictionEvidenceBody from '@/components/PredictionEvidenceBody.vue'
-import type { MultiCurrent, MultiPrediction, PredictionError, PredictionTask } from '@/types/multiPrediction'
+import { readPredictionReview, requestPredictionReview } from '@/api/predictionReview'
+import type { PredictionReview, PredictionReviewRequest, ReviewHorizon } from '@/types/predictionReview'
+import { createReviewRequestGuard, isSupplementaryReview, reviewDateRange, reviewDirection, reviewHorizons, reviewTitle } from '@/utils/predictionReview'
 import { useAuthStore } from '@/stores/auth'
-import { sortPredictionHorizons } from '@/utils/predictionHorizon'
-import { multiPredictionEvidence } from '@/utils/predictionEvidence'
 import '@/styles/prediction.css'
 
 const props = defineProps<{ fundCode: string }>()
 const auth = useAuthStore()
-const dailyPanel = ref<InstanceType<typeof Direction1dPanel> | null>(null)
-const current = ref<MultiCurrent | null>(null)
-const task = ref<PredictionTask | null>(null)
+const current = ref<PredictionReview | null>(null)
+const request = ref<PredictionReviewRequest | null>(null)
 const busy = ref(false)
 const loading = ref(false)
 const error = ref('')
-const selectedPeriod = ref('DAY')
-const updating = computed(() => busy.value || loading.value || dailyPanel.value?.busy)
-let sequence = 0
-let timer: ReturnType<typeof globalThis.setTimeout> | undefined
-
-/** 中文近似时长只帮助理解，起止日期仍完全使用服务端返回的交易日和到期日。 */
-const periods: Record<string, { title: string; duration: string }> = {
-  T5_V1: { title: '未来 5 个交易日', duration: '约一周' },
-  T20_V1: { title: '未来 20 个交易日', duration: '约一个月' },
-  M6_V1: { title: '未来 6 个月', duration: '半年' },
-}
-const cards = computed(() => sortPredictionHorizons(current.value?.horizons, h => h.horizon_id).map(h => ({
-  ...h,
-  title: periods[h.horizon_id]?.title ?? h.label,
-  duration: periods[h.horizon_id]?.duration ?? '以实际预测日期为准',
-  prediction: current.value?.predictions.find(p => p.horizonId === h.horizon_id && p.generationMethod === 'COMPREHENSIVE'),
-  attempt: current.value?.latestAttempts.find(a => a.horizon_id === h.horizon_id),
-})))
-
-/** 老记录的“非上涨”仍包含持平；未知方向不被兜底显示成下跌。 */
-function direction(value: string): string {
-  return ({ UP: '预计上涨', FLAT: '预计基本持平', DOWN: '预计下跌', NON_UP: '预计下跌或持平' } as Record<string, string>)[value] ?? '暂无法判断'
-}
-const time = (value: string) => new Date(value).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false })
-const endDate = (prediction: MultiPrediction) => current.value?.targetResolutions?.[prediction.predictionId]?.endDate ?? prediction.endDate
-
-/** 缺少官方日期时明确写“预计”，绝不把名义到期日伪装为已经确认的日期。 */
-function period(prediction: MultiPrediction): string {
-  const end = endDate(prediction)
-  return `${prediction.startDate} 至 ${end ?? (prediction.nominalEndDate ? `预计 ${prediction.nominalEndDate}` : '结束日期待确认')}`
-}
-function flatExplanation(threshold?: string): string {
-  const value = Number(threshold)
-  return Number.isFinite(value) && value > 0
-    ? `这段时间的整体回报在 -${Number((value * 100).toFixed(4))}% 到 +${Number((value * 100).toFixed(4))}% 之间，都算基本持平。`
-    : ''
-}
-/** 只转换失败的展示用语；失败不会被掩盖，也不会被当作“看跌”结果。 */
-function failureMessage(failure?: PredictionError): string {
-  const code = failure?.code ?? ''
-  if (/COMPREHENSIVE|MANUAL_ANALYSIS|NAV_ONLY_PREDICTION_DISABLED/.test(code)) return '本基金在这个时间段的综合资料分析尚未完成，暂未生成预测。'
-  if (/NAV|DATA|HISTORY/.test(code)) return '净值等数据还未准备好，暂时无法更新这个时间段的预测。'
-  if (/CALENDAR/.test(code)) return '预测日期还未确认，暂时无法生成结果。'
-  if (/MODEL|ARTIFACT/.test(code)) return '这个时间段的预测暂时不可用，请稍后重试。'
-  return '这次未能生成预测，请稍后点击“更新预测”重试。'
+const selectedPeriod = ref<ReviewHorizon>('T1')
+const guard = createReviewRequestGuard()
+const updating = computed(() => busy.value || loading.value)
+const canWrite = computed(() => auth.hasPermission('WATCHLIST_SELF_WRITE'))
+const cards = computed(() => reviewHorizons.map(horizon => {
+  const period = current.value?.periods.find(p => p.horizonId === horizon.id)
+  return { ...horizon, title: reviewTitle(horizon.id, period), period }
+}))
+const selectedCard = computed(() => cards.value.find(card => card.id === selectedPeriod.value)!)
+const selected = computed(() => selectedCard.value.period)
+const awaitingUpdate = computed(() => request.value && request.value.status !== 'AVAILABLE')
+const time = (value: string) => {
+  const date = new Date(value)
+  return Number.isFinite(date.getTime())
+    ? date.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false }) : '时间待核'
 }
 
-/** 所有周期共用下方依据区域；点击只切换已读取的记录，不触发新预测。 */
-const selectedCard = computed(() => cards.value.find(card => card.horizon_id === selectedPeriod.value))
-const selectedTitle = computed(() => selectedPeriod.value === 'DAY' ? '一天预测' : selectedCard.value?.title ?? '所选周期')
-const evidence = computed(() => selectedPeriod.value === 'DAY'
-  ? dailyPanel.value?.evidence ?? null : multiPredictionEvidence(selectedCard.value?.prediction))
-const selectedPrediction = computed(() => selectedCard.value?.prediction)
-const selectedStatus = computed(() => {
-  if (selectedPeriod.value === 'DAY') return dailyPanel.value?.evidenceStatus ?? ''
-  const card = selectedCard.value
-  return card?.attempt?.payload.generationStatus === 'FAILED'
-    ? failureMessage(card.attempt.payload.error) + (card.prediction ? '以下依据对应上次成功结果。' : '') : ''
-})
-/** 任务恢复只用于显示更新进度；任务接口失败不应遮住已经成功读取的预测。 */
 async function load() {
-  const run = ++sequence
+  const code = props.fundCode
+  const token = guard.begin(code)
   loading.value = true
   error.value = ''
   try {
-    const [value, latest] = await Promise.all([
-      readMultiPrediction(props.fundCode),
-      readLatestPredictionTask().catch(() => null),
-    ])
-    if (run !== sequence) return
-    current.value = value
-    task.value = latest?.items.some(item => item.fundCode === props.fundCode) ? latest : null
-    // 单基金页面只恢复这只基金的进度，不要求用户理解或处理其他基金的批量任务。
-    if (task.value?.pendingItems && !busy.value) {
-      busy.value = true
-      void poll(task.value.taskId, run)
-    }
+    const value = await readPredictionReview(code)
+    if (guard.current(token, props.fundCode)) current.value = value
   } catch {
-    if (run === sequence) error.value = '预测暂时无法读取，请稍后重试。'
+    if (guard.current(token, props.fundCode)) error.value = '分析暂时无法读取，请稍后点击更新重试。'
   } finally {
-    if (run === sequence) loading.value = false
+    if (guard.current(token, props.fundCode)) loading.value = false
   }
 }
-async function poll(id: string, run: number) {
-  try {
-    const value = await readPredictionTask(id)
-    if (run !== sequence) return
-    task.value = value
-    if (value.pendingItems) timer = globalThis.setTimeout(() => void poll(id, run), 1500)
-    else { busy.value = false; await load() }
-  } catch {
-    if (run !== sequence) return
-    busy.value = false
-    error.value = '更新进度暂时无法读取，点击“更新预测”可重新查看。'
-  }
-}
-/** 一个入口更新本基金；一日与较长周期仍分别遵守各自接口、日期和已有记录保护规则。 */
+
+/** 等待新净值或新分析时，原记录仍明确保留自己的旧日期。 */
 async function generate() {
   if (updating.value) return
-  const canWrite = auth.hasPermission('WATCHLIST_SELF_WRITE')
-  // 所有基金按所选周期更新；一天判断不能代替其他周期的综合分析。
-  if (selectedPeriod.value === 'DAY') {
-    await dailyPanel.value?.refresh(canWrite)
-    return
-  }
-  void dailyPanel.value?.refresh(canWrite)
-  if (!canWrite) { await load(); return }
+  if (!canWrite.value) { await load(); return }
+  const code = props.fundCode
+  const token = guard.begin(code)
   busy.value = true
   error.value = ''
-  const run = sequence
+  request.value = null
+  let requested = false
   try {
-    const value = await generateMultiPrediction(props.fundCode)
-    if (run !== sequence) return
-    task.value = value
-    void poll(value.taskId, run)
+    const result = await requestPredictionReview(code)
+    if (!guard.current(token, props.fundCode)) return
+    request.value = result
+    requested = true
+    const value = await readPredictionReview(code)
+    if (guard.current(token, props.fundCode)) current.value = value
   } catch {
-    if (run !== sequence) return
-    busy.value = false
-    error.value = '这次未能更新较长周期的预测，请稍后重试。'
+    if (guard.current(token, props.fundCode)) {
+      error.value = requested
+        ? '已提出更新，但结果暂时无法读取，请稍后重试。'
+        : '这次未能提出更新，请稍后重试。'
+    }
+  } finally {
+    if (guard.current(token, props.fundCode)) busy.value = false
   }
 }
+
 watch(() => props.fundCode, () => {
-  globalThis.clearTimeout(timer)
-  selectedPeriod.value = 'DAY'
   current.value = null
-  task.value = null
+  request.value = null
   busy.value = false
+  selectedPeriod.value = 'T1'
   void load()
 }, { immediate: true })
-onBeforeUnmount(() => { ++sequence; globalThis.clearTimeout(timer) })
+onBeforeUnmount(() => guard.invalidate())
 </script>
 
 <template>
@@ -159,81 +93,93 @@ onBeforeUnmount(() => { ++sequence; globalThis.clearTimeout(timer) })
       <header class="forecast-heading">
         <div>
           <h2>接下来，可能涨还是跌？</h2>
-          <p>点击一个时间段，在下方查看系统为什么作出这个判断。</p>
+          <p>点击一个时间段，在下方查看判断依据。复盘只说明当时的判断。</p>
         </div>
         <button
           class="secondary-button"
           :disabled="updating"
           @click="generate"
         >
-          {{ updating ? '正在更新…' : '更新预测' }}
+          {{ updating ? '正在更新…' : canWrite ? '更新预测' : '刷新结果' }}
         </button>
       </header>
       <p class="forecast-caution">
-        预测功能仍在试用，准确程度还在验证；这里只显示方向，不代表能赚多少钱。
+        这些判断把握较低，准确程度还在验证；方向不代表能赚多少钱。
       </p>
       <p
         v-if="error"
         class="forecast-error"
         role="alert"
       >
-        {{ error }}
+        {{ error }}{{ current ? '下方保留上次读取的结果，请留意原日期。' : '' }}
+      </p>
+      <p
+        v-if="request"
+        class="forecast-warning"
+        role="status"
+      >
+        {{ request.summary }}
+        <span v-if="awaitingUpdate && current">下方保留此前结果；当前新分析尚未完成，请留意各周期的原日期。</span>
       </p>
       <div
         class="forecast-grid"
         role="group"
         aria-label="选择要查看依据的预测周期"
       >
-        <Direction1dPanel
-          :key="fundCode"
-          ref="dailyPanel"
-          :fund-code="fundCode"
-          :selected="selectedPeriod === 'DAY'"
-          @select="selectedPeriod = 'DAY'"
-        />
         <button
           v-for="card in cards"
-          :key="card.horizon_id"
+          :key="card.id"
           type="button"
           class="forecast-card"
-          :class="{ 'is-selected': selectedPeriod === card.horizon_id }"
-          :aria-pressed="selectedPeriod === card.horizon_id"
-          :aria-label="`查看${card.title}的预测依据`"
+          :class="{ 'is-selected': selectedPeriod === card.id }"
+          :aria-pressed="selectedPeriod === card.id"
+          :aria-label="`查看${card.title}的依据`"
           aria-controls="prediction-evidence"
-          @click="selectedPeriod = card.horizon_id"
+          @click="selectedPeriod = card.id"
         >
           <span class="forecast-card-title">{{ card.title }}</span>
           <span class="forecast-duration">{{ card.duration }}</span>
           <strong
             class="forecast-direction"
-            :class="`tone-${card.prediction?.direction.toLowerCase() ?? 'neutral'}`"
+            :class="`tone-${card.period?.decision.toLowerCase() ?? 'neutral'}`"
           >
-            {{ card.prediction ? direction(card.prediction.direction) : '暂无预测' }}
+            {{ card.period ? reviewDirection(card.period) : loading ? '正在读取…' : error ? '暂时无法读取' : '分析待更新' }}
           </strong>
-          <span class="forecast-period">{{ card.prediction ? period(card.prediction) : '尚未生成' }}</span>
-          <span class="forecast-data-date">{{ card.prediction ? `资料截至 ${card.prediction.knowledgeCutoff ? time(card.prediction.knowledgeCutoff) : card.prediction.dataAsOf}` : '点击查看当前状态' }}</span>
+          <span class="forecast-period">{{ reviewDateRange(card.period) }}</span>
           <span
-            v-if="card.attempt?.payload.generationStatus === 'FAILED'"
+            v-if="card.period?.kind === 'RETROSPECTIVE'"
             class="forecast-card-status"
-          >{{ card.prediction ? '更新未成功 · 保留上次结果' : '本次未生成' }}</span>
-          <span class="forecast-card-action">{{ selectedPeriod === card.horizon_id ? '正在查看依据' : '点击查看依据' }}</span>
+          >区间已结束 · 仅供复盘</span>
+          <span
+            v-else-if="card.period?.kind === 'CONDITIONAL_OUTLOOK'"
+            class="forecast-card-status"
+          >条件展望{{ card.period.endDate ? '' : ' · 终点待核' }}</span>
+          <span
+            v-else-if="isSupplementaryReview(card.period)"
+            class="forecast-card-status"
+          >区间内补充判断 · 非事前预测</span>
+          <span
+            v-if="card.period?.decision === 'ABSTAIN'"
+            class="forecast-data-date"
+          >
+            {{ card.period.awaitingReason || card.period.summary || '现有依据还不足以作出方向判断。' }}
+          </span>
+          <span
+            v-if="card.period && current?.marketAsOf"
+            class="forecast-data-date"
+          >行情截至 {{ current.marketAsOf }}</span>
+          <span class="forecast-card-action">{{ selectedPeriod === card.id ? '正在查看依据' : '点击查看依据' }}</span>
         </button>
       </div>
       <p
-        v-if="loading && !current"
+        v-if="!current && !loading && !error"
         class="forecast-footnote"
         role="status"
       >
-        正在读取其他时间段的预测…
-      </p>
-      <p
-        v-else-if="current && !cards.length"
-        class="forecast-footnote"
-      >
-        其他时间段暂时没有可用结果。
+        本基金的分析待更新，可点击更新检查当前资料。
       </p>
       <footer class="forecast-footnote">
-        交易日不包含休市日。过去预测得怎样，可在左侧“预测历史”中查看。
+        日期按基金实际估值安排确认；终点未核实的半年只作条件展望。已结束区间不代表接下来一天的走势。
       </footer>
     </section>
     <section
@@ -244,55 +190,83 @@ onBeforeUnmount(() => { ++sequence; globalThis.clearTimeout(timer) })
     >
       <header class="forecast-basis-heading">
         <h2 id="prediction-evidence-title">
-          {{ selectedTitle }} · 预测依据
+          {{ selectedCard.title }} · 判断依据
         </h2>
-        <p>对应上方选中的预测结果</p>
+        <p>对应上方选中的结果</p>
       </header>
-      <p
-        v-if="selectedStatus"
-        class="forecast-warning"
-        role="status"
-      >
-        {{ selectedStatus }}
-      </p>
-      <template v-if="evidence">
-        <PredictionEvidenceBody
-          :fund-code="fundCode"
-          :kind="selectedPeriod === 'DAY' ? 'daily' : 'multi'"
-          :record-id="selectedPeriod === 'DAY' ? dailyPanel?.forecastId : selectedPrediction?.predictionId"
-          :evidence="evidence"
-        />
+      <template v-if="selected">
         <p
-          v-if="selectedPeriod === 'DAY' && dailyPanel?.forecast"
-          class="forecast-basis-meta"
+          v-if="selected.kind === 'RETROSPECTIVE'"
+          class="forecast-warning"
         >
-          预测日期：{{ dailyPanel.forecast.targetNavDate }} · 已取得净值截至 {{ dailyPanel.forecast.schemaVersion === 'DIRECTION_1D_ANALYSIS_V1' ? dailyPanel.forecast.latestNavDate ?? '暂缺' : dailyPanel.forecast.baseNavDate }}
+          这个区间已经结束。以下是当时的判断复盘，不是下一估值日的新预测。
         </p>
-        <template v-else-if="selectedPrediction">
-          <p
-            v-if="flatExplanation(selectedPrediction.flatThreshold)"
-            class="forecast-basis-meta"
-          >
-            到期后如何区分涨跌与持平：{{ flatExplanation(selectedPrediction.flatThreshold) }}
-          </p>
-          <p
-            v-if="!endDate(selectedPrediction)"
-            class="forecast-basis-meta"
-          >
-            结束日期还需等待基金的交易日安排确认，目前显示的是预计日期。
-          </p>
-          <p
-            class="forecast-basis-meta"
-          >
-            预测区间：{{ period(selectedPrediction) }} · 生成于 {{ time(selectedPrediction.generatedAt) }}
-          </p>
-        </template>
+        <p
+          v-else-if="selected.kind === 'CONDITIONAL_OUTLOOK'"
+          class="forecast-warning"
+        >
+          以下方向需要所列条件成立；{{ selected.endDate ? '请结合实际区间查看。' : '结束估值日仍待核实，名义到期日不代表已确认终点。' }}
+        </p>
+        <p class="forecast-basis-summary">
+          {{ selected.summary || reviewDirection(selected) }}
+        </p>
+        <p
+          v-if="selected.decision === 'ABSTAIN' && selected.awaitingReason"
+          class="forecast-warning"
+        >
+          暂不判断：{{ selected.awaitingReason }}
+        </p>
+        <div class="forecast-reasons">
+          <section>
+            <h3>主要依据</h3>
+            <p>{{ selected.primaryReason || '主要依据尚待补充。' }}</p>
+          </section>
+          <section>
+            <h3>相反因素如何取舍</h3>
+            <p>{{ selected.counterReason || '相反因素的说明尚待补充。' }}</p>
+          </section>
+        </div>
+        <section
+          v-if="selected.conditions.length"
+          class="forecast-limitations"
+        >
+          <h3>什么情况下需要改变判断</h3>
+          <ul>
+            <li
+              v-for="condition in selected.conditions"
+              :key="condition"
+            >
+              {{ condition }}
+            </li>
+          </ul>
+        </section>
+        <section
+          v-if="selected.limitations.length"
+          class="forecast-limitations"
+        >
+          <h3>还要注意</h3>
+          <ul>
+            <li
+              v-for="limitation in selected.limitations"
+              :key="limitation"
+            >
+              {{ limitation }}
+            </li>
+          </ul>
+        </section>
+        <p class="forecast-basis-meta">
+          判断区间：{{ reviewDateRange(selected) }}
+          <template v-if="selected.baseNavDate">
+            · 基准净值日 {{ selected.baseNavDate }}
+          </template>
+          · 分析于 {{ time(selected.analysisAt) }} · 把握较低
+        </p>
       </template>
       <p
         v-else
         role="status"
       >
-        正在读取所选周期的依据…
+        {{ loading ? '正在读取所选周期的依据…' : error ? '依据暂时无法读取，请稍后重试。' : '这个周期的分析待更新，尚无可展示的判断依据。' }}
       </p>
     </section>
   </div>
