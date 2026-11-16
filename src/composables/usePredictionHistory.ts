@@ -2,15 +2,17 @@ import { computed, onScopeDispose, ref, watch } from 'vue'
 import type { Direction1dCursor, Direction1dPage, Direction1dRecord } from '../types/direction1d'
 import type { MultiHistoryRow } from '../utils/predictionHistory'
 import type { AnalysisReview, AnalysisReviewCursor, AnalysisReviewPage } from '../types/analysisReview'
+import type { PredictionReviewHistoryItem, PredictionReviewHistoryPage } from '../types/predictionReview'
 
 type MultiCursor = { generatedAt: string; predictionId: string }
 type Readers = {
   multi: (code: string, cursor?: MultiCursor) => Promise<{ items: MultiHistoryRow[] }>
   daily: (code: string, page: number, cursor?: Direction1dCursor) => Promise<Direction1dPage<Direction1dRecord>>
   reviews?: (code: string, cursor?: AnalysisReviewCursor) => Promise<AnalysisReviewPage>
+  v2?: (code: string, cursor?: AnalysisReviewCursor) => Promise<PredictionReviewHistoryPage>
   days?: (code: string, dates: string[]) => Promise<{ items: MultiHistoryRow[]; dates: string[] }>
 }
-type Source = 'multi' | 'daily' | 'reviews'
+type Source = 'multi' | 'daily' | 'reviews' | 'v2'
 
 /**
  * 预测与事后回看按各自接口游标增量读取，每次至多各取一页，不全量拉取或按日期逐个请求。
@@ -19,14 +21,16 @@ type Source = 'multi' | 'daily' | 'reviews'
 export function usePredictionHistory(fundCode: () => string, readers: Readers) {
   const multi = ref<MultiHistoryRow[]>([]), daily = ref<Direction1dRecord[]>([])
   const reviews = ref<AnalysisReview[]>([])
+  const v2 = ref<PredictionReviewHistoryItem[]>([])
   const exactMulti = ref<MultiHistoryRow[]>([]), completeDates = ref<string[]>([])
   const dayBusy = ref(false), dayError = ref('')
   const busy = ref(false)
-  const errors = ref({ multi: '', daily: '', reviews: '' })
-  const more = ref({ multi: true, daily: true, reviews: !!readers.reviews })
+  const errors = ref({ multi: '', daily: '', reviews: '', v2: '' })
+  const more = ref({ multi: true, daily: true, reviews: !!readers.reviews, v2: !!readers.v2 })
   const dailyCursor = ref<Direction1dCursor>()
   let multiCursor: MultiCursor | undefined
   let reviewCursor: AnalysisReviewCursor | undefined
+  let v2Cursor: AnalysisReviewCursor | undefined
   let dailyPage = 0
   let sequence = 0
 
@@ -51,10 +55,10 @@ export function usePredictionHistory(fundCode: () => string, readers: Readers) {
   async function load(only?: Source) {
     if (busy.value) return
     const run = sequence, code = fundCode()
-    const sources = (['multi', 'daily', 'reviews'] as const).filter(source => (!only || source === only) && more.value[source])
+    const sources = (['multi', 'daily', 'reviews', 'v2'] as const).filter(source => (!only || source === only) && more.value[source])
     if (!sources.length) return
     if (!/^\d{6}$/.test(code)) {
-      errors.value = { multi: '基金代码无效，无法读取预测历史。', daily: '', reviews: '' }
+      errors.value = { multi: '基金代码无效，无法读取预测历史。', daily: '', reviews: '', v2: '' }
       return
     }
     busy.value = true
@@ -76,7 +80,13 @@ export function usePredictionHistory(fundCode: () => string, readers: Readers) {
           dailyPage++
           dailyCursor.value = result.nextCursor
           more.value.daily = !!result.items.length && !!result.nextCursor && dailyPage * result.pageSize < result.totalCount
-        } else if (readers.reviews) {
+        } else if (source === 'v2' && readers.v2) {
+          const result = await readers.v2(code, v2Cursor)
+          if (run !== sequence) return
+          for (const item of result.items) if (!v2.value.some(row => row.releaseId === item.releaseId)) v2.value.push(item)
+          v2Cursor = result.nextCursor ?? undefined
+          more.value.v2 = !!result.nextCursor
+        } else if (source === 'reviews' && readers.reviews) {
           const result = await readers.reviews(code, reviewCursor)
           if (run !== sequence) return
           // 回看有自己的游标，不能占用正式预测的翻页位置或替换同日的原判断。
@@ -86,7 +96,7 @@ export function usePredictionHistory(fundCode: () => string, readers: Readers) {
         }
       } catch {
         if (run === sequence) errors.value[source] = source === 'daily'
-          ? '一日预测历史暂时无法读取。' : source === 'reviews' ? '综合回看暂时无法读取。' : '五日、二十日和半年预测历史暂时无法读取。'
+          ? '一日预测历史暂时无法读取。' : source === 'v2' ? '每日分析历史暂时无法读取。' : source === 'reviews' ? '综合回看暂时无法读取。' : '五日、二十日和半年预测历史暂时无法读取。'
       }
     }))
     if (run === sequence) busy.value = false
@@ -96,24 +106,29 @@ export function usePredictionHistory(fundCode: () => string, readers: Readers) {
   function dailyDateComplete(date: string): boolean {
     return !more.value.daily || (!!dailyCursor.value && date > dailyCursor.value.beforeDate)
   }
+  function v2DateComplete(date: string): boolean {
+    const last = v2.value.at(-1)?.periods[0]?.startDate
+    return !more.value.v2 || (!!last && date > last)
+  }
 
   watch(fundCode, () => {
     sequence++
     multi.value = []
     daily.value = []
     reviews.value = []
+    v2.value = []; v2Cursor = undefined
     exactMulti.value = []; completeDates.value = []; dayBusy.value = false; dayError.value = ''
     multiCursor = undefined
     reviewCursor = undefined
     dailyCursor.value = undefined
     dailyPage = 0
-    errors.value = { multi: '', daily: '', reviews: '' }
-    more.value = { multi: true, daily: true, reviews: !!readers.reviews }
+    errors.value = { multi: '', daily: '', reviews: '', v2: '' }
+    more.value = { multi: true, daily: true, reviews: !!readers.reviews, v2: !!readers.v2 }
     busy.value = false
     void load()
   }, { immediate: true, flush: 'sync' })
   onScopeDispose(() => { sequence++ })
-  return { multi: computed(() => [...multi.value, ...exactMulti.value]), daily, reviews, busy, errors, more, load, dailyDateComplete,
+  return { multi: computed(() => [...multi.value, ...exactMulti.value]), daily, reviews, v2, busy, errors, more, load, dailyDateComplete, v2DateComplete,
     loadDays, dayBusy, dayError, multiDateComplete: (date: string) => completeDates.value.includes(date),
-    hasMore: computed(() => more.value.multi || more.value.daily || more.value.reviews) }
+    hasMore: computed(() => more.value.multi || more.value.daily || more.value.reviews || more.value.v2) }
 }

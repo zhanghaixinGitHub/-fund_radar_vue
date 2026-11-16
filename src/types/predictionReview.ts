@@ -1,7 +1,7 @@
 export type ReviewHorizon = 'T1' | 'T5_V1' | 'T20_V1' | 'M6_V1'
 export interface PredictionReviewPeriod {
   horizonId: ReviewHorizon
-  decision: 'UP' | 'DOWN' | 'ABSTAIN'
+  decision: 'UP' | 'DOWN' | 'FLAT' | 'ABSTAIN'
   kind: 'DATED_ANALYSIS' | 'RETROSPECTIVE' | 'CONDITIONAL_OUTLOOK'
   confidence: 'LOW'
   baseNavDate: string | null
@@ -27,4 +27,9 @@ export interface PredictionReviewRequest {
   status: 'PENDING_ANALYSIS' | 'WAITING_FOR_NAV' | 'AVAILABLE'
   summary: string
   requestedAt: string
+}
+export interface PredictionReviewHistoryItem extends PredictionReview { releaseId: string }
+export interface PredictionReviewHistoryPage {
+  items: PredictionReviewHistoryItem[]
+  nextCursor: { before: string; beforeId: string } | null
 }

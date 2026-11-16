@@ -1,6 +1,7 @@
 import type { Direction1dRecord } from '@/types/direction1d'
 import type { MultiPrediction } from '@/types/multiPrediction'
 import type { AnalysisReview } from '@/types/analysisReview'
+import type { PredictionReviewHistoryItem } from '@/types/predictionReview'
 import { direction1dConclusion, direction1dSummary } from './direction1d'
 import { flatRange, isThreeStateTarget } from './predictionDirection'
 
@@ -30,6 +31,7 @@ export interface HistoryDay {
   dailyRevisions: HistoryItem[]
   /** 事后回看另列，不能替换正式周期记录，也不能交给对错计算函数。 */
   reviews: AnalysisReview[]
+  analyses?: PredictionReviewHistoryItem[]
 }
 
 /**
@@ -37,7 +39,7 @@ export interface HistoryDay {
  * 不按生成日期分组，不按模型版本或最终对错挑选，不改写历史记录或接口翻页顺序。
  * 生成时间按绝对时刻比较，兼容 UTC 与北京时间；同一时刻用编号稳定排序。
  */
-export function groupPredictionHistory(fundCode: string, multi: readonly MultiHistoryRow[], daily: readonly Direction1dRecord[], reviews: readonly AnalysisReview[] = []): HistoryDay[] {
+export function groupPredictionHistory(fundCode: string, multi: readonly MultiHistoryRow[], daily: readonly Direction1dRecord[], reviews: readonly AnalysisReview[] = [], analyses: readonly PredictionReviewHistoryItem[] = []): HistoryDay[] {
   const days = new Map<string, HistoryDay>()
   const add = (item: HistoryItem) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(item.date)) return
@@ -72,6 +74,20 @@ export function groupPredictionHistory(fundCode: string, multi: readonly MultiHi
     if (!day.reviews.some(row => row.reviewId === review.reviewId)) day.reviews.push(review)
     day.reviews.sort((a, b) => Date.parse(b.actualGeneratedAt) - Date.parse(a.actualGeneratedAt) || a.reviewId.localeCompare(b.reviewId))
     days.set(day.date, day)
+  }
+  for (const analysis of analyses) {
+    if (analysis.fundCode !== fundCode) continue
+    // 保留原窗口日期；周末重复审阅同一窗口只增加修订，不伪造新一期。
+    for (const date of new Set(analysis.periods.map(p => p.startDate))) {
+      if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) continue
+      const day: HistoryDay = days.get(date) ?? { date, items: {}, dailyRevisions: [], reviews: [] }
+      day.analyses ??= []
+      if (!day.analyses.some(row => row.releaseId === analysis.releaseId)) day.analyses.push({
+        ...analysis, periods: analysis.periods.filter(p => p.startDate === date),
+      })
+      day.analyses.sort((a, b) => Date.parse(b.adoptedAt) - Date.parse(a.adoptedAt) || b.releaseId.localeCompare(a.releaseId))
+      days.set(date, day)
+    }
   }
   return [...days.values()].sort((a, b) => b.date.localeCompare(a.date))
 }

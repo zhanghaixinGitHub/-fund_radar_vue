@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useConfirmation } from '@/composables/useConfirmation'
 import WorkspaceDialog from '@/components/WorkspaceDialog.vue'
-import PageSectionTabs from '@/components/PageSectionTabs.vue'
 import ListPagination from '@/components/ListPagination.vue'
 import { normalizePageSize } from '@/utils/pagination'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
@@ -441,7 +440,6 @@ onMounted(() => {
     <p class="lead">
       {{ headerLead }}
     </p>
-    <PageSectionTabs />
 
     <p
       v-if="errorMessage"

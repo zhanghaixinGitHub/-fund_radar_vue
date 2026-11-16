@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import PageSectionTabs from '@/components/PageSectionTabs.vue'
 import ListPagination from '@/components/ListPagination.vue'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -318,7 +317,6 @@ onBeforeUnmount(() => { alive = false; generation++ })
         </button>
       </div>
     </header>
-    <PageSectionTabs />
     <div
       v-if="!code"
       class="sim-empty"

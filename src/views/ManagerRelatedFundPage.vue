@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import PageSectionTabs from '@/components/PageSectionTabs.vue'
 import { ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { getManagerRelatedFund } from '@/api/fundManagers'
@@ -41,7 +40,6 @@ useManagerRefresh(load)
         </p><h1>{{ value.fund.fundName }}</h1>
       </div>
     </header>
-    <PageSectionTabs />
     <dl class="manager-basic-facts">
       <div><dt>管理公司</dt><dd>{{ value.fund.companyName || '暂缺' }}</dd></div><div>
         <dt>相关经理</dt><dd>

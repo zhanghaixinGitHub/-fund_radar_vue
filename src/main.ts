@@ -20,3 +20,5 @@ app.mount('#app')
 
 import './styles/theme.css'
 import './styles/portfolio-composition.css'
+
+import './styles/navigation.css'

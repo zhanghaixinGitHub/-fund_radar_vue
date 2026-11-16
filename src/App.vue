@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
+import PageSectionTabs from '@/components/PageSectionTabs.vue'
 import { useAuthStore } from '@/stores/auth'
 import { usePageNavigation } from '@/composables/usePageNavigation'
 import { useWorkspaceScroll } from '@/composables/useWorkspaceScroll'
@@ -21,7 +22,7 @@ const { resetForMenu } = useWorkspaceScroll(contentElement)
 const riskFooterElement = ref<globalThis.HTMLElement | null>(null)
 let riskFooterResizeObserver: globalThis.ResizeObserver | undefined
 const sidebarOpen = ref(false)
-const { sectionLabel, moduleLabel, returnTarget, returnLabel } = usePageNavigation()
+const { sections, moduleLabel, returnTarget, returnLabel } = usePageNavigation()
 const adminEntryPermissions: PermissionCode[] = [
   'ADMIN_DASHBOARD_VIEW',
   'SYNC_JOB_READ',
@@ -30,7 +31,7 @@ const adminEntryPermissions: PermissionCode[] = [
 ]
 const hasAdminAccess = computed(() => adminEntryPermissions.some((permission) => can(permission)))
 const brandTarget = computed(() => (isAdminArea.value ? '/admin' : '/funds'))
-// 持仓分析页的基金在 query.fund 里，其他详情页在路径参数里；面包屑与侧栏上下文共用。
+// 持仓分析页的基金在 query.fund 里，其他详情页在路径参数里；用于侧栏基金上下文。
 const fundContext = computed(() => String(route.params.fundCode ?? '') ||
   (route.name === 'portfolio-advice' ? String(route.query.fund ?? '') : ''))
 
@@ -69,7 +70,7 @@ async function toggleSidebar(): Promise<void> {
   sidebarOpen.value = !sidebarOpen.value
   if (sidebarOpen.value) {
     await nextTick()
-    globalThis.document.querySelector<globalThis.HTMLElement>('#workspace-sidebar a.is-active-module, #workspace-sidebar a.router-link-exact-active')?.focus()
+    globalThis.document.querySelector<globalThis.HTMLElement>('#workspace-sidebar a[aria-current="page"], #workspace-sidebar a[href]')?.focus()
   }
 }
 
@@ -145,17 +146,14 @@ async function signOut(): Promise<void> {
   <div
     v-else
     class="app-shell"
-    :class="{ 'is-admin-area': isAdminArea }"
+    :class="{ 'is-admin-area': isAdminArea, 'has-section-navigation': sections.length > 0 }"
   >
     <a
       class="skip-link"
       href="#main-content"
     >跳至正文</a>
-    <aside
-      id="workspace-sidebar"
-      class="workspace-sidebar"
-      :class="{ 'is-open': sidebarOpen }"
-      aria-label="主导航"
+    <header
+      class="top-bar workspace-header"
       @click.capture="onMainNavigationClick"
     >
       <RouterLink
@@ -245,21 +243,104 @@ async function signOut(): Promise<void> {
           费率维护
         </RouterLink>
       </nav>
-      <p class="sidebar-footer">
-        基金雷达 · {{ isAdminArea ? '后台管理' : '个人投资空间' }}
+      <div
+        ref="accountMenuElement"
+        class="account-menu"
+      >
+        <button
+          class="account-trigger"
+          :aria-expanded="accountMenuOpen"
+          aria-controls="account-actions"
+          aria-haspopup="menu"
+          type="button"
+          @click="toggleAccountMenu"
+        >
+          <span class="account-identity">
+            <strong>{{ accountDisplayLabel(authStore.user) }}</strong>
+            <small>{{ authStore.user?.mobileMasked }}</small>
+          </span>
+          <span
+            aria-hidden="true"
+            class="account-chevron"
+          >⌄</span>
+        </button>
+        <div
+          v-if="accountMenuOpen"
+          id="account-actions"
+          class="account-dropdown"
+          role="menu"
+        >
+          <RouterLink
+            :to="{ name: 'profile' }"
+            role="menuitem"
+            @click="closeAccountMenu"
+          >
+            个人信息
+          </RouterLink>
+          <a
+            v-if="hasAdminAccess && !isAdminArea"
+            href="/admin"
+            rel="noopener"
+            role="menuitem"
+            target="_blank"
+            @click="closeAccountMenu"
+          >
+            后台管理
+          </a>
+          <RouterLink
+            v-if="isAdminArea"
+            to="/funds"
+            role="menuitem"
+            @click="closeAccountMenu"
+          >
+            返回前台
+          </RouterLink>
+          <button
+            role="menuitem"
+            type="button"
+            @click="signOut"
+          >
+            退出登录
+          </button>
+        </div>
+      </div>
+    </header>
+    <aside
+      v-if="sections.length"
+      id="workspace-sidebar"
+      class="workspace-sidebar"
+      :class="{ 'is-open': sidebarOpen }"
+      aria-label="当前栏目导航"
+      @click.capture="onMainNavigationClick"
+    >
+      <p
+        v-if="fundContext"
+        class="sidebar-context"
+      >
+        {{ fundContext }}
       </p>
+      <PageSectionTabs />
     </aside>
     <button
       v-if="sidebarOpen"
       class="navigation-backdrop"
       type="button"
-      aria-label="关闭主导航"
+      aria-label="关闭栏目导航"
       @click="sidebarOpen = false"
     />
-    <div class="workspace-layout">
-      <header class="top-bar">
+    <div
+      class="workspace-layout"
+      :class="{ 'without-sidebar': !sections.length }"
+    >
+      <main
+        id="main-content"
+        ref="contentElement"
+        class="page-content"
+        tabindex="-1"
+      >
         <div class="workspace-top-context">
           <button
+            v-if="sections.length"
             id="sidebar-toggle"
             class="sidebar-toggle"
             type="button"
@@ -267,94 +348,9 @@ async function signOut(): Promise<void> {
             aria-controls="workspace-sidebar"
             @click="toggleSidebar"
           >
-            菜单
+            栏目
           </button>
-          <nav
-            class="workspace-breadcrumb"
-            aria-label="当前位置"
-          >
-            <span v-if="isAdminArea">后台管理 / </span>
-            <RouterLink
-              v-if="returnTarget"
-              :to="returnTarget"
-              :aria-label="`返回${returnLabel}`"
-              :title="`返回${returnLabel}`"
-            >
-              {{ moduleLabel }}
-            </RouterLink>
-            <span v-else>{{ moduleLabel }}</span>
-            <span v-if="fundContext"> / {{ fundContext }}</span>
-            <span v-if="sectionLabel && sectionLabel !== moduleLabel"> / {{ sectionLabel }}</span>
-          </nav>
         </div>
-        <div
-          ref="accountMenuElement"
-          class="account-menu"
-        >
-          <button
-            class="account-trigger"
-            :aria-expanded="accountMenuOpen"
-            aria-controls="account-actions"
-            aria-haspopup="menu"
-            type="button"
-            @click="toggleAccountMenu"
-          >
-            <span class="account-identity">
-              <strong>{{ accountDisplayLabel(authStore.user) }}</strong>
-              <small>{{ authStore.user?.mobileMasked }}</small>
-            </span>
-            <span
-              aria-hidden="true"
-              class="account-chevron"
-            >⌄</span>
-          </button>
-          <div
-            v-if="accountMenuOpen"
-            id="account-actions"
-            class="account-dropdown"
-            role="menu"
-          >
-            <RouterLink
-              :to="{ name: 'profile' }"
-              role="menuitem"
-              @click="closeAccountMenu"
-            >
-              个人信息
-            </RouterLink>
-            <a
-              v-if="hasAdminAccess && !isAdminArea"
-              href="/admin"
-              rel="noopener"
-              role="menuitem"
-              target="_blank"
-              @click="closeAccountMenu"
-            >
-              后台管理
-            </a>
-            <RouterLink
-              v-if="isAdminArea"
-              to="/funds"
-              role="menuitem"
-              @click="closeAccountMenu"
-            >
-              返回前台
-            </RouterLink>
-            <button
-              role="menuitem"
-              type="button"
-              @click="signOut"
-            >
-              退出登录
-            </button>
-          </div>
-        </div>
-      </header>
-      <main
-        id="main-content"
-        ref="contentElement"
-        class="page-content"
-        tabindex="-1"
-      >
         <RouterLink
           v-if="returnTarget"
           class="workspace-return-link"

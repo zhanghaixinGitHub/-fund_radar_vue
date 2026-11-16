@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import PageSectionTabs from '@/components/PageSectionTabs.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import FundMaterialsPanel from '@/components/FundMaterialsPanel.vue'
@@ -318,7 +317,6 @@ watch(section, (selectedSection) => {
       <p class="lead">
         {{ basic.fundCode }} · {{ fundTypeLabel(basic.fundType) }} · {{ fundStatusLabel(basic.status) }}
       </p>
-      <PageSectionTabs />
       <template v-if="section === 'basic'">
         <div class="fund-detail-topline">
           <div><span>单位净值</span><strong>{{ formatNetValue(basic.unitNav) }}</strong><small>截至 {{ basic.asOfDate || '日期暂缺' }}</small></div>

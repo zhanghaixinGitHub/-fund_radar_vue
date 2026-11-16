@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import PageSectionTabs from '@/components/PageSectionTabs.vue'
 import ListPagination from '@/components/ListPagination.vue'
 import SimulationEarningsPanel from '@/components/SimulationEarningsPanel.vue'
 import SimulationPerformanceChart from '@/components/SimulationPerformanceChart.vue'
@@ -168,7 +167,6 @@ onBeforeUnmount(() => { alive = false; ++generation; ++searchGeneration; ++detai
         返回持仓
       </RouterLink>
     </header>
-    <PageSectionTabs />
 
     <section
       class="earnings-overview"

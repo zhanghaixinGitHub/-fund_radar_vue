@@ -14,6 +14,19 @@ const historySource = source('../src/utils/predictionHistory.ts')
   .replace("'./predictionDirection'", JSON.stringify(moduleUrl(source('../src/utils/predictionDirection.ts'))))
 const { groupPredictionHistory, historyItemView, historyReturnText, historyPeriods } = await import(moduleUrl(historySource))
 
+test('第二版每天按原开始日展示，同日修订保留，周末采用不虚构日期', () => {
+  const make = (releaseId, startDate, adoptedAt, fundCode = '016008') => ({ releaseId, fundCode, adoptedAt,
+    periods: [{ horizonId: 'T1', startDate, decision: 'ABSTAIN' }, { horizonId: 'M6_V1', startDate, kind: 'CONDITIONAL_OUTLOOK' }] })
+  const a = make('a', '2026-11-16', '2026-11-14T09:00:00+08:00')
+  const b = make('b', '2026-11-16', '2026-11-16T10:00:00+08:00')
+  const old = make('old', '2026-11-13', '2026-11-13T10:00:00+08:00')
+  const days = groupPredictionHistory('016008', [], [], [], [a, b, b, old, make('other', '2026-11-17', b.adoptedAt, '001632')])
+  assert.deepEqual(days.map(d => d.date), ['2026-11-16', '2026-11-13'])
+  assert.deepEqual(days[0].analyses.map(v => v.releaseId), ['b', 'a'])
+  assert.equal(days[0].analyses[0].periods[0].decision, 'ABSTAIN')
+  assert.equal(days[0].analyses[0].periods[1].kind, 'CONDITIONAL_OUTLOOK')
+})
+
 test('事后回看归入原目标日，保留实际生成时刻，不替换正式预测或进入方向对错计算', () => {
   const daily = dailyRow('original', '2026-10-14', '2026-10-14T09:00:00+08:00')
   const review = { reviewId: 'review', recordType: 'COMPREHENSIVE_ASOF_REVIEW', fundCode: '008888',
@@ -179,6 +192,32 @@ test('回看独立翻页，失败可单独重试，不重复读取预测，换�
   assert.equal(model.hasMore.value, false)
   fund.value = '000001'
   assert.deepEqual(model.reviews.value, [])
+})
+
+test('第二版独立重试及翻页，同日跨页未齐不能认定修订完整，换基金清空', async t => {
+  const cursor = { before: '2026-11-16T10:00:00Z', beforeId: 'second' }
+  const calls = []
+  let oldReads = 0
+  const row = releaseId => ({ releaseId, fundCode: '008888', periods: [{ startDate: '2026-11-16' }] })
+  const { model, fund } = setup(t, {
+    multi: async () => { oldReads++; return { items: [] } }, daily: async () => page(),
+    v2: async (...args) => {
+      calls.push(args)
+      if (calls.length === 1) throw new Error('offline')
+      return args[1] ? { items: [row('first')], nextCursor: null } : { items: [row('second')], nextCursor: cursor }
+    },
+  })
+  await settle()
+  assert.ok(model.errors.value.v2)
+  await model.load('v2')
+  assert.equal(model.v2DateComplete('2026-11-16'), false)
+  await model.load('v2')
+  assert.deepEqual(calls[2], ['008888', cursor])
+  assert.deepEqual(model.v2.value.map(v => v.releaseId), ['second', 'first'])
+  assert.equal(model.v2DateComplete('2026-11-16'), true)
+  assert.equal(oldReads, 1)
+  fund.value = '000001'
+  assert.deepEqual(model.v2.value, [])
 })
 
 test('多周期翻页用原响应最后一条游标，去重和重新分组不影响游标', async t => {

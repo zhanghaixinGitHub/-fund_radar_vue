@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { AnalysisReview } from '@/types/analysisReview'
+import PredictionHistoryDisclosure from '@/components/PredictionHistoryDisclosure.vue'
 
 defineProps<{ review: AnalysisReview }>()
 
@@ -31,8 +32,11 @@ function timeText(value: string) {
     <p class="review-notice">
       收盘后按早盘公开资料重建，不计入事前预测准确率。
     </p>
-    <details>
-      <summary>查看综合依据</summary>
+    <PredictionHistoryDisclosure
+      label="查看综合依据"
+      :title="`${review.targetNavDate} · 一日综合回看依据`"
+    >
+      <p>实际生成 {{ timeText(review.actualGeneratedAt) }} · 事后回看，不计入事前预测准确率。</p>
       <template
         v-for="group in [{ title: '主要依据', items: review.supportingEvidence }, { title: '相反因素', items: review.counterEvidence }]"
         :key="group.title"
@@ -67,7 +71,7 @@ function timeText(value: string) {
           {{ limitation }}
         </li>
       </ul>
-    </details>
+    </PredictionHistoryDisclosure>
   </section>
 </template>
 

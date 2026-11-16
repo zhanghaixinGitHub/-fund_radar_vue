@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import ListPagination from '@/components/ListPagination.vue'
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { get } from '@/api/http'
 import { getDirection1dEvidence, getDirection1dFundHistory } from '@/api/direction1d'
 import { readAnalysisReviews } from '@/api/multiPrediction'
@@ -11,9 +11,13 @@ import type { HistoryItem, MultiHistoryRow } from '@/utils/predictionHistory'
 import { dailyPredictionEvidence, multiPredictionEvidence } from '@/utils/predictionEvidence'
 import PredictionEvidenceBody from '@/components/PredictionEvidenceBody.vue'
 import AnalysisReviewBody from '@/components/AnalysisReviewBody.vue'
+import { readPredictionReviewHistory } from '@/api/predictionReview'
+import PredictionHistoryReview from '@/components/PredictionHistoryReview.vue'
+import PredictionHistoryDrawer from '@/components/PredictionHistoryDrawer.vue'
+import PredictionHistoryDisclosure from '@/components/PredictionHistoryDisclosure.vue'
 
 const props = defineProps<{ fundCode: string }>()
-const { multi, daily, reviews, busy, errors, more, hasMore, load, dailyDateComplete,
+const { multi, daily, reviews, v2, busy, errors, more, hasMore, load, dailyDateComplete, v2DateComplete,
   loadDays, dayBusy, dayError, multiDateComplete } = usePredictionHistory(
   () => props.fundCode,
   {
@@ -21,6 +25,7 @@ const { multi, daily, reviews, busy, errors, more, hasMore, load, dailyDateCompl
       ? `?before=${encodeURIComponent(cursor.generatedAt)}&beforeId=${encodeURIComponent(cursor.predictionId)}` : ''}`),
     daily: getDirection1dFundHistory,
     reviews: readAnalysisReviews,
+    v2: readPredictionReviewHistory,
     days: (code, dates) => get<{ items: MultiHistoryRow[]; dates: string[] }>(
       `/api/v1/watchlist/${code}/predictions/history-days?${new globalThis.URLSearchParams({ dates: dates.join(',') })}`),
   },
@@ -31,7 +36,6 @@ const dailyEvidence = ref<Record<string, Direction1dEvidence>>({})
 const evidenceLoadingId = ref<string | null>(null)
 const evidenceErrorId = ref<string | null>(null)
 let sequence = 0
-let scrollSequence = 0
 const historyPage = ref(1)
 const historyPageSize = ref(10)
 const pagingBusy = ref(false)
@@ -39,7 +43,7 @@ const pagingError = ref('')
 let pagingGeneration = 0
 
 /** 四个周期保留固定位置；跨页的一日记录读齐前不展示可能已经过时的版本。 */
-const days = computed(() => groupPredictionHistory(props.fundCode, multi.value, daily.value, reviews.value).map(day => ({
+const days = computed(() => groupPredictionHistory(props.fundCode, multi.value, daily.value, reviews.value, v2.value).map(day => ({
   date: day.date,
   reviews: day.reviews,
   revisions: dailyDateComplete(day.date) ? day.dailyRevisions : [],
@@ -49,7 +53,10 @@ const days = computed(() => groupPredictionHistory(props.fundCode, multi.value, 
     const item = complete ? (source === 'daily'
       ? (props.fundCode === '002112' ? day.items[period.id] : day.dailyRevisions.find(row => row.id === selectedRevision.value[day.date]) ?? day.items[period.id])
       : day.items[period.id]) : undefined
-    return { ...period, item, view: item ? historyItemView(item) : null,
+    const reviewId = period.id === 'T1_V1' ? 'T1' : period.id
+    const versions = (day.analyses ?? []).flatMap(analysis => analysis.periods.filter(p => p.horizonId === reviewId)
+      .map(p => ({ releaseId: analysis.releaseId, period: p })))
+    return { ...period, item, review: versions[0]?.period, versions, view: item ? historyItemView(item) : null,
       empty: errors.value[source] || (source === 'multi' && dayError.value) ? '暂时无法读取'
         : busy.value || (source === 'multi' && dayBusy.value) ? '正在读取…'
           : !complete ? '预测待加载' : '没有预测',
@@ -77,7 +84,7 @@ async function changeHistoryPage(value: number, size: number, toLast = false) {
   try {
     for (let batch = 0; batch < 100 && hasMore.value; batch++) {
       const lastDate = days.value[value * size - 1]?.date
-      if (!toLast && days.value.length > value * size && (!lastDate || dailyDateComplete(lastDate))) break
+      if (!toLast && days.value.length > value * size && (!lastDate || dailyDateComplete(lastDate) && v2DateComplete(lastDate))) break
       await load()
       if (run !== pagingGeneration || code !== props.fundCode) return
       if (Object.values(errors.value).some(Boolean)) return
@@ -87,6 +94,7 @@ async function changeHistoryPage(value: number, size: number, toLast = false) {
       return
     }
     historyPageSize.value = size
+    expandedId.value = null
     historyPage.value = toLast ? Math.max(1, Math.ceil(days.value.length / size))
       : Math.min(value, Math.max(1, Math.ceil(days.value.length / size)))
   } finally { if (run === pagingGeneration) pagingBusy.value = false }
@@ -96,7 +104,7 @@ watch(() => props.fundCode, () => {
 })
 watch(busy, value => {
   if (!value && !pagingBusy.value && historyPage.value === 1 && hasMore.value
-    && (days.value.length < historyPageSize.value || visibleDates.value.some(date => !dailyDateComplete(date)))
+    && (days.value.length < historyPageSize.value || visibleDates.value.some(date => !dailyDateComplete(date) || !v2DateComplete(date)))
     && !Object.values(errors.value).some(Boolean)) void changeHistoryPage(1, historyPageSize.value)
 })
 onBeforeUnmount(() => { ++pagingGeneration })
@@ -133,25 +141,10 @@ async function readEvidence(item: HistoryItem) {
     if (run === sequence && evidenceLoadingId.value === item.id) evidenceLoadingId.value = null
   }
 }
-/**
- * 切换依据会收起另一日期的长内容，使当前按钮随布局大幅上移。
- * 以点击按钮在视口中的位置为锚点，在 Vue 更新后补偿实际位移；
- * 等待布局与浏览器本帧滚动处理完成后再测量，并关闭列表的自动锚定，
- * 避免浏览器在手动补偿后又移动一次；快速切换只保留最后一次位置修正。
- */
-async function toggleEvidence(item: HistoryItem, event: globalThis.MouseEvent) {
-  const trigger = event.currentTarget as InstanceType<typeof globalThis.HTMLButtonElement>
-  const top = trigger.getBoundingClientRect().top
-  const run = sequence
-  const scrollRun = ++scrollSequence
-  expandedId.value = expandedId.value === item.id ? null : item.id
-  if (expandedId.value) void readEvidence(item)
-  await nextTick()
-  await new Promise<void>(resolve => globalThis.requestAnimationFrame(() => resolve()))
-  // 切换基金或离开页面后，不再用旧按钮干预新页面的滚动位置。
-  if (run !== sequence || scrollRun !== scrollSequence || !trigger.isConnected) return
-  const offset = trigger.getBoundingClientRect().top - top
-  if (Math.abs(offset) > 1) globalThis.scrollBy({ top: offset, behavior: 'instant' })
+/** 抽屉独立显示依据，不再展开卡片或调整列表滚动位置。 */
+function toggleEvidence(item: HistoryItem) {
+  expandedId.value = item.id
+  void readEvidence(item)
 }
 function changeRevision() {
   expandedId.value = null
@@ -186,7 +179,7 @@ onBeforeUnmount(() => { sequence++ })
       >已展示 {{ days.length }} 个日期</span>
     </header>
     <template
-      v-for="source in (['daily', 'multi', 'reviews'] as const)"
+      v-for="source in (['daily', 'multi', 'reviews', 'v2'] as const)"
       :key="source"
     >
       <p
@@ -233,7 +226,7 @@ onBeforeUnmount(() => { sequence++ })
       正在读取预测记录…
     </p>
     <p
-      v-else-if="!days.length && !errors.daily && !errors.multi && !errors.reviews && !invalidDaily"
+      v-else-if="!days.length && !errors.daily && !errors.multi && !errors.reviews && !errors.v2 && !invalidDaily"
       class="history-empty"
     >
       暂无预测记录，生成预测后可在这里回看。
@@ -249,10 +242,10 @@ onBeforeUnmount(() => { sequence++ })
         <h3 :id="`history-day-${day.date}`">
           {{ day.date }}
         </h3>
-        <span>{{ day.slots.some(slot => slot.item) ? '预测起始日' : '回看日期' }}</span>
+        <span>{{ day.slots.some(slot => slot.item || slot.review) ? '预测起始日' : '回看日期' }}</span>
       </header>
       <div
-        v-if="day.slots.some(slot => slot.item) || !day.reviews.length"
+        v-if="day.slots.some(slot => slot.item || slot.review) || !day.reviews.length"
         class="history-periods"
       >
         <section
@@ -265,26 +258,57 @@ onBeforeUnmount(() => { sequence++ })
             <h4>{{ slot.label }}</h4>
             <span>{{ slot.duration }}</span>
           </div>
-          <template v-if="slot.item && slot.view">
-            <label
+          <template v-if="slot.review">
+            <PredictionHistoryReview :period="slot.review" />
+            <PredictionHistoryDisclosure
+              v-if="slot.versions.length > 1"
+              class="history-revisions"
+              :label="`此前判断（${slot.versions.length - 1}次）`"
+              :title="`${day.date} · ${slot.label}此前判断`"
+            >
+              <PredictionHistoryReview
+                v-for="version in slot.versions.slice(1)"
+                :key="version.releaseId"
+                :period="version.period"
+                detailed
+              />
+            </PredictionHistoryDisclosure>
+          </template>
+          <component
+            :is="slot.review ? PredictionHistoryDisclosure : 'div'"
+            v-if="slot.item && slot.view"
+            v-bind="slot.review ? { label: '此前预测及到期结果', title: `${day.date} · ${slot.label}此前预测及到期结果` } : {}"
+          >
+            <PredictionHistoryDisclosure
               v-if="fundCode !== '002112' && slot.id === 'T1_V1' && day.revisions.length > 1"
               class="history-revisions"
+              label="当日历次判断"
+              :title="`${day.date} · 一日历次判断`"
             >
-              当日历次判断
-              <select
-                :value="selectedRevision[day.date] ?? day.revisions.at(-1)?.id"
-                :aria-label="`${day.date} 一日历次判断`"
-                @change="selectedRevision[day.date] = ($event.target as HTMLSelectElement).value; changeRevision()"
-              >
-                <option
-                  v-for="(revision, index) in day.revisions"
-                  :key="revision.id"
-                  :value="revision.id"
+              <label>选择当日判断
+                <select
+                  :value="selectedRevision[day.date] ?? day.revisions.at(-1)?.id"
+                  :aria-label="`${day.date} 一日历次判断`"
+                  @change="selectedRevision[day.date] = ($event.target as HTMLSelectElement).value; changeRevision()"
                 >
-                  {{ timeText(revision.generatedAt) }} · {{ historyItemView(revision).direction }}{{ index === 0 ? '（首次）' : index === day.revisions.length - 1 ? '（最后一次）' : '' }}
-                </option>
-              </select>
-            </label>
+                  <option
+                    v-for="(revision, index) in day.revisions"
+                    :key="revision.id"
+                    :value="revision.id"
+                  >
+                    {{ timeText(revision.generatedAt) }} · {{ historyItemView(revision).direction }}{{ index === 0 ? '（首次）' : index === day.revisions.length - 1 ? '（最后一次）' : '' }}
+                  </option>
+                </select>
+              </label>
+              <p>{{ slot.view.direction }} · 生成于 {{ timeText(slot.item.generatedAt) }}</p>
+              <button
+                type="button"
+                class="history-link"
+                @click="toggleEvidence(slot.item)"
+              >
+                查看这次判断的依据
+              </button>
+            </PredictionHistoryDisclosure>
             <strong
               class="history-direction"
               :class="`tone-${slot.view.tone}`"
@@ -327,16 +351,15 @@ onBeforeUnmount(() => { sequence++ })
             <button
               class="history-link history-basis-toggle"
               :aria-expanded="expandedId === slot.item.id"
-              :aria-controls="expandedId === slot.item.id ? `history-basis-${day.date}` : undefined"
+              aria-haspopup="dialog"
               :aria-label="`${day.date} ${slot.label}预测依据`"
-              @click="toggleEvidence(slot.item, $event)"
+              @click="toggleEvidence(slot.item)"
             >
-              {{ expandedId === slot.item.id ? '收起依据' : '查看依据' }}
-              <span aria-hidden="true">{{ expandedId === slot.item.id ? '−' : '+' }}</span>
+              查看依据 <span aria-hidden="true">›</span>
             </button>
-          </template>
+          </component>
           <p
-            v-else
+            v-else-if="!slot.review"
             class="history-slot-empty"
           >
             {{ slot.empty }}
@@ -348,57 +371,59 @@ onBeforeUnmount(() => { sequence++ })
         :key="review.reviewId"
         :review="review"
       />
-      <div
+      <PredictionHistoryDrawer
         v-if="selected?.item?.date === day.date && selected.view && evidence"
-        :id="`history-basis-${day.date}`"
-        class="history-basis"
+        :title="`${day.date} · ${selected.label}预测依据`"
+        @close="expandedId = null"
       >
-        <div class="history-basis-heading">
-          <h4>{{ selected.label }}预测依据</h4>
-          <span>数据截至 {{ selected.view.dataDate || '日期暂缺' }}</span>
-        </div>
-        <p
-          v-if="evidenceLoadingId === selected.item.id"
-          role="status"
-        >
-          正在读取判断依据…
-        </p>
-        <template v-else>
+        <div class="history-basis">
+          <div class="history-basis-heading">
+            <h4>{{ selected.label }}预测依据</h4>
+            <span>数据截至 {{ selected.view.dataDate || '日期暂缺' }}</span>
+          </div>
           <p
-            v-if="evidenceErrorId === selected.item.id"
-            class="history-notice"
+            v-if="evidenceLoadingId === selected.item.id"
+            role="status"
           >
-            具体依据暂时无法读取，以下保留当时的数据摘要。
-            <button
-              class="history-link"
-              @click="readEvidence(selected.item)"
+            正在读取判断依据…
+          </p>
+          <template v-else>
+            <p
+              v-if="evidenceErrorId === selected.item.id"
+              class="history-notice"
             >
-              重试
-            </button>
-          </p>
-          <PredictionEvidenceBody
-            :fund-code="fundCode"
-            :kind="selected.item.kind"
-            :record-id="selected.item.id"
-            :evidence="evidence"
-          />
-          <p v-if="selected.item.kind === 'multi'">
-            {{ selected.view.rule }}
-          </p>
-          <p
-            v-if="selected.view.caution"
-            class="history-notice"
-          >
-            {{ selected.view.caution }}
-          </p>
-          <p
-            v-if="selected.view.updatedAt"
-            class="history-meta"
-          >
-            结果更新于 {{ timeText(selected.view.updatedAt) }}
-          </p>
-        </template>
-      </div>
+              具体依据暂时无法读取，以下保留当时的数据摘要。
+              <button
+                class="history-link"
+                @click="readEvidence(selected.item)"
+              >
+                重试
+              </button>
+            </p>
+            <PredictionEvidenceBody
+              :fund-code="fundCode"
+              :kind="selected.item.kind"
+              :record-id="selected.item.id"
+              :evidence="evidence"
+            />
+            <p v-if="selected.item.kind === 'multi'">
+              {{ selected.view.rule }}
+            </p>
+            <p
+              v-if="selected.view.caution"
+              class="history-notice"
+            >
+              {{ selected.view.caution }}
+            </p>
+            <p
+              v-if="selected.view.updatedAt"
+              class="history-meta"
+            >
+              结果更新于 {{ timeText(selected.view.updatedAt) }}
+            </p>
+          </template>
+        </div>
+      </PredictionHistoryDrawer>
     </article>
     <footer
       v-if="days.length || hasMore"
@@ -428,7 +453,7 @@ onBeforeUnmount(() => { sequence++ })
 </template>
 
 <style scoped>
-.prediction-history { min-width: 0; margin-top: 24px; container: prediction-history / inline-size; overflow-anchor: none; }
+.prediction-history { --history-rise: #b43d3d; --history-fall: #0f766e; --history-muted: #536c63; min-width: 0; margin-top: 24px; container: prediction-history / inline-size; overflow-anchor: none; }
 .history-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 18px; }
 .prediction-history .history-heading h2 { margin: 0 0 6px; font-size: 20px; }
 .history-heading p { margin: 0; color: #536c63; font-size: 13px; }
@@ -444,11 +469,11 @@ onBeforeUnmount(() => { sequence++ })
 .history-slot-heading h4 { margin: 0; font-size: 16px; }
 .history-slot-heading span { color: #536c63; font-size: 12px; }
 .history-direction { display: block; margin-top: 14px; font-size: 23px; line-height: 1.5; font-weight: 600; }
-.tone-up { color: #b43d3d; }
-.tone-down { color: #0f766e; }
+.tone-up { color: var(--history-rise); }
+.tone-down { color: var(--history-fall); }
 .tone-flat, .tone-neutral, .tone-non_up, .tone-non-up { color: #536c63; }
 .history-period { margin: 6px 0 16px; color: #536c63; font-size: 12px; font-variant-numeric: tabular-nums; }
-.history-revisions { display: grid; gap: 6px; margin-top: 12px; color: #536c63; font-size: 12px; }
+.history-revisions { display: grid; gap: 4px; margin-top: 4px; color: #536c63; font-size: 12px; }
 .history-revisions select { width: 100%; min-width: 0; min-height: 44px; padding: 6px; border: 1px solid #cbd9d1; border-radius: 5px; background: #fff; color: #294c3e; }
 .history-results { margin: 0; font-size: 13px; }
 .history-results > div { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 4px 10px; margin-top: 8px; }
@@ -460,9 +485,9 @@ onBeforeUnmount(() => { sequence++ })
 .is-correct { background: #e8f4ee; color: #176348; }
 .is-incorrect { background: #fcf1e9; color: #925623; }
 .history-generated { margin: 16px 0 0; color: #647b72; font-size: 11px; font-variant-numeric: tabular-nums; }
-.history-link { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 0; border: 0; background: transparent; color: #0f766e; font: inherit; font-size: 13px; cursor: pointer; }
+.history-link { display: inline-flex; align-items: center; gap: 8px; box-sizing: border-box; width: 100%; min-height: 44px; padding: 8px 0; border: 0; background: transparent; color: #0f766e; font: inherit; font-size: 13px; text-align: left; text-decoration: none; cursor: pointer; }
 .history-basis-toggle { align-self: flex-start; margin-top: auto; }
-.history-link:hover { text-decoration: underline; }
+.history-link:hover { background: #dde7d6; text-decoration: none; }
 .prediction-history button:focus-visible { outline: 2px solid #0f766e; outline-offset: 3px; }
 .history-link:disabled { opacity: .55; cursor: wait; }
 .history-slot-empty { margin: 26px 0; color: #647b72; font-size: 15px; }

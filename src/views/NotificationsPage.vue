@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import PageSectionTabs from '@/components/PageSectionTabs.vue'
 import ListPagination from '@/components/ListPagination.vue'
 import { usePageNavigation } from '@/composables/usePageNavigation'
 import ReviewNoticePanel from '@/components/ReviewNoticePanel.vue'
@@ -201,7 +200,6 @@ const { section, sectionLabel } = usePageNavigation()
     <h1 id="notifications-title" class="visually-hidden">
       {{ sectionLabel }}
     </h1>
-    <PageSectionTabs />
 
     <ReviewNoticePanel v-if="section === 'messages'" />
 

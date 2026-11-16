@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import PageSectionTabs from '@/components/PageSectionTabs.vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { usePageNavigation } from '@/composables/usePageNavigation'
 import { useAuthStore } from '@/stores/auth'
@@ -448,7 +447,6 @@ onBeforeUnmount(() => {
     <p class="lead">
       更新基金资料、净值和预测，查看完成情况及需要重试的项目。
     </p>
-    <PageSectionTabs />
 
     <SpxManualSyncPanel v-if="section === 'spxManual'" />
     <SimRecurringRunPanel v-if="section === 'simRecurring'" />

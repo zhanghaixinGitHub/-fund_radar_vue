@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import PageSectionTabs from '@/components/PageSectionTabs.vue'
 import FundListTable from '@/components/FundListTable.vue'
 import FundQuickDrawer from '@/components/FundQuickDrawer.vue'
 import ListPagination from '@/components/ListPagination.vue'
@@ -14,6 +13,7 @@ const {
   errorMessage,
   heldOnly,
   keyword,
+  loadPage,
   loading,
   marketDataUnavailable,
   pageSize,
@@ -44,7 +44,6 @@ async function resetFilters(): Promise<void> {
     <h1 id="watchlist-title" class="visually-hidden">
       关注列表
     </h1>
-    <PageSectionTabs />
     <p class="notice-banner">
       每个登录账号仅能查看和维护自己名下的关注基金；账户、角色与数据范围由服务端统一控制。
     </p>

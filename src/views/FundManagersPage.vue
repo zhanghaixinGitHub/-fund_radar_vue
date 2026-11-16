@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import PageSectionTabs from '@/components/PageSectionTabs.vue'
 import ListPagination from '@/components/ListPagination.vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -68,7 +67,6 @@ useManagerRefresh(() => load(true))
     aria-labelledby="manager-directory-title"
   >
     <h1 id="manager-directory-title" class="visually-hidden">基金经理</h1>
-    <PageSectionTabs />
     <section
       class="fund-results-panel manager-directory-panel"
       aria-label="基金经理列表"

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import PageSectionTabs from '@/components/PageSectionTabs.vue'
 import PortfolioComposition from '@/components/PortfolioComposition.vue'
 import HoldingManagementDrawer from '@/components/HoldingManagementDrawer.vue'
 import ListPagination from '@/components/ListPagination.vue'
@@ -320,7 +319,6 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
         </button>
       </div>
     </header>
-    <PageSectionTabs />
     <AccountFundingPanel v-if="section === 'funding'" />
     <AccountRiskPanel v-if="section === 'account-risk'" />
     <AccountOptionsPanel v-if="section === 'options'" />

@@ -14,7 +14,7 @@ export function assertPredictionReview(value: PredictionReview | null, code: str
   const seen = new Set<string>()
   for (const period of value.periods) {
     if (!reviewHorizons.some(h => h.id === period.horizonId) || seen.has(period.horizonId)
-      || !['UP', 'DOWN', 'ABSTAIN'].includes(period.decision)
+      || !['UP', 'DOWN', 'FLAT', 'ABSTAIN'].includes(period.decision)
       || !['DATED_ANALYSIS', 'RETROSPECTIVE', 'CONDITIONAL_OUTLOOK'].includes(period.kind)
       || period.confidence !== 'LOW'
       || !Array.isArray(period.conditions) || !Array.isArray(period.limitations)) {
@@ -31,10 +31,7 @@ export function reviewTitle(id: ReviewHorizon, period?: PredictionReviewPeriod):
 export function reviewDirection(period?: PredictionReviewPeriod): string {
   if (!period) return '分析待更新'
   if (period.decision === 'ABSTAIN') return '暂不判断'
-  const direction = period.decision === 'UP' ? '弱偏上' : '弱偏下'
-  if (period.kind === 'RETROSPECTIVE') return `当时${direction}`
-  if (period.kind === 'CONDITIONAL_OUTLOOK') return `条件${direction}`
-  return direction
+  return { UP: '偏上涨', DOWN: '偏下跌', FLAT: '持平' }[period.decision]
 }
 /** 名义到期日不替代已核实的结束估值日。 */
 export function reviewDateRange(period?: PredictionReviewPeriod): string {

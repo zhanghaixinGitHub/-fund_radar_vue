@@ -174,7 +174,7 @@ body:has(.app-shell){overflow:clip}
 .app-shell .fund-data-table :is(thead th:first-child,tbody th.fund-table-identity){position:sticky;left:0;z-index:1}
 .app-shell .fund-data-table thead th:first-child{z-index:2}
 @media(max-width:720px){.app-shell .fund-data-table :is(thead th:first-child,tbody th.fund-table-identity){position:static}}
-/* Explicit contextual return remains separate from the single location breadcrumb. */
+/* Detail pages keep an explicit return link without repeating location navigation. */
 .app-shell .workspace-return-link{display:inline-flex;align-items:center;min-height:36px;margin:0 0 16px;padding:4px 0;color:var(--ui-primary);font-size:13px;font-weight:400;text-decoration:none}
 .app-shell .workspace-return-link:hover{text-decoration:none;text-underline-offset:3px}
 

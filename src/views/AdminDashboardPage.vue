@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import PageSectionTabs from '@/components/PageSectionTabs.vue'
 import { useAuthStore } from '@/stores/auth'
 import { accountDisplayLabel, accountRoleLabel } from '@/utils/accountPresentation'
 import AutomaticModelDiagnostics from '@/components/AutomaticModelDiagnostics.vue'
@@ -21,7 +20,6 @@ const authStore = useAuthStore()
     <p class="lead">
       系统级操作与用户端浏览分离。所有高风险动作都由 Java 服务端认证、授权和审计。
     </p>
-    <PageSectionTabs />
 
     <div class="admin-summary-card">
       <span>当前登录</span>

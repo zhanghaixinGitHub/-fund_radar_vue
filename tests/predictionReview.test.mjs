@@ -21,14 +21,14 @@ test('开始日收盘后形成的补充判断不冒充事前预测，也不混�
 test('已结束的一日保留原日期，标题和方向明确为复盘，不改成新的明日窗口', () => {
   const old = period()
   assert.equal(reviewTitle('T1', old), '一日复盘')
-  assert.equal(reviewDirection(old), '当时弱偏上')
+  assert.equal(reviewDirection(old), '偏上涨')
   assert.equal(reviewDateRange(old), '2026-11-12 至 2026-11-12')
   assert.deepEqual([old.startDate, old.endDate], ['2026-11-12', '2026-11-12'])
 })
 
-test('半年名义到期日不会成为已确认终点，仍保留条件弱方向', () => {
+test('半年方向用直白名称，名义到期日不会成为已确认终点', () => {
   const half = period({ horizonId: 'M6_V1', kind: 'CONDITIONAL_OUTLOOK', endDate: null, nominalEndDate: '2027-05-11' })
-  assert.equal(reviewDirection(half), '条件弱偏上')
+  assert.equal(reviewDirection(half), '偏上涨')
   assert.match(reviewDateRange(half), /终点待核/)
   assert.match(reviewDateRange(half), /名义到期 2027-05-11/)
   assert.doesNotMatch(reviewDateRange(half), /至 2027-05-11/)
@@ -36,6 +36,8 @@ test('半年名义到期日不会成为已确认终点，仍保留条件弱方�
 
 test('暂不判断不能兜底为看跌，没有结果也不冒充已有预测', () => {
   assert.equal(reviewDirection(period({ decision: 'ABSTAIN' })), '暂不判断')
+  assert.equal(reviewDirection(period({ decision: 'DOWN' })), '偏下跌')
+  assert.equal(reviewDirection(period({ decision: 'FLAT' })), '持平')
   assert.equal(reviewDirection(undefined), '分析待更新')
   assert.equal(reviewDateRange(undefined), '尚无可用分析')
   assert.equal(reviewHorizons.length, 4)

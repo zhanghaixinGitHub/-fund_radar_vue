@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import PageSectionTabs from '@/components/PageSectionTabs.vue'
 import FundListTable from '@/components/FundListTable.vue'
 import FundQuickDrawer from '@/components/FundQuickDrawer.vue'
 import ListPagination from '@/components/ListPagination.vue'
@@ -62,7 +61,6 @@ async function clearRating(): Promise<void> {
     <h1 id="market-title" class="visually-hidden">
       基金市场
     </h1>
-    <PageSectionTabs />
     <p
       v-if="stale"
       class="notice-banner"
