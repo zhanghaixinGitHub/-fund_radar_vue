@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import ListPagination from '@/components/ListPagination.vue'
+import HoldingAdviceDetails from '@/components/HoldingAdviceDetails.vue'
+import { useRoute } from 'vue-router'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import { generateDecision, readDecision, readDecisionHistory, readDecisionOutcomes, readStrategyPreference, saveStrategyPreference } from '@/api/multiPrediction'
+import { readDecision, readDecisionHistory, readDecisionOutcomes, readStrategyPreference, saveStrategyPreference } from '@/api/multiPrediction'
 import type { DecisionOutcome } from '@/api/multiPrediction'
 import type { DecisionReport } from '@/types/multiPrediction'
 import { useAuthStore } from '@/stores/auth'
@@ -9,11 +11,13 @@ import { sortPredictionEvidence, sortPredictionHorizons } from '@/utils/predicti
 import { findLastPage, readFixedPage } from '@/utils/pagination'
 const props = defineProps<{ fundCode: string; compact?: boolean; historyOnly?: boolean; initialReport?: DecisionReport | null }>()
 const auth = useAuthStore()
+const route = useRoute()
 const report = ref<DecisionReport | null>(null), history = ref<DecisionReport[]>([])
-const error = ref(''), busy = ref(false), preference = ref('BALANCED'), isDefault = ref(true)
+const error = ref(''), preference = ref('BALANCED'), isDefault = ref(true)
 const page = ref(1), outcomes = ref<Record<string, DecisionOutcome>>({}), outcomeError = ref('')
-const historyVersion = ref('HOLDING_ADVICE_V3_THREE_STATE')
+const historyVersion = ref('HOLDING_ADVICE_V4_EVIDENCE')
 const historyLoading = ref(false)
+const reportLoading = ref(false)
 const pageSize = ref(10)
 const historyTotal = ref<number | undefined>()
 const historyHasMore = ref(false)
@@ -25,10 +29,16 @@ const summaryEvidence = computed(() => sortPredictionEvidence([
 let sequence = 0
 const labels: Record<string, string> = { BUY: '建议买入', AVOID: '不建议买入', ADD: '建议加仓', HOLD: '继续持有', REDUCE: '建议减仓', SELL: '建议卖出' }
 const time = (value: string) => new Date(value).toLocaleString('zh-CN', { hour12: false })
+const clockNow = ref(Date.now())
+const clockTimer = globalThis.setInterval(() => { clockNow.value = Date.now() }, 30_000)
+const needsReview = computed(() => !!report.value && (['LEGACY', 'CHANGED', 'EXPIRED', 'UNVERIFIED'].includes(report.value.applicability ?? '') || Date.parse(report.value.validUntil) <= clockNow.value))
+const isNew = computed(() => report.value?.strategyVersion === 'HOLDING_ADVICE_V4_EVIDENCE')
+const title = computed(() => reportLoading.value ? '正在读取综合建议…' : error.value && !report.value ? '综合建议暂时无法读取' : needsReview.value ? '已有建议需重新评估' : report.value?.adviceState === 'INSUFFICIENT' ? '暂不形成综合建议' : report.value?.generationStatus === 'FAILED' ? '本次建议生成失败' : labels[report.value?.decision ?? ''] ?? '尚无综合建议')
 /** 历史接口按二十条读取，展示窗口和核对结果同步合并，避免切换条数后记录错配。 */
 async function load() {
   const run = ++sequence; error.value = ''; outcomeError.value = ''
   historyLoading.value = props.historyOnly === true
+  reportLoading.value = !props.historyOnly
   const code = props.fundCode
   const version = historyVersion.value
   const size = pageSize.value
@@ -63,13 +73,7 @@ async function load() {
       historyHasMore.value = historyTotal.value === undefined ? records.hasMore : records.page * size < historyTotal.value
     }
   } catch (e) { if (run === sequence) error.value = e instanceof Error ? e.message : '建议读取失败' }
-  finally { if (run === sequence) historyLoading.value = false }
-}
-async function generate() {
-  const code = props.fundCode; busy.value = true; error.value = ''
-  try { const value = await generateDecision(code); if (code === props.fundCode) { report.value = value; await load() } }
-  catch (e) { if (code === props.fundCode) error.value = e instanceof Error ? e.message : '建议生成失败' }
-  finally { busy.value = false }
+  finally { if (run === sequence) { historyLoading.value = false; reportLoading.value = false } }
 }
 async function changePreference() {
   try { await saveStrategyPreference(preference.value); isDefault.value = false }
@@ -101,29 +105,19 @@ async function lastHistoryPage() {
   } catch { if (run === sequence) error.value = '暂时无法跳至尾页，请稍后重试。' }
   finally { if (run === sequence) historyLoading.value = false }
 }
-watch(() => [props.fundCode, props.initialReport, props.historyOnly] as const, () => { page.value=1; historyTotal.value = undefined; historyHasMore.value = false; report.value = props.initialReport ?? null; history.value = []; if (props.fundCode && !props.compact) void load() }, { immediate: true })
-onBeforeUnmount(() => { ++sequence })
+watch(() => [props.fundCode, props.initialReport, props.historyOnly] as const, () => { ++sequence; page.value=1; historyTotal.value = undefined; historyHasMore.value = false; report.value = props.initialReport ?? null; history.value = []; if (props.fundCode) void load() }, { immediate: true })
+onBeforeUnmount(() => { ++sequence; globalThis.clearInterval(clockTimer) })
 </script>
 <template>
   <section
     class="decision-panel"
-    :aria-busy="busy || historyLoading"
+    :aria-busy="historyLoading || reportLoading"
     aria-label="持仓综合建议"
   >
     <div class="section-heading">
       <div>
-        <p class="eyebrow">
-          综合建议 · 实验中
-        </p><h2>{{ historyOnly ? '综合建议历史' : report?.generationStatus === 'FAILED' ? '本次建议生成失败' : labels[report?.decision ?? ''] ?? '尚无综合建议' }}</h2>
+        <h2>{{ historyOnly ? '综合建议历史' : title }}</h2>
       </div>
-      <button
-        v-if="!historyOnly && auth.hasPermission('SIM_PORTFOLIO_SELF_WRITE')"
-        class="primary-button"
-        :disabled="busy"
-        @click="generate"
-      >
-        {{ busy ? '正在计算并留档…' : '生成当前综合建议' }}
-      </button>
     </div>
     <p
       v-if="error"
@@ -137,12 +131,36 @@ onBeforeUnmount(() => { ++sequence })
         重新读取
       </button>
     </p>
-    <template v-if="report && !historyOnly">
+    <p
+      v-if="reportLoading"
+      role="status"
+    >
+      正在读取已保存的建议与依据，请稍候。
+    </p>
+    <template v-else-if="report && !historyOnly && isNew">
+      <p
+        v-if="needsReview"
+        role="status"
+      >
+        {{ report.applicabilityMessage || '这份建议的适用时间已过，请重新评估。' }} 下方保留当时原文。
+      </p>
+      <HoldingAdviceDetails
+        :report="report"
+        :compact="compact"
+      />
+    </template>
+    <template v-else-if="report && !historyOnly">
+      <p
+        v-if="needsReview"
+        role="status"
+      >
+        {{ report.applicabilityMessage || '这份建议的适用时间已过，请重新评估。' }}
+      </p>
       <p :class="{ 'error-message': report.generationStatus === 'FAILED' }">
         {{ report.error?.summary ?? report.summary }}
       </p>
       <p v-if="report.error">
-        {{ report.error.nextAction }} <small>{{ report.error.code }} · {{ report.error.traceId }}</small>
+        {{ report.error.nextAction }}
       </p>
       <ul v-if="!compact">
         <li
@@ -211,20 +229,13 @@ onBeforeUnmount(() => { ++sequence })
             {{ item }}
           </li>
         </ul>
-        <p>策略：{{ report.strategyVersion }}；报告：{{ report.reportId }}</p>
-        <p
-          v-for="model in sortPredictionHorizons(report.modelRefs, model => model.horizonId)"
-          :key="model.predictionId"
-        >
-          {{ model.horizonId }} · 实际模型 {{ model.modelId }} · 采用版本 {{ model.activationRevision }} · {{ model.modelHash }}
-        </p>
       </details>
     </template>
     <p v-else-if="!error && !historyOnly">
-      生成后会保存当时的预测、资料和持仓。持有金额不影响是否给出判断。
+      生成后保存当时的基金依据、持仓和操作安排。资料不足时会说明原因。
     </p>
     <div
-      v-if="!compact && !historyOnly && auth.hasPermission('SIM_PORTFOLIO_SELF_WRITE')"
+      v-if="!reportLoading && !error && !compact && !historyOnly && auth.hasPermission('SIM_PORTFOLIO_SELF_WRITE')"
       class="preference"
     >
       <label :for="`preference-${fundCode}`">综合建议偏好</label>
@@ -241,15 +252,15 @@ onBeforeUnmount(() => { ++sequence })
           长线
         </option>
       </select>
-      <small>{{ isDefault ? '尚未设置，使用默认实验规则' : '已保存个人选择；重新生成建议时生效' }}。不限制关注页的预测周期。</small>
+      <small>{{ isDefault ? '尚未设置个人偏好' : '已保存个人选择' }}。当前持仓建议分别核对各周期，不按偏好补齐缺失依据。</small>
     </div>
     <div v-if="historyOnly">
-      <label>建议版本 <select
+      <label>历史范围 <select
         v-model="historyVersion"
         :disabled="historyLoading"
         @change="historyPage(1)"
-      ><option value="HOLDING_ADVICE_V3_THREE_STATE">三分类综合建议</option><option value="HOLDING_ADVICE_V2_EXPERIMENTAL">旧版二分类综合建议</option></select></label>
-      <p>保留当时动作、依据和模型版本。下面核验的是所引用预测的方向与区间总回报，不是模拟交易收益；扣费策略对照在历史研究中单独记录。</p>
+      ><option value="HOLDING_ADVICE_V4_EVIDENCE">当前持仓综合建议</option><option value="HOLDING_ADVICE_V3_THREE_STATE">此前综合建议</option><option value="HOLDING_ADVICE_V2_EXPERIMENTAL">早期综合建议</option></select></label>
+      <p>保留当时结论与依据。旧记录中的到期结果只核验所引用预测，不代表综合建议有效率或模拟交易收益。</p>
       <p
         v-if="outcomeError"
         role="alert"
@@ -264,8 +275,15 @@ onBeforeUnmount(() => { ++sequence })
         :key="item.reportId"
         class="decision-history"
       >
-        <strong>{{ labels[item.decision ?? ''] ?? '生成失败' }}</strong> · {{ time(item.generatedAt) }}<p>{{ item.summary }}</p><small>{{ item.strategyVersion }} · {{ item.reportId }}</small>
-        <details>
+        <strong>{{ item.adviceState === 'INSUFFICIENT' ? '暂不形成建议' : labels[item.decision ?? ''] ?? '生成失败' }}</strong> · {{ time(item.generatedAt) }}
+        <HoldingAdviceDetails
+          v-if="item.strategyVersion === 'HOLDING_ADVICE_V4_EVIDENCE'"
+          :report="item"
+        />
+        <p v-else>
+          {{ item.summary }}
+        </p>
+        <details v-if="item.strategyVersion !== 'HOLDING_ADVICE_V4_EVIDENCE'">
           <summary>当时依据与预测到期结果</summary><p
             v-for="reason in sortPredictionEvidence([...item.supportingEvidence,...(item.neutralEvidence ?? []),...item.opposingEvidence])"
             :key="reason"
@@ -275,7 +293,7 @@ onBeforeUnmount(() => { ++sequence })
             v-for="reference in sortPredictionHorizons(item.modelRefs, reference => reference.horizonId)"
             :key="reference.predictionId"
           >
-            <p>{{ reference.horizonId }} · {{ reference.modelId }} · 采用版本 {{ reference.activationRevision }}</p><p v-if="!outcomes[reference.predictionId]?.outcomes?.length">
+            <p>{{ { T5_V1: '五日', T20_V1: '二十日', M6_V1: '半年' }[reference.horizonId] || '对应周期' }}</p><p v-if="!outcomes[reference.predictionId]?.outcomes?.length">
               {{ outcomes[reference.predictionId]?.check_state?.summary ?? '尚未到期或到期资料待齐，不计为正确或错误' }}
             </p><p
               v-for="check in outcomes[reference.predictionId]?.outcomes"
@@ -299,9 +317,9 @@ onBeforeUnmount(() => { ++sequence })
     </div>
     <RouterLink
       v-if="compact"
-      :to="{ name: 'portfolio-advice', query: { fund: fundCode } }"
+      :to="{ name: 'portfolio-advice', query: { fund: fundCode, from: route.fullPath } }"
     >
-      查看综合依据与历史 →
+      查看完整分析与历史 →
     </RouterLink>
   </section>
 </template>

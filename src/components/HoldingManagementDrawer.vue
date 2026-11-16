@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { simMoney } from '@/utils/simulation'
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { readScrollMemory, saveScrollMemory, workspaceScrollKey } from '@/utils/workspaceScroll'
 import { useRoute } from 'vue-router'
 import DecisionPanelV2 from '@/components/DecisionPanelV2.vue'
 import type { DecisionReport } from '@/types/multiPrediction'
@@ -19,6 +20,7 @@ const emit = defineEmits<{
   trade: [mode: 'BUY' | 'SELL' | 'PLAN']
 }>()
 const route = useRoute()
+const scrollKey = `holding:${workspaceScrollKey(route.fullPath)}:${props.position.fundCode}`
 const dialog = ref<globalThis.HTMLDialogElement | null>(null)
 const titleId = computed(() => `holding-drawer-title-${props.position.fundCode}`)
 const planLabels = { ACTIVE: '执行中', PAUSED: '已暂停', ENDED: '已结束' }
@@ -37,8 +39,8 @@ const earningsTarget = computed(() => ({
   name: 'portfolio-earnings',
   query: { fundCode: props.position.fundCode, from: route.fullPath },
 }))
-const ordersTarget = computed(() => ({ path: route.path, query: { section: 'orders', fundCode: props.position.fundCode } }))
-const fullDetailTarget = computed(() => `/watchlist/${props.position.fundCode}`)
+const ordersTarget = computed(() => ({ path: route.path, query: { section: 'orders', fundCode: props.position.fundCode, from: route.fullPath } }))
+const fullDetailTarget = computed(() => ({ path: `/watchlist/${props.position.fundCode}`, query: { from: route.fullPath } }))
 const showEarnings = computed(() => props.position.kind === 'recorded' || (props.position.kind === 'confirmed' && !!props.position.additionalPosition))
 const buyLabel = computed(() => props.position.kind === 'recorded' && Number(props.position.shares) <= 0 ? '买入' : '加仓')
 
@@ -47,8 +49,15 @@ function outside(event: globalThis.MouseEvent) {
   const rect = dialog.value?.getBoundingClientRect()
   if (rect && (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom)) emit('close')
 }
-onMounted(() => dialog.value?.showModal())
-onBeforeUnmount(() => dialog.value?.close())
+onMounted(async () => {
+  dialog.value?.showModal()
+  await nextTick()
+  if (dialog.value) dialog.value.scrollTop = readScrollMemory(scrollKey)
+})
+onBeforeUnmount(() => {
+  if (dialog.value) saveScrollMemory(scrollKey, dialog.value.scrollTop)
+  dialog.value?.close()
+})
 </script>
 
 <template>
@@ -141,7 +150,6 @@ onBeforeUnmount(() => dialog.value?.close())
           v-if="position.kind === 'recorded'"
           class="secondary-button holding-drawer-action"
           :to="ordersTarget"
-          @click="emit('close')"
         >
           交易记录
         </RouterLink>
@@ -157,7 +165,6 @@ onBeforeUnmount(() => dialog.value?.close())
         v-if="showEarnings"
         class="holding-drawer-link"
         :to="earningsTarget"
-        @click="emit('close')"
       >
         查看收益明细 <span aria-hidden="true">›</span>
       </RouterLink>
@@ -165,7 +172,6 @@ onBeforeUnmount(() => dialog.value?.close())
         v-if="position.kind !== 'recorded'"
         class="holding-drawer-link"
         :to="fullDetailTarget"
-        @click="emit('close')"
       >
         查看完整基金资料 <span aria-hidden="true">›</span>
       </RouterLink>

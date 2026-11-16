@@ -1,6 +1,34 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { isWorkspaceLocalTabTransition, isWorkspaceReturn, restoreWorkspaceScroll, workspaceScrollKey } from '../src/utils/workspaceScroll.ts'
+import { isWorkspaceLocalTabTransition, isWorkspaceReturn, restoreWorkspaceScroll, workspaceScrollKey, readScrollMemory, saveScrollMemory } from '../src/utils/workspaceScroll.ts'
+
+test('打开和关闭持仓抽屉保留列表位置，但切换筛选仍是新位置', () => {
+  const list = '/portfolio?section=holdings&page=2&sort=holdingGain'
+  assert.equal(isWorkspaceLocalTabTransition(list, list + '&holding=008888'), true)
+  assert.equal(isWorkspaceLocalTabTransition(list + '&holding=008888', list), true)
+  assert.equal(isWorkspaceLocalTabTransition(list, '/portfolio?section=orders&holding=008888'), false)
+  assert.equal(isWorkspaceLocalTabTransition(list, list + '&holding=008888&keyword=test'), false)
+})
+test('返回路径省略默认分页值时仍命中原列表与抽屉的位置', () => {
+  assert.equal(workspaceScrollKey('/portfolio?section=holdings&size=10&page=1&holding=007832'),
+    workspaceScrollKey('/portfolio?holding=007832&section=holdings'))
+})
+test('刷新后保留有界滚动记忆，浏览器禁用存储时正常降级', () => {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'sessionStorage')
+  const data = new Map()
+  try {
+    Object.defineProperty(globalThis, 'sessionStorage', {configurable:true,value:{getItem:key=>data.get(key),setItem:(key,value)=>data.set(key,value)}})
+    saveScrollMemory('holding:test', 580)
+    assert.equal(readScrollMemory('holding:test'), 580)
+    saveScrollMemory('workspace:test', Number.NaN)
+    assert.equal(readScrollMemory('workspace:test'), 0)
+    data.set('fund-radar-scroll', 'invalid')
+    assert.equal(readScrollMemory('holding:test'), 0)
+  } finally {
+    if (descriptor) Object.defineProperty(globalThis, 'sessionStorage', descriptor)
+    else delete globalThis.sessionStorage
+  }
+})
 
 test('返回目录时等待异步列表撑开高度，不能在加载状态提前完成', () => {
   const area = { scrollTop: 0, scrollHeight: 400, clientHeight: 400 }

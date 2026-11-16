@@ -70,6 +70,12 @@ const positions = computed(() => {
     (!query || p.fundCode.includes(query) || p.fundName.toLocaleLowerCase().includes(query)))
 })
 const managedCode = ref('')
+function openManagement(code: string) {
+  void router.replace({ path: route.path, query: { ...route.query, holding: code } })
+}
+function closeManagement() {
+  void router.replace({ path: route.path, query: { ...route.query, holding: undefined } })
+}
 const managedPosition = computed(() => managedCode.value ? positions.value.find(position => position.fundCode === managedCode.value) ?? null : null)
 // 排序状态进入 URL，查看建议后返回持仓仍保持所选排序；均按数值降序。
 const holdingSortOptions = [
@@ -255,6 +261,11 @@ watch(selectedCode, code => {
   scopeHint.value = ''
 }, { immediate: true })
 watch(managedPosition, position => { if (!position) managedCode.value = '' })
+// URL记住打开的基金，详情返回和浏览器后退都能在数据就绪后恢复抽屉。
+watch([() => route.query.holding, overview, section], () => {
+  const code = typeof route.query.holding === 'string' ? route.query.holding : ''
+  managedCode.value = section.value === 'holdings' && /^\d{6}$/.test(code) && positions.value.some(p => p.fundCode === code) ? code : ''
+}, { immediate: true })
 // 等持仓实际加载后才修正越界页码，避免刷新或详情返回时被尚未加载的空列表重置到第一页。
 watch([() => listLocation.value.page, holdingPage, section, overview], () => {
   if (!isCurrent.value || section.value !== 'holdings' || !overview.value) return
@@ -536,7 +547,12 @@ onBeforeUnmount(() => { alive = false; detailGeneration++; globalThis.clearInter
             class="holdings-table-scroll"
             tabindex="0"
           >
-            <table class="holdings-table" data-table-align data-align-right="2 3 4 5" data-align-center="6">
+            <table
+              class="holdings-table"
+              data-table-align
+              data-align-right="2 3 4 5"
+              data-align-center="6"
+            >
               <thead>
                 <tr>
                   <th scope="col">
@@ -635,7 +651,7 @@ onBeforeUnmount(() => { alive = false; detailGeneration++; globalThis.clearInter
                         class="secondary-button holding-manage-button"
                         type="button"
                         :aria-label="`管理 ${p.fundName}`"
-                        @click="managedCode = p.fundCode"
+                        @click="openManagement(p.fundCode)"
                       >
                         管理与详情
                       </button>
@@ -935,7 +951,7 @@ onBeforeUnmount(() => { alive = false; detailGeneration++; globalThis.clearInter
       :initial-report="adviceByFund.get(managedPosition.fundCode) ?? null"
       :can-write="canWrite"
       :can-plan="canPlan"
-      @close="managedCode = ''"
+      @close="closeManagement"
       @trade="openManagedTrade"
     />
     <SimulationFundPicker

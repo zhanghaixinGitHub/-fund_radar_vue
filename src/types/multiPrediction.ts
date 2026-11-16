@@ -33,6 +33,13 @@ export interface PredictionTask {
   items: { fundCode: string; horizonId: string; status: string; result: { error?: PredictionError } | null }[]
 }
 export interface DecisionReport {
+  adviceState?: 'READY' | 'QUALIFIED' | 'INSUFFICIENT' | 'FAILED'
+  applicability?: 'CURRENT' | 'LEGACY' | 'CHANGED' | 'EXPIRED' | 'UNVERIFIED'
+  applicabilityMessage?: string
+  dataAsOf?: string
+  qualityAssessment?: string; timingAssessment?: string; personalAssessment?: string
+  reassessmentConditions?: string[]
+  periodAssessments?: { horizonId: string; decision: string; kind: string; summary: string; primaryReason: string; counterReason: string; startDate: string; endDate: string | null; sourceCutoff: string; conditions: string[]; limitations: string[] }[]
   reportId: string; fundCode: string; generatedAt: string; validUntil: string; generationStatus: string
   decision: string | null; summary: string; supportingEvidence: string[]; opposingEvidence: string[]; neutralEvidence?: string[]
   facts: string[]; missingOptionalFactors: string[]; strategyVersion: string; preference: string; defaultPreference: boolean

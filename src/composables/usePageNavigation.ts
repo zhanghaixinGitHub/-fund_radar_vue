@@ -165,6 +165,8 @@ export function usePageNavigation() {
       && route.query.from.startsWith('/fund-managers')) return managerReturnPath(route.query.from)
     // 收益明细属于“我的持仓”的同级菜单，通过子菜单切换，不重复显示模块返回入口。
     if (routeName.value === 'portfolio-earnings') return null
+    if ((routeName.value === 'watchlist-fund-detail' || routeName.value === 'portfolio-snapshot')
+      && typeof route.query.from === 'string' && route.query.from.split('?')[0] === '/portfolio') return portfolioReturnPath(route.query.from)
     // 从顶栏直接进入持仓分析时没有来源页，不显示返回链接。
     if (routeName.value === 'portfolio-advice') {
       return typeof route.query.from === 'string' ? portfolioReturnPath(route.query.from) : null
@@ -173,7 +175,8 @@ export function usePageNavigation() {
     if (routeName.value === 'fund-detail') return listReturnTarget(route.query.from, '/funds')
     return null
   })
-  const returnLabel = computed(() => returnLabels[routeName.value] ?? moduleLabel.value)
+  const returnLabel = computed(() => typeof route.query.from === 'string' && route.query.from.split('?')[0] === '/portfolio'
+    ? '我的持仓' : returnLabels[routeName.value] ?? moduleLabel.value)
   function sectionTarget(key: string): RouteLocationRaw {
     if (['portfolio-snapshot', 'portfolio-earnings'].includes(routeName.value) && key === 'earnings') return { name: 'portfolio-earnings' }
     if (routeName.value === 'portfolio-earnings') return { name: 'portfolio-snapshot', query: { section: key } }
@@ -185,6 +188,7 @@ export function usePageNavigation() {
       else query.type = key
     } else {
       query.section = key
+      if (routeName.value === 'portfolio-snapshot' && key !== 'holdings') delete query.holding
       if (key !== 'rating') delete query.ratingRef
       if (!['company', 'documents'].includes(key)) delete query.stock
       delete query.user

@@ -21,8 +21,8 @@ export const retryPredictionTask = (id: string) => post<PredictionTask>(`/api/v1
 export const readDecision = (code: string) => get<DecisionReport | null>(`/api/v1/portfolio/funds/${encodeURIComponent(code)}/decision`)
 export const readLatestDecisions = (signal?: AbortSignal) => get<DecisionReport[]>('/api/v1/portfolio/decisions/latest', signal)
 export const generateDecision = (code: string) => post<DecisionReport>(`/api/v1/portfolio/funds/${encodeURIComponent(code)}/decision/generate`)
-export const readDecisionHistory = (code: string, page = 1, version = 'HOLDING_ADVICE_V3_THREE_STATE') => get<DecisionReport[]>(`/api/v1/portfolio/funds/${encodeURIComponent(code)}/decision/history?page=${page}&version=${encodeURIComponent(version)}`)
+export const readDecisionHistory = (code: string, page = 1, version = 'HOLDING_ADVICE_V4_EVIDENCE') => get<DecisionReport[]>(`/api/v1/portfolio/funds/${encodeURIComponent(code)}/decision/history?page=${page}&version=${encodeURIComponent(version)}`)
 export interface DecisionOutcome { horizon_id: string; outcomes: { correct: boolean; totalReturn: string; checkedAt: string }[] | null; check_state: { summary?: string } | null }
-export const readDecisionOutcomes = (code: string, page = 1, version = 'HOLDING_ADVICE_V3_THREE_STATE') => get<Record<string, DecisionOutcome>>(`/api/v1/portfolio/funds/${encodeURIComponent(code)}/decision/outcomes?page=${page}&version=${encodeURIComponent(version)}`)
+export const readDecisionOutcomes = (code: string, page = 1, version = 'HOLDING_ADVICE_V4_EVIDENCE') => get<Record<string, DecisionOutcome>>(`/api/v1/portfolio/funds/${encodeURIComponent(code)}/decision/outcomes?page=${page}&version=${encodeURIComponent(version)}`)
 export const readStrategyPreference = () => get<{ preference: string; defaultPreference: boolean }>('/api/v1/portfolio/strategy-preference')
 export const saveStrategyPreference = (preference: string) => post('/api/v1/portfolio/strategy-preference', { preference })

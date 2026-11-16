@@ -34,41 +34,97 @@ const follows = ref<WatchlistItem[]>([])
 const candidates = computed(() => [...positions.value, ...follows.value.filter(f => !positions.value.some(p => p.fundCode === f.fundCode))])
 const positionsLoaded = ref(false)
 const positionsError = ref(false)
-const positionsReady = Promise.all([getSimOverview(), getWatchlist({pageSize:50, ...(code.value ? {keyword:code.value} : {})})])
-  .then(([overview, watchlist]) => { positions.value = overview.positions; follows.value = watchlist.items })
-  .catch(() => { positionsError.value = true })
-  .finally(() => { positionsLoaded.value = true })
+const followsError = ref(false)
+const positionsLoading = ref(true)
+const heldPositions = computed(() => positions.value.filter(item => Number(item.shares) > 0)
+  .sort((left, right) => left.fundCode.localeCompare(right.fundCode)))
+const currentFund = computed(() => candidates.value.find(item => item.fundCode === code.value))
+const currentIsHeld = computed(() => heldPositions.value.some(item => item.fundCode === code.value))
+let positionsGeneration = 0
+async function loadPositions() {
+  const run = ++positionsGeneration
+  positionsLoading.value = true; positionsError.value = false; followsError.value = false
+  try {
+    const overview = await getSimOverview()
+    if (!alive || run !== positionsGeneration) return
+    positions.value = overview.positions
+    // 明确带基金的旧链接照常打开；关注查询失败不能让当前持仓选择失效。
+    if (code.value && !positions.value.some(item => item.fundCode === code.value)) {
+      try {
+        const result = await getWatchlist({ pageSize: 50, keyword: code.value })
+        if (!alive || run !== positionsGeneration) return
+        follows.value = result.items
+      } catch { if (alive && run === positionsGeneration) followsError.value = true }
+    }
+  } catch {
+    if (alive && run === positionsGeneration) positionsError.value = true
+  } finally {
+    if (alive && run === positionsGeneration) { positionsLoaded.value = true; positionsLoading.value = false }
+  }
+}
+// 延后到setup声明完成，避免同步失败时读取尚未初始化的页面生命周期状态。
+const positionsReady = Promise.resolve().then(loadPositions)
 const fundInvalid = computed(() => !!code.value && positionsLoaded.value && !positionsError.value
+  && !followsError.value
   && !candidates.value.some((item) => item.fundCode === code.value))
 const keyword = ref('')
-const searchError = ref('')
-async function search() {
-  searchError.value = ''
-  const value = keyword.value.trim()
-  if (!value) return
-  if (positionsError.value) { searchError.value = '持仓列表暂时无法读取，请稍后重试。'; return }
-  try { const result = await getWatchlist({keyword:value,pageSize:50}); follows.value = result.items }
-  catch { searchError.value = '关注范围暂时无法读取，请重试。'; return }
-  const byCode = candidates.value.find((item) => item.fundCode === value)
-  if (byCode) { selectFund(byCode.fundCode); return }
-  const byName = candidates.value.filter((item) => item.fundName.includes(value))
-  if (byName.length === 1 && byName[0]) { selectFund(byName[0].fundCode); return }
-  searchError.value = byName.length > 1
-    ? `找到 ${byName.length} 只名称包含「${value}」的持仓基金，请输入基金代码精确选择。`
-    : '该基金不在本人持仓、已清仓记录或当前关注中。'
+const previousSearch = ref('')
+function prepareSearch() {
+  if (keyword.value && keyword.value === previousSearch.value) keyword.value = ''
 }
-/** 切换基金时保留当前分区，丢弃上一份报告的分页、日期与报告定位参数；搜索框保留用户输入。 */
-let selectingViaSearch = false
+const searchError = ref('')
+const searching = ref(false)
+const searchResults = ref<{ fundCode: string; fundName: string }[]>([])
+const showingResults = ref(false)
+let searchGeneration = 0
+function cancelSearch() { searchGeneration++; searching.value = false }
+function editKeyword() { cancelSearch(); searchError.value = ''; searchResults.value = []; showingResults.value = false }
+async function search() {
+  cancelSearch(); searchError.value = ''; searchResults.value = []; showingResults.value = false
+  previousSearch.value = keyword.value.trim()
+  const value = keyword.value.trim().toLocaleLowerCase()
+  if (!value) {
+    void router.replace({ query: { ...route.query, fund: undefined, report: undefined, page: undefined, start: undefined, end: undefined } }); return
+  }
+  if (positionsError.value) { searchError.value = '持仓列表暂时无法读取，请稍后重试。'; return }
+  const matches = () => {
+    const exact = candidates.value.find(item => item.fundCode === value || `${item.fundName}（${item.fundCode}）`.toLocaleLowerCase() === value)
+    return exact ? [exact] : candidates.value.filter(item => item.fundName.toLocaleLowerCase().includes(value) || item.fundCode.includes(value))
+  }
+  let found = matches()
+  if (!found.length) {
+    const run = ++searchGeneration
+    searching.value = true
+    try {
+      const result = await getWatchlist({ keyword: value, pageSize: 50 })
+      if (!alive || run !== searchGeneration) return
+      follows.value = result.items
+      found = matches()
+    } catch {
+      if (alive && run === searchGeneration) searchError.value = '关注范围暂时无法读取，请重试。'
+      return
+    } finally { if (alive && run === searchGeneration) searching.value = false }
+  }
+  if (found.length === 1) selectFund(found[0]!.fundCode)
+  else {
+    searchResults.value = found; showingResults.value = true
+    if (!found.length) searchError.value = '未找到本人持仓、已清仓或关注的基金。'
+  }
+}
+/** 切换基金时保留当前栏目与原持仓来源。 */
 function selectFund(fundCode: string) {
-  selectingViaSearch = fundCode !== code.value
+  if (!/^\d{6}$/.test(fundCode)) return
+  cancelSearch(); searchError.value = ''; showingResults.value = false; searchResults.value = []
+  const fund = candidates.value.find(item => item.fundCode === fundCode)
+  keyword.value = fund ? `${fund.fundName}（${fundCode}）` : fundCode
+  previousSearch.value = keyword.value
   void router.replace({ query: { ...route.query, fund: fundCode, report: undefined, page: undefined, start: undefined, end: undefined } })
 }
-// 搜索选中的基金保留用户输入；从持仓卡片等入口带基金进入时，搜索框显示当前基金名称。
-watch([code, positionsLoaded], () => {
-  if (selectingViaSearch) { selectingViaSearch = false; return }
-  const current = candidates.value.find((item) => item.fundCode === code.value)
-  keyword.value = current ? current.fundName : ''
-})
+watch([code, currentFund], () => {
+  if (searching.value) return
+  keyword.value = currentFund.value ? `${currentFund.value.fundName}（${code.value}）` : code.value
+  previousSearch.value = keyword.value
+}, { immediate: true })
 const history = ref<AdviceHistory | null>(null)
 const detail = ref<AdviceDetail | null>(null)
 const diagnosis = ref<DiagnosisHistory | null>(null)
@@ -238,7 +294,7 @@ async function generate() {
     message.value = '已检查当前建议，相同内容沿用原记录，内容变化会追加留档。'
     await load()
   } catch (reason) {
-    if (alive && fund === code.value) error.value = reason instanceof Error ? reason.message : '生成结果暂时无法确认，请先刷新记录查看。'
+    if (alive && fund === code.value) error.value = reason instanceof Error ? reason.message : '生成结果暂时无法确认，请稍后重新进入查看。'
   } finally { if (alive) generating.value = false }
 }
 function filter() {
@@ -248,7 +304,7 @@ function filter() {
 function selectReport(id?: string) { void router.replace({ query: { ...route.query, report: id } }) }
 function changePage(value: number, size = pageSize.value) { void router.replace({ query: { ...route.query, page: value, size: String(size), report: undefined } }) }
 watch([code, section, () => route.query.page, () => route.query.size, () => route.query.start, () => route.query.end, reportId], () => void load(), { immediate: true })
-onBeforeUnmount(() => { alive = false; generation++ })
+onBeforeUnmount(() => { alive = false; generation++; positionsGeneration++; cancelSearch() })
 </script>
 
 <template>
@@ -256,787 +312,892 @@ onBeforeUnmount(() => { alive = false; generation++ })
     class="sim-page advice-page"
     aria-labelledby="advice-title"
   >
-    <form
-      class="search-panel"
-      @submit.prevent="search"
+    <h1
+      id="advice-title"
+      class="visually-hidden"
     >
-      <label for="advice-fund-keyword">基金代码或名称</label>
-      <div class="search-row">
-        <input
-          id="advice-fund-keyword"
-          v-model="keyword"
-          maxlength="50"
-          placeholder="例如：000001"
-          type="search"
-        >
-        <button
-          class="primary-button"
-          type="submit"
-        >
-          查询基金
-        </button>
-      </div>
-    </form>
-    <p
-      v-if="searchError"
-      class="error-message"
-      role="alert"
+      持仓分析
+    </h1>
+    <section
+      class="fund-results-panel advice-results-panel"
+      aria-label="持仓分析内容"
     >
-      {{ searchError }}
-    </p>
-    <h1 v-if="!code" id="advice-title" class="visually-hidden">持仓分析</h1>
-    <header v-if="code" class="sim-page-header">
-      <div>
-        <h1 id="advice-title">
-          {{ code ? `${history?.fundName || code} · 持仓建议` : '持仓分析' }}
-        </h1>
-        <p class="sim-muted">
-          {{ code ? `${code} · 每天保存当时的建议与依据，日后对照实际表现回看。` : '搜索并选择一只持仓或关注基金，查看它的建议、诊断、规则与回看。' }}
-        </p>
-      </div>
-      <div
-        v-if="code && !fundInvalid"
-        class="sim-actions"
+      <h2 class="fund-results-title">
+        持仓分析
+      </h2>
+      <form
+        class="fund-filter-toolbar"
+        aria-label="选择分析基金"
+        :aria-busy="positionsLoading || searching"
+        @submit.prevent="search"
       >
+        <div class="fund-filter-search">
+          <label
+            class="visually-hidden"
+            for="advice-fund-keyword"
+          >基金代码或名称</label>
+          <svg
+            class="fund-filter-search-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            aria-hidden="true"
+          ><circle
+            cx="10.5"
+            cy="10.5"
+            r="6.5"
+          /><path d="m15.5 15.5 4.5 4.5" /></svg>
+          <input
+            id="advice-fund-keyword"
+            v-model="keyword"
+            maxlength="50"
+            :placeholder="previousSearch || '搜索基金名称 / 代码'"
+            type="search"
+            autocomplete="off"
+            @focus="prepareSearch"
+            @input="editKeyword"
+          >
+        </div>
         <button
-          class="secondary-button"
-          type="button"
-          :disabled="loading || generating"
-          @click="load"
+          class="secondary-button fund-filter-submit"
+          type="submit"
+          :disabled="positionsLoading || searching"
         >
-          刷新记录
+          {{ searching ? '查询中…' : '查询' }}
         </button>
         <button
           v-if="canGenerate && section === 'legacy'"
-          class="primary-button"
+          class="secondary-button"
           type="button"
           :disabled="loading || generating"
           @click="generate"
         >
           {{ generating ? '正在检查并留档…' : '更新并留档' }}
         </button>
-      </div>
-    </header>
-    <div
-      v-if="!code"
-      class="sim-empty"
-    >
-      <strong>请选择本人持仓或关注的基金</strong>
-      <p>在上方输入基金代码或名称；已清仓或仅关注的基金也能获得买入/不建议买入判断。</p>
-    </div>
-    <div
-      v-else-if="fundInvalid"
-      class="sim-empty"
-    >
-      <strong>该基金不在本人的持仓或关注中</strong>
-      <p>请在上方选择本人的持仓或关注基金。</p>
-    </div>
-    <template v-else>
+        <span
+          v-if="!positionsLoading && !positionsError"
+          class="sim-muted"
+        >当前持仓 {{ heldPositions.length }} 只</span>
+      </form>
       <p
-        v-if="error && !viewingLegacyHistory"
+        v-if="positionsError"
         class="error-message"
         role="alert"
       >
-        {{ error }}
+        持仓列表暂时无法读取。 <button
+          type="button"
+          class="secondary-button"
+          @click="loadPositions"
+        >
+          重新读取持仓
+        </button>
       </p>
       <p
-        v-if="message"
-        class="sim-success"
-        role="status"
-      >
-        {{ message }}
-      </p>
-      <p
-        v-if="history?.job && ['FAILED', 'PARTIAL'].includes(history.job.status)"
-        class="notice-banner"
-        role="status"
-      >
-        {{ history.job.message }} 上次检查：{{ simTime(history.job.attemptedAt) }}
-      </p>
-      <p
-        v-if="diagnosis?.job && ['FAILED', 'PARTIAL'].includes(diagnosis.job.status)"
-        class="notice-banner"
-        role="status"
-      >
-        {{ diagnosis.job.message }} 上次检查：{{ simTime(diagnosis.job.attemptedAt) }}
-      </p>
-      <p
-        v-if="loading"
+        v-else-if="positionsLoading"
         class="sim-muted"
         role="status"
       >
-        正在读取已保存的建议记录…
+        正在读取本人持仓基金…
       </p>
-
-      <DecisionPanelV2
-        v-if="section === 'latest'"
-        :fund-code="code"
-      />
-      <AutomaticEffectsPanel
-        v-else-if="section === 'review'"
-        :fund-code="code"
-      />
-      <template v-else-if="section === 'diagnosis'">
-        <template v-if="diagnosis && !loading">
-          <template v-if="diagnosis.latest">
-            <p
-              v-if="diagnosisStale(diagnosis.latest.report.cutoffDate, today)"
-              class="notice-banner"
-              role="status"
-            >
-              诊断数据截至 {{ diagnosis.latest.report.cutoffDate ?? '未知日期' }}，距今较久，结论可能未反映最新情况。
-            </p>
-            <article
-              class="advice-conclusion"
-              :class="{ 'advice-conclusion-sell': diagnosis.latest.report.verdict !== 'VALID' }"
-            >
-              <span class="advice-kicker">最新诊断总体结论 · {{ diagnosis.latest.report.reportDate }}</span>
-              <h2>
-                <span
-                  class="diagnosis-verdict"
-                  :class="diagnosisVerdictTone(diagnosis.latest.report.verdict)"
-                >{{ diagnosisVerdictLabel(diagnosis.latest.report.verdict) }}</span>
-              </h2>
-              <p>逐项核对「持有理由是否仍成立」。诊断是事实核对，不是涨跌预测；结论供复核参考，不构成投资建议。</p>
-              <div class="advice-meta">
-                <span>实际留档：{{ simTime(diagnosis.latest.report.generatedAt) }}</span><span v-if="diagnosis.latest.report.cutoffDate">数据截至：{{ diagnosis.latest.report.cutoffDate }}</span>
-              </div>
-            </article>
-            <section
-              class="sim-detail-panel"
-              aria-labelledby="diagnosis-items-title"
-            >
-              <h2 id="diagnosis-items-title">
-                逐项核对
-              </h2>
-              <ol class="advice-evidence">
-                <li
-                  v-for="item in diagnosisItems"
-                  :key="item.item"
-                  :class="{ 'diagnosis-item-changed': item.verdict === 'CHANGED' }"
-                >
-                  <div class="advice-evidence-heading">
-                    <h3>{{ diagnosisItemLabel(item.item) }}</h3><span
-                      class="diagnosis-verdict"
-                      :class="diagnosisVerdictTone(item.verdict)"
-                    >{{ diagnosisVerdictLabel(item.verdict) }}</span>
-                  </div>
-                  <p>{{ item.evidence || '暂无具体说明。' }}</p>
-                  <div
-                    v-if="item.dataAsOfDate"
-                    class="sim-muted"
-                  >
-                    数据截至：{{ item.dataAsOfDate }}
-                  </div>
-                </li>
-              </ol>
-            </section>
-          </template>
-          <div
-            v-else-if="!diagnosis.reports.items.length"
-            class="sim-empty"
-          >
-            <strong>还没有诊断报告</strong><p>后台每日对持仓逐项核对并留档；首份报告没有可比基线，多数项会如实标记为「数据不足」。</p>
-          </div>
-          <div
-            v-if="diagnosis.reports.items.length"
-            class="advice-table-wrap diagnosis-history"
-          >
-            <table class="advice-table" data-table-align data-align-center="4">
-              <thead>
-                <tr>
-                  <th scope="col">
-                    报告日期
-                  </th><th scope="col">
-                    总体结论
-                  </th><th scope="col">
-                    数据截至
-                  </th><th scope="col">
-                    详情
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <template
-                  v-for="item in diagnosis.reports.items"
-                  :key="item.reportId"
-                >
-                  <tr>
-                    <td>{{ item.reportDate }}<small>{{ simTime(item.generatedAt) }} 留档</small></td>
-                    <td>
-                      <span
-                        class="diagnosis-verdict"
-                        :class="diagnosisVerdictTone(item.verdict)"
-                      >{{ diagnosisVerdictLabel(item.verdict) }}</span>
-                    </td>
-                    <td>{{ item.cutoffDate ?? '未提供' }}</td>
-                    <td>
-                      <button
-                        type="button"
-                        class="advice-text-button"
-                        :aria-expanded="expandedDiagnosisId === item.reportId"
-                        @click="toggleDiagnosisReport(item.reportId)"
-                      >
-                        {{ expandedDiagnosisId === item.reportId ? '收起' : '查看详情' }}
-                      </button>
-                    </td>
-                  </tr>
-                  <tr v-if="expandedDiagnosisId === item.reportId">
-                    <td colspan="4">
-                      <dl class="diagnosis-expanded">
-                        <div><dt>报告日期</dt><dd>{{ item.reportDate }}</dd></div>
-                        <div><dt>留档时间</dt><dd>{{ simTime(item.generatedAt) }}</dd></div>
-                        <div><dt>数据截至</dt><dd>{{ item.cutoffDate ?? '未提供' }}</dd></div>
-                        <div><dt>报告编号</dt><dd>{{ item.reportId }}</dd></div>
-                      </dl>
-                      <p
-                        v-if="item.reportId === diagnosisLatestId"
-                        class="sim-muted"
-                      >
-                        这是最新报告，逐项核对明细见上方区块。
-                      </p>
-                      <p
-                        v-else
-                        class="sim-muted"
-                      >
-                        历史报告保留总体结论与留档信息；逐项明细仅最新报告可查。
-                      </p>
-                    </td>
-                  </tr>
-                </template>
-              </tbody>
-            </table>
-          </div>
-          <ListPagination
-            v-if="diagnosis.reports.totalCount > 0"
-            :page="page"
-            :page-size="pageSize"
-            :total="diagnosis.reports.totalCount"
-            :loading="loading"
-            label="诊断历史分页"
-            @change="changePage" 
-          />
-        </template>
-        <div
-          v-else-if="!loading && !error"
-          class="sim-empty"
+      <p
+        v-if="followsError && code && !currentIsHeld"
+        class="sim-muted"
+        role="status"
+      >
+        当前基金的关注信息暂时无法核对；仍可搜索本人持仓，已保存记录以实际读取结果为准。
+      </p>
+      <p
+        v-if="searchError"
+        class="error-message"
+        role="alert"
+      >
+        {{ searchError }}
+        <button
+          v-if="searchError.includes('重试')"
+          type="button"
+          class="secondary-button"
+          @click="search"
         >
-          <strong>诊断记录暂时无法展示</strong><p>请刷新记录重试；接口异常时不会以「一切正常」代替真实状态。</p>
-        </div>
-      </template>
-
-      <template v-else-if="section === 'rules'">
-        <template v-if="draft && holdingRules && !loading">
-          <section
-            v-if="activeRule"
-            class="sim-detail-panel"
-            aria-labelledby="rule-active-title"
+          重试查找
+        </button>
+      </p>
+      <section
+        v-if="showingResults && searchResults.length"
+        aria-label="基金查询结果"
+      >
+        <h3>找到 {{ searchResults.length }} 只基金，请选择查看</h3>
+        <ul class="advice-search-results">
+          <li
+            v-for="fund in searchResults"
+            :key="fund.fundCode"
           >
-            <h2 id="rule-active-title">
-              当前生效规则
-              <span
-                v-if="statsUpdated"
-                class="diagnosis-verdict diagnosis-insufficient rule-badge"
-              >统计已更新</span>
-            </h2>
-            <p
-              v-if="statsUpdated"
-              class="sim-muted"
+            <button
+              type="button"
+              class="advice-text-button"
+              @click="selectFund(fund.fundCode)"
             >
-              草案统计已有新版本（当前统计截至 {{ draft.statsCutoffDate ?? '未知' }}），已确认的阈值不会自动替换；可在下方重新确认。
-            </p>
-            <dl class="rule-active-detail">
-              <div><dt>档位</dt><dd>{{ ruleTierLabel(activeRule.tier) }}</dd></div>
-              <div><dt>减仓线（回撤触发）</dt><dd>{{ rulePctText(activeRule.reduceDrawdownPct) }}</dd></div>
-              <div><dt>止盈线（收益触发）</dt><dd>{{ rulePctText(activeRule.takeProfitPct) }}</dd></div>
-              <div><dt>确认时间</dt><dd>{{ simTime(activeRule.confirmedAt) }}</dd></div>
-            </dl>
-            <p class="sim-muted">
-              规则版本：{{ activeRule.ruleVersion }}<template v-if="!statsUpdated && draft.statsCutoffDate">
-                · 草案统计截止：{{ draft.statsCutoffDate }}
-              </template>
-            </p>
-            <div class="sim-actions">
-              <button
-                class="secondary-button"
-                type="button"
-                :disabled="revoking"
-                @click="revokeRule"
-              >
-                {{ revokeArmed ? '确认撤销？撤销后立即失效并留痕' : '撤销规则' }}
-              </button>
-              <button
-                v-if="revokeArmed"
-                class="secondary-button"
-                type="button"
-                :disabled="revoking"
-                @click="revokeArmed = false"
-              >
-                取消
-              </button>
-            </div>
-          </section>
-
-          <section
-            class="sim-detail-panel"
-            aria-labelledby="rule-draft-title"
+              {{ fund.fundName }}（{{ fund.fundCode }}）
+            </button>
+          </li>
+        </ul>
+      </section>
+      <div
+        v-else-if="showingResults"
+        class="sim-empty"
+      >
+        请修改基金名称或代码后重新查询。
+      </div>
+      <div
+        v-else-if="!code"
+        class="sim-empty"
+      >
+        <strong>{{ positionsLoading ? '正在读取持仓' : positionsError ? '持仓列表暂时无法展示' : '请选择要分析的基金' }}</strong>
+        <p v-if="!positionsLoading && !positionsError">
+          输入基金名称或代码，点击查询查看分析。
+        </p>
+      </div>
+      <div
+        v-else-if="fundInvalid"
+        class="sim-empty"
+      >
+        <strong>该基金不在本人的持仓或关注中</strong>
+        <p>请在上方选择本人的持仓或关注基金。</p>
+      </div>
+      <template v-else>
+        <p
+          v-if="error && !viewingLegacyHistory"
+          class="error-message"
+          role="alert"
+        >
+          {{ error }}
+          <button
+            type="button"
+            class="secondary-button"
+            @click="load"
           >
-            <h2 id="rule-draft-title">
-              规则草案
-            </h2>
-            <template v-if="draftAvailable">
-              <p class="sim-muted">
-                依据 {{ draft.historyDays ?? '—' }} 个交易日、{{ draft.windowCount ?? '—' }} 个滚动窗口统计 · 统计截止 {{ draft.statsCutoffDate ?? '未知' }}<template v-if="draft.navBasis">
-                  · 净值口径：{{ draft.navBasis }}
-                </template>
-              </p>
+            重试
+          </button>
+        </p>
+        <p
+          v-if="message"
+          class="sim-success"
+          role="status"
+        >
+          {{ message }}
+        </p>
+        <p
+          v-if="history?.job && ['FAILED', 'PARTIAL'].includes(history.job.status)"
+          class="notice-banner"
+          role="status"
+        >
+          {{ history.job.message }} 上次检查：{{ simTime(history.job.attemptedAt) }}
+        </p>
+        <p
+          v-if="diagnosis?.job && ['FAILED', 'PARTIAL'].includes(diagnosis.job.status)"
+          class="notice-banner"
+          role="status"
+        >
+          {{ diagnosis.job.message }} 上次检查：{{ simTime(diagnosis.job.attemptedAt) }}
+        </p>
+        <p
+          v-if="loading"
+          class="sim-muted"
+          role="status"
+        >
+          正在读取已保存的建议记录…
+        </p>
+
+        <DecisionPanelV2
+          v-if="section === 'latest'"
+          :fund-code="code"
+        />
+        <AutomaticEffectsPanel
+          v-else-if="section === 'review'"
+          :fund-code="code"
+        />
+        <template v-else-if="section === 'diagnosis'">
+          <template v-if="diagnosis && !loading">
+            <template v-if="diagnosis.latest">
               <p
-                v-if="draft.assumption"
-                class="sim-muted"
-              >
-                {{ draft.assumption }}
-              </p>
-              <p
-                v-if="ruleBlockReason"
+                v-if="diagnosisStale(diagnosis.latest.report.cutoffDate, today)"
                 class="notice-banner"
                 role="status"
               >
-                {{ ruleBlockReason }}
+                诊断数据截至 {{ diagnosis.latest.report.cutoffDate ?? '未知日期' }}，距今较久，结论可能未反映最新情况。
               </p>
-              <div class="rule-tier-grid">
-                <article
-                  v-for="tier in draft.tiers"
-                  :key="tier.tier"
-                  class="rule-tier-card"
-                  :class="{ 'rule-tier-selected': selectedTier === tier.tier, 'rule-tier-disabled': !canConfirmRule }"
-                >
-                  <h3>{{ ruleTierLabel(tier.tier) }}</h3>
-                  <dl>
-                    <div><dt>减仓线</dt><dd>{{ rulePctText(tier.reduceDrawdownPct) }}</dd></div>
-                    <div><dt>止盈线</dt><dd>{{ rulePctText(tier.takeProfitPct) }}</dd></div>
-                  </dl>
-                  <p class="rule-tier-stats">
-                    减仓线：{{ ruleTriggerText(tier.reduceTrigger) }}
-                  </p>
-                  <p class="rule-tier-stats">
-                    止盈线：{{ ruleTriggerText(tier.takeProfitTrigger) }}
-                  </p>
-                  <button
-                    class="secondary-button"
-                    type="button"
-                    :disabled="!canConfirmRule"
-                    @click="selectTier(tier.tier)"
-                  >
-                    {{ selectedTier === tier.tier ? '已选中' : '选择此档' }}
-                  </button>
-                </article>
-              </div>
-              <div
-                v-if="selectedTier && selectedTierDraft"
-                class="rule-adjust"
+              <article
+                class="advice-conclusion"
+                :class="{ 'advice-conclusion-sell': diagnosis.latest.report.verdict !== 'VALID' }"
               >
-                <h3>微调「{{ ruleTierLabel(selectedTier) }}」档阈值（限草案值 ±20% 步进）</h3>
-                <div class="rule-stepper">
-                  <span>减仓线</span>
-                  <button
-                    class="secondary-button"
-                    type="button"
-                    :disabled="-adjustReduce >= ruleAdjustMaxSteps(selectedTierDraft.reduceDrawdownPct)"
-                    @click="stepReduce(-1)"
-                  >
-                    更深
-                  </button>
-                  <strong>{{ rulePctText(adjustedReduce) }}</strong>
-                  <button
-                    class="secondary-button"
-                    type="button"
-                    :disabled="adjustReduce >= ruleAdjustMaxSteps(selectedTierDraft.reduceDrawdownPct)"
-                    @click="stepReduce(1)"
-                  >
-                    更浅
-                  </button>
+                <span class="advice-kicker">最新诊断总体结论 · {{ diagnosis.latest.report.reportDate }}</span>
+                <h2>
+                  <span
+                    class="diagnosis-verdict"
+                    :class="diagnosisVerdictTone(diagnosis.latest.report.verdict)"
+                  >{{ diagnosisVerdictLabel(diagnosis.latest.report.verdict) }}</span>
+                </h2>
+                <p>逐项核对「持有理由是否仍成立」。诊断是事实核对，不是涨跌预测；结论供复核参考，不构成投资建议。</p>
+                <div class="advice-meta">
+                  <span>实际留档：{{ simTime(diagnosis.latest.report.generatedAt) }}</span><span v-if="diagnosis.latest.report.cutoffDate">数据截至：{{ diagnosis.latest.report.cutoffDate }}</span>
                 </div>
-                <div class="rule-stepper">
-                  <span>止盈线</span>
-                  <button
-                    class="secondary-button"
-                    type="button"
-                    :disabled="adjustProfit >= ruleAdjustMaxSteps(selectedTierDraft.takeProfitPct)"
-                    @click="stepProfit(-1)"
-                  >
-                    更低
-                  </button>
-                  <strong>{{ rulePctText(adjustedProfit) }}</strong>
-                  <button
-                    class="secondary-button"
-                    type="button"
-                    :disabled="adjustProfit >= ruleAdjustMaxSteps(selectedTierDraft.takeProfitPct)"
-                    @click="stepProfit(1)"
-                  >
-                    更高
-                  </button>
-                </div>
-                <p
-                  v-if="profitAdjusted || reduceAdjusted"
-                  class="sim-muted"
-                >
-                  已微调草案值，确认后记为「自定义」档。<button
-                    type="button"
-                    class="advice-text-button"
-                    @click="resetAdjust"
-                  >
-                    恢复草案值
-                  </button>
-                </p>
-                <div class="sim-actions">
-                  <button
-                    class="primary-button"
-                    type="button"
-                    :disabled="confirming"
-                    @click="confirmRule"
-                  >
-                    {{ confirming ? '正在确认…' : '确认此规则' }}
-                  </button>
-                  <button
-                    class="secondary-button"
-                    type="button"
-                    :disabled="confirming"
-                    @click="selectedTier = ''"
-                  >
-                    取消选择
-                  </button>
-                </div>
-                <p class="sim-muted">
-                  规则由本人确认后生效，可随时撤销；确认前草案只是参考数字，不参与任何建议。
-                </p>
-              </div>
-              <div
-                v-if="canGenerate"
-                class="sim-actions"
+              </article>
+              <section
+                class="sim-detail-panel"
+                aria-labelledby="diagnosis-items-title"
               >
-                <button
-                  class="secondary-button"
-                  type="button"
-                  :disabled="generatingDraft"
-                  @click="regenerateDraft"
-                >
-                  {{ generatingDraft ? '正在检查统计…' : '重新生成草案' }}
-                </button>
-              </div>
+                <h2 id="diagnosis-items-title">
+                  逐项核对
+                </h2>
+                <ol class="advice-evidence">
+                  <li
+                    v-for="item in diagnosisItems"
+                    :key="item.item"
+                    :class="{ 'diagnosis-item-changed': item.verdict === 'CHANGED' }"
+                  >
+                    <div class="advice-evidence-heading">
+                      <h3>{{ diagnosisItemLabel(item.item) }}</h3><span
+                        class="diagnosis-verdict"
+                        :class="diagnosisVerdictTone(item.verdict)"
+                      >{{ diagnosisVerdictLabel(item.verdict) }}</span>
+                    </div>
+                    <p>{{ item.evidence || '暂无具体说明。' }}</p>
+                    <div
+                      v-if="item.dataAsOfDate"
+                      class="sim-muted"
+                    >
+                      数据截至：{{ item.dataAsOfDate }}
+                    </div>
+                  </li>
+                </ol>
+              </section>
             </template>
-            <template v-else>
-              <p class="notice-banner">
-                {{ draft.status === 'NOT_APPLICABLE' ? '该类别暂不适用此类规则。' : '草案数据不足。' }}{{ draft.reason || '未提供具体原因。' }}
-              </p>
-              <p class="sim-muted">
-                数据不足时不提供阈值数字，也不建议凭感觉填写。
-              </p>
-              <div
-                v-if="canGenerate"
-                class="sim-actions"
+            <div
+              v-else-if="!diagnosis.reports.items.length"
+              class="sim-empty"
+            >
+              <strong>还没有诊断报告</strong><p>生成诊断后会保留当时依据；首份报告没有可比基线，多数项会如实标记为「数据不足」。</p>
+            </div>
+            <div
+              v-if="diagnosis.reports.items.length"
+              class="advice-table-wrap diagnosis-history"
+            >
+              <table
+                class="advice-table"
+                data-table-align
+                data-align-center="4"
               >
-                <button
-                  class="secondary-button"
-                  type="button"
-                  :disabled="generatingDraft"
-                  @click="regenerateDraft"
-                >
-                  {{ generatingDraft ? '正在检查统计…' : '重新检查数据' }}
-                </button>
-              </div>
-            </template>
-          </section>
-
-          <section
-            v-if="holdingRules.history.length"
-            class="sim-detail-panel"
-            aria-labelledby="rule-history-title"
-          >
-            <h2 id="rule-history-title">
-              确认历史
-            </h2>
-            <div class="advice-table-wrap">
-              <table class="advice-table" data-table-align>
                 <thead>
                   <tr>
                     <th scope="col">
-                      确认时间
+                      报告日期
                     </th><th scope="col">
-                      档位与阈值
+                      总体结论
                     </th><th scope="col">
-                      状态
+                      数据截至
+                    </th><th scope="col">
+                      详情
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr
-                    v-for="item in holdingRules.history"
-                    :key="item.ruleId"
+                  <template
+                    v-for="item in diagnosis.reports.items"
+                    :key="item.reportId"
                   >
-                    <td>{{ simTime(item.confirmedAt) }}</td>
-                    <td>
-                      <strong>{{ ruleTierLabel(item.tier) }}</strong>
-                      <p>减仓线 {{ rulePctText(item.reduceDrawdownPct) }} · 止盈线 {{ rulePctText(item.takeProfitPct) }}</p>
-                    </td>
-                    <td>
-                      {{ ruleStatusLabel(item) }}<small v-if="item.supersededAt">{{ simTime(item.supersededAt) }}</small>
-                    </td>
-                  </tr>
+                    <tr>
+                      <td>{{ item.reportDate }}<small>{{ simTime(item.generatedAt) }} 留档</small></td>
+                      <td>
+                        <span
+                          class="diagnosis-verdict"
+                          :class="diagnosisVerdictTone(item.verdict)"
+                        >{{ diagnosisVerdictLabel(item.verdict) }}</span>
+                      </td>
+                      <td>{{ item.cutoffDate ?? '未提供' }}</td>
+                      <td>
+                        <button
+                          type="button"
+                          class="advice-text-button"
+                          :aria-expanded="expandedDiagnosisId === item.reportId"
+                          @click="toggleDiagnosisReport(item.reportId)"
+                        >
+                          {{ expandedDiagnosisId === item.reportId ? '收起' : '查看详情' }}
+                        </button>
+                      </td>
+                    </tr>
+                    <tr v-if="expandedDiagnosisId === item.reportId">
+                      <td colspan="4">
+                        <dl class="diagnosis-expanded">
+                          <div><dt>报告日期</dt><dd>{{ item.reportDate }}</dd></div>
+                          <div><dt>留档时间</dt><dd>{{ simTime(item.generatedAt) }}</dd></div>
+                          <div><dt>数据截至</dt><dd>{{ item.cutoffDate ?? '未提供' }}</dd></div>
+                          <div><dt>报告编号</dt><dd>{{ item.reportId }}</dd></div>
+                        </dl>
+                        <p
+                          v-if="item.reportId === diagnosisLatestId"
+                          class="sim-muted"
+                        >
+                          这是最新报告，逐项核对明细见上方区块。
+                        </p>
+                        <p
+                          v-else
+                          class="sim-muted"
+                        >
+                          历史报告保留总体结论与留档信息；逐项明细仅最新报告可查。
+                        </p>
+                      </td>
+                    </tr>
+                  </template>
                 </tbody>
               </table>
             </div>
-          </section>
-          <p class="sim-muted">
-            止盈线、减仓线触发只产生复核提示，不构成投资建议，是否操作由本人决定。
-          </p>
-        </template>
-        <div
-          v-else-if="!loading && !error"
-          class="sim-empty"
-        >
-          <strong>规则草案暂时无法展示</strong><p>请刷新记录重试；数据不足时会如实显示原因，不会给出伪造的阈值。</p>
-        </div>
-      </template>
-
-      <template v-else-if="!showReport">
-        <DecisionPanelV2
-          :fund-code="code"
-          history-only
-        />
-        <h2>旧版二十日建议历史（V1）</h2>
-        <p class="sim-muted">
-          以下日期筛选和统计只针对旧版报告，不计入新综合策略的效果。
-        </p>
-        <p
-          v-if="error"
-          class="notice-banner"
-          role="status"
-        >
-          旧版记录：{{ error }}
-        </p>
-        <form
-          class="advice-filter"
-          @submit.prevent="filter"
-        >
-          <label>开始日期<input
-            v-model="start"
-            type="date"
-            :max="shanghaiDate()"
-          ></label>
-          <label>结束日期<input
-            v-model="end"
-            type="date"
-            :max="shanghaiDate()"
-          ></label>
-          <button
-            class="secondary-button"
-            type="submit"
-            :disabled="loading"
+            <ListPagination
+              v-if="diagnosis.reports.totalCount > 0"
+              :page="page"
+              :page-size="pageSize"
+              :total="diagnosis.reports.totalCount"
+              :loading="loading"
+              label="诊断历史分页"
+              @change="changePage"
+            />
+          </template>
+          <div
+            v-else-if="!loading && !error"
+            class="sim-empty"
           >
-            按日期查看
-          </button>
-        </form>
-        <template v-if="section === 'review' && stats">
-          <div class="advice-stats">
-            <article><span>独立建议样本</span><strong>{{ stats.samples }}</strong><small>沿用记录不重复计算</small></article>
-            <article><span>已完成核验</span><strong>{{ stats.assessed }}</strong><small>另有 {{ stats.pending }} 份等待核验</small></article>
-            <article><span>后续表现支持</span><strong>{{ stats.supported }}</strong><small>不支持 {{ stats.unsupported }} · 持平 {{ stats.flat }}</small></article>
+            <strong>诊断记录暂时无法展示</strong><p>请重试读取诊断记录。</p>
           </div>
-          <p class="advice-review-note">
-            持有后区间回报为正、卖出后区间回报为负，分别记为后续表现支持；零回报单列持平。
-            回报采用现金分红再投资口径，未计申赎费和资金机会成本，不代表实际交易盈亏。
-            每日观察区间存在重叠，统计供回看。当前规则：{{ stats.ruleVersion }}。
-          </p>
-          <p class="sim-muted">
-            当前筛选共 {{ stats.reports }} 份留档，其中 {{ stats.carried }} 份沿用，{{ stats.noAdvice }} 份未形成建议。
-          </p>
         </template>
-        <div
-          v-if="history?.reports.items.length"
-          class="advice-table-wrap"
-        >
-          <table class="advice-table" data-table-align data-align-right="3" data-align-center="4">
-            <thead>
-              <tr>
-                <th scope="col">
-                  留档时间
-                </th><th scope="col">
-                  当时建议与主要理由
-                </th><th scope="col">
-                  后续表现
-                </th><th scope="col">
-                  原始报告
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="item in history.reports.items"
-                :key="item.reportId"
-              >
-                <td>{{ simTime(item.generatedAt) }}<small v-if="item.originalReportId">沿用已有判断</small></td>
-                <td><strong>{{ adviceLabel(item.decision) }}</strong><p>{{ item.summary }}</p></td>
-                <td>
-                  <span
-                    v-if="item.totalReturn !== null"
-                    :class="simTone(item.totalReturn)"
-                  >{{ simPercent(item.totalReturn) }}</span><small>{{ reviewLabel(item) }}</small>
-                </td>
-                <td>
-                  <button
-                    type="button"
-                    class="advice-text-button"
-                    @click="selectReport(item.reportId)"
-                  >
-                    查看原报告
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div
-          v-else-if="!loading && !error"
-          class="sim-empty"
-        >
-          <strong>当前日期范围没有建议记录</strong><p>每天生成的内容会保留在这里，同一天的不同版本也可以逐份查看。</p>
-        </div>
-        <ListPagination
-          v-if="history.reports.totalCount > 0"
-          :page="page"
-          :page-size="pageSize"
-          :total="history.reports.totalCount"
-          :loading="loading"
-          label="建议历史分页"
-          @change="changePage" 
-        />
-      </template>
 
-      <template v-else-if="detail && !loading">
-        <button
-          v-if="section !== 'latest'"
-          type="button"
-          class="advice-text-button"
-          @click="selectReport()"
-        >
-          ← 返回记录列表
-        </button>
-        <p
-          v-if="section === 'latest' && detail.report.reportDate !== shanghaiDate()"
-          class="notice-banner"
-        >
-          当前显示 {{ detail.report.reportDate }} 保存的报告，今日尚无新的留档。
-        </p>
-        <article
-          class="advice-conclusion"
-          :class="{ 'advice-conclusion-sell': detail.report.decision === 'SELL' }"
-        >
-          <span class="advice-kicker">{{ section === 'latest' ? '当前保存的操作建议' : '当天原始操作建议' }}</span>
-          <h2>{{ adviceLabel(detail.report.decision) }}</h2>
-          <p>{{ detail.report.summary }}</p>
-          <div class="advice-meta">
-            <span>实际留档：{{ simTime(detail.report.generatedAt) }}</span><span v-if="detail.report.cutoffDate">依据截至：{{ detail.report.cutoffDate }}</span>
-          </div>
-        </article>
-        <section
-          class="sim-detail-panel"
-          aria-labelledby="advice-evidence-title"
-        >
-          <h2 id="advice-evidence-title">
-            为什么给出这条建议
-          </h2>
-          <ol class="advice-evidence">
-            <li
-              v-for="(item, index) in detail.snapshot.evidence"
-              :key="index"
+        <template v-else-if="section === 'rules'">
+          <template v-if="draft && holdingRules && !loading">
+            <section
+              v-if="activeRule"
+              class="sim-detail-panel"
+              aria-labelledby="rule-active-title"
             >
-              <div class="advice-evidence-heading">
-                <h3>{{ item.title }}</h3><span :class="{ 'advice-against': item.relation === 'AGAINST' }">{{ item.relation === 'AGAINST' ? '反对依据' : item.relation === 'SUPPORT' ? '支持依据' : '说明' }}</span>
-              </div>
-              <p>{{ item.content }}</p>
-              <div
-                v-if="item.sourceDate"
+              <h2 id="rule-active-title">
+                当前生效规则
+                <span
+                  v-if="statsUpdated"
+                  class="diagnosis-verdict diagnosis-insufficient rule-badge"
+                >统计已更新</span>
+              </h2>
+              <p
+                v-if="statsUpdated"
                 class="sim-muted"
               >
-                资料日期：{{ item.sourceDate }}
+                草案统计已有新版本（当前统计截至 {{ draft.statsCutoffDate ?? '未知' }}），已确认的阈值不会自动替换；可在下方重新确认。
+              </p>
+              <dl class="rule-active-detail">
+                <div><dt>档位</dt><dd>{{ ruleTierLabel(activeRule.tier) }}</dd></div>
+                <div><dt>减仓线（回撤触发）</dt><dd>{{ rulePctText(activeRule.reduceDrawdownPct) }}</dd></div>
+                <div><dt>止盈线（收益触发）</dt><dd>{{ rulePctText(activeRule.takeProfitPct) }}</dd></div>
+                <div><dt>确认时间</dt><dd>{{ simTime(activeRule.confirmedAt) }}</dd></div>
+              </dl>
+              <p class="sim-muted">
+                规则版本：{{ activeRule.ruleVersion }}<template v-if="!statsUpdated && draft.statsCutoffDate">
+                  · 草案统计截止：{{ draft.statsCutoffDate }}
+                </template>
+              </p>
+              <div class="sim-actions">
+                <button
+                  class="secondary-button"
+                  type="button"
+                  :disabled="revoking"
+                  @click="revokeRule"
+                >
+                  {{ revokeArmed ? '确认撤销？撤销后立即失效并留痕' : '撤销规则' }}
+                </button>
+                <button
+                  v-if="revokeArmed"
+                  class="secondary-button"
+                  type="button"
+                  :disabled="revoking"
+                  @click="revokeArmed = false"
+                >
+                  取消
+                </button>
               </div>
-            </li>
-          </ol>
-          <div
-            v-if="detail.snapshot.limitations.length"
-            class="advice-gaps"
-          >
-            <h3>这次判断还没有覆盖什么</h3><ul>
-              <li
-                v-for="item in detail.snapshot.limitations"
-                :key="item"
-              >
-                {{ item }}
-              </li>
-            </ul>
-          </div>
-        </section>
-        <section
-          class="sim-detail-panel"
-          aria-labelledby="advice-outcome-title"
-        >
-          <h2 id="advice-outcome-title">
-            后来实际怎么样
-          </h2>
-          <template v-if="detail.report.observationStart">
-            <p>观察区间：{{ detail.report.observationStart }} → {{ detail.report.observationEnd }}（20 个交易日）</p>
-            <p
-              v-if="detail.report.originalReportId"
-              class="sim-muted"
+            </section>
+
+            <section
+              class="sim-detail-panel"
+              aria-labelledby="rule-draft-title"
             >
-              本份沿用已有判断，共享首次报告的观察区间；不重复计入样本统计。
-            </p>
-            <div class="advice-outcome">
-              <strong
-                v-if="detail.report.totalReturn !== null"
-                :class="simTone(detail.report.totalReturn)"
-              >{{ simPercent(detail.report.totalReturn) }}</strong><span>{{ reviewLabel(detail.report) }}</span>
-            </div>
-            <p>{{ detail.outcome?.message || '区间结束且净值、分红资料齐全后，后台会自动补上实际回报。' }}</p>
-            <p
-              v-if="detail.outcome"
-              class="sim-muted"
+              <h2 id="rule-draft-title">
+                规则草案
+              </h2>
+              <template v-if="draftAvailable">
+                <p class="sim-muted">
+                  依据 {{ draft.historyDays ?? '—' }} 个交易日、{{ draft.windowCount ?? '—' }} 个滚动窗口统计 · 统计截止 {{ draft.statsCutoffDate ?? '未知' }}<template v-if="draft.navBasis">
+                    · 净值口径：{{ draft.navBasis }}
+                  </template>
+                </p>
+                <p
+                  v-if="draft.assumption"
+                  class="sim-muted"
+                >
+                  {{ draft.assumption }}
+                </p>
+                <p
+                  v-if="ruleBlockReason"
+                  class="notice-banner"
+                  role="status"
+                >
+                  {{ ruleBlockReason }}
+                </p>
+                <div class="rule-tier-grid">
+                  <article
+                    v-for="tier in draft.tiers"
+                    :key="tier.tier"
+                    class="rule-tier-card"
+                    :class="{ 'rule-tier-selected': selectedTier === tier.tier, 'rule-tier-disabled': !canConfirmRule }"
+                  >
+                    <h3>{{ ruleTierLabel(tier.tier) }}</h3>
+                    <dl>
+                      <div><dt>减仓线</dt><dd>{{ rulePctText(tier.reduceDrawdownPct) }}</dd></div>
+                      <div><dt>止盈线</dt><dd>{{ rulePctText(tier.takeProfitPct) }}</dd></div>
+                    </dl>
+                    <p class="rule-tier-stats">
+                      减仓线：{{ ruleTriggerText(tier.reduceTrigger) }}
+                    </p>
+                    <p class="rule-tier-stats">
+                      止盈线：{{ ruleTriggerText(tier.takeProfitTrigger) }}
+                    </p>
+                    <button
+                      class="secondary-button"
+                      type="button"
+                      :disabled="!canConfirmRule"
+                      @click="selectTier(tier.tier)"
+                    >
+                      {{ selectedTier === tier.tier ? '已选中' : '选择此档' }}
+                    </button>
+                  </article>
+                </div>
+                <div
+                  v-if="selectedTier && selectedTierDraft"
+                  class="rule-adjust"
+                >
+                  <h3>微调「{{ ruleTierLabel(selectedTier) }}」档阈值（限草案值 ±20% 步进）</h3>
+                  <div class="rule-stepper">
+                    <span>减仓线</span>
+                    <button
+                      class="secondary-button"
+                      type="button"
+                      :disabled="-adjustReduce >= ruleAdjustMaxSteps(selectedTierDraft.reduceDrawdownPct)"
+                      @click="stepReduce(-1)"
+                    >
+                      更深
+                    </button>
+                    <strong>{{ rulePctText(adjustedReduce) }}</strong>
+                    <button
+                      class="secondary-button"
+                      type="button"
+                      :disabled="adjustReduce >= ruleAdjustMaxSteps(selectedTierDraft.reduceDrawdownPct)"
+                      @click="stepReduce(1)"
+                    >
+                      更浅
+                    </button>
+                  </div>
+                  <div class="rule-stepper">
+                    <span>止盈线</span>
+                    <button
+                      class="secondary-button"
+                      type="button"
+                      :disabled="adjustProfit >= ruleAdjustMaxSteps(selectedTierDraft.takeProfitPct)"
+                      @click="stepProfit(-1)"
+                    >
+                      更低
+                    </button>
+                    <strong>{{ rulePctText(adjustedProfit) }}</strong>
+                    <button
+                      class="secondary-button"
+                      type="button"
+                      :disabled="adjustProfit >= ruleAdjustMaxSteps(selectedTierDraft.takeProfitPct)"
+                      @click="stepProfit(1)"
+                    >
+                      更高
+                    </button>
+                  </div>
+                  <p
+                    v-if="profitAdjusted || reduceAdjusted"
+                    class="sim-muted"
+                  >
+                    已微调草案值，确认后记为「自定义」档。<button
+                      type="button"
+                      class="advice-text-button"
+                      @click="resetAdjust"
+                    >
+                      恢复草案值
+                    </button>
+                  </p>
+                  <div class="sim-actions">
+                    <button
+                      class="primary-button"
+                      type="button"
+                      :disabled="confirming"
+                      @click="confirmRule"
+                    >
+                      {{ confirming ? '正在确认…' : '确认此规则' }}
+                    </button>
+                    <button
+                      class="secondary-button"
+                      type="button"
+                      :disabled="confirming"
+                      @click="selectedTier = ''"
+                    >
+                      取消选择
+                    </button>
+                  </div>
+                  <p class="sim-muted">
+                    规则由本人确认后生效，可随时撤销；确认前草案只是参考数字，不参与任何建议。
+                  </p>
+                </div>
+                <div
+                  v-if="canGenerate"
+                  class="sim-actions"
+                >
+                  <button
+                    class="secondary-button"
+                    type="button"
+                    :disabled="generatingDraft"
+                    @click="regenerateDraft"
+                  >
+                    {{ generatingDraft ? '正在检查统计…' : '重新生成草案' }}
+                  </button>
+                </div>
+              </template>
+              <template v-else>
+                <p class="notice-banner">
+                  {{ draft.status === 'NOT_APPLICABLE' ? '该类别暂不适用此类规则。' : '草案数据不足。' }}{{ draft.reason || '未提供具体原因。' }}
+                </p>
+                <p class="sim-muted">
+                  数据不足时不提供阈值数字，也不建议凭感觉填写。
+                </p>
+                <div
+                  v-if="canGenerate"
+                  class="sim-actions"
+                >
+                  <button
+                    class="secondary-button"
+                    type="button"
+                    :disabled="generatingDraft"
+                    @click="regenerateDraft"
+                  >
+                    {{ generatingDraft ? '正在检查统计…' : '重新检查数据' }}
+                  </button>
+                </div>
+              </template>
+            </section>
+
+            <section
+              v-if="holdingRules.history.length"
+              class="sim-detail-panel"
+              aria-labelledby="rule-history-title"
             >
-              核验时间：{{ simTime(detail.outcome.checkedAt) }} · 原始建议保留不变。
+              <h2 id="rule-history-title">
+                确认历史
+              </h2>
+              <div class="advice-table-wrap">
+                <table
+                  class="advice-table"
+                  data-table-align
+                >
+                  <thead>
+                    <tr>
+                      <th scope="col">
+                        确认时间
+                      </th><th scope="col">
+                        档位与阈值
+                      </th><th scope="col">
+                        状态
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="item in holdingRules.history"
+                      :key="item.ruleId"
+                    >
+                      <td>{{ simTime(item.confirmedAt) }}</td>
+                      <td>
+                        <strong>{{ ruleTierLabel(item.tier) }}</strong>
+                        <p>减仓线 {{ rulePctText(item.reduceDrawdownPct) }} · 止盈线 {{ rulePctText(item.takeProfitPct) }}</p>
+                      </td>
+                      <td>
+                        {{ ruleStatusLabel(item) }}<small v-if="item.supersededAt">{{ simTime(item.supersededAt) }}</small>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+            <p class="sim-muted">
+              止盈线、减仓线触发只产生复核提示，不构成投资建议，是否操作由本人决定。
             </p>
           </template>
-          <p v-else>
-            这份报告没有形成操作建议，不计入建议效果统计。
-          </p>
-        </section>
-        <details class="sim-detail-panel advice-archive">
-          <summary>当时持仓与留档信息</summary>
-          <dl><div><dt>当时持有</dt><dd>{{ simShares(detail.snapshot.position.shares) }} 份</dd></div><div><dt>当时剩余成本</dt><dd>{{ simMoney(detail.snapshot.position.cost) }} 元</dd></div><div><dt>当时市值</dt><dd>{{ simMoney(detail.snapshot.position.marketValue) }} 元</dd></div><div><dt>持仓数据日期</dt><dd>{{ detail.snapshot.position.navDate || '尚未确认' }}</dd></div></dl>
+          <div
+            v-else-if="!loading && !error"
+            class="sim-empty"
+          >
+            <strong>规则草案暂时无法展示</strong><p>请重试读取规则草案。</p>
+          </div>
+        </template>
+
+        <template v-else-if="!showReport">
+          <DecisionPanelV2
+            :fund-code="code"
+            history-only
+          />
+          <h2>旧版二十日建议历史（V1）</h2>
           <p class="sim-muted">
-            规则版本：{{ detail.snapshot.ruleVersion }} · 报告编号：{{ detail.report.reportId }}
+            以下日期筛选和统计只针对旧版报告，不计入新综合策略的效果。
           </p>
           <p
-            v-if="detail.snapshot.experiment?.models.length"
-            class="sim-muted"
+            v-if="error"
+            class="notice-banner"
+            role="status"
           >
-            主模型版本：{{ detail.snapshot.experiment.models[0]?.modelHash }}
+            旧版记录：{{ error }}
           </p>
-        </details>
+          <form
+            class="advice-filter"
+            @submit.prevent="filter"
+          >
+            <label>开始日期<input
+              v-model="start"
+              type="date"
+              :max="shanghaiDate()"
+            ></label>
+            <label>结束日期<input
+              v-model="end"
+              type="date"
+              :max="shanghaiDate()"
+            ></label>
+            <button
+              class="secondary-button"
+              type="submit"
+              :disabled="loading"
+            >
+              按日期查看
+            </button>
+          </form>
+          <template v-if="section === 'review' && stats">
+            <div class="advice-stats">
+              <article><span>独立建议样本</span><strong>{{ stats.samples }}</strong><small>沿用记录不重复计算</small></article>
+              <article><span>已完成核验</span><strong>{{ stats.assessed }}</strong><small>另有 {{ stats.pending }} 份等待核验</small></article>
+              <article><span>后续表现支持</span><strong>{{ stats.supported }}</strong><small>不支持 {{ stats.unsupported }} · 持平 {{ stats.flat }}</small></article>
+            </div>
+            <p class="advice-review-note">
+              持有后区间回报为正、卖出后区间回报为负，分别记为后续表现支持；零回报单列持平。
+              回报采用现金分红再投资口径，未计申赎费和资金机会成本，不代表实际交易盈亏。
+              每日观察区间存在重叠，统计供回看。当前规则：{{ stats.ruleVersion }}。
+            </p>
+            <p class="sim-muted">
+              当前筛选共 {{ stats.reports }} 份留档，其中 {{ stats.carried }} 份沿用，{{ stats.noAdvice }} 份未形成建议。
+            </p>
+          </template>
+          <div
+            v-if="history?.reports.items.length"
+            class="advice-table-wrap"
+          >
+            <table
+              class="advice-table"
+              data-table-align
+              data-align-right="3"
+              data-align-center="4"
+            >
+              <thead>
+                <tr>
+                  <th scope="col">
+                    留档时间
+                  </th><th scope="col">
+                    当时建议与主要理由
+                  </th><th scope="col">
+                    后续表现
+                  </th><th scope="col">
+                    原始报告
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="item in history.reports.items"
+                  :key="item.reportId"
+                >
+                  <td>{{ simTime(item.generatedAt) }}<small v-if="item.originalReportId">沿用已有判断</small></td>
+                  <td><strong>{{ adviceLabel(item.decision) }}</strong><p>{{ item.summary }}</p></td>
+                  <td>
+                    <span
+                      v-if="item.totalReturn !== null"
+                      :class="simTone(item.totalReturn)"
+                    >{{ simPercent(item.totalReturn) }}</span><small>{{ reviewLabel(item) }}</small>
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      class="advice-text-button"
+                      @click="selectReport(item.reportId)"
+                    >
+                      查看原报告
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div
+            v-else-if="!loading && !error"
+            class="sim-empty"
+          >
+            <strong>当前日期范围没有建议记录</strong><p>已生成的内容会保留在这里，同一天的不同版本也可以逐份查看。</p>
+          </div>
+          <ListPagination
+            v-if="history && history.reports.totalCount > 0"
+            :page="page"
+            :page-size="pageSize"
+            :total="history.reports.totalCount"
+            :loading="loading"
+            label="建议历史分页"
+            @change="changePage"
+          />
+        </template>
+
+        <template v-else-if="detail && !loading">
+          <button
+            v-if="section !== 'latest'"
+            type="button"
+            class="advice-text-button"
+            @click="selectReport()"
+          >
+            ← 返回记录列表
+          </button>
+          <p
+            v-if="section === 'latest' && detail.report.reportDate !== shanghaiDate()"
+            class="notice-banner"
+          >
+            当前显示 {{ detail.report.reportDate }} 保存的报告，今日尚无新的留档。
+          </p>
+          <article
+            class="advice-conclusion"
+            :class="{ 'advice-conclusion-sell': detail.report.decision === 'SELL' }"
+          >
+            <span class="advice-kicker">{{ section === 'latest' ? '当前保存的操作建议' : '当天原始操作建议' }}</span>
+            <h2>{{ adviceLabel(detail.report.decision) }}</h2>
+            <p>{{ detail.report.summary }}</p>
+            <div class="advice-meta">
+              <span>实际留档：{{ simTime(detail.report.generatedAt) }}</span><span v-if="detail.report.cutoffDate">依据截至：{{ detail.report.cutoffDate }}</span>
+            </div>
+          </article>
+          <section
+            class="sim-detail-panel"
+            aria-labelledby="advice-evidence-title"
+          >
+            <h2 id="advice-evidence-title">
+              为什么给出这条建议
+            </h2>
+            <ol class="advice-evidence">
+              <li
+                v-for="(item, index) in detail.snapshot.evidence"
+                :key="index"
+              >
+                <div class="advice-evidence-heading">
+                  <h3>{{ item.title }}</h3><span :class="{ 'advice-against': item.relation === 'AGAINST' }">{{ item.relation === 'AGAINST' ? '反对依据' : item.relation === 'SUPPORT' ? '支持依据' : '说明' }}</span>
+                </div>
+                <p>{{ item.content }}</p>
+                <div
+                  v-if="item.sourceDate"
+                  class="sim-muted"
+                >
+                  资料日期：{{ item.sourceDate }}
+                </div>
+              </li>
+            </ol>
+            <div
+              v-if="detail.snapshot.limitations.length"
+              class="advice-gaps"
+            >
+              <h3>这次判断还没有覆盖什么</h3><ul>
+                <li
+                  v-for="item in detail.snapshot.limitations"
+                  :key="item"
+                >
+                  {{ item }}
+                </li>
+              </ul>
+            </div>
+          </section>
+          <section
+            class="sim-detail-panel"
+            aria-labelledby="advice-outcome-title"
+          >
+            <h2 id="advice-outcome-title">
+              后来实际怎么样
+            </h2>
+            <template v-if="detail.report.observationStart">
+              <p>观察区间：{{ detail.report.observationStart }} → {{ detail.report.observationEnd }}（20 个交易日）</p>
+              <p
+                v-if="detail.report.originalReportId"
+                class="sim-muted"
+              >
+                本份沿用已有判断，共享首次报告的观察区间；不重复计入样本统计。
+              </p>
+              <div class="advice-outcome">
+                <strong
+                  v-if="detail.report.totalReturn !== null"
+                  :class="simTone(detail.report.totalReturn)"
+                >{{ simPercent(detail.report.totalReturn) }}</strong><span>{{ reviewLabel(detail.report) }}</span>
+              </div>
+              <p>{{ detail.outcome?.message || '区间结束且净值、分红资料齐全后，后台会自动补上实际回报。' }}</p>
+              <p
+                v-if="detail.outcome"
+                class="sim-muted"
+              >
+                核验时间：{{ simTime(detail.outcome.checkedAt) }} · 原始建议保留不变。
+              </p>
+            </template>
+            <p v-else>
+              这份报告没有形成操作建议，不计入建议效果统计。
+            </p>
+          </section>
+          <details class="sim-detail-panel advice-archive">
+            <summary>当时持仓与留档信息</summary>
+            <dl><div><dt>当时持有</dt><dd>{{ simShares(detail.snapshot.position.shares) }} 份</dd></div><div><dt>当时剩余成本</dt><dd>{{ simMoney(detail.snapshot.position.cost) }} 元</dd></div><div><dt>当时市值</dt><dd>{{ simMoney(detail.snapshot.position.marketValue) }} 元</dd></div><div><dt>持仓数据日期</dt><dd>{{ detail.snapshot.position.navDate || '尚未确认' }}</dd></div></dl>
+            <p class="sim-muted">
+              规则版本：{{ detail.snapshot.ruleVersion }} · 报告编号：{{ detail.report.reportId }}
+            </p>
+            <p
+              v-if="detail.snapshot.experiment?.models.length"
+              class="sim-muted"
+            >
+              主模型版本：{{ detail.snapshot.experiment.models[0]?.modelHash }}
+            </p>
+          </details>
+        </template>
+        <div
+          v-else-if="showReport && !loading && !error"
+          class="sim-empty"
+        >
+          <strong>还没有保存的建议</strong><p>可以点击“更新并留档”保存当前判断；资料不足时会说明原因。</p>
+        </div>
+        <p class="advice-schedule sim-muted">
+          生成后保存当时依据 · 内容变化另存记录 · 历史原文保留
+        </p>
       </template>
-      <div
-        v-else-if="showReport && !loading && !error"
-        class="sim-empty"
-      >
-        <strong>还没有保存的建议</strong><p>每天北京时间 08:30 起，后台会检查持仓并留档。也可以点击“更新并留档”保存当前判断。</p>
-      </div>
-      <p class="advice-schedule sim-muted">
-        每日自动留档 · 同日内容变化追加版本 · 原文保留 · 停机期间不补造历史报告
-      </p>
-    </template>
+    </section>
   </section>
 </template>
 
 <style scoped>
+/* 控件外观复用全站工具栏；这里只限定基金名称所需的布局宽度。 */
+.advice-search-results { list-style:none; padding:0; margin:0; }
+.advice-search-results li { border-bottom:1px solid var(--ui-line); }
+.advice-search-results .advice-text-button { display:block; width:100%; min-height:48px; box-sizing:border-box; padding:16px 12px; overflow-wrap:anywhere; }
+.advice-search-results .advice-text-button:hover, .advice-search-results .advice-text-button:focus-visible { background:var(--ui-surface-muted, #f2f5f0); }
+.advice-results-panel :deep(.decision-panel) { padding:0; margin:0; border:0; border-radius:0; background:transparent; }
+.advice-results-panel :deep(.decision-panel h2) { font-size:20px; margin:0; }
+
 .advice-conclusion { background: #edf6f1; border: 1px solid #d3e5da; border-radius: 10px; padding: 25px; margin-top: 14px; }
 .advice-conclusion-sell { background: #fbf6ee; border-color: #e8dcc8; }
 .advice-kicker { font-size: 13px; color: #566e60; }.advice-conclusion h2 { font-size: 26px; margin: 10px 0; }.advice-conclusion p { font-size: 16px; line-height: 1.85; max-width: 900px; }

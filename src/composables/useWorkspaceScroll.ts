@@ -1,6 +1,6 @@
 import { nextTick, onBeforeUnmount, watch, type Ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { isWorkspaceLocalTabTransition, isWorkspaceReturn, restoreWorkspaceScroll, workspaceScrollKey } from '@/utils/workspaceScroll'
+import { isWorkspaceLocalTabTransition, isWorkspaceReturn, restoreWorkspaceScroll, workspaceScrollKey, readScrollMemory, saveScrollMemory } from '@/utils/workspaceScroll'
 
 export function useWorkspaceScroll(content: Ref<globalThis.HTMLElement | null>) {
   const router = useRouter()
@@ -19,11 +19,15 @@ export function useWorkspaceScroll(content: Ref<globalThis.HTMLElement | null>) 
   const removeGuard = router.beforeEach((to, from) => {
     generation++
     cancel()
-    if (content.value) positions.set(workspaceScrollKey(from.fullPath), content.value.scrollTop)
+    if (content.value) {
+      const key = workspaceScrollKey(from.fullPath)
+      positions.set(key, content.value.scrollTop)
+      saveScrollMemory(`workspace:${key}`, content.value.scrollTop)
+    }
     const target = workspaceScrollKey(to.fullPath)
     restoreTop = isWorkspaceLocalTabTransition(from.fullPath, to.fullPath)
       ? content.value?.scrollTop ?? 0
-      : isWorkspaceReturn(from.query.from, to.fullPath, menuTarget === target) ? positions.get(target) ?? 0 : 0
+      : isWorkspaceReturn(from.query.from, to.fullPath, menuTarget === target) ? positions.get(target) ?? readScrollMemory(`workspace:${target}`) : 0
     menuTarget = null
   })
   watch(() => route.fullPath, async () => {

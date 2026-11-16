@@ -24,6 +24,8 @@ export function portfolioReturnPath(value: unknown): string {
   const size = Number(input.get('size'))
   if ([20, 50].includes(size)) output.set('size', String(size))
   if (input.get('showHistory') === '1') output.set('showHistory', '1')
+  if (['marketValue', 'holdingGain', 'cumulativeGain'].includes(input.get('sort') ?? '')) output.set('sort', input.get('sort')!)
+  if (/^\d{6}$/.test(input.get('holding') ?? '')) output.set('holding', input.get('holding')!)
   return `/portfolio${output.size ? `?${output}` : ''}`
 }
 export function evidenceUrl(value: string | null): string | undefined {

@@ -37,6 +37,7 @@ export function earningsReturnPath(value: unknown): string {
   for (const [key, val] of source) {
     if (key === 'section' && ['overview', 'holdings', 'plans', 'orders'].includes(val)) params.set(key, val)
     if (key === 'fundCode' && /^\d{6}$/.test(val)) params.set(key, val)
+    if (key === 'holding' && /^\d{6}$/.test(val)) params.set(key, val)
     if (key === 'keyword' && val) params.set(key, val.slice(0, 50))
     if (key === 'sort' && ['marketValue', 'holdingGain', 'cumulativeGain'].includes(val)) params.set(key, val)
     if (key === 'showHistory' && val === '1') params.set(key, val)

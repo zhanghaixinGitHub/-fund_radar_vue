@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { Buffer } from 'node:buffer'
-import { createRequire } from 'node:module'
+import { createRequire, stripTypeScriptTypes } from 'node:module'
 import { pathToFileURL, URL } from 'node:url'
 import { compileScript, parse } from '@vue/compiler-sfc'
 import { createRenderer, h, nextTick } from 'vue'
@@ -48,10 +48,12 @@ async function mount(t, position, { canWrite = true, canPlan = true } = {}) {
   let code = ts.transpileModule(script.content, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText
   for (const [from, to] of Object.entries({
     vue: vueUrl,
+    '@/utils/workspaceScroll': url(stripTypeScriptTypes(read('../src/utils/workspaceScroll.ts'))),
+    '@/utils/simulation': url(stripTypeScriptTypes(read('../src/utils/simulation.ts'))),
     'vue-router': url("export const useRoute = () => ({ path: '/portfolio', fullPath: '/portfolio?section=holdings' })"),
     '@/components/DecisionPanelV2.vue': url(`import { h } from '${vueUrl}'; export default { props: ['fundCode'], setup: props => () => h('div', { class: 'decision-stub' }, '综合建议 ' + props.fundCode) }`),
   })) code = code.replaceAll(`from '${from}'`, `from '${to}'`).replaceAll(`from "${from}"`, `from '${to}'`)
-  code = code.replace('onMounted(() => dialog.value?.showModal())', `onMounted(() => { globalThis[${JSON.stringify(key)}] = dialog.value; dialog.value?.showModal() })`)
+  code = code.replace('dialog.value?.showModal();', `globalThis[${JSON.stringify(key)}] = dialog.value; dialog.value?.showModal();`)
   const component = (await import(url(code))).default
   const trades = []
   let closes = 0
@@ -114,4 +116,13 @@ test('关闭按钮、Esc和框外点击关闭，框内点击不误关', async t 
   assert.equal(view.closes(), 2)
   await view.buttons()[0].props.onClick()
   assert.equal(view.closes(), 3)
+})
+
+test('收益和交易跳转携带原列表，导航点击不抢先清除抽屉状态', async t => {
+  const view = await mount(t, recorded)
+  for (const link of view.links()) {
+    assert.equal(link.props.to.query.from, '/portfolio?section=holdings')
+    assert.equal(link.props.onClick, undefined)
+  }
+  assert.equal(view.closes(), 0)
 })
