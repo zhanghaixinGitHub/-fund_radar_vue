@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { simMoney } from '@/utils/simulation'
 import ListPagination from '@/components/ListPagination.vue'
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { getDirection1dCoverage, getDirection1dHistory, getDirection1dMetrics } from '@/api/direction1d'
@@ -97,7 +98,7 @@ const percent = (value: number | null | undefined) => value == null ? '尚无有
         </button>
       </form>
       <div class="table-wrap">
-        <table>
+        <table data-table-align>
           <thead><tr><th>基金</th><th>基金类型</th><th>资料状态</th><th>最近净值</th></tr></thead><tbody>
             <tr
               v-for="fund in coverage?.items"
@@ -175,7 +176,7 @@ const percent = (value: number | null | undefined) => value == null ? '尚无有
             查看当时依据与相反证据
           </RouterLink>
           <p v-if="record.outcomes[0]">
-            实际 {{ direction1dDirection(record.outcomes[0].actualDirection) }} · {{ record.outcomes[0].baseUnitNav }} → {{ record.outcomes[0].targetUnitNav }} · 变化 {{ percent(Number(record.outcomes[0].navReturn)) }}
+            实际 {{ direction1dDirection(record.outcomes[0].actualDirection) }} · {{ simMoney(record.outcomes[0].baseUnitNav) }} → {{ simMoney(record.outcomes[0].targetUnitNav) }} · 变化 {{ percent(Number(record.outcomes[0].navReturn)) }}
           </p>
         </template>
       </article>

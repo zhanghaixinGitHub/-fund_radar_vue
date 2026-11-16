@@ -57,7 +57,7 @@ function openRow(fund: T, event: globalThis.MouseEvent) {
     :aria-label="`${label}，宽表可左右滚动`"
     tabindex="0"
   >
-    <table class="fund-data-table">
+    <table class="fund-data-table" data-table-align data-align-right="3 4 5" data-align-center="last">
       <caption class="visually-hidden">
         {{ label }}；涨跌为单位净值变化，不含分红和买卖费用。
       </caption>

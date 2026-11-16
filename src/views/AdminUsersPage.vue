@@ -705,7 +705,7 @@ onMounted(() => {
         v-else
         class="admin-table-wrap"
       >
-        <table>
+        <table data-table-align data-align-right="4 5" data-align-center="7">
           <thead>
             <tr>
               <th>账户</th>
@@ -897,7 +897,7 @@ onMounted(() => {
         v-else
         class="admin-table-wrap"
       >
-        <table>
+        <table data-table-align data-align-right="3">
           <thead>
             <tr><th>时间</th><th>类型</th><th>积分变动</th><th>原因</th><th>操作人</th></tr>
           </thead>
@@ -963,7 +963,7 @@ onMounted(() => {
         v-else
         class="admin-table-wrap"
       >
-        <table>
+        <table data-table-align data-align-right="2 3 4 5 6 7 8">
           <thead><tr><th>基金</th><th>市值</th><th>持有收益</th><th>最近一期收益</th><th>累计收益</th><th>持有份额</th><th>可卖份额</th><th>冻结份额</th></tr></thead>
           <tbody>
             <tr

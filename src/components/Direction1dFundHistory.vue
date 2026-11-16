@@ -82,7 +82,7 @@ function actualChange(record: Direction1dRecord): string {
       role="region"
       aria-label="本基金预测历史表格，可横向滚动"
     >
-      <table>
+      <table data-table-align>
         <thead>
           <tr>
             <th scope="col">

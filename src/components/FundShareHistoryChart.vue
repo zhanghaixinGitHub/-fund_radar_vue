@@ -32,7 +32,7 @@ function formatShare(value: number | string | null | undefined): string {
   }
   const numericValue = Number(value)
   return Number.isFinite(numericValue)
-    ? numericValue.toLocaleString('zh-CN', { maximumFractionDigits: 4 })
+    ? numericValue.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     : '暂缺'
 }
 
@@ -47,7 +47,7 @@ function formatShareChange(value: number | null): string {
 function formatNav(value: number | null): string {
   return value === null
     ? props.navLoading ? '加载中…' : '暂缺'
-    : value.toLocaleString('zh-CN', { minimumFractionDigits: 4, maximumFractionDigits: 4 })
+    : value.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 /** 初始化或更新份额趋势图；只绘制已同步的来源原始份额。 */
@@ -178,7 +178,7 @@ onBeforeUnmount(() => {
         >
           同日净值暂时无法更新，当前展示已保存的数据。
         </p>
-        <table>
+        <table data-table-align data-align-right="2 3 4">
           <thead>
             <tr>
               <th scope="col">

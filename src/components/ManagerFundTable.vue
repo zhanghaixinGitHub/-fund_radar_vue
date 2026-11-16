@@ -27,7 +27,7 @@ watch(() => props.funds, () => { page.value = 1 })
       aria-label="经理任职基金，宽表可左右滚动"
       tabindex="0"
     >
-      <table class="manager-table">
+      <table class="manager-table" data-table-align data-align-right="4">
         <thead>
           <tr>
             <th scope="col">

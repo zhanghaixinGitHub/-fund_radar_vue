@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { simMoney } from '@/utils/simulation'
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { get } from '@/api/http'
@@ -161,7 +162,7 @@ onBeforeUnmount(() => sequence++)
             {{ value }}
           </li>
         </ul>
-        <p>最早成交日 {{ path.earliestExecutionDate || '待核对' }} · 可操作份额 {{ path.executableShares ?? '待核对' }} · 费用 {{ path.estimatedFee ?? '待核对' }}</p>
+        <p>最早成交日 {{ path.earliestExecutionDate || '待核对' }} · 可操作份额 {{ path.executableShares == null ? '待核对' : simMoney(path.executableShares) }} · 费用 {{ path.estimatedFee == null ? '待核对' : simMoney(path.estimatedFee) }}</p>
         <h4>复查条件</h4><ul>
           <li
             v-for="value in path.reviewConditions"

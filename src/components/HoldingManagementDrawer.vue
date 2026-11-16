@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { simMoney } from '@/utils/simulation'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import DecisionPanelV2 from '@/components/DecisionPanelV2.vue'
@@ -23,7 +24,7 @@ const titleId = computed(() => `holding-drawer-title-${props.position.fundCode}`
 const planLabels = { ACTIVE: '执行中', PAUSED: '已暂停', ENDED: '已结束' }
 const subtitle = computed(() => {
   const position = props.position
-  if (position.kind === 'recorded') return `${position.fundCode} · ${position.navDate ? `净值 ${position.navDate} / ${position.unitNav}` : '等待首笔交易确认'}`
+  if (position.kind === 'recorded') return `${position.fundCode} · ${position.navDate ? `净值 ${position.navDate} / ${simMoney(position.unitNav)}` : '等待首笔交易确认'}`
   if (position.kind === 'confirmed') return `${position.fundCode}${position.dataAsOfDate ? ` · 截至 ${position.dataAsOfDate}` : ''}`
   return position.fundCode
 })

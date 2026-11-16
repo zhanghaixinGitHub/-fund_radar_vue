@@ -18,7 +18,7 @@ const labels = { ON_TIME: '同步成功 · 8点前已保存', LATE: '同步成�
 const formatTime = (value: string | null | undefined) => value
   ? new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', dateStyle: 'medium', timeStyle: 'medium' }).format(new Date(value))
   : '暂无记录'
-const percent = (value: number | null | undefined) => value == null ? '暂无数据' : `${value > 0 ? '+' : ''}${value.toFixed(4)}%`
+const percent = (value: number | null | undefined) => value == null ? '暂无数据' : `${value > 0 ? '+' : ''}${value.toFixed(2)}%`
 onMounted(() => { void refresh() })
 </script>
 

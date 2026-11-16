@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { simMoney } from '@/utils/simulation'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { getFundDetail } from '@/api/funds'
@@ -82,7 +83,7 @@ onBeforeUnmount(() => { sequence++; dialog.value?.close() })
     </div>
     <template v-else-if="detail">
       <dl class="quick-drawer-metrics">
-        <div><dt>单位净值</dt><dd>{{ detail.unitNav ?? '—' }}</dd></div>
+        <div><dt>单位净值</dt><dd>{{ simMoney(detail.unitNav) }}</dd></div>
         <div>
           <dt>最新净值日涨跌</dt><dd :class="['change-rate', changeRateTone(detail.dayChangeRate)]">
             {{ formatChangeRate(detail.dayChangeRate) }}

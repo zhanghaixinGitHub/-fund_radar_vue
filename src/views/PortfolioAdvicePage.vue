@@ -442,7 +442,7 @@ onBeforeUnmount(() => { alive = false; generation++ })
             v-if="diagnosis.reports.items.length"
             class="advice-table-wrap diagnosis-history"
           >
-            <table class="advice-table">
+            <table class="advice-table" data-table-align data-align-center="4">
               <thead>
                 <tr>
                   <th scope="col">
@@ -756,7 +756,7 @@ onBeforeUnmount(() => { alive = false; generation++ })
               确认历史
             </h2>
             <div class="advice-table-wrap">
-              <table class="advice-table">
+              <table class="advice-table" data-table-align>
                 <thead>
                   <tr>
                     <th scope="col">
@@ -855,7 +855,7 @@ onBeforeUnmount(() => { alive = false; generation++ })
           v-if="history?.reports.items.length"
           class="advice-table-wrap"
         >
-          <table class="advice-table">
+          <table class="advice-table" data-table-align data-align-right="3" data-align-center="4">
             <thead>
               <tr>
                 <th scope="col">

@@ -188,7 +188,7 @@ onMounted(load)
           </p>
           <p>以下是相同历史资料上的比较得分，不是收益率，也不代表今后的预测准确率。</p>
           <div class="comparison-table">
-            <table>
+            <table data-table-align data-align-right="2 3">
               <caption class="muted">
                 可比较比例：计划样本中，成功生成预测且已经知道最终涨跌结果的比例。
               </caption>

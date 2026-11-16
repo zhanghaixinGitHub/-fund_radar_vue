@@ -210,7 +210,7 @@ useManagerRefresh(() => load(true))
           tabindex="0"
           :aria-busy="loading"
         >
-          <table class="manager-table">
+          <table class="manager-table" data-table-align data-align-right="4" data-align-center="6">
             <thead>
               <tr>
                 <th scope="col">

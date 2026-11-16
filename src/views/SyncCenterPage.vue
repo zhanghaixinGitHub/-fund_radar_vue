@@ -583,7 +583,7 @@ onBeforeUnmount(() => {
           </RouterLink>
         </header>
         <div class="admin-table-wrap">
-          <table>
+          <table data-table-align data-align-center="4">
             <thead><tr><th>任务</th><th>最近状态</th><th>上次整项完成</th><th>操作</th></tr></thead>
             <tbody>
               <tr>

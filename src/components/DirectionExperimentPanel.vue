@@ -90,7 +90,7 @@ onBeforeUnmount(() => { ++sequence })
             <p class="model-direction">
               {{ model.direction === 'UP' ? '倾向上涨' : '倾向非上涨（含持平）' }}
             </p>
-            <p>模型分数约 <strong>{{ model.score.toFixed(3) }}</strong><span class="score-scale"> / 1</span></p>
+            <p>模型分数约 <strong>{{ model.score.toFixed(2) }}</strong><span class="score-scale"> / 1</span></p>
           </div>
         </div>
         <p class="score-explanation">

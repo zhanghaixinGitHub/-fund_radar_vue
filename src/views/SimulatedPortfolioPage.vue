@@ -536,7 +536,7 @@ onBeforeUnmount(() => { alive = false; detailGeneration++; globalThis.clearInter
             class="holdings-table-scroll"
             tabindex="0"
           >
-            <table class="holdings-table">
+            <table class="holdings-table" data-table-align data-align-right="2 3 4 5" data-align-center="6">
               <thead>
                 <tr>
                   <th scope="col">
@@ -594,7 +594,7 @@ onBeforeUnmount(() => { alive = false; detailGeneration++; globalThis.clearInter
                       </div>
                       <p class="holding-fund-meta">
                         {{ p.fundCode }}<template v-if="p.kind === 'recorded'">
-                          · {{ p.navDate ? `净值 ${p.navDate} / ${p.unitNav}` : '等待首笔交易确认' }}
+                          · {{ p.navDate ? `净值 ${p.navDate} / ${simMoney(p.unitNav)}` : '等待首笔交易确认' }}
                         </template><template v-else-if="p.kind === 'confirmed' && p.dataAsOfDate">
                           · 截至 {{ p.dataAsOfDate }}
                         </template>
@@ -864,7 +864,7 @@ onBeforeUnmount(() => { alive = false; detailGeneration++; globalThis.clearInter
               <header><strong>{{ order.fundName }}</strong><span class="sim-badge">{{ orderLabels[order.status] }}</span></header><p>{{ order.sourceKind === 'RECURRING' ? '定投买入' : order.side === 'BUY' ? '手动买入' : '卖出' }} · {{ order.side === 'BUY' ? `${simMoney(order.amount)} 元` : `${simShares(order.shares ?? 0)} 份` }}</p><p class="sim-muted">
                 提交 {{ simTime(order.createdAt) }} · 净值归属 {{ order.tradeDate }} · 最早确认 {{ order.eligibleDate }}
               </p><p v-if="order.execution">
-                确认 {{ simShares(order.execution.shares) }} 份 · 成交净值 {{ order.execution.unitNav }} · {{ order.side === 'SELL' ? '卖出收入' : '投入' }} {{ simMoney(order.execution.netAmount ?? order.execution.grossAmount) }} 元{{ order.execution.fee != null ? ` · 费用 ${simMoney(order.execution.fee)} 元` : '' }}{{ order.side === 'SELL' ? ` · 已实现收益 ${simMoney(order.execution.realizedGain)} 元` : '' }}
+                确认 {{ simShares(order.execution.shares) }} 份 · 成交净值 {{ simMoney(order.execution.unitNav) }} · {{ order.side === 'SELL' ? '卖出收入' : '投入' }} {{ simMoney(order.execution.netAmount ?? order.execution.grossAmount) }} 元{{ order.execution.fee != null ? ` · 费用 ${simMoney(order.execution.fee)} 元` : '' }}{{ order.side === 'SELL' ? ` · 已实现收益 ${simMoney(order.execution.realizedGain)} 元` : '' }}
               </p><p v-if="order.status === 'PENDING'">
                 {{ Date.now() < Date.parse(`${order.eligibleDate}T00:00:00+08:00`) ? '等待确认日期。' : '等待对应净值、分红核验及后台确认。' }}
               </p><details>

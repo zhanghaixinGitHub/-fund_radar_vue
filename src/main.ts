@@ -22,3 +22,5 @@ import './styles/theme.css'
 import './styles/portfolio-composition.css'
 
 import './styles/navigation.css'
+
+import './styles/table-alignment.css'

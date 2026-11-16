@@ -91,13 +91,13 @@ const navRangeOptions = [
 ] as const
 
 /** 不猜测来源单位，仅格式化数值，缺失数据保持为“暂缺”。 */
-function formatSourceNumber(value: number | string | null | undefined, maximumFractionDigits = 6): string {
+function formatSourceNumber(value: number | string | null | undefined, maximumFractionDigits = 2): string {
   if (value === null || value === undefined || value === '') {
     return '暂缺'
   }
   const numericValue = Number(value)
   return Number.isFinite(numericValue)
-    ? numericValue.toLocaleString('zh-CN', { maximumFractionDigits })
+    ? numericValue.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: Math.min(maximumFractionDigits, 2) })
     : '暂缺'
 }
 
@@ -107,14 +107,14 @@ function formatCashDividend(value: number | string | null | undefined): string {
   return amount === '暂缺' ? amount : `${amount}/份`
 }
 
-/** 净值字段统一展示四位小数，避免将缺失值误显示为 0。 */
+/** 净值字段统一展示两位小数，避免将缺失值误显示为 0。 */
 function formatNetValue(value: number | string | null | undefined): string {
   if (value === null || value === undefined || value === '') {
     return '暂缺'
   }
   const numericValue = Number(value)
   return Number.isFinite(numericValue)
-    ? numericValue.toLocaleString('zh-CN', { minimumFractionDigits: 4, maximumFractionDigits: 4 })
+    ? numericValue.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     : '暂缺'
 }
 

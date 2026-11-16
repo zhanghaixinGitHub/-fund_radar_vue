@@ -4,15 +4,16 @@ export function simMoney(value: DecimalValue | null | undefined): string {
   return value === null || value === undefined ? '—' : Number(value).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 export function simShares(value: DecimalValue): string {
-  const [integer, decimal = ''] = plainDecimal(value).split('.')
-  return decimal.replace(/0+$/, '') ? `${integer}.${decimal.replace(/0+$/, '')}` : String(integer)
+  return simMoney(value)
 }
 /** 份额快捷选择使用整数运算，防止浮点舍入导致“全部卖出”超过可卖份额。 */
 export function fractionShares(value: DecimalValue, denominator: 1 | 2 | 4): string {
   const [whole = '0', fractional = ''] = plainDecimal(value).split('.')
   const scaled = BigInt(whole) * 100000000n + BigInt(fractional.padEnd(8, '0').slice(0, 8))
   const result = scaled / BigInt(denominator)
-  return simShares(`${result / 100000000n}.${String(result % 100000000n).padStart(8, '0')}`)
+  // 下单数值保留完整精度，不使用页面的两位小数显示格式。
+  const decimal = String(result % 100000000n).padStart(8, '0').replace(/0+$/, '')
+  return `${result / 100000000n}${decimal ? `.${decimal}` : ''}`
 }
 function plainDecimal(value: DecimalValue): string {
   const match = /^(\d+)(?:[.](\d*))?(?:[eE]([+-]?\d+))?$/.exec(String(value))

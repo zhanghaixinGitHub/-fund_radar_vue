@@ -390,7 +390,7 @@ onBeforeUnmount(() => { alive = false; ++generation; ++searchGeneration; ++detai
           v-else
           class="earnings-table-wrap"
         >
-          <table class="earnings-table">
+          <table class="earnings-table" data-table-align data-align-right="2 3" data-align-center="5">
             <thead>
               <tr>
                 <th scope="col">

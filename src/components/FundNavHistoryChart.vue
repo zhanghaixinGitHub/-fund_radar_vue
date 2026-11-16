@@ -28,7 +28,7 @@ function formatNetValue(value: number | string | null): string {
   }
   const numericValue = Number(value)
   return Number.isFinite(numericValue)
-    ? numericValue.toLocaleString('zh-CN', { minimumFractionDigits: 4, maximumFractionDigits: 4 })
+    ? numericValue.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     : '暂缺'
 }
 
@@ -144,7 +144,7 @@ onBeforeUnmount(() => {
         open
       >
         <summary>最近 12 条净值数据表</summary>
-        <table>
+        <table data-table-align data-align-right="2 3">
           <thead>
             <tr><th>净值日期</th><th>单位净值</th><th>累计净值</th></tr>
           </thead>

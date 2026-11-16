@@ -127,7 +127,7 @@ onBeforeUnmount(() => { ++sequence })
           <summary>不同持仓比例的对照</summary>
           <p>初始投入比例在比较前固定，买入后不再平衡；其余现金不投资。应结合平均持仓核对，不能只挑收益最好的一档。</p>
           <div class="effect-table-wrap">
-            <table>
+            <table data-table-align data-align-right="1 2 3 4 5">
               <thead><tr><th>初始投入</th><th>平均持仓</th><th>净收益</th><th>最大回撤</th><th>费用（元）</th></tr></thead><tbody>
                 <tr
                   v-for="control in ledger.exposureControls"

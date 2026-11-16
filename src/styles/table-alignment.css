@@ -1,0 +1,60 @@
+/* 表头与内容按同一列对齐；跨列说明始终靠左。 */
+.app-shell table[data-table-align] > :is(thead, tbody, tfoot) > tr > :is(th, td) {
+  text-align: left;
+}
+.app-shell table[data-table-align][data-align-right~="1"] > :is(thead, tbody, tfoot) > tr > :is(th, td):nth-child(1):not([colspan]) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.app-shell table[data-table-align][data-align-right~="2"] > :is(thead, tbody, tfoot) > tr > :is(th, td):nth-child(2):not([colspan]) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.app-shell table[data-table-align][data-align-right~="3"] > :is(thead, tbody, tfoot) > tr > :is(th, td):nth-child(3):not([colspan]) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.app-shell table[data-table-align][data-align-right~="4"] > :is(thead, tbody, tfoot) > tr > :is(th, td):nth-child(4):not([colspan]) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.app-shell table[data-table-align][data-align-right~="5"] > :is(thead, tbody, tfoot) > tr > :is(th, td):nth-child(5):not([colspan]) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.app-shell table[data-table-align][data-align-right~="6"] > :is(thead, tbody, tfoot) > tr > :is(th, td):nth-child(6):not([colspan]) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.app-shell table[data-table-align][data-align-right~="7"] > :is(thead, tbody, tfoot) > tr > :is(th, td):nth-child(7):not([colspan]) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.app-shell table[data-table-align][data-align-right~="8"] > :is(thead, tbody, tfoot) > tr > :is(th, td):nth-child(8):not([colspan]) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.app-shell table[data-table-align][data-align-center~="4"] > :is(thead, tbody, tfoot) > tr > :is(th, td):nth-child(4):not([colspan]) {
+  text-align: center;
+}
+.app-shell table[data-table-align][data-align-center~="5"] > :is(thead, tbody, tfoot) > tr > :is(th, td):nth-child(5):not([colspan]) {
+  text-align: center;
+}
+.app-shell table[data-table-align][data-align-center~="6"] > :is(thead, tbody, tfoot) > tr > :is(th, td):nth-child(6):not([colspan]) {
+  text-align: center;
+}
+.app-shell table[data-table-align][data-align-center~="7"] > :is(thead, tbody, tfoot) > tr > :is(th, td):nth-child(7):not([colspan]) {
+  text-align: center;
+}
+.app-shell table[data-table-align][data-align-center~="9"] > :is(thead, tbody, tfoot) > tr > :is(th, td):nth-child(9):not([colspan]) {
+  text-align: center;
+}
+.app-shell table[data-table-align][data-align-center~="last"] > :is(thead, tbody, tfoot) > tr > :is(th, td):last-child:not([colspan]) {
+  text-align: center;
+}
+
+.app-shell table[data-table-align] .fee-rate-editor { justify-content: flex-end; }
+.app-shell table[data-table-align] .fee-rate-editor input { text-align: right; font-variant-numeric: tabular-nums; }
+.app-shell table[data-table-align] .fee-row-actions,
+.app-shell table[data-table-align] .fund-table-actions .sim-actions { justify-content: center; }
+.app-shell table[data-table-align] .fund-table-actions .sim-fund-actions { margin-inline: auto; }
