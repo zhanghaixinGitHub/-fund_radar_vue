@@ -11,8 +11,8 @@ function query(page: number, fundCode?: string, pageSize = 20) {
   if (fundCode) params.set('fundCode', fundCode)
   return params.toString()
 }
-export const getSimOverview = () => get<SimOverview>(base)
-export const getSimComposition = () => get<SimComposition>(`${base}/composition`)
+export const getSimOverview = (signal?: AbortSignal) => get<SimOverview>(base, signal)
+export const getSimComposition = (signal?: AbortSignal) => get<SimComposition>(`${base}/composition`, signal)
 /** 收益查询仅使用 current 本人账户接口，不提供 userId。 */
 export const getSimEarnings = (params: URLSearchParams) => get<SimEarnings>(`${base}/earnings?${params}`)
 export const getSimEarningsFunds = (keyword = '', page = 1, pageSize = 20) => get<SimPage<SimEarningsFund>>(
@@ -26,7 +26,7 @@ export const placeSimOrder = (request: SimOrderRequest) => post<SimOrder>(`${bas
 export const cancelSimOrder = (id: string) => post<SimOrder>(`${base}/orders/${codePath(id)}/cancel`)
 export const getSimOrders = (page = 1, code?: string, pageSize = 20) => get<SimPage<SimOrder>>(`${base}/orders?${query(page, code, pageSize)}`)
 export const getSimLedger = (page = 1, code?: string, pageSize = 20) => get<SimPage<SimLedger>>(`${base}/ledger?${query(page, code, pageSize)}`)
-export const getSimPlans = () => get<SimPlan[]>(`${base}/recurring-plans`)
+export const getSimPlans = (signal?: AbortSignal) => get<SimPlan[]>(`${base}/recurring-plans`, signal)
 export const previewSimPlan = (request: SimPlanRequest) => post<{ scheduledDate: string; executionDate: string }>(`${base}/recurring-plans/preview`, request)
 export const saveSimPlan = (request: SimPlanRequest, id?: string) => id
   ? put<SimPlan>(`${base}/recurring-plans/${codePath(id)}`, request)

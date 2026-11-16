@@ -18,7 +18,7 @@
 .composition-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
 .composition-heading h2 { margin: 0 0 6px; font-size: 20px; }
 .composition-heading p, .composition-note { margin: 0; color: var(--ui-muted); font-size: 13px; line-height: 1.8; }
-.composition-tabs { display: flex; flex-wrap: nowrap; gap: 24px; max-width: 100%; overflow-x: auto; border-bottom: 1px solid var(--ui-line); }
+.composition-tabs { display: flex; flex-wrap: nowrap; gap: 24px; max-width: 100%; overflow-x: auto; }
 .composition-tabs button { flex: none; min-height: 40px; padding: 7px 0 9px; border: 0; border-bottom: 3px solid transparent; background: transparent; color: var(--ui-muted); font-size: 14px; cursor: pointer; }
 .composition-tabs button.is-selected { border-bottom-color: var(--ui-primary); color: var(--ui-primary); font-weight: 700; }
 .composition-summary { display: flex; align-items: baseline; justify-content: space-between; gap: 12px 24px; flex-wrap: wrap; margin: 22px 0 10px; color: var(--ui-muted); font-size: 13px; }

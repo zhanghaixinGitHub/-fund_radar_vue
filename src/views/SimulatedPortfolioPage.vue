@@ -16,6 +16,7 @@ import SimulationTradeDialog from '@/components/SimulationTradeDialog.vue'
 import SimulationFundPicker from '@/components/SimulationFundPicker.vue'
 import { useListLocation } from '@/composables/useListLocation'
 import { usePageNavigation } from '@/composables/usePageNavigation'
+import { usePortfolioRequest } from '@/composables/usePortfolioRequest'
 import { useAuthStore } from '@/stores/auth'
 import type { SimComposition, SimLedger, SimOrder, SimOverview, SimPage, SimPeriod, SimPlan } from '@/types/simulation'
 import { buildPortfolioList, sortPortfolioList } from '@/utils/portfolioList'
@@ -26,19 +27,19 @@ const router = useRouter()
 const auth = useAuthStore()
 const { section, sectionLabel, sectionTarget } = usePageNavigation()
 const { location: listLocation, navigate: navigateList, isCurrent } = useListLocation()
-const overview = ref<SimOverview | null>(null)
-const composition = ref<SimComposition | null>(null)
-const compositionError = ref('')
-const advice = ref<DecisionReport[]>([])
-const adviceError = ref('')
+const overviewRequest = usePortfolioRequest<SimOverview | null>(getSimOverview, null, '持仓暂时无法读取，请刷新重试。')
+const { data: overview, loading, error } = overviewRequest
+const compositionRequest = usePortfolioRequest<SimComposition | null>(getSimComposition, null, '持仓构成暂时无法读取，可重试。')
+const { data: composition, loading: compositionLoading, error: compositionError } = compositionRequest
+const adviceRequest = usePortfolioRequest<DecisionReport[]>(readLatestDecisions, [], '操作建议暂时无法读取，可进入详情重试。')
+const { data: advice } = adviceRequest
 const adviceByFund = computed(() => new Map(advice.value.map(item => [item.fundCode, item])))
-const plans = ref<SimPlan[]>([])
+const plansRequest = usePortfolioRequest<SimPlan[]>(getSimPlans, [], '定投计划暂时无法读取，请重试。')
+const { data: plans, loading: plansLoading, error: plansError } = plansRequest
 const orders = ref<SimPage<SimOrder> | null>(null)
 const ledger = ref<SimPage<SimLedger> | null>(null)
 const periods = ref<SimPage<SimPeriod> | null>(null)
 const periodPlan = ref<SimPlan | null>(null)
-const loading = ref(false)
-const error = ref('')
 const message = ref('')
 const detailError = ref('')
 const busy = ref(false)
@@ -114,30 +115,20 @@ const planLabels = { ACTIVE: '执行中', PAUSED: '已暂停', ENDED: '已结束
 const orderLabels = { PENDING: '待确认', CONFIRMED: '已确认', CANCELLED: '已撤销' }
 const ledgerLabels: Record<string, string> = { ORDER_SUBMITTED: '提交交易', ORDER_CANCELLED: '撤销交易', BUY_CONFIRMED: '买入确认', SELL_CONFIRMED: '卖出确认', NAV_CORRECTION: '净值更正', DIVIDEND_RECEIVABLE: '应收分红', DIVIDEND_PAID: '分红派发', PLAN_SAVED: '保存定投', PLAN_PAUSED: '暂停定投', PLAN_ACTIVE: '恢复定投', PLAN_ENDED: '结束定投', PLAN_CALENDAR_PAUSED: '日历不足暂停' }
 let alive = true
-let loadGeneration = 0
 let detailGeneration = 0
 let polling: ReturnType<typeof globalThis.setInterval> | undefined
 
-async function load(silent = false) {
+async function load() {
   if (loading.value || ['funding', 'account-risk', 'options'].includes(section.value)) return
-  const current = ++loadGeneration
-  if (!silent) loading.value = true
-  error.value = ''
-  try {
-    // 建议读取失败不遮挡已有持仓和交易功能；批量读取避免每张卡片单独请求。
-    const [result, planResult, adviceResult, compositionResult] = await Promise.all([
-      getSimOverview(), getSimPlans(), readLatestDecisions().then(items => ({ items, error: '' })).catch(() => ({ items: null, error: '操作建议暂时无法读取，可进入详情重试。' })),
-      getSimComposition().then(data => ({ data, error: '' })).catch(() => ({ data: null, error: '持仓构成暂时无法读取，可重试。' })),
-    ])
-    if (!alive || current !== loadGeneration) return
-    overview.value = result; plans.value = planResult
-    if (adviceResult.items) advice.value = adviceResult.items
-    adviceError.value = adviceResult.error
-    if (compositionResult.data) composition.value = compositionResult.data
-    compositionError.value = compositionResult.error
-    await loadDetails()
-  } catch (reason) { if (alive && current === loadGeneration) error.value = reason instanceof Error ? reason.message : '持仓加载失败。' }
-  finally { if (alive && current === loadGeneration) loading.value = false }
+  // 持仓先显示；附加区域各自完成，不能把慢请求变成整页等待。
+  loadSectionData(true)
+  const success = await overviewRequest.load()
+  if (success && alive) void loadDetails()
+}
+function loadSectionData(refresh = false) {
+  if (section.value === 'overview' && (refresh || !compositionRequest.ready.value)) void compositionRequest.load()
+  if (['holdings', 'plans'].includes(section.value) && (refresh || !plansRequest.ready.value)) void plansRequest.load()
+  if (section.value === 'holdings' && (refresh || !adviceRequest.ready.value)) void adviceRequest.load()
 }
 async function loadDetails() {
   const current = ++detailGeneration
@@ -212,7 +203,12 @@ function picked(code: string) { picker.value = false; trade.value = { fundCode: 
 function saved(value: string) { trade.value = null; message.value = value; void load() }
 function editPlan(plan: SimPlan) { trade.value = { fundCode: plan.fundCode, mode: 'PLAN', plan } }
 function planFor(code: string) { return plans.value.find(p => p.fundCode === code && p.status !== 'ENDED') }
-function openPlan(code: string) { const plan = planFor(code); trade.value = { fundCode: code, mode: 'PLAN', ...(plan ? { plan } : {}) } }
+async function openPlan(code: string) {
+  // 计划尚未读到或刷新失败时先核对，不能把未知误当成没有计划。
+  if ((!plansRequest.ready.value || plansError.value || plansLoading.value) && !await plansRequest.load()) return
+  if (!alive) return
+  const plan = planFor(code); trade.value = { fundCode: code, mode: 'PLAN', ...(plan ? { plan } : {}) }
+}
 function openManagedTrade(mode: 'BUY' | 'SELL' | 'PLAN') {
   const code = managedPosition.value?.fundCode
   if (!code) return
@@ -245,6 +241,7 @@ async function viewPeriods(plan: SimPlan, page = 1) {
   finally { periodsLoading.value = false }
 }
 watch([section, selectedCode], () => {
+  loadSectionData(true)
   endingPlan.value = null
   managedCode.value = ''
   orderPage.value = 1; ledgerPage.value = 1; orders.value = null; ledger.value = null; periodPlan.value = null
@@ -265,9 +262,9 @@ watch([() => listLocation.value.page, holdingPage, section, overview], () => {
     void router.replace({ path: route.path, query: { ...route.query, page: holdingPage.value > 1 ? String(holdingPage.value) : undefined } })
   }
 })
-// 定投列表同样等数据加载后再修正越界页码；计划与持仓在同一次请求中返回，复用 overview 作为就绪信号。
-watch([() => listLocation.value.page, planPage, section, overview], () => {
-  if (!isCurrent.value || section.value !== 'plans' || !overview.value) return
+// 定投独立加载后才修正页码，不能用尚未返回的空计划列表重置位置。
+watch([() => listLocation.value.page, planPage, section, plansRequest.ready], () => {
+  if (!isCurrent.value || section.value !== 'plans' || !plansRequest.ready.value) return
   if (listLocation.value.page !== planPage.value) {
     void router.replace({ path: route.path, query: { ...route.query, page: planPage.value > 1 ? String(planPage.value) : undefined } })
   }
@@ -278,13 +275,13 @@ onMounted(() => {
     const top = takeEarningsScroll(route.fullPath) ?? takePortfolioScroll(route.fullPath)
     if (alive && top !== null) globalThis.scrollTo({ top })
   })
-  polling = globalThis.setInterval(() => { if (globalThis.document.visibilityState === 'visible' && !busy.value && !trade.value) void load(true) }, 60_000)
+  polling = globalThis.setInterval(() => { if (globalThis.document.visibilityState === 'visible' && !busy.value && !trade.value) void load() }, 60_000)
 })
 onBeforeRouteLeave(to => {
   if (to.name === 'portfolio-advice') rememberPortfolioScroll(route.fullPath, globalThis.scrollY)
   if (to.name === 'portfolio-earnings') rememberEarningsScroll(route.fullPath, globalThis.scrollY)
 })
-onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; globalThis.clearInterval(polling) })
+onBeforeUnmount(() => { alive = false; detailGeneration++; globalThis.clearInterval(polling) })
 </script>
 
 <template>
@@ -294,7 +291,7 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
   >
     <header class="sim-page-header">
       <div class="visually-hidden">
-<h1 id="sim-title">
+        <h1 id="sim-title">
           {{ section === 'overview' ? '持仓总览' : sectionLabel }}
         </h1>
       </div>
@@ -416,9 +413,9 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
         </p>
         <PortfolioComposition
           :data="composition"
-          :loading="loading"
+          :loading="compositionLoading"
           :error="compositionError"
-          @retry="load()"
+          @retry="compositionRequest.load()"
         />
         <div class="sim-status">
           <span :class="jobStale || overview.job?.status === 'FAILED' ? 'sim-warning' : ''">{{ jobStale ? '后台运行状态待确认' : overview.job?.message }}</span><span>最近完成：{{ simTime(overview.job?.completedAt) }}</span>
@@ -477,6 +474,19 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
       </p>
 
       <template v-if="section === 'holdings'">
+        <p
+          v-if="plansError"
+          class="error-message"
+          role="alert"
+        >
+          {{ plansError }} <button
+            type="button"
+            class="secondary-button"
+            @click="plansRequest.load()"
+          >
+            重试
+          </button>
+        </p>
         <section
           class="fund-results-panel holdings-results-panel"
           aria-label="持仓列表"
@@ -688,7 +698,26 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
           </button>
         </div>
         <p
-          v-if="!plans.length"
+          v-if="plansLoading && !plansRequest.ready.value"
+          role="status"
+        >
+          正在读取定投计划…
+        </p>
+        <p
+          v-else-if="plansError"
+          role="alert"
+          class="error-message"
+        >
+          {{ plansError }} <button
+            type="button"
+            class="secondary-button"
+            @click="plansRequest.load()"
+          >
+            重试
+          </button>
+        </p>
+        <p
+          v-else-if="!plans.length"
           class="sim-empty"
         >
           还没有定投计划。无需先买入，也可以直接设置第一期定投。

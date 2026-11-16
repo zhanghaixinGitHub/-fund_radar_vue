@@ -26,8 +26,8 @@ export class ApiRequestError extends Error {
 }
 
 /** 发起不含请求体的 GET 请求，并解包统一响应中的 data 字段。 */
-export async function get<T>(path: string): Promise<T> {
-  return request<T>(path)
+export async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
+  return request<T>(path, { signal })
 }
 
 /** 发起 JSON POST 请求；请求失败时抛出后端返回的可展示错误信息。 */
