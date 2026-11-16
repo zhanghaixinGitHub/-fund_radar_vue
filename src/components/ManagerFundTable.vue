@@ -21,9 +21,26 @@ watch(() => props.funds, () => { page.value = 1 })
     暂无已核实的相关任职记录。
   </p>
   <template v-else>
-    <div class="manager-table-scroll">
+    <div
+      class="manager-table-scroll"
+      role="region"
+      aria-label="经理任职基金，宽表可左右滚动"
+      tabindex="0"
+    >
       <table class="manager-table">
-        <thead><tr><th>基金 / 份额代码</th><th>任职区间</th><th>管理情况</th><th>任期回报</th></tr></thead>
+        <thead>
+          <tr>
+            <th scope="col">
+              基金 / 份额代码
+            </th><th scope="col">
+              任职区间
+            </th><th scope="col">
+              管理情况
+            </th><th scope="col">
+              任期回报
+            </th>
+          </tr>
+        </thead>
         <tbody>
           <tr
             v-for="fund in visible"

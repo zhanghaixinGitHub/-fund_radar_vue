@@ -4,8 +4,10 @@ import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth'
 import { usePageNavigation } from '@/composables/usePageNavigation'
+import { useWorkspaceScroll } from '@/composables/useWorkspaceScroll'
 import type { PermissionCode } from '@/types/auth'
 import { accountDisplayLabel } from '@/utils/accountPresentation'
+import { dismissDialogOnOutsideClick } from '@/utils/dialogDismiss'
 
 const route = useRoute()
 const router = useRouter()
@@ -14,10 +16,12 @@ const showAppShell = computed(() => route.meta.requiresAuth !== false)
 const isAdminArea = computed(() => route.meta.appArea === 'admin')
 const accountMenuOpen = ref(false)
 const accountMenuElement = ref<globalThis.HTMLElement | null>(null)
+const contentElement = ref<globalThis.HTMLElement | null>(null)
+const { resetForMenu } = useWorkspaceScroll(contentElement)
 const riskFooterElement = ref<globalThis.HTMLElement | null>(null)
 let riskFooterResizeObserver: globalThis.ResizeObserver | undefined
 const sidebarOpen = ref(false)
-const { sections, section, sectionLabel, moduleLabel, returnTarget, returnLabel, sectionTarget } = usePageNavigation()
+const { sectionLabel, moduleLabel, returnTarget, returnLabel } = usePageNavigation()
 const adminEntryPermissions: PermissionCode[] = [
   'ADMIN_DASHBOARD_VIEW',
   'SYNC_JOB_READ',
@@ -33,6 +37,13 @@ const fundContext = computed(() => String(route.params.fundCode ?? '') ||
 /** 菜单只反映已授予权限，接口本身仍由 Java 服务端校验。 */
 function can(permission: PermissionCode): boolean {
   return authStore.hasPermission(permission)
+}
+
+function onMainNavigationClick(event: globalThis.MouseEvent): void {
+  if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return
+  const link = (event.target as globalThis.Element).closest('a[href]')
+  const href = link?.getAttribute('href')
+  if (href) resetForMenu(href)
 }
 
 /** 展开或收起账户操作菜单；管理员入口仅由服务端返回的权限决定。 */
@@ -58,11 +69,21 @@ async function toggleSidebar(): Promise<void> {
   sidebarOpen.value = !sidebarOpen.value
   if (sidebarOpen.value) {
     await nextTick()
-    globalThis.document.querySelector<globalThis.HTMLElement>('#workspace-sidebar .is-selected')?.focus()
+    globalThis.document.querySelector<globalThis.HTMLElement>('#workspace-sidebar a.is-active-module, #workspace-sidebar a.router-link-exact-active')?.focus()
   }
 }
 
 function onDocumentKeyDown(event: globalThis.KeyboardEvent): void {
+  if (sidebarOpen.value && event.key === 'Tab') {
+    const links = globalThis.document.querySelectorAll<globalThis.HTMLElement>('#workspace-sidebar a[href]')
+    const first = links[0]
+    const last = links[links.length - 1]
+    if (event.shiftKey && globalThis.document.activeElement === first) {
+      event.preventDefault(); last?.focus()
+    } else if (!event.shiftKey && globalThis.document.activeElement === last) {
+      event.preventDefault(); first?.focus()
+    }
+  }
   if (event.key === 'Escape') {
     closeAccountMenu()
     if (sidebarOpen.value) {
@@ -90,6 +111,7 @@ function updateRiskFooterHeight(): void {
 onMounted(() => {
   globalThis.document.addEventListener('pointerdown', onDocumentPointerDown)
   globalThis.document.addEventListener('keydown', onDocumentKeyDown)
+  globalThis.document.addEventListener('click', dismissDialogOnOutsideClick, true)
   updateRiskFooterHeight()
   if (riskFooterElement.value) {
     riskFooterResizeObserver = new globalThis.ResizeObserver(updateRiskFooterHeight)
@@ -100,6 +122,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   globalThis.document.removeEventListener('pointerdown', onDocumentPointerDown)
   globalThis.document.removeEventListener('keydown', onDocumentKeyDown)
+  globalThis.document.removeEventListener('click', dismissDialogOnOutsideClick, true)
   riskFooterResizeObserver?.disconnect()
   globalThis.document.documentElement.style.removeProperty('--app-risk-footer-height')
 })
@@ -128,7 +151,13 @@ async function signOut(): Promise<void> {
       class="skip-link"
       href="#main-content"
     >跳至正文</a>
-    <header class="top-bar">
+    <aside
+      id="workspace-sidebar"
+      class="workspace-sidebar"
+      :class="{ 'is-open': sidebarOpen }"
+      aria-label="主导航"
+      @click.capture="onMainNavigationClick"
+    >
       <RouterLink
         class="brand"
         :to="brandTarget"
@@ -216,130 +245,21 @@ async function signOut(): Promise<void> {
           费率维护
         </RouterLink>
       </nav>
-      <div
-        ref="accountMenuElement"
-        class="account-menu"
-      >
-        <button
-          class="account-trigger"
-          :aria-expanded="accountMenuOpen"
-          aria-controls="account-actions"
-          aria-haspopup="menu"
-          type="button"
-          @click="toggleAccountMenu"
-        >
-          <span class="account-identity">
-            <strong>{{ accountDisplayLabel(authStore.user) }}</strong>
-            <small>{{ authStore.user?.mobileMasked }}</small>
-          </span>
-          <span
-            aria-hidden="true"
-            class="account-chevron"
-          >⌄</span>
-        </button>
-        <div
-          v-if="accountMenuOpen"
-          id="account-actions"
-          class="account-dropdown"
-          role="menu"
-        >
-          <RouterLink
-            :to="{ name: 'profile' }"
-            role="menuitem"
-            @click="closeAccountMenu"
-          >
-            个人信息
-          </RouterLink>
-          <a
-            v-if="hasAdminAccess && !isAdminArea"
-            href="/admin"
-            rel="noopener"
-            role="menuitem"
-            target="_blank"
-            @click="closeAccountMenu"
-          >
-            后台管理
-          </a>
-          <RouterLink
-            v-if="isAdminArea"
-            to="/funds"
-            role="menuitem"
-            @click="closeAccountMenu"
-          >
-            返回前台
-          </RouterLink>
+      <p class="sidebar-footer">
+        基金雷达 · {{ isAdminArea ? '后台管理' : '个人投资空间' }}
+      </p>
+    </aside>
+    <button
+      v-if="sidebarOpen"
+      class="navigation-backdrop"
+      type="button"
+      aria-label="关闭主导航"
+      @click="sidebarOpen = false"
+    />
+    <div class="workspace-layout">
+      <header class="top-bar">
+        <div class="workspace-top-context">
           <button
-            role="menuitem"
-            type="button"
-            @click="signOut"
-          >
-            退出登录
-          </button>
-        </div>
-      </div>
-    </header>
-
-    <div
-      class="workspace-layout"
-      :class="{ 'without-sidebar': sections.length === 0 }"
-    >
-      <aside
-        v-if="sections.length"
-        id="workspace-sidebar"
-        class="workspace-sidebar"
-        :class="{ 'is-open': sidebarOpen }"
-        aria-label="当前模块子菜单"
-      >
-        <!-- 模块名称、返回入口和当前基金独立于滚动区，浏览长菜单时仍可随时查看和返回。 -->
-        <div class="sidebar-header">
-          <strong class="sidebar-heading">{{ moduleLabel }}</strong>
-          <RouterLink
-            v-if="returnTarget"
-            class="sidebar-back"
-            :to="returnTarget"
-          >
-            ← 返回{{ returnLabel }}
-          </RouterLink>
-          <p
-            v-if="fundContext"
-            class="sidebar-context"
-          >
-            当前基金 · {{ fundContext }}
-          </p>
-        </div>
-        <div class="sidebar-scroll-area">
-          <nav
-            class="sidebar-nav"
-            :aria-label="`${moduleLabel}子导航`"
-          >
-            <template
-              v-for="item in sections"
-              :key="item.key"
-            >
-              <span
-                v-if="item.group"
-                class="sidebar-group"
-              >{{ item.group }}</span>
-              <RouterLink
-                :to="sectionTarget(item.key)"
-                :class="{ 'is-selected': section === item.key }"
-                :aria-current="section === item.key ? 'page' : undefined"
-              >
-                {{ item.label }}
-              </RouterLink>
-            </template>
-          </nav>
-          <small class="sidebar-footer">基金雷达 · {{ isAdminArea ? '后台管理' : '个人工作区' }}</small>
-        </div>
-      </aside>
-      <main
-        id="main-content"
-        class="page-content"
-        tabindex="-1"
-      >
-        <div class="workspace-location">
-          <button
-            v-if="sections.length"
             id="sidebar-toggle"
             class="sidebar-toggle"
             type="button"
@@ -347,24 +267,101 @@ async function signOut(): Promise<void> {
             aria-controls="workspace-sidebar"
             @click="toggleSidebar"
           >
-            ☰ 子菜单
+            菜单
           </button>
           <nav
-            aria-label="当前位置"
             class="workspace-breadcrumb"
+            aria-label="当前位置"
           >
-            <span v-if="isAdminArea">后台管理<span aria-hidden="true"> / </span></span>
+            <span v-if="isAdminArea">后台管理 / </span>
             <RouterLink
               v-if="returnTarget"
               :to="returnTarget"
+              :aria-label="`返回${returnLabel}`"
+              :title="`返回${returnLabel}`"
             >
               {{ moduleLabel }}
             </RouterLink>
             <span v-else>{{ moduleLabel }}</span>
             <span v-if="fundContext"> / {{ fundContext }}</span>
-            <span v-if="sectionLabel"> / {{ sectionLabel }}</span>
+            <span v-if="sectionLabel && sectionLabel !== moduleLabel"> / {{ sectionLabel }}</span>
           </nav>
         </div>
+        <div
+          ref="accountMenuElement"
+          class="account-menu"
+        >
+          <button
+            class="account-trigger"
+            :aria-expanded="accountMenuOpen"
+            aria-controls="account-actions"
+            aria-haspopup="menu"
+            type="button"
+            @click="toggleAccountMenu"
+          >
+            <span class="account-identity">
+              <strong>{{ accountDisplayLabel(authStore.user) }}</strong>
+              <small>{{ authStore.user?.mobileMasked }}</small>
+            </span>
+            <span
+              aria-hidden="true"
+              class="account-chevron"
+            >⌄</span>
+          </button>
+          <div
+            v-if="accountMenuOpen"
+            id="account-actions"
+            class="account-dropdown"
+            role="menu"
+          >
+            <RouterLink
+              :to="{ name: 'profile' }"
+              role="menuitem"
+              @click="closeAccountMenu"
+            >
+              个人信息
+            </RouterLink>
+            <a
+              v-if="hasAdminAccess && !isAdminArea"
+              href="/admin"
+              rel="noopener"
+              role="menuitem"
+              target="_blank"
+              @click="closeAccountMenu"
+            >
+              后台管理
+            </a>
+            <RouterLink
+              v-if="isAdminArea"
+              to="/funds"
+              role="menuitem"
+              @click="closeAccountMenu"
+            >
+              返回前台
+            </RouterLink>
+            <button
+              role="menuitem"
+              type="button"
+              @click="signOut"
+            >
+              退出登录
+            </button>
+          </div>
+        </div>
+      </header>
+      <main
+        id="main-content"
+        ref="contentElement"
+        class="page-content"
+        tabindex="-1"
+      >
+        <RouterLink
+          v-if="returnTarget"
+          class="workspace-return-link"
+          :to="returnTarget"
+        >
+          ← 返回{{ returnLabel }}
+        </RouterLink>
         <RouterView />
       </main>
     </div>

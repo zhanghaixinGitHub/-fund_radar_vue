@@ -1,0 +1,186 @@
+/* Unified investment workspace: shared by user and administration pages. */
+:root{--ui-canvas:#f1f4ef;--ui-surface:#fff;--ui-sidebar:#e4ebe1;--ui-selected:#bdd1bb;--ui-primary:#38745d;--ui-ink:#263d33;--ui-muted:#526757;--ui-line:#d8e2d3;--ui-rise:#b84c43;--ui-fall:#287b60;--ui-radius:12px;color:var(--ui-ink);background:var(--ui-canvas);font-family:"Microsoft YaHei","PingFang SC",sans-serif}
+::selection{background:#cde2d0;color:#23452f}
+*{scrollbar-width:thin;scrollbar-color:#a5b79e transparent}
+button,input,select,textarea{accent-color:var(--ui-primary);caret-color:var(--ui-primary)}
+:where(button,a,input,select,textarea,summary):focus-visible{outline:3px solid #72977d;outline-offset:3px}
+body:has(.app-shell){height:100dvh;overflow:hidden}
+#app:has(.app-shell){height:100dvh;min-height:0;padding-bottom:var(--app-risk-footer-height,47px)}
+.app-shell{--workspace-accent:var(--ui-primary);--workspace-border:var(--ui-line);--workspace-muted:var(--ui-muted);--workspace-ink:var(--ui-ink);display:grid;grid-template-columns:180px minmax(0,1fr);height:100%;min-height:0;background:var(--ui-canvas);color:var(--ui-ink)}
+.app-shell .workspace-sidebar{position:relative;top:auto;height:100%;max-height:none;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:32px 16px 20px;gap:36px;background:var(--ui-sidebar);border-right:1px solid #cbd7c8;z-index:35}
+.app-shell .workspace-sidebar .brand{padding:0 10px;font-size:24px;letter-spacing:-.025em;color:#2c604b;flex:none}
+.app-shell .brand-mark{display:none}
+.app-shell .workspace-sidebar .top-nav{display:flex;flex:0 0 auto;flex-direction:column;align-items:stretch;justify-content:start;gap:9px;overflow:visible;margin:0;padding:0}
+.app-shell .workspace-sidebar .top-nav a{display:flex;align-items:center;min-height:46px;padding:11px 14px;border:0;border-radius:8px;color:#49634f;font-size:15px;font-weight:600;text-decoration:none}
+.app-shell .workspace-sidebar .top-nav a:hover{background:#d5e1d2}
+.app-shell .workspace-sidebar .top-nav a.is-active-module,.app-shell .workspace-sidebar .top-nav a.router-link-exact-active{background:var(--ui-selected);color:#244e37;font-weight:700}
+.app-shell .workspace-sidebar .top-nav a.router-link-active:not(.router-link-exact-active):not(.is-active-module){border:0;color:#49634f}
+.app-shell .sidebar-footer{margin-top:auto;color:var(--ui-muted);border-color:#cbd7c8;font-size:12px}
+.app-shell .workspace-layout{display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;background:var(--ui-surface)}
+.app-shell .top-bar{position:relative;top:auto;flex:none;min-height:68px;max-width:none;padding:0 32px;margin:0;border-bottom:1px solid var(--ui-line);z-index:25;gap:16px}
+.workspace-top-context{display:flex;align-items:center;gap:12px;color:var(--ui-muted);font-size:13px;min-width:0}
+.app-shell .page-content{flex:1;width:100%;max-width:none;min-height:0;overflow-y:auto;overscroll-behavior:contain;margin:0;padding:24px 32px 40px;background:var(--ui-surface)}
+.app-shell .workspace-location{margin-bottom:16px}
+.app-shell .page-section-tabs{position:relative;display:flex;flex:none;flex-wrap:nowrap;gap:25px;overflow-x:auto;overflow-y:hidden;max-width:100%;margin:0 0 26px;padding:0;border-bottom:1px solid var(--ui-line);background:#fff;overscroll-behavior-x:contain;scroll-padding-inline:8px}
+.page-section-tabs a{flex:none;white-space:nowrap;padding:12px 0 13px;border-bottom:3px solid transparent;color:var(--ui-muted);font-size:14px;font-weight:400;text-decoration:none}
+.page-section-tabs a:hover{color:var(--ui-primary)}
+.page-section-tabs a.is-selected{color:var(--ui-primary);border-bottom-color:var(--ui-primary);font-weight:700}
+.app-shell .account-trigger{background:transparent;border:0;color:var(--ui-ink);padding:8px}
+.app-shell .account-dropdown{border:1px solid var(--ui-line);border-radius:10px;box-shadow:0 12px 30px #203d331c;background:#fffefb}
+.app-shell .account-dropdown a:hover,.app-shell .account-dropdown button:hover{background:#dde7d6;color:var(--ui-primary)}
+.app-shell h1{font-size:28px;line-height:1.4;letter-spacing:-.025em;color:var(--ui-ink);margin:0 0 14px}
+.app-shell h2{font-size:20px;color:var(--ui-ink)}
+.app-shell h3{font-size:16px;color:var(--ui-ink)}
+.app-shell .eyebrow{display:none}
+.app-shell :is(.lead,.as-of-date,.sim-muted){color:var(--ui-muted)}
+:is(.primary-button,.primary-link,.sim-primary,.portfolio-retry-button){color:var(--ui-primary);background:#fff;border:1px solid #cbd8c9;border-radius:7px;box-shadow:none}
+:is(.secondary-button,.secondary-link){color:var(--ui-primary);background:#fff;border:1px solid #cbd8c9;border-radius:7px;box-shadow:none}
+html :is(button,.primary-button,.secondary-button,.primary-link,.secondary-link,.sim-primary,.portfolio-retry-button):hover:not(:disabled){color:var(--ui-ink);background:#dde7d6;border-color:#a5b79e}
+html :is(button,.primary-button,.secondary-button,.primary-link,.secondary-link,.sim-primary,.portfolio-retry-button):hover:not(:disabled) *{color:inherit}
+.app-shell :is(button,input,select,textarea){font-family:inherit}
+.app-shell :is(input:not([type=checkbox]):not([type=radio]),select,textarea){border-color:#cbd8c9;border-radius:7px;background:#fff;color:var(--ui-ink)}
+.app-shell :is(button,.primary-link,.secondary-link){min-height:38px}
+.app-shell :is(button:disabled,input:disabled,select:disabled){cursor:not-allowed;opacity:.6}
+.app-shell .search-panel{background:#f6f8f3;border:1px solid var(--ui-line);border-radius:10px;box-shadow:none;padding:20px;margin:22px 0}
+.app-shell .search-panel label{color:var(--ui-muted);font-weight:500}
+.app-shell :is(.fund-card,.watchlist-card){border-color:var(--ui-line);border-radius:9px;background:#fff;box-shadow:none;color:var(--ui-ink)}
+.app-shell :is(.fund-card,.watchlist-card):hover{border-color:#92ad8c;background:#f6f8f3;box-shadow:none;transform:none}
+.app-shell :is(.fund-type-group h2,.fund-type-group>h2){font-size:16px;color:var(--ui-muted)}
+.app-shell .pagination{border-top:1px solid var(--ui-line);padding-top:18px;color:var(--ui-muted)}
+.app-shell .pagination button{border-radius:6px;background:#fff;border:1px solid var(--ui-line);color:var(--ui-primary)}
+.app-shell .pagination button:disabled{background:#f1f4ef;color:#7b897d}
+.app-shell :is(table th,.sim-table th){color:var(--ui-muted);background:#f3f6f0;font-weight:500}
+.app-shell :is(table td,.sim-table td){border-color:#e4ebe0}
+.app-shell :is(.sim-metrics article,.sim-position-card,.sim-detail-panel,.admin-summary-card,.admin-action-card,.sync-task-card){background:#fff;border-color:var(--ui-line);border-radius:var(--ui-radius);box-shadow:none}
+.app-shell .sim-metrics article{background:#f7f9f4}
+:is(.sim-positive,.change-rate.positive,.change-rate.is-positive){color:var(--ui-rise)!important}
+:is(.sim-negative,.change-rate.negative,.change-rate.is-negative){color:var(--ui-fall)!important}
+:is(.sim-dialog,dialog){color:var(--ui-ink);background:#fffefb;border:0;border-radius:14px;box-shadow:0 18px 60px #203d3333}
+:is(.sim-dialog,dialog)::backdrop{background:#183b3259}
+:is(.sim-dialog-header,.sim-dialog-footer){border-color:var(--ui-line)}
+.navigation-backdrop{display:none}
+.app-risk-footer{background:#f8faf6;border-color:var(--ui-line);color:var(--ui-muted);z-index:40}
+@media(max-width:1000px){.app-shell{grid-template-columns:170px minmax(0,1fr)}.app-shell .page-content{padding:22px}.app-shell .top-bar{padding:0 22px}.app-shell .workspace-sidebar{padding-inline:12px}.app-shell .workspace-sidebar .brand{font-size:21px}}
+@media(max-width:720px){
+.app-shell{grid-template-columns:minmax(0,1fr)}
+.app-shell .workspace-sidebar{position:fixed;inset:0 auto var(--app-risk-footer-height,47px) 0;width:240px;height:auto;transform:translateX(-100%);visibility:hidden;z-index:60;transition:transform 180ms ease,visibility 180ms}
+.app-shell .workspace-sidebar.is-open{visibility:visible;transform:translateX(0)}
+.navigation-backdrop{display:block;position:fixed;inset:0;z-index:55;background:#183b3259;border:0}
+.app-shell .sidebar-toggle{display:block;min-height:40px;padding:7px 12px;border:1px solid var(--ui-line);border-radius:7px;background:white;color:var(--ui-primary)}
+.app-shell .page-content{padding:18px 16px 30px}.app-shell .top-bar{padding:8px 16px;min-height:64px;flex-wrap:nowrap}.app-shell .account-trigger{min-width:0}.account-identity small{display:none}
+.app-shell h1{font-size:24px}.app-shell .page-section-tabs{gap:22px}.app-shell :is(input:not([type=checkbox]):not([type=radio]),select,textarea){font-size:16px}.app-shell :is(button,.primary-link,.secondary-link){min-height:44px}
+}
+@media(prefers-reduced-motion:reduce){.app-shell .workspace-sidebar{transition:none}}
+.fund-quick-trigger{margin:8px 0 14px;padding:7px 13px;cursor:pointer}
+.fund-quick-drawer{position:fixed;inset:0 0 0 auto;width:min(460px,100vw);height:100dvh;max-height:100dvh;max-width:100vw;margin:0;padding:26px;border-radius:0;background:#fcfdf9;overflow-y:auto;overscroll-behavior:contain;box-shadow:-12px 0 40px #203d3329}
+.fund-quick-drawer::backdrop{background:#183b321c}
+.quick-drawer-header{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:26px;color:var(--ui-muted);font-size:13px}
+.fund-quick-drawer h2{font-size:24px;line-height:1.5;margin:0 0 10px}
+.quick-drawer-caption{color:var(--ui-muted);font-size:13px}
+.quick-drawer-metrics{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:30px 0 14px}
+.quick-drawer-metrics dt,.quick-drawer-facts dt{color:var(--ui-muted);font-size:13px}
+.quick-drawer-metrics dd{font-size:26px;font-weight:700;margin:10px 0;font-variant-numeric:tabular-nums}
+.quick-drawer-facts{margin:26px 0}.quick-drawer-facts>div{display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--ui-line)}
+.quick-drawer-facts dd{margin:0;font-variant-numeric:tabular-nums}
+.quick-drawer-actions{display:grid;gap:18px;margin-top:30px}.quick-drawer-actions>.primary-link{display:flex;justify-content:center;padding:10px 16px;text-decoration:none}
+/* Compact filters keep all existing scope controls, without large empty rows. */
+.app-shell .page-content .market-search-panel{display:grid;grid-template-columns:minmax(220px,1.6fr) minmax(150px,1fr);gap:16px 20px;align-items:end;padding:18px}
+.app-shell .market-personal-filters{display:flex;grid-column:1/-1;flex-wrap:wrap;gap:16px 20px;align-items:end}
+.app-shell .market-personal-filters>div{flex:1;max-width:280px;min-width:160px}
+.app-shell .market-personal-filters :is(.market-rating-filter,.market-watched-filter,.market-held-filter){display:grid;gap:8px}
+.app-shell .page-content .market-search-panel :is(.market-keyword-filter,.market-rating-filter){gap:8px;max-width:none}
+.app-shell .search-panel :is(input,select){min-height:40px;padding-top:8px;padding-bottom:8px}
+.app-shell .search-panel .search-row{gap:10px;max-width:none}
+.app-shell .page-content .market-search-panel label,.app-shell .page-content .watchlist-search-panel label{font-size:13px}
+.app-shell .page-content .watchlist-search-panel{display:grid;grid-template-columns:minmax(220px,1.6fr) minmax(150px,1fr);gap:16px 20px;align-items:end}
+.app-shell .watchlist-items>li>.fund-quick-trigger{position:relative;z-index:1;margin-left:20px}
+.app-shell .fund-list>li>.fund-quick-trigger{margin-left:20px}
+.app-shell .market-rating-clear,.app-shell .watchlist-held-clear{min-height:28px;color:var(--ui-primary)}
+@media(min-width:1280px){.app-shell .page-content .market-search-panel{grid-template-columns:minmax(260px,1.7fr) minmax(140px,1fr) minmax(280px,2fr)}.app-shell .market-personal-filters{grid-column:auto;flex-wrap:nowrap;gap:14px}.app-shell .market-personal-filters>div{min-width:0;max-width:none}}
+@media(max-width:600px){.app-shell .page-content .market-search-panel,.app-shell .page-content .watchlist-search-panel{grid-template-columns:1fr}.app-shell .market-personal-filters>div{max-width:none}}
+@media(min-width:721px) and (max-height:740px){.app-shell .workspace-sidebar{padding-top:20px;padding-bottom:12px;gap:20px}.app-shell .workspace-sidebar .top-nav{gap:3px}.app-shell .workspace-sidebar .top-nav a{min-height:40px;padding-block:8px}.app-shell .sidebar-footer{padding-top:10px;margin-bottom:0}}
+.app-shell .fund-detail-topline strong.positive{color:var(--ui-rise)}
+.app-shell .fund-detail-topline strong.negative{color:var(--ui-fall)}
+.app-shell .sim-metrics{gap:0;padding:20px 0;border-block:1px solid var(--ui-line);margin:24px 0}
+.app-shell .sim-metrics article{padding:0 24px;background:transparent;border:0;border-right:1px solid var(--ui-line);border-radius:0}
+.app-shell .sim-metrics article:first-child{padding-left:0}.app-shell .sim-metrics article:last-child{border-right:0}
+@media(max-width:600px){.app-shell .sim-metrics{gap:18px}.app-shell .sim-metrics article{padding:0;border:0}}
+.workspace-dialog{width:min(540px,calc(100vw - 32px));max-height:calc(100dvh - 40px);overflow:auto;padding:26px;color:var(--ui-ink);background:#fffefb;border:0;border-radius:14px;box-shadow:0 18px 60px #203d3333}
+.workspace-dialog-close{float:right;margin:0 0 14px 16px;cursor:pointer}.workspace-dialog h2{font-size:20px;margin:0 0 12px}.workspace-dialog p{font-size:14px;line-height:1.8}.workspace-dialog .admin-inline-form{display:grid;grid-template-columns:1fr;gap:12px;margin-top:20px}.workspace-dialog input{min-height:40px;border:1px solid var(--ui-line);border-radius:7px;padding:8px 12px;font:inherit}.workspace-dialog::backdrop{background:#183b3259}
+
+#main-content:focus{outline:none}
+/* Fund lists use the approved white, compact toolbar rather than the legacy search panel. */
+.visually-hidden{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important}
+.app-shell .fund-results-panel{padding:22px;border:1px solid var(--ui-line);border-radius:12px;background:#fff;min-width:0}
+.app-shell .fund-results-title{font-size:18px;font-weight:700;margin:0 0 20px}
+.app-shell .fund-filter-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:0 0 22px;padding:0;background:transparent;border:0;min-width:0}
+.fund-filter-search{position:relative;flex:1 1 240px;min-width:180px}
+.fund-filter-search-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:#7a9178;pointer-events:none}
+.app-shell .fund-filter-toolbar .fund-filter-search input{display:block;width:100%;min-width:0;height:40px;min-height:40px;margin:0;padding:8px 12px 8px 39px;border:1px solid #cbd8c9;border-radius:7px;background:#fff;color:var(--ui-ink);font-size:13px;box-shadow:none}
+.app-shell .fund-filter-toolbar input::placeholder{color:#677d69;opacity:1}
+.fund-filter-select{position:relative;flex:0 1 145px;min-width:125px}
+.app-shell .fund-filter-toolbar .fund-filter-select select{display:block;width:100%;min-width:0;height:40px;min-height:40px;margin:0;padding:8px 44px 8px 12px;border:1px solid #cbd8c9;border-radius:7px;background-color:#fff;color:var(--ui-ink);font:inherit;font-size:13px;box-shadow:none}
+.app-shell .fund-filter-toolbar .fund-filter-select button{position:absolute;top:50%;right:22px;display:grid;place-items:center;width:22px;height:24px;min-height:24px;padding:0;transform:translateY(-50%);border:0;border-radius:4px;background:transparent;color:#647d66;font-size:17px;font-weight:400;line-height:1;cursor:pointer}
+.app-shell .fund-filter-toolbar .fund-filter-select button:hover{background:#dde7d6;color:var(--ui-primary)}
+.app-shell .fund-filter-toolbar>.secondary-button{flex:none;height:40px;min-height:40px;padding:8px 15px;border:1px solid #cbd8c9;border-radius:7px;background:#fff;color:var(--ui-primary);font-size:13px;font-weight:400;white-space:nowrap;box-shadow:none}
+.app-shell .fund-filter-toolbar>.secondary-button:hover{background:#f3f7ef}
+.app-shell .fund-results-panel .fund-type-group:first-child{margin-top:0}
+@media(max-width:720px){.app-shell .fund-results-panel{padding:16px}.fund-filter-search{flex-basis:100%}.fund-filter-select{flex:1 1 130px}.app-shell .fund-filter-toolbar .fund-filter-search input,.app-shell .fund-filter-toolbar .fund-filter-select select{height:44px;min-height:44px;font-size:16px}.app-shell .fund-filter-toolbar>.secondary-button{height:44px;min-height:44px}}
+@media(min-width:960px){
+.app-shell .market-page .fund-filter-toolbar{display:grid;grid-template-columns:minmax(150px,1fr) repeat(3,minmax(125px,145px)) auto auto}
+.app-shell .watchlist-page .fund-filter-toolbar{display:grid;grid-template-columns:minmax(180px,1fr) minmax(145px,200px) auto auto}
+.app-shell .fund-filter-toolbar .fund-filter-search{min-width:0}
+}
+.app-shell .fund-filter-toolbar>.fund-filter-submit{width:66px;padding-inline:10px}
+.app-shell .fund-filter-toolbar>.fund-filter-reset{width:58px;padding-inline:10px}
+/* Shared fund table: market and watchlist keep the same headers, rows and actions. */
+.fund-table-scroll{width:100%;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;border-radius:7px}
+.app-shell .fund-data-table{width:100%;min-width:900px;border-collapse:collapse;table-layout:fixed;margin:0;text-align:left;font-size:13px;background:#fff}
+.app-shell .fund-data-table thead th{padding:13px 10px;background:#f3f6f0;color:var(--ui-muted);font-size:12px;font-weight:500;border:0;white-space:nowrap}
+.app-shell .fund-data-table tbody :is(th,td){padding:17px 10px;border:0;border-bottom:1px solid #e4ebe0;background:#fff;vertical-align:middle;color:var(--ui-ink);font-size:13px;font-weight:400;line-height:1.6}
+.app-shell .fund-data-table tbody tr:last-child :is(th,td){border-bottom:0}
+.app-shell .fund-data-table tbody tr:hover :is(th,td),.app-shell .fund-data-table tbody tr:focus-within :is(th,td){background:#f7f9f4}
+.fund-data-table tbody tr{cursor:pointer}
+.fund-data-table .fund-table-name{width:21%}
+.fund-data-table .fund-table-identity{min-width:0;max-width:none}
+.fund-table-identity a{display:block;min-width:0;max-width:100%;text-decoration:none;color:var(--ui-ink);font-weight:500;overflow-wrap:anywhere}
+.fund-table-identity a:hover{color:var(--ui-primary);text-decoration:none;text-underline-offset:3px}
+.fund-table-title{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;line-height:1.6}
+.fund-table-code{display:block;font-size:12px;font-weight:400;color:var(--ui-muted);margin-top:5px;font-variant-numeric:tabular-nums}
+.fund-table-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.fund-table-tags>span{display:inline-block;padding:1px 6px;background:#eaf1e5;color:#466b4c;border-radius:4px;font-size:11px;white-space:nowrap}
+.app-shell .fund-data-table .fund-table-number{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.app-shell .fund-data-table .fund-table-number.positive{color:var(--ui-rise)}
+.app-shell .fund-data-table .fund-table-number.negative{color:var(--ui-fall)}
+.app-shell .fund-data-table .fund-table-number:is(.flat,.unavailable){color:var(--ui-muted)}
+.fund-table-date{min-width:0;white-space:nowrap;font-variant-numeric:tabular-nums}
+.fund-data-table .rating-badge{white-space:nowrap;justify-content:flex-start}
+.fund-data-table .fund-table-actions-heading{width:85px}
+.fund-data-table .fund-table-actions{min-width:0}
+.app-shell .fund-data-table .fund-table-quick{display:inline-block;padding:4px 0;min-height:30px;border:0;background:transparent;color:var(--ui-primary);font-size:13px;font-weight:400;cursor:pointer;white-space:nowrap}
+.fund-table-quick:hover{text-decoration:none;text-underline-offset:3px}
+.app-shell .fund-data-table .sim-fund-actions{min-width:240px;max-width:290px;margin:7px 0 0;padding:0;background:transparent;border:0}
+.app-shell .fund-data-table .sim-actions{gap:6px;flex-wrap:wrap}
+.app-shell .fund-data-table .sim-actions :is(button,a){min-height:32px;padding:5px 9px;font-size:12px;font-weight:400;white-space:nowrap;border-radius:6px}
+.app-shell .fund-data-table .sim-fund-actions>p{max-width:270px;white-space:normal;font-size:12px}
+@media(max-width:720px){.app-shell .fund-data-table tbody :is(th,td){padding:14px 12px}.app-shell .fund-data-table .sim-actions :is(button,a),.app-shell .fund-data-table .fund-table-quick{min-height:44px}}
+.app-shell .fund-data-table .sim-actions :is(button,a){padding:4px 0;border:0;background:transparent;color:var(--ui-primary);box-shadow:none}
+.app-shell .fund-data-table .sim-actions{gap:6px 13px}
+.app-shell .fund-data-table .sim-actions :is(button,a):hover{text-decoration:none;text-underline-offset:3px}
+/* Scroll-to-focus inside a wide table must never move the outer application frame. */
+html:has(.app-shell){height:100%;overflow:clip}
+body:has(.app-shell){overflow:clip}
+.app-shell{position:fixed;inset:0 0 var(--app-risk-footer-height,47px);height:auto}
+.app-shell .fund-data-table :is(thead th:first-child,tbody th.fund-table-identity){position:sticky;left:0;z-index:1}
+.app-shell .fund-data-table thead th:first-child{z-index:2}
+@media(max-width:720px){.app-shell .fund-data-table :is(thead th:first-child,tbody th.fund-table-identity){position:static}}
+/* Explicit contextual return remains separate from the single location breadcrumb. */
+.app-shell .workspace-return-link{display:inline-flex;align-items:center;min-height:36px;margin:0 0 16px;padding:4px 0;color:var(--ui-primary);font-size:13px;font-weight:400;text-decoration:none}
+.app-shell .workspace-return-link:hover{text-decoration:none;text-underline-offset:3px}
+
+/* Text links remain identified by color and focus; selected tabs keep their border indicator. */
+.app-shell .workspace-layout a,.app-shell .workspace-layout a:hover,.app-shell .workspace-layout a:focus-visible{text-decoration:none}
+
+.app-shell .fund-data-table .fund-table-type{width:64px}
+.app-shell .fund-data-table .fund-table-date-heading{width:104px}
+.app-shell .fund-data-table .fund-table-rating-heading{width:166px}

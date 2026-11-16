@@ -153,17 +153,25 @@ onBeforeUnmount(() => guard.invalidate())
           <span
             v-else-if="card.period?.kind === 'CONDITIONAL_OUTLOOK'"
             class="forecast-card-status"
-          >条件展望{{ card.period.endDate ? '' : ' · 终点待核' }}</span>
+          >{{ card.period.decision === 'ABSTAIN' ? '半年分析' : '条件展望' }}{{ card.period.endDate ? '' : ' · 终点待核' }}</span>
           <span
             v-else-if="isSupplementaryReview(card.period)"
             class="forecast-card-status"
           >区间内补充判断 · 非事前预测</span>
           <span
             v-if="card.period?.decision === 'ABSTAIN'"
+            class="forecast-card-status"
+          >已审阅 · 暂无方向</span>
+          <span
+            v-if="card.period?.decision === 'ABSTAIN'"
             class="forecast-data-date"
           >
             {{ card.period.awaitingReason || card.period.summary || '现有依据还不足以作出方向判断。' }}
           </span>
+          <span
+            v-if="card.period?.decision === 'ABSTAIN'"
+            class="forecast-data-date"
+          >上次分析 {{ time(card.period.analysisAt) }}</span>
           <span
             v-if="card.period && current?.marketAsOf"
             class="forecast-data-date"
@@ -205,7 +213,7 @@ onBeforeUnmount(() => guard.invalidate())
           v-else-if="selected.kind === 'CONDITIONAL_OUTLOOK'"
           class="forecast-warning"
         >
-          以下方向需要所列条件成立；{{ selected.endDate ? '请结合实际区间查看。' : '结束估值日仍待核实，名义到期日不代表已确认终点。' }}
+          {{ selected.decision === 'ABSTAIN' ? '本次尚未给出方向；' : '以下方向需要所列条件成立；' }}{{ selected.endDate ? '请结合实际区间查看。' : '结束估值日仍待核实，名义到期日不代表已确认终点。' }}
         </p>
         <p class="forecast-basis-summary">
           {{ selected.summary || reviewDirection(selected) }}
@@ -215,6 +223,12 @@ onBeforeUnmount(() => guard.invalidate())
           class="forecast-warning"
         >
           暂不判断：{{ selected.awaitingReason }}
+        </p>
+        <p
+          v-if="selected.decision === 'ABSTAIN'"
+          class="forecast-footnote"
+        >
+          已完成这次审阅，现有依据仍难分主次。资料或下列条件发生变化后重新评估。
         </p>
         <div class="forecast-reasons">
           <section>
@@ -230,7 +244,7 @@ onBeforeUnmount(() => guard.invalidate())
           v-if="selected.conditions.length"
           class="forecast-limitations"
         >
-          <h3>什么情况下需要改变判断</h3>
+          <h3>{{ selected.decision === 'ABSTAIN' ? '出现哪些变化后重新判断' : '什么情况下需要改变判断' }}</h3>
           <ul>
             <li
               v-for="condition in selected.conditions"

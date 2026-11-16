@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageSectionTabs from '@/components/PageSectionTabs.vue'
 import ListPagination from '@/components/ListPagination.vue'
 import { usePageNavigation } from '@/composables/usePageNavigation'
 import ReviewNoticePanel from '@/components/ReviewNoticePanel.vue'
@@ -197,15 +198,10 @@ const { section, sectionLabel } = usePageNavigation()
     class="notifications-page"
     aria-labelledby="notifications-title"
   >
-    <p class="eyebrow">
-      站内提醒
-    </p>
-    <h1 id="notifications-title">
+    <h1 id="notifications-title" class="visually-hidden">
       {{ sectionLabel }}
     </h1>
-    <p class="lead">
-      {{ section === 'rules' ? '可在“我的关注 → 基金详情 → 我的提醒”中设置提醒，也可以在这里直接开启或关闭。' : '查看基金事项与本人条件变化，并按保存的依据复查。' }}
-    </p>
+    <PageSectionTabs />
 
     <ReviewNoticePanel v-if="section === 'messages'" />
 

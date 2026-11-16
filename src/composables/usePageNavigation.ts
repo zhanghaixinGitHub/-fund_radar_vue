@@ -130,6 +130,8 @@ export function listReturnTarget(value: unknown, listPath: '/funds' | '/watchlis
     const item = params.get(key)
     if (item) query[key] = item
   }
+  if (params.get('heldOnly') === 'false') query.heldOnly = 'false'
+  if (listPath === '/funds' && params.get('watchedOnly') === 'true') query.watchedOnly = 'true'
   const rating = listPath === '/funds' ? normalizeRatingFilter(params.get('rating')) : ''
   if (rating) query.rating = rating
   return { path: listPath, query }

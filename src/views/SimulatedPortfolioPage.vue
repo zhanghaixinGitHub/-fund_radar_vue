@@ -1,22 +1,24 @@
 <script setup lang="ts">
+import PageSectionTabs from '@/components/PageSectionTabs.vue'
+import PortfolioComposition from '@/components/PortfolioComposition.vue'
+import HoldingManagementDrawer from '@/components/HoldingManagementDrawer.vue'
 import ListPagination from '@/components/ListPagination.vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { readLatestDecisions } from '@/api/multiPrediction'
 import type { DecisionReport } from '@/types/multiPrediction'
-import DecisionPanelV2 from '@/components/DecisionPanelV2.vue'
 import AccountFundingPanel from '@/components/AccountFundingPanel.vue'
 import AccountRiskPanel from '@/components/AccountRiskPanel.vue'
 import AccountOptionsPanel from '@/components/AccountOptionsPanel.vue'
 import { rememberPortfolioScroll, takePortfolioScroll } from '@/utils/advice'
-import { rememberEarningsScroll, takeEarningsScroll, shouldOpenEarnings, shouldBlockEarningsLink } from '@/utils/simulationEarnings'
-import { cancelSimOrder, changeSimPlan, getSimLedger, getSimOrders, getSimOverview, getSimPeriods, getSimPlans } from '@/api/simulation'
+import { rememberEarningsScroll, takeEarningsScroll } from '@/utils/simulationEarnings'
+import { cancelSimOrder, changeSimPlan, getSimComposition, getSimLedger, getSimOrders, getSimOverview, getSimPeriods, getSimPlans } from '@/api/simulation'
 import SimulationTradeDialog from '@/components/SimulationTradeDialog.vue'
 import SimulationFundPicker from '@/components/SimulationFundPicker.vue'
 import { useListLocation } from '@/composables/useListLocation'
 import { usePageNavigation } from '@/composables/usePageNavigation'
 import { useAuthStore } from '@/stores/auth'
-import type { SimLedger, SimOrder, SimOverview, SimPage, SimPeriod, SimPlan } from '@/types/simulation'
+import type { SimComposition, SimLedger, SimOrder, SimOverview, SimPage, SimPeriod, SimPlan } from '@/types/simulation'
 import { buildPortfolioList, sortPortfolioList } from '@/utils/portfolioList'
 import { planFrequency, simMoney, simPercent, simShares, simTime, simTone } from '@/utils/simulation'
 
@@ -26,6 +28,8 @@ const auth = useAuthStore()
 const { section, sectionLabel, sectionTarget } = usePageNavigation()
 const { location: listLocation, navigate: navigateList, isCurrent } = useListLocation()
 const overview = ref<SimOverview | null>(null)
+const composition = ref<SimComposition | null>(null)
+const compositionError = ref('')
 const advice = ref<DecisionReport[]>([])
 const adviceError = ref('')
 const adviceByFund = computed(() => new Map(advice.value.map(item => [item.fundCode, item])))
@@ -65,6 +69,8 @@ const positions = computed(() => {
     (p.kind !== 'recorded' || showHistory.value || selectedCode.value || Number(p.shares) > 0 || (!p.estimatedShares && Number(p.totalBuy) === 0 && Number(p.totalSell) === 0)) &&
     (!query || p.fundCode.includes(query) || p.fundName.toLocaleLowerCase().includes(query)))
 })
+const managedCode = ref('')
+const managedPosition = computed(() => managedCode.value ? positions.value.find(position => position.fundCode === managedCode.value) ?? null : null)
 // 排序状态进入 URL，查看建议后返回持仓仍保持所选排序；均按数值降序。
 const holdingSortOptions = [
   { value: 'marketValue', label: '持有金额' },
@@ -120,13 +126,16 @@ async function load(silent = false) {
   error.value = ''
   try {
     // 建议读取失败不遮挡已有持仓和交易功能；批量读取避免每张卡片单独请求。
-    const [result, planResult, adviceResult] = await Promise.all([
+    const [result, planResult, adviceResult, compositionResult] = await Promise.all([
       getSimOverview(), getSimPlans(), readLatestDecisions().then(items => ({ items, error: '' })).catch(() => ({ items: null, error: '操作建议暂时无法读取，可进入详情重试。' })),
+      getSimComposition().then(data => ({ data, error: '' })).catch(() => ({ data: null, error: '持仓构成暂时无法读取，可重试。' })),
     ])
     if (!alive || current !== loadGeneration) return
     overview.value = result; plans.value = planResult
     if (adviceResult.items) advice.value = adviceResult.items
     adviceError.value = adviceResult.error
+    if (compositionResult.data) composition.value = compositionResult.data
+    compositionError.value = compositionResult.error
     await loadDetails()
   } catch (reason) { if (alive && current === loadGeneration) error.value = reason instanceof Error ? reason.message : '持仓加载失败。' }
   finally { if (alive && current === loadGeneration) loading.value = false }
@@ -150,16 +159,6 @@ async function loadDetails() {
   finally { if (alive && current === detailGeneration) detailsLoading.value = false }
 }
 function selectCode(code: string) { void router.replace({ path: route.path, query: { ...route.query, fundCode: code || undefined, page: undefined } }) }
-function earningsTarget(code?: string) { return { name: 'portfolio-earnings', query: { ...(code ? { fundCode: code } : {}), from: route.fullPath } } }
-/** 名称与明确的收益链接提供原生键盘入口；卡片其余非交互区域补充点击，不吞掉文本选择。 */
-function openEarnings(event: globalThis.MouseEvent, code: string) {
-  if (shouldOpenEarnings(event, globalThis.getSelection()?.toString() ?? '')) void router.push(earningsTarget(code))
-}
-function protectEarningsSelection(event: globalThis.MouseEvent) {
-  if (shouldBlockEarningsLink(event, globalThis.getSelection()?.toString() ?? '')) {
-    event.preventDefault(); event.stopPropagation()
-  }
-}
 // 定投与交易记录共用基金搜索：关键词解析为唯一持仓基金后沿用 fundCode 精确过滤，空关键词恢复全部基金。
 const scopeKeyword = ref('')
 const scopeHint = ref('')
@@ -215,6 +214,12 @@ function saved(value: string) { trade.value = null; message.value = value; void 
 function editPlan(plan: SimPlan) { trade.value = { fundCode: plan.fundCode, mode: 'PLAN', plan } }
 function planFor(code: string) { return plans.value.find(p => p.fundCode === code && p.status !== 'ENDED') }
 function openPlan(code: string) { const plan = planFor(code); trade.value = { fundCode: code, mode: 'PLAN', ...(plan ? { plan } : {}) } }
+function openManagedTrade(mode: 'BUY' | 'SELL' | 'PLAN') {
+  const code = managedPosition.value?.fundCode
+  if (!code) return
+  if (mode === 'PLAN') openPlan(code)
+  else trade.value = { fundCode: code, mode }
+}
 async function cancel(order: SimOrder) {
   if (busy.value) return
   busy.value = true; message.value = ''; error.value = ''
@@ -242,6 +247,7 @@ async function viewPeriods(plan: SimPlan, page = 1) {
 }
 watch([section, selectedCode], () => {
   endingPlan.value = null
+  managedCode.value = ''
   orderPage.value = 1; ledgerPage.value = 1; orders.value = null; ledger.value = null; periodPlan.value = null
   if (!['funding', 'account-risk', 'options'].includes(section.value) && !overview.value) void load()
   else void loadDetails()
@@ -252,6 +258,7 @@ watch(selectedCode, code => {
   scopeKeyword.value = code ? (selectedPosition.value ? `${selectedPosition.value.fundName} · ${code}` : code) : ''
   scopeHint.value = ''
 }, { immediate: true })
+watch(managedPosition, position => { if (!position) managedCode.value = '' })
 // 等持仓实际加载后才修正越界页码，避免刷新或详情返回时被尚未加载的空列表重置到第一页。
 watch([() => listLocation.value.page, holdingPage, section, overview], () => {
   if (!isCurrent.value || section.value !== 'holdings' || !overview.value) return
@@ -287,17 +294,10 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
     aria-labelledby="sim-title"
   >
     <header class="sim-page-header">
-      <div>
-        <p class="eyebrow">
-          {{ ['funding', 'account-risk', 'options'].includes(section) ? '我的持仓 · 本人资料' : '我的持仓 · 模拟账户' }}
-        </p><h1 id="sim-title">
+      <div class="visually-hidden">
+<h1 id="sim-title">
           {{ section === 'overview' ? '持仓总览' : sectionLabel }}
-        </h1><p
-          v-if="section === 'overview'"
-          class="lead"
-        >
-          按真实净值更新，买入、定投和卖出均为模拟记录。
-        </p>
+        </h1>
       </div>
       <div
         v-if="!['funding', 'account-risk', 'options'].includes(section)"
@@ -320,45 +320,65 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
         </button>
       </div>
     </header>
+    <PageSectionTabs />
     <AccountFundingPanel v-if="section === 'funding'" />
     <AccountRiskPanel v-if="section === 'account-risk'" />
     <AccountOptionsPanel v-if="section === 'options'" />
     <form
-      v-if="section === 'overview' || section === 'holdings'"
-      class="search-panel"
+      v-if="section === 'holdings'"
+      class="fund-filter-toolbar"
+      :aria-busy="loading"
       @submit.prevent="searchHoldings"
     >
-      <label for="portfolio-keyword">基金代码或名称</label>
-      <div class="sim-search-line">
-        <div class="search-row">
-          <input
-            id="portfolio-keyword"
-            v-model="keyword"
-            maxlength="50"
-            placeholder="例如：000001"
-            type="search"
-          >
-          <button
-            class="primary-button"
-            :disabled="loading"
-            type="submit"
-          >
-            {{ loading ? '查询中…' : '查询基金' }}
-          </button>
-        </div>
+      <div class="fund-filter-search">
         <label
-          v-if="section === 'holdings'"
-          class="sim-sort"
-        >排序方式 <select
+          class="visually-hidden"
+          for="portfolio-keyword"
+        >基金代码或名称</label>
+        <svg
+          class="fund-filter-search-icon"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.7"
+          aria-hidden="true"
+        ><circle
+          cx="11"
+          cy="11"
+          r="6.5"
+        /><path d="m16 16 4 4" /></svg>
+        <input
+          id="portfolio-keyword"
+          v-model="keyword"
+          maxlength="50"
+          placeholder="基金代码或名称，例如：000001"
+          type="search"
+        >
+      </div>
+      <label for="portfolio-sort">排序方式</label>
+      <div class="fund-filter-select">
+        <select
+          id="portfolio-sort"
           :value="holdingSort"
           :disabled="loading"
           @change="changeHoldingSort(($event.target as HTMLSelectElement).value)"
-        ><option
-          v-for="option in holdingSortOptions"
-          :key="option.value"
-          :value="option.value"
-        >{{ option.label }}</option></select></label>
+        >
+          <option
+            v-for="option in holdingSortOptions"
+            :key="option.value"
+            :value="option.value"
+          >
+            {{ option.label }}
+          </option>
+        </select>
       </div>
+      <button
+        class="secondary-button fund-filter-submit"
+        :disabled="loading"
+        type="submit"
+      >
+        {{ loading ? '查询中' : '查询' }}
+      </button>
     </form>
     <p
       v-if="error"
@@ -396,6 +416,12 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
             查看交易
           </RouterLink>
         </p>
+        <PortfolioComposition
+          :data="composition"
+          :loading="loading"
+          :error="compositionError"
+          @retry="load()"
+        />
         <div class="sim-status">
           <span :class="jobStale || overview.job?.status === 'FAILED' ? 'sim-warning' : ''">{{ jobStale ? '后台运行状态待确认' : overview.job?.message }}</span><span>最近完成：{{ simTime(overview.job?.completedAt) }}</span>
         </div>
@@ -453,254 +479,203 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
       </p>
 
       <template v-if="section === 'holdings'">
-        <div class="sim-section-header">
-          <h2>{{ selectedPosition?.fundName ?? '持仓明细' }}</h2><label class="sim-check"><input
-            :checked="showHistory"
-            :disabled="loading"
-            type="checkbox"
-            @change="changeHoldingHistory(($event.target as HTMLInputElement).checked)"
-          >显示已清仓基金</label>
-        </div>
-        <div
-          v-if="!positions.length"
-          class="sim-empty"
+        <section
+          class="fund-results-panel holdings-results-panel"
+          aria-label="持仓列表"
         >
-          <template v-if="appliedKeyword">
-            <h3>没有符合条件的持仓基金</h3>
-            <p>请调整基金代码或名称后重新查询，清空关键词可恢复持仓列表。</p>
-          </template>
-          <template v-else>
-            <h3>还没有{{ selectedCode ? '这只基金的' : '' }}模拟持仓</h3><p>从关注中选一只基金买入，或直接设置第一笔定投。</p>
-          </template>
-          <div
-            v-if="!appliedKeyword"
-            class="sim-actions"
-          >
-            <button
-              v-if="canWrite"
-              class="primary-button"
-              type="button"
-              @click="selectedCode ? trade = { fundCode: selectedCode, mode: 'BUY' } : openPicker('BUY')"
-            >
-              模拟买入
-            </button><button
-              v-if="canPlan"
-              class="secondary-button"
-              type="button"
-              @click="selectedCode ? openPlan(selectedCode) : openPicker('PLAN')"
-            >
-              设置定投
-            </button>
+          <div class="sim-section-header holdings-list-header">
+            <h2>{{ selectedPosition?.fundName ?? '持仓明细' }}</h2><label class="sim-check"><input
+              :checked="showHistory"
+              :disabled="loading"
+              type="checkbox"
+              @change="changeHoldingHistory(($event.target as HTMLInputElement).checked)"
+            >显示已清仓基金</label>
           </div>
-        </div>
-        <div
-          v-else
-          class="sim-position-list"
-        >
-          <article
-            v-for="p in pagedPositions"
-            :key="p.fundCode"
-            class="sim-position-card sim-earnings-card"
-            @click.capture="protectEarningsSelection"
-            @click="p.kind === 'recorded' && openEarnings($event, p.fundCode)"
+          <div
+            v-if="!positions.length"
+            class="sim-empty"
           >
-            <template v-if="p.kind === 'unrecorded'">
-              <header>
-                <div>
-                  <RouterLink
-                    class="sim-fund-link"
-                    :to="`/watchlist/${p.fundCode}`"
-                  >
-                    {{ p.fundName }}
-                  </RouterLink>
-                  <p>{{ p.fundCode }}</p>
-                </div>
-              </header>
-              <p class="sim-muted">
-                暂无模拟持仓数据，金额、份额和收益暂不可用。
-              </p>
-            </template>
-            <template v-else-if="p.kind === 'confirmed'">
-              <header>
-                <div>
-                  <RouterLink
-                    class="sim-fund-link"
-                    :to="`/watchlist/${p.fundCode}`"
-                  >
-                    {{ p.fundName }}
-                  </RouterLink>
-                  <p>{{ p.fundCode }}{{ p.dataAsOfDate ? ` · 截至 ${p.dataAsOfDate}` : '' }}</p>
-                </div>
-                <span
-                  v-if="planFor(p.fundCode)"
-                  class="sim-badge"
-                >定投{{ planLabels[planFor(p.fundCode)!.status] }}</span>
-              </header>
-              <dl class="sim-position-values">
-                <div><dt>持有金额</dt><dd>{{ simMoney(p.marketValue) }}</dd></div>
-                <div>
-                  <dt>昨日收益</dt><dd :class="simTone(p.yesterdayGain)">
-                    {{ simMoney(p.yesterdayGain) }}
-                    <small>{{ p.yesterdayDate }}{{ p.yesterdayGain == null ? ' · 暂不可用' : '' }}</small>
-                  </dd>
-                </div>
-                <div>
-                  <dt>持有收益 / 收益率</dt><dd :class="simTone(p.holdingGain)">
-                    {{ simMoney(p.holdingGain) }} <small>{{ simPercent(p.holdingGainRate) }}</small>
-                  </dd>
-                </div>
-                <div>
-                  <dt>累计收益</dt><dd :class="simTone(p.cumulativeGain)">
-                    {{ simMoney(p.cumulativeGain) }}
-                  </dd>
-                </div>
-              </dl>
-              <p class="sim-muted">
-                持仓份额待补全，暂不能更新全部持仓估值或卖出原持仓。
-              </p>
-              <div
-                class="sim-actions"
-                data-earnings-exclude
-              >
-                <button
-                  v-if="canWrite"
-                  class="primary-button"
-                  type="button"
-                  @click="trade = { fundCode: p.fundCode, mode: 'BUY' }"
-                >
-                  加仓
-                </button>
-                <button
-                  v-if="canWrite && p.additionalPosition"
-                  class="secondary-button"
-                  type="button"
-                  :disabled="!!p.additionalPosition.issue || Number(p.additionalPosition.availableShares) <= 0"
-                  @click="trade = { fundCode: p.fundCode, mode: 'SELL' }"
-                >
-                  卖出
-                </button>
-                <button
-                  v-if="canPlan"
-                  class="secondary-button"
-                  type="button"
-                  @click="openPlan(p.fundCode)"
-                >
-                  {{ planFor(p.fundCode) ? '管理定投' : '设置定投' }}
-                </button>
-                <RouterLink
-                  v-if="p.additionalPosition"
-                  class="secondary-button"
-                  :to="earningsTarget(p.fundCode)"
-                >
-                  查看收益明细
-                </RouterLink>
-              </div>
+            <template v-if="appliedKeyword">
+              <h3>没有符合条件的持仓基金</h3>
+              <p>请调整基金代码或名称后重新查询，清空关键词可恢复持仓列表。</p>
             </template>
             <template v-else>
-              <header>
-                <div>
-                  <RouterLink
-                    class="sim-fund-link"
-                    data-earnings-link
-                    :to="earningsTarget(p.fundCode)"
-                  >
-                    {{ p.fundName }}
-                  </RouterLink><p>{{ p.fundCode }} · {{ p.navDate ? `净值 ${p.navDate} / ${p.unitNav}` : '等待首笔交易确认' }}</p>
-                </div><span
-                  v-if="planFor(p.fundCode)"
-                  class="sim-badge"
-                >定投{{ planLabels[planFor(p.fundCode)!.status] }}</span><span
-                  v-else-if="Number(p.shares) === 0 && (Number(p.totalBuy) > 0 || p.estimatedShares)"
-                  class="sim-badge"
-                >已清仓</span>
-              </header>
-              <p
-                v-if="p.issue"
-                class="notice-banner"
-                role="status"
-              >
-                {{ p.issue }} 当前显示上次有效估值。
-              </p>
-              <dl class="sim-position-values">
-                <div><dt>市值</dt><dd>{{ simMoney(p.marketValue) }}</dd></div><div>
-                  <dt>昨日收益</dt><dd :class="simTone(p.yesterdayGain)">
-                    {{ simMoney(p.yesterdayGain) }}
-                    <small>{{ p.yesterdayDate }}{{ p.yesterdayGain == null ? ' · 暂不可用' : '' }}</small>
-                  </dd>
-                </div><div>
-                  <dt>持有收益 / 收益率</dt><dd :class="simTone(p.holdingGain)">
-                    {{ simMoney(p.holdingGain) }} <small>{{ simPercent(p.holdingGainRate) }}</small>
-                  </dd>
-                </div><div>
-                  <dt>累计收益</dt><dd :class="simTone(p.cumulativeGain)">
-                    {{ simMoney(p.cumulativeGain) }}
-                  </dd>
-                </div>
-              </dl>
-              <p class="sim-muted">
-                持有 {{ simShares(p.shares) }} 份 · 可卖 {{ simShares(p.availableShares) }} 份 · 冻结 {{ simShares(p.frozenShares) }} 份 · 剩余成本 {{ simMoney(p.cost) }} 元{{ p.estimatedShares ? ' · 份额按金额折算' : '' }}
-              </p>
-              <RouterLink
-                class="sim-earnings-link"
-                data-earnings-link
-                :to="earningsTarget(p.fundCode)"
-              >
-                查看收益明细 ›
-              </RouterLink>
-              <div data-earnings-exclude>
-                <DecisionPanelV2
-                  :fund-code="p.fundCode"
-                  :initial-report="adviceByFund.get(p.fundCode) ?? null"
-                  compact
-                />
-              </div>
-              <div
-                class="sim-actions"
-                data-earnings-exclude
-              >
-                <button
-                  v-if="canWrite"
-                  class="primary-button"
-                  type="button"
-                  :disabled="!!p.issue"
-                  @click="trade = { fundCode: p.fundCode, mode: 'BUY' }"
-                >
-                  {{ Number(p.shares) > 0 ? '加仓' : '买入' }}
-                </button><button
-                  v-if="canWrite"
-                  class="secondary-button"
-                  type="button"
-                  :disabled="!!p.issue || Number(p.availableShares) <= 0"
-                  @click="trade = { fundCode: p.fundCode, mode: 'SELL' }"
-                >
-                  卖出
-                </button><button
-                  v-if="canPlan"
-                  class="secondary-button"
-                  type="button"
-                  @click="openPlan(p.fundCode)"
-                >
-                  {{ planFor(p.fundCode) ? '管理定投' : '设置定投' }}
-                </button><button
-                  class="secondary-button"
-                  type="button"
-                  @click="router.replace({ path: route.path, query: { section: 'orders', fundCode: p.fundCode } })"
-                >
-                  交易记录
-                </button>
-              </div>
+              <h3>还没有{{ selectedCode ? '这只基金的' : '' }}模拟持仓</h3><p>从关注中选一只基金买入，或直接设置第一笔定投。</p>
             </template>
-          </article>
-        </div>
-        <ListPagination
-          v-if="positions.length > 0"
-          :page="holdingPage"
-          :page-size="holdingPageSize"
-          :total="positions.length"
-          :loading="loading"
-          label="持仓分页"
-          @change="changeHoldingPage"
-        />
+            <div
+              v-if="!appliedKeyword"
+              class="sim-actions"
+            >
+              <button
+                v-if="canWrite"
+                class="primary-button"
+                type="button"
+                @click="selectedCode ? trade = { fundCode: selectedCode, mode: 'BUY' } : openPicker('BUY')"
+              >
+                模拟买入
+              </button><button
+                v-if="canPlan"
+                class="secondary-button"
+                type="button"
+                @click="selectedCode ? openPlan(selectedCode) : openPicker('PLAN')"
+              >
+                设置定投
+              </button>
+            </div>
+          </div>
+          <div
+            v-else
+            class="holdings-table-scroll"
+            tabindex="0"
+          >
+            <table class="holdings-table">
+              <thead>
+                <tr>
+                  <th scope="col">
+                    基金
+                  </th>
+                  <th
+                    class="holdings-number"
+                    scope="col"
+                  >
+                    市值（元）
+                  </th>
+                  <th
+                    class="holdings-number"
+                    scope="col"
+                  >
+                    昨日收益（元）
+                  </th>
+                  <th
+                    class="holdings-number"
+                    scope="col"
+                  >
+                    持有收益 / 收益率
+                  </th>
+                  <th
+                    class="holdings-number"
+                    scope="col"
+                  >
+                    累计收益（元）
+                  </th>
+                  <th
+                    class="holdings-number"
+                    scope="col"
+                  >
+                    操作
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <template
+                  v-for="p in pagedPositions"
+                  :key="p.fundCode"
+                >
+                  <tr>
+                    <th scope="row">
+                      <div class="holding-fund-heading">
+                        <span :title="p.fundName">{{ p.fundName }}</span>
+                        <span
+                          v-if="planFor(p.fundCode)"
+                          class="sim-badge"
+                        >定投{{ planLabels[planFor(p.fundCode)!.status] }}</span>
+                        <span
+                          v-else-if="p.kind === 'recorded' && Number(p.shares) === 0 && (Number(p.totalBuy) > 0 || p.estimatedShares)"
+                          class="sim-badge"
+                        >已清仓</span>
+                      </div>
+                      <p class="holding-fund-meta">
+                        {{ p.fundCode }}<template v-if="p.kind === 'recorded'">
+                          · {{ p.navDate ? `净值 ${p.navDate} / ${p.unitNav}` : '等待首笔交易确认' }}
+                        </template><template v-else-if="p.kind === 'confirmed' && p.dataAsOfDate">
+                          · 截至 {{ p.dataAsOfDate }}
+                        </template>
+                      </p>
+                    </th>
+                    <template v-if="p.kind === 'unrecorded'">
+                      <td class="holdings-number">
+                        —
+                      </td>
+                      <td class="holdings-number">
+                        —
+                      </td>
+                      <td class="holdings-number">
+                        —
+                      </td>
+                      <td class="holdings-number">
+                        —
+                      </td>
+                    </template>
+                    <template v-else>
+                      <td class="holdings-number">
+                        {{ simMoney(p.marketValue) }}
+                      </td>
+                      <td class="holdings-number">
+                        <span :class="simTone(p.yesterdayGain)">{{ simMoney(p.yesterdayGain) }}</span>
+                        <small>{{ p.yesterdayDate }}{{ p.yesterdayGain == null ? ' · 暂不可用' : '' }}</small>
+                      </td>
+                      <td class="holdings-number">
+                        <span :class="simTone(p.holdingGain)">{{ simMoney(p.holdingGain) }}</span>
+                        <small :class="simTone(p.holdingGain)">{{ simPercent(p.holdingGainRate) }}</small>
+                      </td>
+                      <td :class="['holdings-number', simTone(p.cumulativeGain)]">
+                        {{ simMoney(p.cumulativeGain) }}
+                      </td>
+                    </template>
+                    <td class="holdings-number">
+                      <button
+                        class="secondary-button holding-manage-button"
+                        type="button"
+                        :aria-label="`管理 ${p.fundName}`"
+                        @click="managedCode = p.fundCode"
+                      >
+                        管理与详情
+                      </button>
+                    </td>
+                  </tr>
+                  <tr class="holding-metadata-row">
+                    <td colspan="6">
+                      <p
+                        v-if="p.kind === 'recorded' && p.issue"
+                        class="holding-inline-notice"
+                        role="status"
+                      >
+                        {{ p.issue }} 当前显示上次有效估值。
+                      </p>
+                      <p
+                        v-if="p.kind === 'recorded'"
+                        class="holding-metadata"
+                      >
+                        持有 {{ simShares(p.shares) }} 份 · 可卖 {{ simShares(p.availableShares) }} 份 · 冻结 {{ simShares(p.frozenShares) }} 份 · 剩余成本 {{ simMoney(p.cost) }} 元{{ p.estimatedShares ? ' · 份额按金额折算' : '' }}
+                      </p>
+                      <p
+                        v-else-if="p.kind === 'confirmed'"
+                        class="holding-metadata"
+                      >
+                        持仓份额待补全，暂不能更新全部持仓估值或卖出原持仓。
+                      </p>
+                      <p
+                        v-else
+                        class="holding-metadata"
+                      >
+                        暂无模拟持仓数据，金额、份额和收益暂不可用。
+                      </p>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+          <ListPagination
+            v-if="positions.length > 0"
+            :page="holdingPage"
+            :page-size="holdingPageSize"
+            :total="positions.length"
+            :loading="loading"
+            label="持仓分页"
+            @change="changeHoldingPage"
+          />
+        </section>
       </template>
 
       <template v-else-if="section === 'plans'">
@@ -925,6 +900,17 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
         </template>
       </template>
     </template>
+    <HoldingManagementDrawer
+      v-if="managedPosition"
+      :key="managedPosition.fundCode"
+      :position="managedPosition"
+      :plan="planFor(managedPosition.fundCode) ?? null"
+      :initial-report="adviceByFund.get(managedPosition.fundCode) ?? null"
+      :can-write="canWrite"
+      :can-plan="canPlan"
+      @close="managedCode = ''"
+      @trade="openManagedTrade"
+    />
     <SimulationFundPicker
       v-if="picker"
       @close="picker = false"
@@ -942,10 +928,33 @@ onBeforeUnmount(() => { alive = false; loadGeneration++; detailGeneration++; glo
 </template>
 
 <style scoped>
-.sim-earnings-card { cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease; }
-.sim-earnings-card:hover { border-color: #91bdb0; box-shadow: 0 2px 10px #203a3408; }
-.sim-earnings-card [data-earnings-exclude] { cursor: auto; }
-.sim-earnings-card .sim-fund-link { text-decoration: none; }
-.sim-earnings-link { display: inline-block; margin: 0 0 14px; color: #0f766e; font-size: 13px; }
-.sim-earnings-card a:focus-visible { outline: 2px solid #0f766e; outline-offset: 4px; }
+.holdings-results-panel { margin-top: 22px; }
+.holdings-list-header { margin: 0 0 20px; }
+.holdings-table-scroll { width: 100%; max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; border-radius: 7px; }
+.holdings-table { width: 100%; min-width: 900px; border-collapse: collapse; table-layout: fixed; text-align: left; }
+.holdings-table thead th { padding: 13px 10px; background: #f3f6f0; color: var(--ui-muted); font-size: 12px; font-weight: 500; }
+.holdings-table thead th:first-child { width: 28%; }
+.holdings-table thead th:nth-child(2) { width: 12%; }
+.holdings-table thead th:nth-child(3) { width: 15%; }
+.holdings-table thead th:nth-child(4) { width: 17%; }
+.holdings-table thead th:nth-child(5) { width: 13%; }
+.holdings-table thead th:nth-child(6) { width: 15%; }
+.holdings-table tbody th, .holdings-table tbody td { padding: 18px 10px; border-bottom: 1px solid #e4ebe0; vertical-align: middle; font-size: 14px; font-weight: 400; }
+.holdings-table tbody th { background: #fff; color: var(--ui-ink); text-align: left; }
+.holdings-table tbody tr:not(.holding-metadata-row) :is(th,td) { border-bottom: 0; }
+.holding-fund-heading { display: flex; align-items: center; flex-wrap: nowrap; gap: 8px; min-width: 0; }
+.holding-fund-heading > span:first-child { flex: 0 1 auto; min-width: 0; overflow: hidden; font-size: 16px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.holding-fund-heading .sim-badge { flex: none; }
+.holding-fund-meta { margin: 8px 0 0; overflow: hidden; color: var(--ui-muted); font-size: 12px; font-weight: 400; line-height: 1.7; text-overflow: ellipsis; white-space: nowrap; }
+.holdings-number { text-align: right; font-variant-numeric: tabular-nums; }
+.holdings-number small { display: block; margin-top: 6px; color: var(--ui-muted); font-size: 12px; }
+.holding-manage-button { min-height: 38px; padding: 8px 10px; font-size: 13px; white-space: nowrap; }
+.holding-metadata-row td { padding-top: 0; }
+.holding-metadata { margin: 0; color: var(--ui-muted); font-size: 12px; line-height: 1.8; }
+.holding-inline-notice { margin: 0 0 8px; color: #80632d; font-size: 12px; line-height: 1.8; }
+.holdings-table tbody tr:last-child td { border-bottom: 0; }
+@media (max-width: 720px) {
+  .holdings-results-panel { margin-top: 18px; }
+  .holding-manage-button { min-height: 44px; }
+}
 </style>

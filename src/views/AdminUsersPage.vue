@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { useConfirmation } from '@/composables/useConfirmation'
+import WorkspaceDialog from '@/components/WorkspaceDialog.vue'
+import PageSectionTabs from '@/components/PageSectionTabs.vue'
 import ListPagination from '@/components/ListPagination.vue'
 import { normalizePageSize } from '@/utils/pagination'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
@@ -56,6 +59,9 @@ const searchResults = ref<AdminUser[]>([])
 const searchLoading = ref(false)
 const searchMessage = ref('')
 
+const { confirmation, confirmAction, resolveConfirmation } = useConfirmation()
+watch(() => route.fullPath, () => resolveConfirmation(false))
+
 const roleOptions = ACCOUNT_ROLE_OPTIONS
 
 const activeUsers = computed(() => users.value.filter((user) => !user.legacyRecord && user.status === 'ACTIVE'))
@@ -67,7 +73,7 @@ const headerLead = computed(() => {
   if (isLedgerSection.value) return '按姓名或手机号查询用户后查看其积分流水；手机号与内部标识不会展示。'
   if (isPortfolioSection.value) return '按姓名或手机号查询用户后查看其模拟持仓；只读，不会修改数据。'
   if (selectedUser.value) return '查看所选账户资料及已授权操作。'
-  return '选择账户后查看详情，或从左侧管理关注积分和历史关注归属。'
+  return '选择账户后查看详情，或从页内栏目管理关注积分和历史关注归属。'
 })
 
 /** 读取脱敏账户列表；服务端已完成权限和数据范围判断。 */
@@ -95,7 +101,7 @@ async function changeRole(user: AdminUser, role: AccountRole): Promise<void> {
   if (role === user.role) {
     return
   }
-  if (!globalThis.confirm(`确认将“${accountDisplayLabel(user)}”调整为“${accountRoleLabel(role)}”吗？该用户需要重新登录。`)) {
+  if (!await confirmAction(`确认将“${accountDisplayLabel(user)}”调整为“${accountRoleLabel(role)}”吗？该用户需要重新登录。`)) {
     await loadUsers()
     return
   }
@@ -108,7 +114,7 @@ async function changeRole(user: AdminUser, role: AccountRole): Promise<void> {
 /** 启用或停用前二次确认，避免误操作。 */
 async function toggleStatus(user: AdminUser): Promise<void> {
   const targetStatus = user.status === 'ACTIVE' ? 'DISABLED' : 'ACTIVE'
-  if (!globalThis.confirm(`确认${targetStatus === 'ACTIVE' ? '启用' : '停用'}“${accountDisplayLabel(user)}”吗？`)) {
+  if (!await confirmAction(`确认${targetStatus === 'ACTIVE' ? '启用' : '停用'}“${accountDisplayLabel(user)}”吗？`)) {
     return
   }
   await runUserAction(user.userId, async () => {
@@ -162,7 +168,7 @@ async function submitCreditGrant(): Promise<void> {
     return
   }
   const target = creditTarget.value
-  if (!globalThis.confirm(`确认向“${accountDisplayLabel(target)}”发放 ${amount} 个试用关注积分吗？积分只能扩容有效关注名额。`)) {
+  if (!await confirmAction(`确认向“${accountDisplayLabel(target)}”发放 ${amount} 个试用关注积分吗？积分只能扩容有效关注名额。`)) {
     return
   }
   await runUserAction(target.userId, async () => {
@@ -182,7 +188,7 @@ async function submitLegacyTransfer(): Promise<void> {
     return
   }
   const target = activeUsers.value.find((user) => user.userId === transferTargetUserId.value)
-  if (!target || !globalThis.confirm(`确认将历史本机关注迁移给“${accountDisplayLabel(target)}”吗？提醒和持仓不会被迁移。`)) {
+  if (!target || !await confirmAction(`确认将历史本机关注迁移给“${accountDisplayLabel(target)}”吗？提醒和持仓不会被迁移。`)) {
     return
   }
   await runUserAction('legacy-watchlist', async () => {
@@ -435,6 +441,7 @@ onMounted(() => {
     <p class="lead">
       {{ headerLead }}
     </p>
+    <PageSectionTabs />
 
     <p
       v-if="errorMessage"
@@ -569,10 +576,12 @@ onMounted(() => {
       </div>
     </section>
 
-    <section
+    <WorkspaceDialog
       v-if="section === 'accounts' && resetTarget"
-      class="admin-operation-card password-reset-card"
-      aria-labelledby="password-reset-title"
+      title-id="password-reset-title"
+      :busy="actionUserId === resetTarget.userId"
+      :error="errorMessage"
+      @close="resetTarget = null; resetPasswordValue = ''"
     >
       <div>
         <h2 id="password-reset-title">
@@ -602,18 +611,21 @@ onMounted(() => {
         </button>
         <button
           class="text-button"
+          :disabled="actionUserId === resetTarget.userId"
           type="button"
           @click="resetTarget = null"
         >
           取消
         </button>
       </form>
-    </section>
+    </WorkspaceDialog>
 
-    <section
+    <WorkspaceDialog
       v-if="section === 'credits' && creditTarget"
-      class="admin-operation-card credit-grant-card"
-      aria-labelledby="credit-grant-title"
+      title-id="credit-grant-title"
+      :busy="actionUserId === creditTarget.userId"
+      :error="errorMessage"
+      @close="router.push(sectionTarget('credits'))"
     >
       <div>
         <h2 id="credit-grant-title">
@@ -653,13 +665,14 @@ onMounted(() => {
         </button>
         <button
           class="text-button"
+          :disabled="actionUserId === creditTarget.userId"
           type="button"
           @click="router.push(sectionTarget('credits'))"
         >
           取消
         </button>
       </form>
-    </section>
+    </WorkspaceDialog>
 
     <section
       v-if="(section === 'accounts' || section === 'credits') && !selectedUser"
@@ -978,5 +991,31 @@ onMounted(() => {
         </table>
       </div>
     </section>
+    <WorkspaceDialog
+      v-if="confirmation"
+      title-id="admin-confirm-title"
+      @close="resolveConfirmation(false)"
+    >
+      <h2 id="admin-confirm-title">
+        确认操作
+      </h2>
+      <p>{{ confirmation }}</p>
+      <div class="sim-actions">
+        <button
+          class="secondary-button"
+          type="button"
+          @click="resolveConfirmation(false)"
+        >
+          取消
+        </button>
+        <button
+          class="primary-button"
+          type="button"
+          @click="resolveConfirmation(true)"
+        >
+          确认操作
+        </button>
+      </div>
+    </WorkspaceDialog>
   </section>
 </template>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageSectionTabs from '@/components/PageSectionTabs.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import FundMaterialsPanel from '@/components/FundMaterialsPanel.vue'
@@ -311,16 +312,14 @@ watch(section, (selectedSection) => {
     </p>
     <template v-else-if="basic && detail">
       <!-- 基金概览只在基础资料页展示，其他子页直接呈现对应内容。 -->
+      <h1 id="watchlist-fund-detail-title">
+        {{ basic.fundName }}
+      </h1>
+      <p class="lead">
+        {{ basic.fundCode }} · {{ fundTypeLabel(basic.fundType) }} · {{ fundStatusLabel(basic.status) }}
+      </p>
+      <PageSectionTabs />
       <template v-if="section === 'basic'">
-        <p class="eyebrow">
-          {{ moduleTitle }} · {{ sectionLabel }}
-        </p>
-        <h1 id="watchlist-fund-detail-title">
-          {{ basic.fundName }}
-        </h1>
-        <p class="lead">
-          {{ basic.fundCode }} · {{ fundTypeLabel(basic.fundType) }} · {{ fundStatusLabel(basic.status) }}
-        </p>
         <div class="fund-detail-topline">
           <div><span>单位净值</span><strong>{{ formatNetValue(basic.unitNav) }}</strong><small>截至 {{ basic.asOfDate || '日期暂缺' }}</small></div>
           <div><span>单位净值变化</span><strong :class="changeRateTone(basic.dayChangeRate)">{{ formatChangeRate(basic.dayChangeRate) }}</strong><small>较上一条净值，不含分红和买卖费用</small></div>

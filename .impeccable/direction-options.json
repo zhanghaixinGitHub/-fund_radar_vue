@@ -1,0 +1,42 @@
+{
+  "title": "基金雷达：整体界面设计",
+  "question": "比较信息组织、操作位置和整体协调性。选择接近的一套，也可以说明想合并或调整的部分。所有内容均为示例，业务功能不变。",
+  "options": [
+    {
+      "id": "workbook", "kind": "assigned", "label": "持仓工作簿", "kicker": "连续查看与处理",
+      "lineage": "投资记录与周期安排的组织节奏",
+      "thesis": "持仓是中心，收益、交易和计划围绕同一账户展开，减少跨模块往返。",
+      "palette": ["#205F56", "#EDF3F0", "#FFFFFF", "#B78954"], "materials": ["整齐的数字列", "分区而非卡片堆叠", "原位展开"],
+      "viewport": "顶部稳定模块导航，账户工具条和持仓主表，右侧是最近交易与计划入口。",
+      "risk": "交易区需要保持次要层级，不能挤占基金列表。",
+      "raised": [{"from":"固定信息牌","raise":"数值列与导航位置保持稳定，更新不推移结构。"},{"from":"图版编排","raise":"用统一对齐和留白区分层级，减少边框。"},{"from":"目录编排","raise":"长列表优先扫描和定位，不用装饰替代信息。"}],
+      "html": ".impeccable/mocks/decision/workbook.html", "htmlFrame": "1440x900", "comp": ".impeccable/mocks/decision/workbook.png"
+    },
+    {
+      "id": "overview", "kind": "pick", "label": "资产总览", "kicker": "账户全貌优先",
+      "lineage": "理财账户报告的清晰层级",
+      "thesis": "先看资产和收益变化，再进入持仓、交易或定投，主导航始终独立。",
+      "palette": ["#3B6B5B", "#F3F5F2", "#FFFFFF", "#C09B65"], "materials": ["浅色固定导航", "数据图表", "紧凑操作栏"],
+      "viewport": "浅色左侧固定六个模块，主区上方呈现账户走势，下方是持仓表和页内栏目。",
+      "risk": "结构比较熟悉，需要靠数据层级和组件细节拉开质感。",
+      "html": ".impeccable/mocks/decision/overview.html", "htmlFrame": "1440x900", "comp": ".impeccable/mocks/decision/overview.png"
+    },
+    {
+      "id": "research", "kind": "challenger", "catalogId": "crouwel-grid-specimen", "verdict": "competitive", "label": "基金研究台", "kicker": "列表与资料并行",
+      "lineage": "网格排版的严格对齐，转化成可读的金融产品界面",
+      "thesis": "保持模块导航，列表和基金资料并行查看，深入研究时才进入完整页面。",
+      "palette": ["#263C37", "#EFF4F2", "#FFFFFF", "#478B77"], "materials": ["对齐网格", "分栏资料", "稳定页签"],
+      "viewport": "窄幅固定模块导航，基金筛选与列表居中，右侧独立显示选中基金的资料和操作。",
+      "case": "对大量基金的比较更清楚；账户全貌的呈现弱于持仓工作簿。", "risk": "信息较多，较窄屏幕应将资料转为覆盖式抽屉。",
+      "html": ".impeccable/mocks/decision/research.html", "htmlFrame": "1440x900", "comp": ".impeccable/mocks/decision/research.png"
+    },
+    {"id":"flap","kind":"challenger","catalogId":"signals-instruments-split-flap-concourse","verdict":"declined","label":"信息牌式","thesis":"固定信息列与持续更新。","palette":["#252B29","#FFFFFF","#C49C61"],"materials":["固定数据列"],"viewport":"高密度的全屏状态列表。","risk":"场站信息牌的阅读目的与个人理财不同。","case":"受众认同和多步操作清晰度均弱于主方案。","kept":"主方案吸收固定列宽和原位更新。"},
+    {"id":"folio","kind":"challenger","catalogId":"editorial-sequence-montage-botanical-folio-season","verdict":"declined","label":"阶段图册式","thesis":"按阶段组织信息。","palette":["#F1EEE5","#476B43","#9D5650"],"materials":["阶段对照"],"viewport":"阶段栏目和并排资料。","risk":"阶段隐喻不能准确对应基金状态。","case":"基金用户的识别和任务清晰度均不占优。","kept":"保留不同状态的明确区分，不使用植物装饰。"},
+    {"id":"annual","kind":"challenger","catalogId":"design-annual-s-plate-section","verdict":"declined","label":"图版编排式","thesis":"用留白和对齐区分内容。","palette":["#F5F4F6","#16181A","#DCDDF3"],"materials":["统一网格","细分隔线"],"viewport":"图版式内容索引。","risk":"容易把业务资料变成展示版面。","case":"对高频操作的识别和效率不如主方案。","kept":"吸收统一对齐与克制分隔。"},
+    {"id":"signage","kind":"challenger","catalogId":"wayfinding-cartography-signage-terminal-yellow-wayfinding","verdict":"declined","label":"导向标识式","thesis":"每一步只展示下一步。","palette":["#F3CF35","#242824","#FFFFFF"],"materials":["明确路径"],"viewport":"单向的路径选择区。","risk":"个人理财需要反复查看，不能被单向路径束缚。","case":"色彩与路径组织对账户日常使用不够自然。","kept":"保留清晰返回路径，不采用机场造型。"},
+    {"id":"cassette","kind":"challenger","catalogId":"vernacular-ephemera-cassette-j-card","verdict":"declined","label":"折页目录式","thesis":"资料分面查看。","palette":["#F8F8F4","#485F6A","#B49C68"],"materials":["分面目录"],"viewport":"折页式内容分区。","risk":"翻面会增加跨内容比较的负担。","case":"基金用户认同和信息定位均不占优。","kept":"吸收长列表的紧凑扫描，不采用翻页装饰。"}
+  ],
+  "reroll": {"registers":["safer","bolder"]}, "steer": true,
+  "buildPath": {"value":"code","toggle":true}, "canon": true,
+  "canonCard": {"kind":"canon","label":"熟悉的理财布局","thesis":"使用常见的主导航与表格结构，重点打磨组件。","palette":["#FFFFFF","#34463D","#387A64"],"materials":["标准组件"],"viewport":"顶部模块导航、页内栏目和宽表格。","risk":"与前面被否决的方向相近。","comp":".impeccable/mocks/decision/canon.png"}
+}

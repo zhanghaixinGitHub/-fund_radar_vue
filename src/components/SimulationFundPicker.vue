@@ -57,18 +57,18 @@ onBeforeUnmount(() => { alive = false; dialog.value?.close() })
       <button
         class="secondary-button"
         type="button"
-        :aria-pressed="source === 'watchlist'"
-        @click="switchSource('watchlist')"
-      >
-        我的关注
-      </button>
-      <button
-        class="secondary-button"
-        type="button"
         :aria-pressed="source === 'market'"
         @click="switchSource('market')"
       >
         基金市场
+      </button>
+      <button
+        class="secondary-button"
+        type="button"
+        :aria-pressed="source === 'watchlist'"
+        @click="switchSource('watchlist')"
+      >
+        我的关注
       </button>
     </div>
     <form

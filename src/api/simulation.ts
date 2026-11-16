@@ -1,6 +1,6 @@
 import { get, post, put } from '@/api/http'
 import type {
-  SimDaily, SimEarnings, SimEarningsFund, SimEarningsDetail, SimFeeRuleRow, SimLedger, SimOrder, SimOrderRequest, SimOverview, SimPage, SimPeriod,
+  SimComposition, SimDaily, SimEarnings, SimEarningsFund, SimEarningsDetail, SimFeeRuleRow, SimLedger, SimOrder, SimOrderRequest, SimOverview, SimPage, SimPeriod,
   SimPlan, SimPlanRequest, SimPreview, SimRecurringRunResult,
 } from '@/types/simulation'
 
@@ -12,6 +12,7 @@ function query(page: number, fundCode?: string, pageSize = 20) {
   return params.toString()
 }
 export const getSimOverview = () => get<SimOverview>(base)
+export const getSimComposition = () => get<SimComposition>(`${base}/composition`)
 /** 收益查询仅使用 current 本人账户接口，不提供 userId。 */
 export const getSimEarnings = (params: URLSearchParams) => get<SimEarnings>(`${base}/earnings?${params}`)
 export const getSimEarningsFunds = (keyword = '', page = 1, pageSize = 20) => get<SimPage<SimEarningsFund>>(

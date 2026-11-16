@@ -4,6 +4,10 @@
 
 本规则适用于当前项目所有面向用户的页面、组件、弹窗、提示和交互。后续新增、修改或审阅界面时均须遵守，并与全局工程基线一起执行。
 
+## 页面改版与统一风格（2026-11-13）
+
+用户已重新授权开始正式前端改造。新增、修改界面遵守[统一样式与交互规范](DESIGN.md)；保留[功能保全清单](docs_zhx/design/frontend-redesign-functional-baseline-2026-11-13.md)中入口、字段、权限与历史链接，不凭预览删功能。基金市场和我的关注保留默认选中的“已持仓”筛选。未经用户明确要求不提交、推送。历史暂停记录不再代表当前授权状态。
+
 ## 资料混合读取与D盘存储的跨项目规则
 
 涉及资料读取、解析或保存时，遵守Python服务的[当前规则](D:/Project-FullStack/workSpace01/03-python/AGENTS.md)、[混合读取需求](D:/Project-FullStack/workSpace01/03-python/docs_zhx/requirements/restore-file-material-reading-2026-11-07.md)及[生命周期记录](D:/Project-FullStack/workSpace01/03-python/docs_zhx/material-database-lifecycle.md)。2026-11-07用户已撤回此前为腾C盘空间增加的强制全量文本入库、只读库及自动清理流程。

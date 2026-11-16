@@ -1,18 +1,14 @@
 <script setup lang="ts">
+import PageSectionTabs from '@/components/PageSectionTabs.vue'
+import FundListTable from '@/components/FundListTable.vue'
+import FundQuickDrawer from '@/components/FundQuickDrawer.vue'
 import ListPagination from '@/components/ListPagination.vue'
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 import { useFundMarket } from '@/composables/useFundMarket'
 import FundRatingBadge from '@/components/FundRatingBadge.vue'
 import { ratingFilterOptions } from '@/utils/fundRating'
-import {
-  changeRateTone,
-  formatChangeRate,
-  fundStatusLabel,
-  fundTypeLabel,
-  shouldDisplayFundStatus,
-} from '@/utils/fundPresentation'
 
 /**
  * 基金市场页面。
@@ -36,6 +32,17 @@ const {
   watchedOnly,
 } = useFundMarket()
 const route = useRoute()
+const router = useRouter()
+const quickCode = ref('')
+
+async function resetFilters(): Promise<void> {
+  keyword.value = ''
+  heldOnly.value = true
+  selectedRating.value = ''
+  watchedOnly.value = false
+  if (route.fullPath === route.path) await search()
+  else await router.push({ path: route.path })
+}
 
 /** 清除评级并从第一页查询，名称关键字及基金类型继续沿用当前条件。 */
 async function clearRating(): Promise<void> {
@@ -44,16 +51,6 @@ async function clearRating(): Promise<void> {
   await search()
 }
 
-/** 后端已按基金类型稳定排序；此处只把相邻类型组织为可读的分组。 */
-const fundGroups = computed(() => {
-  const groups = new Map<string, typeof funds.value>()
-  for (const fund of funds.value) {
-    const items = groups.get(fund.fundType) ?? []
-    items.push(fund)
-    groups.set(fund.fundType, items)
-  }
-  return [...groups.entries()].map(([fundType, items]) => ({ fundType, items }))
-})
 
 </script>
 
@@ -62,15 +59,10 @@ const fundGroups = computed(() => {
     class="market-page"
     aria-labelledby="market-title"
   >
-    <p class="eyebrow">
-      基金市场 · 试运行
-    </p>
-    <h1 id="market-title">
+    <h1 id="market-title" class="visually-hidden">
       基金市场
     </h1>
-    <p class="lead">
-      查看已收录基金的单位净值变化，不含分红和买卖费用；数据日期见各基金资料。
-    </p>
+    <PageSectionTabs />
     <p
       v-if="stale"
       class="notice-banner"
@@ -79,32 +71,48 @@ const fundGroups = computed(() => {
       数据暂时无法更新，当前展示之前保存的资料（保存时间：{{ cachedAt || '未知' }}）。
     </p>
 
-    <form
-      class="search-panel market-search-panel"
-      @submit.prevent="search"
+    <section
+      class="fund-results-panel"
+      aria-label="基金列表"
     >
-      <div class="market-keyword-filter">
-        <label for="fund-keyword">基金代码或名称</label>
-        <div class="search-row">
+      <h2 class="fund-results-title">
+        基金列表
+      </h2>
+      <form
+        class="fund-filter-toolbar"
+        :aria-busy="loading"
+        @submit.prevent="search"
+      >
+        <div class="fund-filter-search">
+          <label
+            class="visually-hidden"
+            for="fund-keyword"
+          >基金代码或名称</label>
+          <svg
+            class="fund-filter-search-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            aria-hidden="true"
+          ><circle
+            cx="10.5"
+            cy="10.5"
+            r="6.5"
+          /><path d="m15.5 15.5 4.5 4.5" /></svg>
           <input
             id="fund-keyword"
             v-model="keyword"
             maxlength="50"
-            placeholder="例如：000001"
+            placeholder="搜索基金名称 / 代码"
             type="search"
           >
-          <button
-            class="primary-button"
-            :disabled="loading"
-            type="submit"
-          >
-            {{ loading ? '查询中…' : '查询基金' }}
-          </button>
         </div>
-      </div>
-      <div class="market-rating-filter">
-        <label for="fund-rating">基金评级</label>
-        <div class="market-rating-control">
+        <div class="fund-filter-select">
+          <label
+            class="visually-hidden"
+            for="fund-rating"
+          >基金评级</label>
           <select
             id="fund-rating"
             v-model="selectedRating"
@@ -123,6 +131,7 @@ const fundGroups = computed(() => {
             </option>
           </select>
           <button
+            v-if="selectedRating !== ''"
             class="market-rating-clear"
             :disabled="loading"
             type="button"
@@ -133,203 +142,120 @@ const fundGroups = computed(() => {
             <span aria-hidden="true">×</span>
           </button>
         </div>
-      </div>
-      <div class="market-personal-filters">
-        <div class="market-rating-filter">
-          <label for="fund-watched">关注状态</label>
-          <div class="market-rating-control">
-            <select
-              id="fund-watched"
-              v-model="watchedOnly"
-              :disabled="loading"
-              @change="search"
-            >
-              <option :value="false">
-                全部基金
-              </option>
-              <option :value="true">
-                已关注
-              </option>
-            </select>
-            <button
-              class="market-rating-clear"
-              :disabled="loading"
-              type="button"
-              aria-label="清除关注筛选"
-              title="清除关注筛选"
-              @click="watchedOnly = false; search()"
-            >
-              <span aria-hidden="true">×</span>
-            </button>
-          </div>
-        </div>
-        <div class="market-rating-filter">
-          <label for="fund-held">持仓状态</label>
-          <div class="market-rating-control">
-            <select
-              id="fund-held"
-              v-model="heldOnly"
-              :disabled="loading"
-              @change="search"
-            >
-              <option :value="false">
-                全部基金
-              </option>
-              <option :value="true">
-                已持仓
-              </option>
-            </select>
-            <button
-              class="market-rating-clear"
-              :disabled="loading"
-              type="button"
-              aria-label="清除持仓筛选"
-              title="清除持仓筛选"
-              @click="heldOnly = false; search()"
-            >
-              <span aria-hidden="true">×</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </form>
-
-    <p
-      v-if="errorMessage"
-      class="state-message error-message"
-      role="alert"
-    >
-      {{ errorMessage }}
-    </p>
-    <p
-      v-else-if="!loading && funds.length === 0"
-      class="state-message"
-    >
-      暂无可展示基金（共 {{ totalCount }} 条），可调整查询条件或稍后重试。
-    </p>
-    <div
-      v-else
-      aria-live="polite"
-    >
-      <section
-        v-for="group in fundGroups"
-        :key="group.fundType"
-        class="fund-type-group"
-        :aria-labelledby="`market-type-${group.fundType}`"
-      >
-        <h2 :id="`market-type-${group.fundType}`">
-          {{ fundTypeLabel(group.fundType) }}
-        </h2>
-        <ul class="fund-list">
-          <li
-            v-for="fund in group.items"
-            :key="fund.fundCode"
-            class="fund-market-entry"
+        <div class="fund-filter-select">
+          <label
+            class="visually-hidden"
+            for="fund-watched"
+          >关注状态</label>
+          <select
+            id="fund-watched"
+            v-model="watchedOnly"
+            :disabled="loading"
+            @change="search"
           >
-            <!-- 整行共用详情入口；评级仅展示，点击留白或键盘回车都进入同一详情页。 -->
-            <RouterLink
-              class="fund-card"
-              :to="{ name: 'fund-detail', params: { fundCode: fund.fundCode }, query: { from: route.fullPath } }"
-            >
-              <span class="fund-identity">
-                <span class="fund-code">{{ fund.fundCode }}</span>
-                <span class="fund-primary">
-                  <strong>{{ fund.fundName }}</strong>
-                  <span
-                    v-if="fund.isWatched || shouldDisplayFundStatus(fund.status)"
-                    class="fund-tags"
-                  >
-                    <span
-                      v-if="shouldDisplayFundStatus(fund.status)"
-                      class="fund-status-tag"
-                    >
-                      {{ fundStatusLabel(fund.status) }}
-                    </span>
-                    <span
-                      v-if="fund.isWatched"
-                      class="watched-tag"
-                    >
-                      已关注
-                    </span>
-                  </span>
-                </span>
-              </span>
-              <span
-                class="change-rate-list"
-                aria-label="单位净值变化"
-              >
-                <span :class="['change-rate', changeRateTone(fund.dayChangeRate)]">最新净值日 {{ formatChangeRate(fund.dayChangeRate) }}</span>
-                <span :class="['change-rate', changeRateTone(fund.weekChangeRate)]">近一周 {{ formatChangeRate(fund.weekChangeRate) }}</span>
-                <span :class="['change-rate', changeRateTone(fund.monthChangeRate)]">近一月 {{ formatChangeRate(fund.monthChangeRate) }}</span>
-              </span>
-              <span class="as-of-date">数据截至：{{ fund.asOfDate || '尚无合规净值同步' }}</span>
-              <FundRatingBadge
-                :value="fund.rating"
-              />
-            </RouterLink>
-          </li>
-        </ul>
-      </section>
-    </div>
-    <ListPagination
-      v-if="!loading && !errorMessage && funds.length > 0"
-      :page="currentPage"
-      :page-size="pageSize"
-      :total="totalCount"
-      :loading="loading"
-      label="基金列表分页"
-      @change="(page, size) => { pageSize = size; loadPage(page) }" 
+            <option :value="false">
+              全部基金
+            </option>
+            <option :value="true">
+              已关注
+            </option>
+          </select>
+          <button
+            v-if="watchedOnly"
+            class="market-rating-clear"
+            :disabled="loading"
+            type="button"
+            aria-label="清除关注筛选"
+            title="清除关注筛选"
+            @click="watchedOnly = false; search()"
+          >
+            <span aria-hidden="true">×</span>
+          </button>
+        </div>
+        <div class="fund-filter-select">
+          <label
+            class="visually-hidden"
+            for="fund-held"
+          >持仓状态</label>
+          <select
+            id="fund-held"
+            v-model="heldOnly"
+            :disabled="loading"
+            @change="search"
+          >
+            <option :value="false">
+              全部基金
+            </option>
+            <option :value="true">
+              已持仓
+            </option>
+          </select>
+          <button
+            v-if="heldOnly"
+            class="market-rating-clear"
+            :disabled="loading"
+            type="button"
+            aria-label="清除持仓筛选"
+            title="清除持仓筛选"
+            @click="heldOnly = false; search()"
+          >
+            <span aria-hidden="true">×</span>
+          </button>
+        </div>
+        <button
+          class="secondary-button fund-filter-submit"
+          :disabled="loading"
+          type="submit"
+        >
+          {{ loading ? '查询中' : '查询' }}
+        </button>
+        <button
+          class="secondary-button fund-filter-reset"
+          :disabled="loading"
+          type="button"
+          @click="resetFilters"
+        >
+          重置
+        </button>
+      </form>
+
+      <p
+        v-if="errorMessage"
+        class="state-message error-message"
+        role="alert"
+      >
+        {{ errorMessage }}
+      </p>
+      <p
+        v-else-if="!loading && funds.length === 0"
+        class="state-message"
+      >
+        暂无可展示基金（共 {{ totalCount }} 条），可调整查询条件或稍后重试。
+      </p>
+      <FundListTable
+        v-else
+        :items="funds"
+        label="基金市场列表"
+        @quick="quickCode = $event"
+      >
+        <template #rating="{ fund }">
+          <FundRatingBadge :value="fund.rating" />
+        </template>
+      </FundListTable>
+      <ListPagination
+        v-if="!loading && !errorMessage && funds.length > 0"
+        :page="currentPage"
+        :page-size="pageSize"
+        :total="totalCount"
+        :loading="loading"
+        label="基金列表分页"
+        @change="(page, size) => { pageSize = size; loadPage(page) }"
+      />
+    </section>
+    <FundQuickDrawer
+      v-if="quickCode"
+      :code="quickCode"
+      @close="quickCode = ''"
     />
   </section>
 </template>
-
-<style scoped>
-/* 按列表实际宽度换行，侧栏占宽和页面缩放时也能保留基金全名。 */
-.fund-market-entry { container-type: inline-size; }
-.fund-market-entry .fund-card {
-  grid-template: "identity changes date rating" / minmax(0, 1fr) auto auto auto;
-}
-.fund-identity {
-  grid-area: identity;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: baseline;
-  gap: 12px;
-  min-width: 0;
-}
-.fund-market-entry .fund-primary strong { overflow: visible; white-space: normal; overflow-wrap: anywhere; }
-.fund-market-entry .fund-tags > span { white-space: nowrap; }
-.fund-market-entry .change-rate-list { grid-area: changes; justify-content: flex-start; flex-wrap: wrap; }
-.fund-market-entry .change-rate { white-space: nowrap; }
-.fund-market-entry .fund-card > .as-of-date { grid-area: date; }
-.fund-market-entry .rating-badge { grid-area: rating; }
-@container (max-width: 72rem) {
-  .fund-market-entry .fund-card {
-    grid-template: "identity rating" "changes date" / minmax(0, 1fr) auto;
-    row-gap: 10px;
-  }
-  .fund-market-entry .rating-badge { justify-content: flex-end; }
-}
-@container (max-width: 40rem) {
-  .fund-market-entry .fund-card { grid-template: "identity" "changes" "date" "rating" / minmax(0, 1fr); }
-  .fund-market-entry .rating-badge { justify-content: flex-start; }
-}
-
-/* 查询与评级共用现有表单视觉；窄屏自然换行，避免挤压输入框和按钮。 */
-.market-search-panel { grid-template-columns: minmax(0, 1fr) minmax(180px, 280px); gap: 24px; align-items: end; }
-.market-keyword-filter, .market-rating-filter { display: grid; gap: 10px; min-width: 0; }
-.market-rating-filter { width: 100%; max-width: 280px; }
-.market-personal-filters { display: flex; flex-wrap: wrap; gap: 24px; }
-.market-keyword-filter { max-width: 660px; }
-/* 清除图标放在下拉框内部，右侧保留原生箭头的位置，文字也预留空间避免重叠。 */
-.market-rating-control { position: relative; display: flex; }
-.market-rating-filter select { flex: 1; width: 100%; min-width: 0; min-height: 44px; padding: 10px 64px 10px 12px; color: #17332e; font: inherit; background: #fff; border: 1px solid #b9d5c5; border-radius: 10px; }
-.market-rating-clear { position: absolute; top: 50%; right: 28px; display: grid; place-items: center; width: 24px; height: 28px; padding: 0; color: #38639b; font-size: 20px; font-weight: 700; line-height: 1; background: transparent; border: 0; border-radius: 4px; transform: translateY(-50%); cursor: pointer; }
-.market-rating-clear:hover:not(:disabled) { color: #1b457e; }
-.market-rating-clear:disabled { opacity: .65; cursor: wait; }
-.market-rating-filter select:focus-visible, .market-rating-clear:focus-visible { outline: 2px solid #0f766e; outline-offset: 3px; }
-@media (max-width: 900px) {
-  .market-search-panel { grid-template-columns: 1fr; gap: 16px; }
-  .market-keyword-filter, .market-rating-filter { max-width: none; }
-}
-</style>

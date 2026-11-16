@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageSectionTabs from '@/components/PageSectionTabs.vue'
 import ListPagination from '@/components/ListPagination.vue'
 import SimulationEarningsPanel from '@/components/SimulationEarningsPanel.vue'
 import SimulationPerformanceChart from '@/components/SimulationPerformanceChart.vue'
@@ -159,9 +160,6 @@ onBeforeUnmount(() => { alive = false; ++generation; ++searchGeneration; ++detai
         <h1 id="earnings-title">
           收益明细
         </h1>
-        <p class="earnings-subtitle">
-          看清每天的盈亏，也看清每只基金的贡献。
-        </p>
       </div>
       <RouterLink
         class="secondary-button"
@@ -170,6 +168,7 @@ onBeforeUnmount(() => { alive = false; ++generation; ++searchGeneration; ++detai
         返回持仓
       </RouterLink>
     </header>
+    <PageSectionTabs />
 
     <section
       class="earnings-overview"
@@ -683,10 +682,6 @@ onBeforeUnmount(() => { alive = false; ++generation; ++searchGeneration; ++detai
 </template>
 
 <style scoped>
-.earnings-page { max-width: 1280px; margin: 0 auto; }
-.earnings-page h1 { margin: 4px 0 6px; }
-.earnings-page > .sim-page-header { margin-bottom: 22px; }
-.earnings-subtitle { color: #647b72; margin: 0; font-size: 14px; }
 .earnings-label { font-size: 12px; font-weight: 500; color: #647b72; }
 .earnings-overview, .earnings-records { background: #fff; border: 1px solid #dfe8e3; border-radius: 12px; }
 .earnings-overview { margin-bottom: 24px; }

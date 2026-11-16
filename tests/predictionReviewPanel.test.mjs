@@ -96,9 +96,13 @@ test('暂不判断在卡片保留原因，并在依据区解释取舍', async t 
     return value
   })
   assert.match(view.text(), /五日预测.*暂不判断.*主要经营支撑和订单压力仍难分主次/)
+  assert.match(view.text(), /已审阅 · 暂无方向/)
+  assert.match(view.text(), /上次分析/)
   await view.buttons()[2].props.onClick()
   await settle()
   assert.match(view.text(), /暂不判断：主要经营支撑和订单压力仍难分主次/)
+  assert.match(view.text(), /已完成这次审阅.*重新评估/)
+  assert.match(view.text(), /出现哪些变化后重新判断/)
 })
 
 test('更新等待新净值时保留原日期和等待说明，不宣称新分析完成', async t => {
@@ -110,6 +114,20 @@ test('更新等待新净值时保留原日期和等待说明，不宣称新分�
   assert.match(view.text(), /正在等待新的真实净值.*当前新分析尚未完成/)
   assert.match(view.text(), /2026-11-12 至 2026-11-12/)
   assert.doesNotMatch(view.text(), /2026-11-13|更新完成/)
+})
+
+test('半年暂不判断显示已审阅，不声称已有条件方向', async t => {
+  const view = await mount(t, code => {
+    const value = snapshot(code)
+    value.periods[1] = { ...value.periods[1], decision: 'ABSTAIN', summary: '主要路径仍有分歧。', awaitingReason: '转换权益与现金路径相互抵消。' }
+    return value
+  })
+  await view.buttons()[4].props.onClick()
+  await settle()
+  assert.match(view.text(), /半年分析 · 终点待核/)
+  assert.match(view.text(), /已审阅 · 暂无方向/)
+  assert.match(view.text(), /本次尚未给出方向/)
+  assert.doesNotMatch(view.text(), /以下方向需要所列条件成立/)
 })
 
 test('真实组件切换基金时，晚到的旧响应不会盖掉新基金', async t => {

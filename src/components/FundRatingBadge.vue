@@ -31,7 +31,7 @@ const partialLabel = computed(() => {
 
 <template>
   <span class="rating-badge">
-    <span>基金评级</span><strong>{{ partialLabel || label }}</strong>
+    <strong>{{ partialLabel || label }}</strong>
     <span
       v-if="value?.incompleteReviewedOn && label !== '评级待更新'"
       class="rating-review"

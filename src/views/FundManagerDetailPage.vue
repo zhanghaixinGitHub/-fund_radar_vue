@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageSectionTabs from '@/components/PageSectionTabs.vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { getFundManager } from '@/api/fundManagers'
@@ -73,6 +74,7 @@ useManagerRefresh(() => load(true))
       </div>
       <p>{{ detail.checkedAt ? `资料核对 ${managerDate(detail.checkedAt)}` : '任职资料待核对' }}</p>
     </header>
+    <PageSectionTabs />
     <div class="manager-meta">
       <span>{{ detail.companies.join('、') || '关联公司暂缺' }}</span><span>学历：{{ detail.education || '暂缺' }}</span><span>已收录在管份额：{{ detail.shareCount ?? '待核对' }}</span>
     </div>

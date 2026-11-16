@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageSectionTabs from '@/components/PageSectionTabs.vue'
 import ListPagination from '@/components/ListPagination.vue'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -284,7 +285,8 @@ onBeforeUnmount(() => { alive = false; generation++ })
     >
       {{ searchError }}
     </p>
-    <header class="sim-page-header">
+    <h1 v-if="!code" id="advice-title" class="visually-hidden">持仓分析</h1>
+    <header v-if="code" class="sim-page-header">
       <div>
         <h1 id="advice-title">
           {{ code ? `${history?.fundName || code} · 持仓建议` : '持仓分析' }}
@@ -316,6 +318,7 @@ onBeforeUnmount(() => { alive = false; generation++ })
         </button>
       </div>
     </header>
+    <PageSectionTabs />
     <div
       v-if="!code"
       class="sim-empty"

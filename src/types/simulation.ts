@@ -29,6 +29,29 @@ export interface ConfirmedHolding {
   reportedDailyGainAmount: DecimalValue; reportedHoldingGainAmount: DecimalValue
   reportedHoldingGainPct: DecimalValue; reportedCumulativeGainAmount: DecimalValue
 }
+export interface SimCompositionSource {
+  fundCode: string; fundName: string | null; title: string; endDate: string; publishedDate: string
+  sourceUrl: string | null; fullDisclosure: boolean
+}
+export interface SimCompositionEvidence { sourceName: string; sourceUrl: string | null; classificationDate: string; method: string }
+export interface SimCompositionContribution {
+  fundCode: string; fundName: string; amount: DecimalValue; weightPct: DecimalValue
+  sources: SimCompositionSource[]
+}
+export interface SimCompositionItem {
+  key: string; name: string; description: string; amount: DecimalValue; weightPct: DecimalValue
+  pending: boolean; contributions: SimCompositionContribution[]; evidence: SimCompositionEvidence[]
+}
+export interface SimCompositionView {
+  denominator: 'ACCOUNT' | 'DISCLOSED_STOCK' | 'DISCLOSED_STOCKS_WITH_SECURITY_DETAIL'
+  totalAmount: DecimalValue; coveragePct: DecimalValue | null; mappedCoveragePct: DecimalValue | null
+  reportStart: string | null; reportEnd: string | null; items: SimCompositionItem[]
+  excludedHoldings: { fundCode: string; fundName: string; amount: DecimalValue; reason: string }[]
+}
+export interface SimComposition {
+  accountAmount: DecimalValue
+  assets: SimCompositionView; industries: SimCompositionView; themes: SimCompositionView
+}
 export interface SimPreview {
   fundCode: string; fundName: string; supported: boolean; reason: string | null
   referenceNav: DecimalValue | null; referenceDate: string | null; tradeDate: string; eligibleDate: string

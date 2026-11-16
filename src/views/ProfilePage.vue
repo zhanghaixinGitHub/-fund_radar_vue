@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageSectionTabs from '@/components/PageSectionTabs.vue'
 import { computed, ref, watch } from 'vue'
 
 import { useAuthStore } from '@/stores/auth'
@@ -60,6 +61,7 @@ async function submit(): Promise<void> {
     <h1 id="profile-title">
       {{ sectionLabel }}
     </h1>
+    <PageSectionTabs />
     <p class="lead profile-lead">
       姓名用于账户展示。手机号是当前登录标识，角色由管理员管理，因此这两项不能在此修改。
     </p>
