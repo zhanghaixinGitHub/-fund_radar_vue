@@ -407,7 +407,7 @@ onBeforeUnmount(() => { alive = false; detailGeneration++; globalThis.clearInter
           v-if="overview.pendingOrders"
           class="notice-banner"
         >
-          {{ overview.pendingOrders }} 笔交易待确认，其中买入金额 {{ simMoney(overview.pendingBuyAmount) }} 元，尚未计入持仓市值。<RouterLink :to="sectionTarget('orders')">
+          {{ overview.pendingOrders }} 笔交易待确认，其中买入金额 {{ simMoney(overview.pendingBuyAmount) }} 元，尚未计入持有金额。<RouterLink :to="sectionTarget('orders')">
             查看交易
           </RouterLink>
         </p>
@@ -546,7 +546,7 @@ onBeforeUnmount(() => { alive = false; detailGeneration++; globalThis.clearInter
                     class="holdings-number"
                     scope="col"
                   >
-                    市值（元）
+                    持有金额（元）
                   </th>
                   <th
                     class="holdings-number"
@@ -654,7 +654,7 @@ onBeforeUnmount(() => { alive = false; detailGeneration++; globalThis.clearInter
                         v-if="p.kind === 'recorded'"
                         class="holding-metadata"
                       >
-                        持有 {{ simShares(p.shares) }} 份 · 可卖 {{ simShares(p.availableShares) }} 份 · 冻结 {{ simShares(p.frozenShares) }} 份 · 剩余成本 {{ simMoney(p.cost) }} 元{{ p.estimatedShares ? ' · 份额按金额折算' : '' }}
+                        持有 {{ simShares(p.shares) }} 份 · 可卖 {{ simShares(p.availableShares) }} 份 · 冻结 {{ simShares(p.frozenShares) }} 份{{ p.estimatedShares ? ' · 份额按金额折算' : '' }}
                       </p>
                       <p
                         v-else-if="p.kind === 'confirmed'"
