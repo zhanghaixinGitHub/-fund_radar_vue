@@ -11,6 +11,31 @@ const mobile = ref('')
 const password = ref('')
 const submitting = ref(false)
 const localError = ref('')
+const rememberPassword = ref(false)
+const savedLoginKey = 'fund-radar.saved-login'
+
+// 仅在用户主动选择后保存；不写入账号状态、日志或服务端。
+try {
+  const saved = JSON.parse(globalThis.localStorage.getItem(savedLoginKey) || 'null')
+  if (saved && typeof saved.mobile === 'string' && /^1[3-9]\d{9}$/.test(saved.mobile)
+    && typeof saved.password === 'string' && saved.password.length >= 6 && saved.password.length <= 20) {
+    mobile.value = saved.mobile
+    password.value = saved.password
+    rememberPassword.value = true
+  }
+} catch {
+  // 浏览器禁止存储或记录损坏时，仍允许手动登录。
+}
+
+function clearSavedLogin(): void {
+  if (rememberPassword.value) return
+  try {
+    globalThis.localStorage.removeItem(savedLoginKey)
+    localError.value = ''
+  } catch {
+    localError.value = '无法清除保存的密码，请在浏览器设置中清除此网站的数据。'
+  }
+}
 const redirectPath = computed(() => (
   typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/')
     ? route.query.redirect
@@ -31,6 +56,16 @@ async function submit(): Promise<void> {
   submitting.value = true
   try {
     await authStore.signIn(mobile.value, password.value)
+    try {
+      if (rememberPassword.value) {
+        globalThis.localStorage.setItem(savedLoginKey, JSON.stringify({ mobile: mobile.value, password: password.value }))
+      } else {
+        globalThis.localStorage.removeItem(savedLoginKey)
+      }
+    } catch {
+      localError.value = '登录成功，但浏览器无法保存或清除密码。请允许网站存储，或取消保存后重试。'
+      return
+    }
     await router.replace(redirectPath.value)
   } catch {
     localError.value = authStore.errorMessage || '手机号或密码错误。'
@@ -90,6 +125,27 @@ async function submit(): Promise<void> {
           密码为 6 至 20 位字符。
         </p>
 
+        <label
+          class="remember-password"
+          for="remember-password"
+        >
+          <input
+            id="remember-password"
+            v-model="rememberPassword"
+            type="checkbox"
+            :disabled="submitting"
+            aria-describedby="remember-password-hint"
+            @change="clearSavedLogin"
+          >
+          保存密码
+        </label>
+        <p
+          id="remember-password-hint"
+          class="field-hint"
+        >
+          登录成功后保存在当前浏览器，下次打开自动填写。仅在自己的设备上使用；取消勾选可清除。
+        </p>
+
         <p
           v-if="localError"
           class="form-error"
@@ -120,3 +176,22 @@ async function submit(): Promise<void> {
     </section>
   </main>
 </template>
+
+<style scoped>
+.login-form .remember-password {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.login-form .remember-password input {
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--color-primary);
+}
+</style>
