@@ -7,7 +7,7 @@ import ts from 'typescript'
 
 const source = await readFile(new URL('../src/utils/advice.ts', import.meta.url), 'utf8')
 const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText
-const { isDiagnosisVerdict, diagnosisVerdictLabel, diagnosisVerdictTone, diagnosisItemOrder, diagnosisItemLabel, diagnosisStale } = await import(`data:text/javascript;base64,${Buffer.from(js).toString('base64')}`)
+const { isDiagnosisVerdict, diagnosisVerdictLabel, diagnosisVerdictTone, diagnosisStale } = await import(`data:text/javascript;base64,${Buffer.from(js).toString('base64')}`)
 
 test('only the three contract verdicts are accepted, everything else stays unknown', () => {
   assert.equal(isDiagnosisVerdict('VALID'), true)
@@ -30,13 +30,6 @@ test('verdict tones map to distinct highlight classes', () => {
   assert.equal(diagnosisVerdictTone('CHANGED'), 'diagnosis-changed')
   assert.equal(diagnosisVerdictTone('INSUFFICIENT'), 'diagnosis-insufficient')
   assert.equal(diagnosisVerdictTone('ELSE'), 'diagnosis-unknown')
-})
-test('all seven diagnosis items have fixed order and Chinese labels', () => {
-  assert.deepEqual([...diagnosisItemOrder], ['MANAGER', 'SCALE', 'SAME_TYPE_RANK', 'BENCHMARK', 'DRAWDOWN', 'FEE', 'DIVIDEND'])
-  const labels = { MANAGER: '基金经理', SCALE: '规模变化', SAME_TYPE_RANK: '同类排名', BENCHMARK: '业绩基准', DRAWDOWN: '当前回撤', FEE: '费用', DIVIDEND: '分红' }
-  for (const key of diagnosisItemOrder) assert.equal(diagnosisItemLabel(key), labels[key])
-  assert.equal(diagnosisItemLabel('UNKNOWN_ITEM'), '诊断项目待确认')
-  assert.equal(diagnosisItemLabel(null), '诊断项目待确认')
 })
 test('stale data is flagged instead of presented as current', () => {
   assert.equal(diagnosisStale(null, '2026-09-17'), true)

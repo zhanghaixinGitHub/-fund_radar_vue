@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import ListPagination from '@/components/ListPagination.vue'
 import HoldingAdviceDetails from '@/components/HoldingAdviceDetails.vue'
+import PredictionHistoryDrawer from '@/components/PredictionHistoryDrawer.vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
@@ -14,9 +15,9 @@ const route = useRoute()
 const auth = useAuthStore()
 const generating = ref(false)
 const report = ref<DecisionReport | null>(null), history = ref<DecisionReport[]>([])
+const selectedHistory = ref<DecisionReport | null>(null)
 const error = ref('')
 const page = ref(1), outcomes = ref<Record<string, DecisionOutcome>>({}), outcomeError = ref('')
-const historyVersion = ref('HOLDING_ADVICE_V5_PERSONAL')
 const historyLoading = ref(false)
 const reportLoading = ref(false)
 const pageSize = ref(10)
@@ -41,13 +42,12 @@ async function load() {
   historyLoading.value = props.historyOnly === true
   reportLoading.value = !props.historyOnly
   const code = props.fundCode
-  const version = historyVersion.value
   const size = pageSize.value
   const checks: Record<string, DecisionOutcome> = {}
   const read = (target: number) => readFixedPage(async serverPage => {
     const [items, outcomes] = await Promise.all([
-      readDecisionHistory(code, serverPage, version),
-      readDecisionOutcomes(code, serverPage, version).catch(() => {
+      readDecisionHistory(code, serverPage),
+      readDecisionOutcomes(code, serverPage).catch(() => {
         if (run === sequence) outcomeError.value = '到期核验暂时无法读取，已保存原文仍可查看'
         return {}
       }),
@@ -88,6 +88,7 @@ async function reassess() {
 }
 async function historyPage(value: number, size = pageSize.value) {
   if (historyLoading.value || value < 1) return
+  selectedHistory.value = null
   page.value = value; pageSize.value = size
   await load()
 }
@@ -96,13 +97,13 @@ async function lastHistoryPage() {
   if (historyLoading.value || !historyHasMore.value) return
   const run = ++sequence
   const code = props.fundCode
-  const version = historyVersion.value
   const size = pageSize.value
+  selectedHistory.value = null
   historyLoading.value = true
   error.value = ''
   try {
     const last = await findLastPage(target => readFixedPage(async serverPage => {
-      const items = await readDecisionHistory(code, serverPage, version)
+      const items = await readDecisionHistory(code, serverPage)
       return { items, hasMore: items.length === 20 }
     }, target, size), rows => rows.items.length > 0, rows => rows.hasMore, () => run === sequence)
     if (!last || run !== sequence) return
@@ -112,7 +113,7 @@ async function lastHistoryPage() {
   } catch { if (run === sequence) error.value = '暂时无法跳至尾页，请稍后重试。' }
   finally { if (run === sequence) historyLoading.value = false }
 }
-watch(() => [props.fundCode, props.initialReport, props.historyOnly] as const, () => { ++sequence; page.value=1; historyTotal.value = undefined; historyHasMore.value = false; report.value = props.initialReport ?? null; history.value = []; if (props.fundCode) void load() }, { immediate: true })
+watch(() => [props.fundCode, props.initialReport, props.historyOnly] as const, () => { ++sequence; selectedHistory.value = null; page.value=1; historyTotal.value = undefined; historyHasMore.value = false; report.value = props.initialReport ?? null; history.value = []; if (props.fundCode) void load() }, { immediate: true })
 onBeforeUnmount(() => { ++sequence; globalThis.clearInterval(clockTimer) })
 </script>
 <template>
@@ -121,9 +122,12 @@ onBeforeUnmount(() => { ++sequence; globalThis.clearInterval(clockTimer) })
     :aria-busy="historyLoading || reportLoading || generating"
     aria-label="持仓综合建议"
   >
-    <div class="section-heading">
+    <div
+      v-if="!historyOnly"
+      class="section-heading"
+    >
       <div>
-        <h2>{{ historyOnly ? '综合建议历史' : title }}</h2>
+        <h2>{{ title }}</h2>
       </div>
       <button
         v-if="!compact && !historyOnly && auth.hasPermission('SIM_PORTFOLIO_SELF_WRITE')"
@@ -251,12 +255,6 @@ onBeforeUnmount(() => { ++sequence; globalThis.clearInterval(clockTimer) })
       生成后保存当时的基金依据、持仓和操作安排。资料不足时会说明原因。
     </p>
     <div v-if="historyOnly">
-      <label>历史范围 <select
-        v-model="historyVersion"
-        :disabled="historyLoading"
-        @change="historyPage(1)"
-      ><option value="HOLDING_ADVICE_V5_PERSONAL">当前持仓综合建议</option><option value="HOLDING_ADVICE_V4_EVIDENCE">此前持仓综合建议</option><option value="HOLDING_ADVICE_V3_THREE_STATE">此前综合建议</option><option value="HOLDING_ADVICE_V2_EXPERIMENTAL">早期综合建议</option></select></label>
-      <p>保留当时结论与依据。旧记录中的到期结果只核验所引用预测，不代表综合建议有效率或模拟交易收益。</p>
       <p
         v-if="outcomeError"
         role="alert"
@@ -271,34 +269,19 @@ onBeforeUnmount(() => { ++sequence; globalThis.clearInterval(clockTimer) })
         :key="item.reportId"
         class="decision-history"
       >
-        <strong>{{ item.adviceState === 'INSUFFICIENT' ? '暂不形成建议' : labels[item.decision ?? ''] ?? '生成失败' }}</strong> · {{ time(item.generatedAt) }}
-        <HoldingAdviceDetails
-          v-if="['HOLDING_ADVICE_V4_EVIDENCE', 'HOLDING_ADVICE_V5_PERSONAL'].includes(item.strategyVersion)"
-          :report="item"
-        />
-        <p v-else>
-          {{ item.summary }}
-        </p>
-        <details v-if="!['HOLDING_ADVICE_V4_EVIDENCE', 'HOLDING_ADVICE_V5_PERSONAL'].includes(item.strategyVersion)">
-          <summary>当时依据与预测到期结果</summary><p
-            v-for="reason in sortPredictionEvidence([...item.supportingEvidence,...(item.neutralEvidence ?? []),...item.opposingEvidence])"
-            :key="reason"
-          >
-            {{ reason }}
-          </p><div
-            v-for="reference in sortPredictionHorizons(item.modelRefs, reference => reference.horizonId)"
-            :key="reference.predictionId"
-          >
-            <p>{{ { T5_V1: '五日', T20_V1: '二十日', M6_V1: '半年' }[reference.horizonId] || '对应周期' }}</p><p v-if="!outcomes[reference.predictionId]?.outcomes?.length">
-              {{ outcomes[reference.predictionId]?.check_state?.summary ?? '尚未到期或到期资料待齐，不计为正确或错误' }}
-            </p><p
-              v-for="check in outcomes[reference.predictionId]?.outcomes"
-              :key="check.checkedAt"
-            >
-              {{ time(check.checkedAt) }}核验：{{ check.correct ? '方向相符' : '方向不符' }}；区间总回报 {{ (Number(check.totalReturn)*100).toFixed(2) }}%
-            </p>
-          </div>
-        </details>
+        <div class="decision-history-heading">
+          <strong>{{ item.adviceState === 'INSUFFICIENT' ? '暂不形成建议' : labels[item.decision ?? ''] ?? '生成失败' }}</strong>
+          <time>{{ time(item.generatedAt) }}</time>
+        </div>
+        <p>{{ item.summary }}</p>
+        <button
+          type="button"
+          class="history-detail-button"
+          aria-haspopup="dialog"
+          @click="selectedHistory = item"
+        >
+          查看当时依据与核对 <span aria-hidden="true">›</span>
+        </button>
       </article>
       <ListPagination 
         :page="page"
@@ -311,6 +294,44 @@ onBeforeUnmount(() => { ++sequence; globalThis.clearInterval(clockTimer) })
         @last="lastHistoryPage"
       />
     </div>
+    <PredictionHistoryDrawer
+      v-if="selectedHistory"
+      :title="`${time(selectedHistory.generatedAt)} · 当时依据与核对`"
+      @close="selectedHistory = null"
+    >
+      <HoldingAdviceDetails
+        v-if="['HOLDING_ADVICE_V4_EVIDENCE', 'HOLDING_ADVICE_V5_PERSONAL'].includes(selectedHistory.strategyVersion)"
+        :report="selectedHistory"
+      />
+      <template v-else>
+        <h3>当时依据</h3>
+        <p
+          v-for="reason in sortPredictionEvidence([...selectedHistory.supportingEvidence,...(selectedHistory.neutralEvidence ?? []),...selectedHistory.opposingEvidence])"
+          :key="reason"
+        >
+          {{ reason }}
+        </p>
+        <h3>到期核对</h3>
+        <p v-if="!selectedHistory.modelRefs.length">
+          本记录没有可核对的预测引用。
+        </p>
+        <div
+          v-for="reference in sortPredictionHorizons(selectedHistory.modelRefs, reference => reference.horizonId)"
+          :key="reference.predictionId"
+        >
+          <p>{{ { T5_V1: '五日', T20_V1: '二十日', M6_V1: '半年' }[reference.horizonId] || '对应周期' }}</p>
+          <p v-if="!outcomes[reference.predictionId]?.outcomes?.length">
+            {{ outcomes[reference.predictionId]?.check_state?.summary ?? '尚未到期或到期资料待齐，不计为正确或错误' }}
+          </p>
+          <p
+            v-for="check in outcomes[reference.predictionId]?.outcomes"
+            :key="check.checkedAt"
+          >
+            {{ time(check.checkedAt) }}核验：{{ check.correct ? '方向相符' : '方向不符' }}；区间总回报 {{ (Number(check.totalReturn)*100).toFixed(2) }}%
+          </p>
+        </div>
+      </template>
+    </PredictionHistoryDrawer>
     <RouterLink
       v-if="compact"
       :to="{ name: 'portfolio-advice', query: { fund: fundCode, from: route.fullPath } }"
@@ -324,6 +345,10 @@ onBeforeUnmount(() => { ++sequence; globalThis.clearInterval(clockTimer) })
 .decision-panel h2 { font-size:23px; margin:6px 0; }.decision-panel p,.decision-panel li { line-height:1.7; }
 .decision-panel details { margin-top:16px; overflow-wrap:anywhere; font-size:14px; }.decision-panel summary { cursor:pointer; min-height:36px; }
 .decision-time { color:#66766f; font-size:13px; }
-.decision-history { border-top:1px solid #d6e4dd; padding:12px 0; }
+.decision-history { border-top:1px solid #d6e4dd; padding:16px 0; }
+.decision-history-heading { display:flex; align-items:baseline; justify-content:space-between; gap:8px 16px; flex-wrap:wrap; }
+.decision-history-heading time { color:#66766f; font-size:13px; }
+.history-detail-button { display:inline-flex; align-items:center; gap:8px; min-height:36px; padding:8px 0; border:0; background:transparent; color:var(--ui-primary); font:inherit; cursor:pointer; }
+.history-detail-button:hover { color:var(--ui-ink); }
 @media(max-width:600px) { .decision-panel { padding:16px; }.decision-panel button { min-height:44px; } }
 </style>

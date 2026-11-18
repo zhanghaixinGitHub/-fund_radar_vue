@@ -34,25 +34,14 @@ export interface AdviceHistory {
   fundCode: string; fundName: string; reports: SimPage<AdviceSummary>; stats: AdviceStats; job: SimOverview['job']
 }
 
-/** 持仓诊断是逐项事实核对，结论只表达「持有理由是否仍成立」，不是涨跌预测。 */
+/** 持仓卡片保留后台检查摘要；独立检查页面已取消。 */
 export type DiagnosisVerdict = 'VALID' | 'CHANGED' | 'INSUFFICIENT'
-export type DiagnosisItemKey = 'MANAGER' | 'SCALE' | 'SAME_TYPE_RANK' | 'BENCHMARK' | 'DRAWDOWN' | 'FEE' | 'DIVIDEND'
 export interface DiagnosisSummary {
   reportId: string; fundCode: string; fundName: string; reportDate: string; generatedAt: string
   verdict: DiagnosisVerdict; cutoffDate: string | null
 }
-export interface DiagnosisItem {
-  item: DiagnosisItemKey; verdict: DiagnosisVerdict; evidence: string; source: string
-  dataAsOfDate: string | null; facts: Record<string, unknown> | null
-}
-export interface DiagnosisReportDetail { report: DiagnosisSummary; items: DiagnosisItem[] }
-/** 尚无持仓或首份报告未生成时 latest 为空，页面如实展示而不是伪造「全部成立」。 */
-export interface DiagnosisHistory {
-  fundCode: string; fundName: string; reports: SimPage<DiagnosisSummary>
-  latest: DiagnosisReportDetail | null; job: SimOverview['job']
-}
 
-/** 规则草案只是参考数字，止盈/减仓线触发只产生复核提示，不构成投资建议。 */
+/** 系统参考不自动生效；本人保存的止盈、持仓亏损或高点回撤提醒只产生复核提示。 */
 export type RuleTier = 'CONSERVATIVE' | 'BALANCED' | 'LOOSE' | 'CUSTOM'
 export type RuleDraftStatus = 'AVAILABLE' | 'DATA_INSUFFICIENT' | 'NOT_APPLICABLE'
 /** 末端无法完整观察的触发记 censored，不补造数值。 */

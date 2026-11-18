@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import ListPagination from '@/components/ListPagination.vue'
+import HoldingReminderSettings from '@/components/HoldingReminderSettings.vue'
 import { usePageNavigation } from '@/composables/usePageNavigation'
+import { useAuthStore } from '@/stores/auth'
 import ReviewNoticePanel from '@/components/ReviewNoticePanel.vue'
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
@@ -13,6 +15,8 @@ import { alertAvailabilityNote, alertDescriptions } from '@/utils/alertPresentat
 import type { NotificationItem, NotificationPage } from '@/types/notification'
 import { riskLevelLabel, signalDirectionLabel } from '@/utils/fundPresentation'
 
+const auth = useAuthStore()
+const canManageHoldingReminders = computed(() => auth.hasPermission('PORTFOLIO_SELF_READ'))
 const pageSize = ref(10)
 const notificationPage = ref<NotificationPage | null>(null)
 const rulePageSize = ref(10)
@@ -197,7 +201,10 @@ const { section, sectionLabel } = usePageNavigation()
     class="notifications-page"
     aria-labelledby="notifications-title"
   >
-    <h1 id="notifications-title" class="visually-hidden">
+    <h1
+      id="notifications-title"
+      class="visually-hidden"
+    >
       {{ sectionLabel }}
     </h1>
 
@@ -285,12 +292,25 @@ const { section, sectionLabel } = usePageNavigation()
       </section>
     </template>
 
+    <HoldingReminderSettings
+      v-if="section === 'rules' && canManageHoldingReminders"
+    />
     <section
       v-if="section === 'rules'"
       class="notification-card"
-      aria-label="提醒规则列表"
+      aria-labelledby="followed-reminder-title"
     >
-      <div class="rule-filter-row">
+      <header class="notification-card-heading">
+        <div>
+          <h2 id="followed-reminder-title">
+            关注提醒
+          </h2>
+          <p class="sim-muted">
+            控制已关注基金的分析消息是否接收，不影响关注状态。
+          </p>
+        </div>
+      </header>
+      <div class="rule-filter-row followed-rule-filter">
         <label for="rule-status">提醒状态</label>
         <select
           id="rule-status"
@@ -385,6 +405,7 @@ const { section, sectionLabel } = usePageNavigation()
   padding-bottom: 20px;
   border-bottom: 1px solid rgb(20 68 57 / 14%);
 }
+.followed-rule-filter { padding-top: 20px; }
 .rule-filter-row label { font-weight: 700; }
 .rule-filter-row select {
   min-width: 160px;

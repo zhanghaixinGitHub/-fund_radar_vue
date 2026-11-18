@@ -25,10 +25,7 @@ const pageSections: Record<string, PageSection[]> = {
   'manager-related-fund': [{ key: 'basic', label: '基础资料' }],
   'portfolio-advice': [
     { key: 'latest', label: '最新建议', group: '当前建议' },
-    { key: 'diagnosis', label: '诊断详情' },
-    { key: 'rules', label: '规则草案', group: '规则设置' },
-    { key: 'history', label: '历史记录', group: '历史与回看' },
-    { key: 'review', label: '效果回看' },
+    { key: 'history', label: '历史记录', group: '历史记录' },
   ],
   'watchlist-fund-detail': [
     { key: 'basic', label: '基础资料', group: '基金概况' },
@@ -68,8 +65,8 @@ const pageSections: Record<string, PageSection[]> = {
     { key: 'funding', label: '本人资金安排' },
   ],
   notifications: [
-    { key: 'messages', label: '已触发提醒', group: '提醒记录' },
-    { key: 'rules', label: '提醒规则', group: '规则设置' },
+    { key: 'messages', label: '提醒消息', group: '提醒记录' },
+    { key: 'rules', label: '提醒设置', group: '我的设置' },
   ],
   profile: [
     { key: 'overview', label: '基本信息', group: '账户概览' },

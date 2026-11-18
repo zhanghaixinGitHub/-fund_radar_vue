@@ -1,4 +1,4 @@
-import type { AdviceDecision, AdviceSummary, DiagnosisItemKey, DiagnosisVerdict, RuleTriggerStats } from '@/types/advice'
+import type { AdviceDecision, AdviceSummary, DiagnosisVerdict, RuleTriggerStats } from '@/types/advice'
 
 export const adviceLabel = (decision?: AdviceDecision) => decision === 'BUY' ? '建议买入' : decision === 'HOLD' ? '建议继续持有'
   : decision === 'SELL' ? '建议卖出' : '暂无操作建议'
@@ -53,15 +53,6 @@ export function diagnosisVerdictLabel(value: unknown): string {
 export function diagnosisVerdictTone(value: unknown): string {
   return value === 'VALID' ? 'diagnosis-valid' : value === 'CHANGED' ? 'diagnosis-changed'
     : value === 'INSUFFICIENT' ? 'diagnosis-insufficient' : 'diagnosis-unknown'
-}
-/** 七个诊断项的固定展示顺序，页面不依赖接口返回顺序。 */
-export const diagnosisItemOrder: readonly DiagnosisItemKey[] = ['MANAGER', 'SCALE', 'SAME_TYPE_RANK', 'BENCHMARK', 'DRAWDOWN', 'FEE', 'DIVIDEND']
-const diagnosisItemLabels: Record<DiagnosisItemKey, string> = {
-  MANAGER: '基金经理', SCALE: '规模变化', SAME_TYPE_RANK: '同类排名', BENCHMARK: '业绩基准',
-  DRAWDOWN: '当前回撤', FEE: '费用', DIVIDEND: '分红',
-}
-export function diagnosisItemLabel(key: unknown): string {
-  return typeof key === 'string' && key in diagnosisItemLabels ? diagnosisItemLabels[key as DiagnosisItemKey] : '诊断项目待确认'
 }
 /** 无数据截至日或截至日早于参考日 7 天以上视为陈旧，页面必须显著标示。 */
 export function diagnosisStale(cutoffDate: string | null | undefined, today: string): boolean {

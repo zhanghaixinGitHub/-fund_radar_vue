@@ -174,6 +174,9 @@ router.beforeEach(async (to) => {
   if (!authStore.isAuthenticated) {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
+  if (to.name === 'portfolio-advice' && to.query.section === 'rules') {
+    return { name: 'notifications', query: { section: 'rules', fund: to.query.fund } }
+  }
   if (to.meta.permissions?.some((permission) => !authStore.hasPermission(permission))) {
     return { name: 'not-authorized' }
   }

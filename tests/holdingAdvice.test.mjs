@@ -68,6 +68,7 @@ async function mount(t, readResult, options = {}) {
   const component = (await import(compile('../src/components/DecisionPanelV2.vue', {
     'vue-router': url("export const useRoute = () => ({fullPath:'/portfolio?section=holdings&holding=008888'})"),
     '@/components/HoldingAdviceDetails.vue': details,
+    '@/components/PredictionHistoryDrawer.vue': url(`import {h} from '${vue}';export default {props:['title'],emits:['close'],setup:(props,{slots,emit})=>()=>h('dialog',{open:true},[h('h2',{},props.title),slots.default?.(),h('button',{onClick:()=>emit('close')},'关闭')])}`),
     '@/components/ListPagination.vue': url('export default { render: () => null }'),
     '@/api/multiPrediction': url(`export const {readDecision,generateDecision,readDecisionHistory,readDecisionOutcomes,readStrategyPreference,saveStrategyPreference} = globalThis[${JSON.stringify(key)}]`),
     '@/stores/auth': url('export const useAuthStore = () => ({ hasPermission: () => true })'),
@@ -118,17 +119,34 @@ test('建议页面不再显示生成按钮，仍可切换基金查看已有建�
   assert.match(view.text(), /021740继续持有/)
   assert.deepEqual(view.calls.generate, [])
 })
-test('当前历史读取新版本，查看不会触发生成', async t => {
+test('历史只列建议，依据与核对点击后进入右侧抽屉', async t => {
   const view = await mount(t, () => null, { historyOnly: true, history: [report('008888')] })
-  assert.equal(view.calls.history[0].version, 'HOLDING_ADVICE_V4_EVIDENCE')
+  assert.equal(view.calls.history[0].version, undefined)
   assert.deepEqual(view.calls.generate, [])
-  assert.match(view.text(), /当前持仓综合建议.*当时结论与依据.*008888继续持有/)
+  assert.equal(view.nodes().some(node => node.type === 'select' || node.type === 'dialog'), false)
+  assert.match(view.text(), /008888继续持有.*查看当时依据与核对/)
+  assert.doesNotMatch(view.text(), /建议记录|按时间保留|当前持仓综合建议|此前持仓综合建议|此前综合建议|早期综合建议/)
+  const trigger = view.buttons().find(node => /查看当时依据与核对/.test(textOf(node)))
+  assert.ok(trigger)
+  trigger.props.onClick()
+  await settle()
+  assert.equal(view.nodes().some(node => node.type === 'dialog'), true)
+  assert.match(view.text(), /当时依据与核对.*为什么这样建议/)
+  const close = view.buttons().find(node => textOf(node) === '关闭')
+  assert.ok(close)
+  close.props.onClick()
+  await settle()
+  assert.equal(view.nodes().some(node => node.type === 'dialog'), false)
 })
 test('旧报告仍显示原建议与依据，后台身份不进入日常页面', async t => {
   const old = { ...report('008888'), strategyVersion: 'HOLDING_ADVICE_V3_THREE_STATE',
     summary: '此前保存的持有判断。', supportingEvidence: ['二十日原始支持依据。'],
     modelRefs: [{ predictionId: 'old-prediction', horizonId: 'T20_V1', modelId: 'private-model', modelHash: 'private-hash', activationRevision: 3 }] }
   const view = await mount(t, () => null, { historyOnly: true, history: [old] })
+  const trigger = view.buttons().find(node => /查看当时依据与核对/.test(textOf(node)))
+  assert.ok(trigger)
+  trigger.props.onClick()
+  await settle()
   assert.match(view.text(), /此前保存的持有判断.*二十日原始支持依据/)
   assert.doesNotMatch(view.text(), /private-model|private-hash|采用版本/)
   assert.deepEqual(view.calls.generate, [])

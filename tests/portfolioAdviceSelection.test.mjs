@@ -33,33 +33,33 @@ const textOf = node => `${node.text??''}${(node.children??[]).map(textOf).join('
 const positions = [{fundCode:'000002',fundName:'乙基金',shares:'20'}, {fundCode:'000001',fundName:'甲基金',shares:'10'}, {fundCode:'000099',fundName:'已清仓基金',shares:'0'}]
 async function mount(t, options={}) {
   const route=reactive({query:{...options.query}})
-  const calls={replace:[],overview:0,watchlist:[],diagnosis:[],draft:[],rules:[],history:[],generate:[]}
+  const calls={replace:[],overview:0,watchlist:[],draft:[],rules:[],history:[],generate:[]}
   const router={replace:async target=>{calls.replace.push(target);route.query={...target.query}}}
   const key=`__adviceSelection${Math.random().toString(16).slice(2)}`
   const emptyHistory={fundName:'已选基金',reports:{items:[],totalCount:0},job:null}
   const api={}
   for(const name of ['confirmHoldingRule','generateAdvice','generateRuleDraft','getAdviceReport','revokeHoldingRule']) api[name]=async code=>{calls.generate.push({name,code});return {}}
   api.getAdviceReport=async()=>null
-  api.fetchFundDiagnosis=async code=>{calls.diagnosis.push(code);return {...emptyHistory,latest:null}}
   api.fetchRuleDraft=async code=>{calls.draft.push(code);return {status:'DATA_INSUFFICIENT',reason:'资料不足',tiers:[]}}
   api.fetchHoldingRules=async code=>{calls.rules.push(code);return {active:null,history:[]}}
   api.getAdviceHistory=async code=>{calls.history.push(code);return emptyHistory}
-  globalThis[key]={route,router,api,section:computed(()=>route.query.section??'latest'),
+  globalThis[key]={route,router,api,
     getSimOverview:async()=>{calls.overview++;return options.overview?options.overview(calls.overview):{positions}},
+    section:computed(()=>['diagnosis','review'].includes(route.query.section)?'latest':route.query.section??'latest'),
     getWatchlist:async query=>{calls.watchlist.push(query);return options.watchlist?options.watchlist(query):{items:[]}}}
   const {descriptor}=parse(read('../src/views/PortfolioAdvicePage.vue'))
   const script=compileScript(descriptor,{id:key,inlineTemplate:true})
   let code=ts.transpileModule(script.content,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText
   const stub=url(`import {h} from '${vue}';export default {props:['fundCode','historyOnly'],setup:p=>()=>h('p',{},'建议组件 '+p.fundCode+(p.historyOnly?' 历史':''))}`)
   for(const [from,to] of Object.entries({
-    vue,'vue-router':url(`export const useRoute=()=>globalThis[${JSON.stringify(key)}].route;export const useRouter=()=>globalThis[${JSON.stringify(key)}].router`),
+    vue,'vue-router':url(`import {h} from '${vue}';export const useRoute=()=>globalThis[${JSON.stringify(key)}].route;export const useRouter=()=>globalThis[${JSON.stringify(key)}].router;export const RouterLink={props:['to'],setup:(props,{slots})=>()=>h('a',{'data-section':props.to.query?.section,'data-fund':props.to.query?.fund},slots.default?.())}`),
     '@/api/advice':url(`export const {${Object.keys(api).join(',')}}=globalThis[${JSON.stringify(key)}].api`),
     '@/api/simulation':url(`export const {getSimOverview}=globalThis[${JSON.stringify(key)}]`),
     '@/api/watchlist':url(`export const {getWatchlist}=globalThis[${JSON.stringify(key)}]`),
     '@/composables/usePageNavigation':url(`export const usePageNavigation=()=>({section:globalThis[${JSON.stringify(key)}].section})`),
     '@/stores/auth':url('export const useAuthStore=()=>({hasPermission:()=>true})'),
     '@/components/ListPagination.vue':url('export default {render:()=>null}'),
-    '@/components/DecisionPanelV2.vue':stub,'@/components/AutomaticEffectsPanel.vue':stub,
+    '@/components/DecisionPanelV2.vue':stub,'@/components/HoldingReminderPanel.vue':stub,
     '@/utils/pagination':url(stripTypeScriptTypes(read('../src/utils/pagination.ts'))),
     '@/utils/advice':url(stripTypeScriptTypes(read('../src/utils/advice.ts'))),
     '@/utils/simulation':url(stripTypeScriptTypes(read('../src/utils/simulation.ts'))),
@@ -86,11 +86,13 @@ test('直接进入留空，普通搜索框不弹下拉且输入不查询',async 
 test('切换基金保留栏目和原持仓来源，清除上一份报告定位',async t=>{
   const from='/portfolio?section=holdings&page=2&holding=000002'
   const view=await mount(t,{query:{fund:'000001',section:'history',from,report:'old',page:'2',start:'2026-10-01'}})
+  assert.deepEqual(view.calls.history,['000001'])
   await view.select('000002')
   assert.equal(view.route.query.section,'history');assert.equal(view.route.query.from,from)
   assert.equal(view.route.query.report,undefined);assert.equal(view.route.query.page,undefined)
   assert.equal(view.route.query.start,undefined)
-  assert.equal(view.calls.history.at(-1),'000002')
+  assert.deepEqual(view.calls.history,['000001'])
+  assert.doesNotMatch(view.text(),/早期二十日建议|按日期查看/)
 })
 test('带基金的旧链接不被默认选择覆盖，已清仓记录仍可查看',async t=>{
   const view=await mount(t,{query:{fund:'000099'}})
@@ -109,14 +111,17 @@ test('空持仓不拿关注代替，错误有重试且不伪装为空持仓',asy
   await retry.props.onClick();await settle()
   assert.equal(failed.route.query.fund,undefined)
 })
-test('诊断与规则原栏目按当前选择读取，关注失败不影响选择持仓',async t=>{
+test('旧持仓检查和效果回看链接回到最新建议，当前基金提供站内提醒设置入口',async t=>{
   const view=await mount(t,{query:{fund:'000123'},watchlist:async()=>{throw new Error('unavailable')}})
   assert.match(view.text(),/关注信息暂时无法核对/)
   await view.select('000002')
   view.route.query={...view.route.query,section:'diagnosis'};await settle()
-  assert.equal(view.calls.diagnosis.at(-1),'000002')
-  view.route.query={...view.route.query,section:'rules'};await settle()
-  assert.equal(view.calls.draft.at(-1),'000002');assert.equal(view.calls.rules.at(-1),'000002')
+  assert.match(view.text(),/建议组件 000002/);assert.doesNotMatch(view.text(),/建议组件 000002 历史/)
+  view.route.query={...view.route.query,section:'review'};await settle()
+  assert.match(view.text(),/建议组件 000002/);assert.doesNotMatch(view.text(),/建议组件 000002 历史/)
+  const reminder=view.nodes().find(n=>n.type==='a'&&textOf(n).includes('设置该基金提醒'))
+  assert.equal(reminder.props['data-section'],'rules');assert.equal(reminder.props['data-fund'],'000002')
+  assert.deepEqual(view.calls.draft,[]);assert.deepEqual(view.calls.rules,[])
   assert.deepEqual(view.calls.generate,[])
 })
 test('读取持仓期间出现明确基金地址，不被默认基金覆盖',async t=>{

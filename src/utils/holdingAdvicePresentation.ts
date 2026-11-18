@@ -42,8 +42,8 @@ export function holdingQualityRows(value?: string): AdviceExcerpt[] {
 
 /** 重要订单、冻结和规则限制不截断；费用未知用对应业务短句说明。 */
 export function holdingImportantLimits(report: DecisionReport): string[] {
-  const limits = report.executionConstraints.filter(text => /已有待确认|已有执行中的定投|冻结|已确认减仓线|暂缓操作不代表/.test(text))
-  for (const text of report.opposingEvidence) if (/本人确认|已确认个人规则|本人预计用款/.test(text)) limits.push(text)
+  const limits = report.executionConstraints.filter(text => /已有待确认|已有执行中的定投|冻结|已确认减仓线|已设置高点回撤提醒|已设置持仓亏损提醒|暂缓操作不代表/.test(text))
+  for (const text of report.opposingEvidence) if (/本人确认|本人设置|已确认个人规则|本人预计用款/.test(text)) limits.push(text)
   if (report.executionConstraints.some(text => text.startsWith('未核齐本次申赎'))) limits.push('申赎开放状态及逐笔费用尚未核齐，操作前需核对；本次不提供精确买卖数量。')
   return [...new Set(limits)]
 }
