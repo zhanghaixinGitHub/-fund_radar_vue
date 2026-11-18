@@ -2,20 +2,21 @@
 import ListPagination from '@/components/ListPagination.vue'
 import HoldingAdviceDetails from '@/components/HoldingAdviceDetails.vue'
 import { useRoute } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import { readDecision, readDecisionHistory, readDecisionOutcomes, readStrategyPreference, saveStrategyPreference } from '@/api/multiPrediction'
+import { readDecision, readDecisionHistory, readDecisionOutcomes, generateDecision } from '@/api/multiPrediction'
 import type { DecisionOutcome } from '@/api/multiPrediction'
 import type { DecisionReport } from '@/types/multiPrediction'
-import { useAuthStore } from '@/stores/auth'
 import { sortPredictionEvidence, sortPredictionHorizons } from '@/utils/predictionHorizon'
 import { findLastPage, readFixedPage } from '@/utils/pagination'
 const props = defineProps<{ fundCode: string; compact?: boolean; historyOnly?: boolean; initialReport?: DecisionReport | null }>()
-const auth = useAuthStore()
 const route = useRoute()
+const auth = useAuthStore()
+const generating = ref(false)
 const report = ref<DecisionReport | null>(null), history = ref<DecisionReport[]>([])
-const error = ref(''), preference = ref('BALANCED'), isDefault = ref(true)
+const error = ref('')
 const page = ref(1), outcomes = ref<Record<string, DecisionOutcome>>({}), outcomeError = ref('')
-const historyVersion = ref('HOLDING_ADVICE_V4_EVIDENCE')
+const historyVersion = ref('HOLDING_ADVICE_V5_PERSONAL')
 const historyLoading = ref(false)
 const reportLoading = ref(false)
 const pageSize = ref(10)
@@ -32,7 +33,7 @@ const time = (value: string) => new Date(value).toLocaleString('zh-CN', { hour12
 const clockNow = ref(Date.now())
 const clockTimer = globalThis.setInterval(() => { clockNow.value = Date.now() }, 30_000)
 const needsReview = computed(() => !!report.value && (['LEGACY', 'CHANGED', 'EXPIRED', 'UNVERIFIED'].includes(report.value.applicability ?? '') || Date.parse(report.value.validUntil) <= clockNow.value))
-const isNew = computed(() => report.value?.strategyVersion === 'HOLDING_ADVICE_V4_EVIDENCE')
+const isNew = computed(() => ['HOLDING_ADVICE_V4_EVIDENCE', 'HOLDING_ADVICE_V5_PERSONAL'].includes(report.value?.strategyVersion ?? ''))
 const title = computed(() => reportLoading.value ? '正在读取综合建议…' : error.value && !report.value ? '综合建议暂时无法读取' : needsReview.value ? '已有建议需重新评估' : report.value?.adviceState === 'INSUFFICIENT' ? '暂不形成综合建议' : report.value?.generationStatus === 'FAILED' ? '本次建议生成失败' : labels[report.value?.decision ?? ''] ?? '尚无综合建议')
 /** 历史接口按二十条读取，展示窗口和核对结果同步合并，避免切换条数后记录错配。 */
 async function load() {
@@ -55,9 +56,8 @@ async function load() {
     return { items, hasMore: items.length === 20 }
   }, target, size)
   try {
-    const [value, prefs, initial] = await Promise.all([
+    const [value, initial] = await Promise.all([
       props.historyOnly ? Promise.resolve(null) : readDecision(code),
-      props.compact || props.historyOnly ? Promise.resolve({ preference: 'BALANCED', defaultPreference: true }) : readStrategyPreference(),
       props.historyOnly ? read(page.value) : Promise.resolve(null),
     ])
     let records = initial
@@ -65,7 +65,7 @@ async function load() {
       records = (await findLastPage(read, row => row.items.length > 0, row => row.hasMore, () => run === sequence))?.value ?? null
     }
     if (run !== sequence) return
-    report.value = value; preference.value = prefs.preference; isDefault.value = prefs.defaultPreference
+    report.value = value
     history.value = records?.items ?? []; outcomes.value = checks
     if (records) {
       page.value = records.page
@@ -75,9 +75,16 @@ async function load() {
   } catch (e) { if (run === sequence) error.value = e instanceof Error ? e.message : '建议读取失败' }
   finally { if (run === sequence) { historyLoading.value = false; reportLoading.value = false } }
 }
-async function changePreference() {
-  try { await saveStrategyPreference(preference.value); isDefault.value = false }
-  catch (e) { error.value = e instanceof Error ? e.message : '策略偏好保存失败' }
+async function reassess() {
+  if (generating.value || reportLoading.value || !auth.hasPermission('SIM_PORTFOLIO_SELF_WRITE')) return
+  const run = ++sequence
+  const code = props.fundCode
+  generating.value = true; error.value = ''
+  try {
+    await generateDecision(code)
+    if (run === sequence) await load()
+  } catch { if (run === sequence) error.value = '本次建议未能确认保存，请重新读取后再试。原建议保留。' }
+  finally { generating.value = false }
 }
 async function historyPage(value: number, size = pageSize.value) {
   if (historyLoading.value || value < 1) return
@@ -111,13 +118,22 @@ onBeforeUnmount(() => { ++sequence; globalThis.clearInterval(clockTimer) })
 <template>
   <section
     class="decision-panel"
-    :aria-busy="historyLoading || reportLoading"
+    :aria-busy="historyLoading || reportLoading || generating"
     aria-label="持仓综合建议"
   >
     <div class="section-heading">
       <div>
         <h2>{{ historyOnly ? '综合建议历史' : title }}</h2>
       </div>
+      <button
+        v-if="!compact && !historyOnly && auth.hasPermission('SIM_PORTFOLIO_SELF_WRITE')"
+        class="secondary-button"
+        type="button"
+        :disabled="generating || reportLoading"
+        @click="reassess"
+      >
+        {{ generating ? '正在评估…' : report ? '重新评估' : '生成建议' }}
+      </button>
     </div>
     <p
       v-if="error"
@@ -234,32 +250,12 @@ onBeforeUnmount(() => { ++sequence; globalThis.clearInterval(clockTimer) })
     <p v-else-if="!error && !historyOnly">
       生成后保存当时的基金依据、持仓和操作安排。资料不足时会说明原因。
     </p>
-    <div
-      v-if="!reportLoading && !error && !compact && !historyOnly && auth.hasPermission('SIM_PORTFOLIO_SELF_WRITE')"
-      class="preference"
-    >
-      <label :for="`preference-${fundCode}`">综合建议偏好</label>
-      <select
-        :id="`preference-${fundCode}`"
-        v-model="preference"
-        @change="changePreference"
-      >
-        <option value="SHORT">
-          短线
-        </option><option value="BALANCED">
-          均衡
-        </option><option value="LONG">
-          长线
-        </option>
-      </select>
-      <small>{{ isDefault ? '尚未设置个人偏好' : '已保存个人选择' }}。当前持仓建议分别核对各周期，不按偏好补齐缺失依据。</small>
-    </div>
     <div v-if="historyOnly">
       <label>历史范围 <select
         v-model="historyVersion"
         :disabled="historyLoading"
         @change="historyPage(1)"
-      ><option value="HOLDING_ADVICE_V4_EVIDENCE">当前持仓综合建议</option><option value="HOLDING_ADVICE_V3_THREE_STATE">此前综合建议</option><option value="HOLDING_ADVICE_V2_EXPERIMENTAL">早期综合建议</option></select></label>
+      ><option value="HOLDING_ADVICE_V5_PERSONAL">当前持仓综合建议</option><option value="HOLDING_ADVICE_V4_EVIDENCE">此前持仓综合建议</option><option value="HOLDING_ADVICE_V3_THREE_STATE">此前综合建议</option><option value="HOLDING_ADVICE_V2_EXPERIMENTAL">早期综合建议</option></select></label>
       <p>保留当时结论与依据。旧记录中的到期结果只核验所引用预测，不代表综合建议有效率或模拟交易收益。</p>
       <p
         v-if="outcomeError"
@@ -277,13 +273,13 @@ onBeforeUnmount(() => { ++sequence; globalThis.clearInterval(clockTimer) })
       >
         <strong>{{ item.adviceState === 'INSUFFICIENT' ? '暂不形成建议' : labels[item.decision ?? ''] ?? '生成失败' }}</strong> · {{ time(item.generatedAt) }}
         <HoldingAdviceDetails
-          v-if="item.strategyVersion === 'HOLDING_ADVICE_V4_EVIDENCE'"
+          v-if="['HOLDING_ADVICE_V4_EVIDENCE', 'HOLDING_ADVICE_V5_PERSONAL'].includes(item.strategyVersion)"
           :report="item"
         />
         <p v-else>
           {{ item.summary }}
         </p>
-        <details v-if="item.strategyVersion !== 'HOLDING_ADVICE_V4_EVIDENCE'">
+        <details v-if="!['HOLDING_ADVICE_V4_EVIDENCE', 'HOLDING_ADVICE_V5_PERSONAL'].includes(item.strategyVersion)">
           <summary>当时依据与预测到期结果</summary><p
             v-for="reason in sortPredictionEvidence([...item.supportingEvidence,...(item.neutralEvidence ?? []),...item.opposingEvidence])"
             :key="reason"
@@ -327,7 +323,7 @@ onBeforeUnmount(() => { ++sequence; globalThis.clearInterval(clockTimer) })
 .decision-panel { padding:20px; margin:16px 0; border:1px solid #d6e4dd; border-radius:12px; background:#f7faf8; min-width:0; }
 .decision-panel h2 { font-size:23px; margin:6px 0; }.decision-panel p,.decision-panel li { line-height:1.7; }
 .decision-panel details { margin-top:16px; overflow-wrap:anywhere; font-size:14px; }.decision-panel summary { cursor:pointer; min-height:36px; }
-.decision-time { color:#66766f; font-size:13px; }.preference { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:16px; }
-.preference select { padding:9px; border:1px solid #bdcfc5; border-radius:6px; background:white; }.decision-history { border-top:1px solid #d6e4dd; padding:12px 0; }
+.decision-time { color:#66766f; font-size:13px; }
+.decision-history { border-top:1px solid #d6e4dd; padding:12px 0; }
 @media(max-width:600px) { .decision-panel { padding:16px; }.decision-panel button { min-height:44px; } }
 </style>

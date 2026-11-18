@@ -64,9 +64,8 @@ const pageSections: Record<string, PageSection[]> = {
     { key: 'orders', label: '交易记录', group: '交易与收益' },
     { key: 'earnings', label: '收益明细' },
     { key: 'plans', label: '定投计划', group: '定投与资金' },
+    { key: 'preferences', label: '投资偏好' },
     { key: 'funding', label: '本人资金安排' },
-    { key: 'account-risk', label: '已录入持仓检查', group: '检查与比较' },
-    { key: 'options', label: '调整前的条件比较' },
   ],
   notifications: [
     { key: 'messages', label: '已触发提醒', group: '提醒记录' },
@@ -205,4 +204,10 @@ export function usePageNavigation() {
     return { path: route.path, query }
   }
   return { sections, section, sectionLabel, moduleLabel, returnTarget, returnLabel, sectionTarget }
+}
+
+// 开发时导航表被多个已挂载页面引用，局部热更新可能使侧栏与正文使用不同版本。
+// 导航规则变更后统一重载，保留当前地址，重新建立整页的栏目状态。
+if (import.meta.hot) {
+  import.meta.hot.accept(() => { globalThis.location.reload() })
 }

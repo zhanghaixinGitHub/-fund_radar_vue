@@ -6,6 +6,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { readLatestDecisions } from '@/api/multiPrediction'
 import type { DecisionReport } from '@/types/multiPrediction'
+import InvestmentPreferencePanel from '@/components/InvestmentPreferencePanel.vue'
 import AccountFundingPanel from '@/components/AccountFundingPanel.vue'
 import AccountRiskPanel from '@/components/AccountRiskPanel.vue'
 import AccountOptionsPanel from '@/components/AccountOptionsPanel.vue'
@@ -125,7 +126,7 @@ let detailGeneration = 0
 let polling: ReturnType<typeof globalThis.setInterval> | undefined
 
 async function load() {
-  if (loading.value || ['funding', 'account-risk', 'options'].includes(section.value)) return
+  if (loading.value || ['preferences', 'funding', 'account-risk', 'options'].includes(section.value)) return
   // 持仓先显示；附加区域各自完成，不能把慢请求变成整页等待。
   loadSectionData(true)
   const success = await overviewRequest.load()
@@ -251,7 +252,7 @@ watch([section, selectedCode], () => {
   endingPlan.value = null
   managedCode.value = ''
   orderPage.value = 1; ledgerPage.value = 1; orders.value = null; ledger.value = null; periodPlan.value = null
-  if (!['funding', 'account-risk', 'options'].includes(section.value) && !overview.value) void load()
+  if (!['preferences', 'funding', 'account-risk', 'options'].includes(section.value) && !overview.value) void load()
   else void loadDetails()
 })
 watch([orderPage, ledgerPage, orderPageSize, ledgerPageSize, recordMode], () => void loadDetails())
@@ -307,7 +308,7 @@ onBeforeUnmount(() => { alive = false; detailGeneration++; globalThis.clearInter
         </h1>
       </div>
       <div
-        v-if="!['funding', 'account-risk', 'options'].includes(section)"
+        v-if="!['preferences', 'funding', 'account-risk', 'options'].includes(section)"
         class="sim-actions"
       >
         <button
@@ -327,6 +328,7 @@ onBeforeUnmount(() => { alive = false; detailGeneration++; globalThis.clearInter
         </button>
       </div>
     </header>
+    <InvestmentPreferencePanel v-if="section === 'preferences'" />
     <AccountFundingPanel v-if="section === 'funding'" />
     <AccountRiskPanel v-if="section === 'account-risk'" />
     <AccountOptionsPanel v-if="section === 'options'" />

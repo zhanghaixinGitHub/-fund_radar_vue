@@ -13,7 +13,7 @@ type Input = { purpose: string | null; useDate: string | null; requiredAmount: s
 type View = { preferenceId: string; scope: Scope; revision: number; status: string; input: Input | null; confirmedAt: string }
 type Page = { scope: Scope; current: View | null; history: View[]; hasMore: boolean }
 const auth = useAuthStore()
-const scope = ref<Scope>('CONFIRMED')
+const scope = ref<Scope>('SIMULATED')
 const result = ref<Page | null>(null)
 const page = ref(1)
 const pageSize = ref(10)
@@ -21,9 +21,7 @@ const loading = ref(false)
 const saving = ref(false)
 const error = ref('')
 const message = ref('')
-const confirmed = ref(false)
 const form = ref({ purpose: '', useDate: '', requiredAmount: '', willingLossPct: '', affordableLossAmount: '', reviewIntervalDays: '' })
-const scopeName = computed(() => scope.value === 'CONFIRMED' ? '已录入的本人确认持仓' : '模拟组合')
 const canWrite = computed(() => auth.hasPermission('ALERT_RULE_SELF_WRITE'))
 let sequence = 0
 let pending: { content: string; requestId: string } | null = null
@@ -33,10 +31,9 @@ async function load(copyToForm = true) {
   const ticket = ++sequence
   loading.value = true; error.value = ''
   try {
-    const selectedScope = scope.value
     let metadata: Page | null = null
     const window = await readFixedPage(async target => {
-      const value = await get<Page>(`/api/v1/account/funding?scope=${selectedScope}&page=${target}`)
+      const value = await get<Page>(`/api/v1/account/funding?page=${target}`)
       metadata = value
       return { items: value.history, hasMore: value.hasMore }
     }, page.value, pageSize.value)
@@ -47,13 +44,13 @@ async function load(copyToForm = true) {
       const input = value.current?.status === 'ACTIVE' ? value.current.input : null
       form.value = { purpose: input?.purpose ?? '', useDate: input?.useDate ?? '', requiredAmount: input?.requiredAmount ?? '',
         willingLossPct: input?.willingLossPct ?? '', affordableLossAmount: input?.affordableLossAmount ?? '', reviewIntervalDays: input?.reviewIntervalDays?.toString() ?? '' }
-      confirmed.value = false; pending = null
+      pending = null
     }
   } catch { if (ticket === sequence) error.value = '本人资金安排暂时无法读取，请重试。' }
   finally { if (ticket === sequence) loading.value = false }
 }
 async function submit(revoke = false) {
-  if (!confirmed.value || !canWrite.value || !result.value || saving.value) return
+  if (!canWrite.value || !result.value || saving.value) return
   const selected = scope.value
   const raw = form.value
   const input: Input | null = revoke ? null : { purpose: raw.purpose.trim() || null, useDate: raw.useDate || null,
@@ -63,9 +60,9 @@ async function submit(revoke = false) {
   if (pending?.content !== content) pending = { content, requestId: createUUID() }
   saving.value = true; error.value = ''; message.value = ''
   try {
-    await post<View>(`/api/v1/account/funding/${revoke ? 'revoke' : 'confirm'}?scope=${selected}`,
+    await post<View>(`/api/v1/account/funding/${revoke ? 'revoke' : 'confirm'}`,
       { requestId: pending.requestId, expectedRevision: result.value.current?.revision ?? 0, confirmed: true, input })
-    message.value = revoke ? '该范围的资金安排已撤销，历史记录保留。' : '资金安排已保存。它不会改变基金自身的走势判断。'
+    message.value = revoke ? '资金安排已撤销，历史记录保留。' : '资金安排已保存。重新评估后将用于当前持仓建议；基金自身的走势判断保持独立。'
     page.value = 1
     await load()
   } catch (failure) {
@@ -73,25 +70,23 @@ async function submit(revoke = false) {
   } finally { saving.value = false }
 }
 watch(scope, () => { result.value = null; page.value = 1; message.value = ''; void load() }, { immediate: true })
-watch(form, () => { confirmed.value = false }, { deep: true })
 onBeforeUnmount(() => { sequence++ })
 </script>
 
 <template>
   <section
+    class="account-settings fund-results-panel"
     aria-labelledby="funding-title"
     :aria-busy="loading || saving"
   >
-    <h2 id="funding-title">
-      本人资金安排
-    </h2>
-    <p>只用于本人的资金条件复查。空白表示尚未确定；不会替你设置损失阈值，也不会执行买卖。</p>
-    <label>适用范围 <select
-      v-model="scope"
-      :disabled="saving || loading"
-    ><option value="CONFIRMED">已录入的本人确认持仓</option><option value="SIMULATED">模拟组合</option></select></label>
-    <p class="muted">
-      {{ scopeName }}；不代表你的全部资产。两个范围的设置分别保存。
+    <header class="settings-heading">
+      <h2 id="funding-title">
+        本人资金安排
+      </h2>
+      <p>记录用款计划与可承担的损失。未确定的事项可以留空，保存不会执行买卖。</p>
+    </header>
+    <p class="settings-muted">
+      资金安排直接参与当前“我的持仓”的建议判断。修改后需重新评估，历史填写内容与旧建议保留。
     </p>
     <p
       v-if="error"
@@ -111,14 +106,28 @@ onBeforeUnmount(() => { sequence++ })
     >
       {{ message }}
     </p>
+    <p
+      v-if="loading && !result"
+      role="status"
+    >
+      正在读取资金安排…
+    </p>
     <template v-if="result">
-      <p>{{ result.current?.status === 'ACTIVE' ? `当前已确认 · ${direction1dTime(result.current.confirmedAt)}` : '当前没有已确认生效的资金安排。' }}</p>
+      <p class="funding-status">
+        {{ result.current?.status === 'ACTIVE' ? `当前已确认 · ${direction1dTime(result.current.confirmedAt)}` : '当前没有已确认生效的资金安排。' }}
+      </p>
+      <p
+        v-if="!canWrite"
+        class="settings-muted"
+      >
+        当前账号可查看确认历史，暂无修改权限。
+      </p>
       <form
         v-if="canWrite"
         @submit.prevent="submit(false)"
       >
         <fieldset :disabled="saving || loading">
-          <legend>填写已确定的事项</legend>
+          <legend>用款计划</legend>
           <label>资金用途 <input
             v-model="form.purpose"
             maxlength="160"
@@ -136,7 +145,13 @@ onBeforeUnmount(() => { sequence++ })
             min="0"
             step="0.01"
             placeholder="未知请留空"
-          ></label>
+          ><small class="settings-muted">没有预计用款时请填写0；留空表示尚未确定。</small></label>
+        </fieldset>
+        <fieldset :disabled="saving || loading">
+          <legend>损失承受能力</legend>
+          <p class="fieldset-help">
+            愿意接受的比例与现实能承担的金额，请分别填写。建议会与当前账户持有亏损及剩余成本核对，不等于历史回撤或未来损失保证。
+          </p>
           <label>心理上愿意接受的损失比例（%）<input
             v-model="form.willingLossPct"
             type="number"
@@ -152,6 +167,9 @@ onBeforeUnmount(() => { sequence++ })
             step="0.01"
             placeholder="未知请留空"
           ></label>
+        </fieldset>
+        <fieldset :disabled="saving || loading">
+          <legend>复查安排</legend>
           <label>定期复查间隔（天）<input
             v-model="form.reviewIntervalDays"
             type="number"
@@ -161,21 +179,16 @@ onBeforeUnmount(() => { sequence++ })
             placeholder="未确定请留空"
           ></label>
         </fieldset>
-        <label class="confirmation"><input
-          v-model="confirmed"
-          type="checkbox"
-          :disabled="saving || loading"
-        >我已核对适用范围与填写内容，确认保存本次设置或撤销当前安排。</label>
         <div class="actions">
           <button
             type="submit"
-            :disabled="!confirmed || saving || loading"
+            :disabled="saving || loading"
           >
-            确认保存
+            {{ saving ? '处理中…' : '确认保存' }}
           </button><button
             v-if="result.current?.status === 'ACTIVE'"
             type="button"
-            :disabled="!confirmed || saving || loading"
+            :disabled="saving || loading"
             @click="submit(true)"
           >
             撤销当前安排
@@ -212,15 +225,19 @@ onBeforeUnmount(() => { sequence++ })
 </template>
 
 <style scoped>
-h2 { font-size: 1.15rem; } h3 { font-size: 1rem; } p { line-height: 1.75; }
-.muted { color: var(--workspace-muted, #597069); }
-fieldset { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1rem; border: 1px solid #dfe8e3; padding: 1rem; }
-fieldset label { display: flex; flex-direction: column; gap: .5rem; line-height: 1.6; }
-input, select, button { font: inherit; padding: .65rem; border: 1px solid #baccc4; border-radius: .4rem; }
-input { min-width: 0; } input[type=checkbox] { width: auto; }
-.confirmation { display: flex; align-items: flex-start; gap: .5rem; margin: 1rem 0; line-height: 1.7; }
-.actions, nav { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; } button { cursor: pointer; } button:disabled { opacity: .5; cursor: default; }
-.history { margin-top: 1.5rem; } article { border-bottom: 1px solid #dfe8e3; padding: .7rem 0; }
-summary { cursor: pointer; }
-@media(max-width: 650px) { fieldset { grid-template-columns: 1fr; } select { max-width: 100%; } }
+.funding-scope { margin-top:24px; }
+.funding-scope label { display:flex; align-items:center; gap:12px; flex-wrap:wrap; font-weight:600; }
+.funding-scope select { width:auto; max-width:100%; }
+.funding-status { padding:12px 0; border-bottom:1px solid var(--ui-line); color:var(--ui-muted); }
+fieldset { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px 24px; min-width:0; border:0; padding:0; margin:24px 0; max-width:880px; }
+legend { padding:0; margin-bottom:16px; font-size:18px; font-weight:600; }
+fieldset label { display:flex; flex-direction:column; gap:8px; line-height:1.6; min-width:0; }
+fieldset label input { width:100%; }
+.fieldset-help { grid-column:1/-1; color:var(--ui-muted); margin:0; }
+.actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:24px; padding-top:20px; border-top:1px solid var(--ui-line); }
+.history { margin-top:32px; border-top:1px solid var(--ui-line); padding-top:20px; }
+.history summary { cursor:pointer; font-weight:600; }
+.history article { border-bottom:1px solid var(--ui-line); padding:16px 0; overflow-wrap:anywhere; }
+.history h3 { font-size:14px; margin:0 0 8px; }
+@media(max-width:650px) { fieldset { grid-template-columns:1fr; } }
 </style>

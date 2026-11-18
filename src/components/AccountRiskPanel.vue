@@ -13,7 +13,7 @@ interface Result {
   sources: { fundCode: string; reportDate: string; publishedDate: string; sourceUrl: string }[]
   scenarioDeclinePct: number | null; scenarioLoss: string | null; limitations: string[]
 }
-const scope = ref<Scope>('CONFIRMED')
+const scope = ref<Scope>('SIMULATED')
 const scenario = ref('')
 const result = ref<Result | null>(null)
 const loading = ref(false)
@@ -28,7 +28,7 @@ async function load() {
   const ticket = ++sequence
   loading.value = true; error.value = ''
   try {
-    const query = new globalThis.URLSearchParams({ scope: scope.value })
+    const query = new globalThis.URLSearchParams()
     if (scenario.value !== '') query.set('scenarioDeclinePct', scenario.value)
     const value = await get<Result>(`/api/v1/account/risk?${query}`)
     if (ticket !== sequence || value.scope !== scope.value) return
@@ -49,10 +49,6 @@ onBeforeUnmount(() => sequence++)
       资料与情景
     </h2>
     <form @submit.prevent="load">
-      <label>持仓范围 <select
-        v-model="scope"
-        :disabled="loading"
-      ><option value="CONFIRMED">本人确认持仓</option><option value="SIMULATED">模拟组合</option></select></label>
       <label>假设整体下跌（%）<input
         v-model="scenario"
         type="number"

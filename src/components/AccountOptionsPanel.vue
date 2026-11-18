@@ -16,7 +16,7 @@ interface Result {
   conclusion: string; advice: string | null; facts: string[]; personalChecks: string[]
   paths: Candidate[]; invalidationConditions: string[]; limitations: string[]
 }
-const scope = ref<Scope>('CONFIRMED')
+const scope = ref<Scope>('SIMULATED')
 const code = ref('')
 const scenario = ref('')
 const holdings = ref<Holding[]>([])
@@ -28,7 +28,7 @@ async function loadHoldings() {
   const ticket = ++sequence
   busy.value = true; result.value = null; code.value = ''; scenario.value = ''; holdings.value = []; error.value = ''
   try {
-    const value = await get<{ scope: Scope; holdings: Holding[] }>(`/api/v1/account/risk?scope=${scope.value}`)
+    const value = await get<{ scope: Scope; holdings: Holding[] }>(`/api/v1/account/risk`)
     if (ticket === sequence && value.scope === scope.value) holdings.value = value.holdings
   } catch { if (ticket === sequence) error.value = '已录入持仓暂时无法读取，请稍后重试。' }
   finally { if (ticket === sequence) busy.value = false }
@@ -38,7 +38,7 @@ async function load() {
   const ticket = ++sequence
   busy.value = true; error.value = ''; result.value = null
   try {
-    const query = new globalThis.URLSearchParams({ scope: scope.value, fundCode: code.value })
+    const query = new globalThis.URLSearchParams({ fundCode: code.value })
     if (scenario.value !== '') query.set('hypotheticalDeclinePct', scenario.value)
     const value = await get<Result>(`/api/v1/account/options?${query}`)
     if (ticket === sequence && value.scope === scope.value && value.fundCode === code.value) result.value = value
@@ -60,10 +60,6 @@ onBeforeUnmount(() => sequence++)
       先核对本人条件
     </h2>
     <form @submit.prevent="load">
-      <label>持仓范围<select
-        v-model="scope"
-        :disabled="busy"
-      ><option value="CONFIRMED">本人确认持仓</option><option value="SIMULATED">模拟组合</option></select></label>
       <label>已录入基金<select
         v-model="code"
         :disabled="busy"
@@ -90,7 +86,7 @@ onBeforeUnmount(() => sequence++)
       </button>
     </form>
     <p v-if="!busy && !holdings.length && !error">
-      该范围没有已录入的本人持仓；关注基金不能代替持有记录。
+      当前没有持仓；关注基金不能代替持有记录。
     </p>
     <p
       v-if="error"

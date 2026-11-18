@@ -184,3 +184,19 @@ body:has(.app-shell){overflow:clip}
 .app-shell .fund-data-table .fund-table-type{width:64px}
 .app-shell .fund-data-table .fund-table-date-heading{width:104px}
 .app-shell .fund-data-table .fund-table-rating-heading{width:166px}
+
+/* 账号设置复用全站表面、表单与色彩；范围设置与基金详情分开。 */
+.app-shell .account-settings { font-size:14px; max-width:1100px; }
+.app-shell .account-settings .settings-heading h2 { margin:0 0 8px; font-size:28px; line-height:1.4; }
+.app-shell .account-settings p { line-height:1.7; }
+.app-shell .account-settings .settings-heading p { margin:0; color:var(--ui-muted); }
+.app-shell .account-settings .settings-muted { color:var(--ui-muted); }
+.app-shell .account-settings input:not([type=checkbox]):not([type=radio]),.app-shell .account-settings select { box-sizing:border-box; height:40px; min-height:40px; min-width:0; padding:8px 12px; border:1px solid var(--ui-line); border-radius:7px; font:inherit; color:var(--ui-ink); background:var(--ui-surface); }
+.app-shell .account-settings button { min-height:40px; padding:8px 16px; border:1px solid var(--ui-line); border-radius:7px; background:var(--ui-surface); color:var(--ui-primary); font:inherit; cursor:pointer; }
+.app-shell .account-settings button:hover:not(:disabled) { background:var(--ui-sidebar); }
+.app-shell .account-settings button:disabled { opacity:.55; cursor:default; }
+.app-shell .account-settings :is(input,select,button,summary):focus-visible { outline:2px solid var(--ui-primary); outline-offset:3px; }
+.app-shell .account-settings .settings-note { max-width:72ch; color:var(--ui-muted); margin:24px 0; }
+.app-shell .account-settings .settings-error { color:var(--ui-rise); }
+.app-shell .account-settings .settings-actions { display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin-top:24px; }
+@media(max-width:720px) { .app-shell .account-settings input:not([type=checkbox]):not([type=radio]),.app-shell .account-settings select,.app-shell .account-settings button { min-height:44px; height:auto; font-size:16px; } .app-shell .account-settings .settings-heading h2 { font-size:24px; } }

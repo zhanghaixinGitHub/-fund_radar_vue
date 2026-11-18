@@ -113,7 +113,7 @@ onBeforeUnmount(() => sequence++)
         :key="item.noticeId"
       >
         <h3>{{ item.payload.title }}</h3>
-        <p>{{ item.fundCode ? `基金 ${item.fundCode}` : item.scope === 'SIMULATED' ? '模拟组合' : '本人确认持仓' }} · {{ stateLabel(item.lifecycle) }} · {{ item.read ? '已读' : '未读' }}</p>
+        <p>{{ item.fundCode ? `基金 ${item.fundCode}` : '我的持仓' }} · {{ stateLabel(item.lifecycle) }} · {{ item.read ? '已读' : '未读' }}</p>
         <p v-if="item.payload.condition">
           原条件：{{ item.payload.condition }}
         </p>
