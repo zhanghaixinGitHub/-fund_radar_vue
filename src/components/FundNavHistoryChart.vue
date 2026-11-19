@@ -144,7 +144,7 @@ onBeforeUnmount(() => {
         open
       >
         <summary>最近 12 条净值数据表</summary>
-        <table data-table-align data-align-right="2 3">
+        <table class="market-table market-table--compact" data-table-align data-align-right="2 3">
           <thead>
             <tr><th>净值日期</th><th>单位净值</th><th>累计净值</th></tr>
           </thead>

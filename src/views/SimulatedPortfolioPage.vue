@@ -559,7 +559,7 @@ onBeforeUnmount(() => { alive = false; detailGeneration++; globalThis.clearInter
       </template>
       <form
         v-if="section === 'plans' || (!fundCode && section === 'orders')"
-        class="search-panel"
+        class="filter-controls search-panel"
         @submit.prevent="searchScope"
       >
         <label
@@ -679,7 +679,7 @@ onBeforeUnmount(() => { alive = false; detailGeneration++; globalThis.clearInter
             tabindex="0"
           >
             <table
-              class="holdings-table"
+              class="holdings-table market-table"
               data-table-align
               data-align-right="2 3 4 5"
               data-align-center="6"
@@ -779,7 +779,7 @@ onBeforeUnmount(() => { alive = false; detailGeneration++; globalThis.clearInter
                     </template>
                     <td class="holdings-number">
                       <button
-                        class="secondary-button holding-manage-button"
+                        class="secondary-button holding-action-button holding-manage-button"
                         type="button"
                         :aria-label="`快速查看 ${p.fundName}`"
                         @click="openManagement(p.fundCode)"
@@ -1119,30 +1119,30 @@ onBeforeUnmount(() => { alive = false; detailGeneration++; globalThis.clearInter
 .holdings-results-panel { margin-top: 22px; }
 .holdings-list-header { margin: 0 0 20px; }
 .holdings-table-scroll { width: 100%; max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; border-radius: 7px; }
-.holdings-table { width: 100%; min-width: 900px; border-collapse: collapse; table-layout: fixed; text-align: left; }
-.holdings-table thead th { padding: 13px 10px; background: #f3f6f0; color: var(--ui-muted); font-size: 12px; font-weight: 500; }
+.holdings-table { min-width: 900px; table-layout: fixed; text-align: left; }
 .holdings-table thead th:first-child { width: 28%; }
 .holdings-table thead th:nth-child(2) { width: 12%; }
 .holdings-table thead th:nth-child(3) { width: 15%; }
 .holdings-table thead th:nth-child(4) { width: 17%; }
 .holdings-table thead th:nth-child(5) { width: 13%; }
 .holdings-table thead th:nth-child(6) { width: 15%; }
-.holdings-table tbody th, .holdings-table tbody td { padding: 18px 10px; border-bottom: 1px solid #e4ebe0; vertical-align: middle; font-size: 14px; font-weight: 400; }
-.holdings-table tbody th { background: #fff; color: var(--ui-ink); text-align: left; }
-.holdings-table tbody tr:not(.holding-metadata-row) :is(th,td) { border-bottom: 0; }
+.holdings-table tbody th { color: var(--ui-ink); font-weight: 400; text-align: left; }
 .holding-fund-heading { display: flex; align-items: center; flex-wrap: nowrap; gap: 8px; min-width: 0; }
 .holding-fund-heading > span:first-child { flex: 0 1 auto; min-width: 0; overflow: hidden; font-size: 16px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .holding-fund-heading .sim-badge { flex: none; }
 .holding-fund-meta { margin: 8px 0 0; overflow: hidden; color: var(--ui-muted); font-size: 12px; font-weight: 400; line-height: 1.7; text-overflow: ellipsis; white-space: nowrap; }
 .holdings-number { text-align: right; font-variant-numeric: tabular-nums; }
 .holdings-number small { display: block; margin-top: 6px; color: var(--ui-muted); font-size: 12px; }
-.holding-manage-button { min-height: 38px; padding: 8px 10px; font-size: 13px; white-space: nowrap; }
-.holding-metadata-row td { padding-top: 0; }
+.holdings-table .holding-manage-button { font-size: 13px; }
+.app-shell table.holdings-table > tbody > tr:has(+ .holding-metadata-row) > :is(th, td) { padding-bottom: 6px; border-bottom: 0; }
+.app-shell table.holdings-table > tbody > .holding-metadata-row > td { padding-top: 0; }
+.app-shell table.holdings-table > tbody > tr:has(+ .holding-metadata-row:hover),
+.app-shell table.holdings-table > tbody > tr:is(:hover, :focus-within) + .holding-metadata-row {
+  background: var(--market-table-highlight);
+}
 .holding-metadata { margin: 0; color: var(--ui-muted); font-size: 12px; line-height: 1.8; }
 .holding-inline-notice { margin: 0 0 8px; color: #80632d; font-size: 12px; line-height: 1.8; }
-.holdings-table tbody tr:last-child td { border-bottom: 0; }
 @media (max-width: 720px) {
   .holdings-results-panel { margin-top: 18px; }
-  .holding-manage-button { min-height: 44px; }
 }
 </style>

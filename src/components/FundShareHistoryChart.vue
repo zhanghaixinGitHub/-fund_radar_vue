@@ -178,7 +178,7 @@ onBeforeUnmount(() => {
         >
           同日净值暂时无法更新，当前展示已保存的数据。
         </p>
-        <table data-table-align data-align-right="2 3 4">
+        <table class="market-table market-table--compact" data-table-align data-align-right="2 3 4">
           <thead>
             <tr>
               <th scope="col">

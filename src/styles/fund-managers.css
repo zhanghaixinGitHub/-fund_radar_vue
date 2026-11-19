@@ -36,4 +36,3 @@
 @media(max-width:720px){.app-shell .manager-page-heading h1{font-size:24px}.manager-section{padding:16px}.manager-company-filter{flex:1 1 100%}.app-shell .manager-company-filter input{height:44px;min-height:44px;font-size:16px}.manager-select select{font-size:16px;min-height:44px}}
 .manager-page-heading{display:block}
 @media(min-width:960px){.app-shell .manager-filter-toolbar{display:grid;grid-template-columns:minmax(150px,1.4fr) minmax(130px,1fr) minmax(125px,145px) minmax(125px,145px) auto auto;gap:8px}.manager-filter-toolbar .fund-filter-search,.manager-company-filter{min-width:0}}
-.manager-table .manager-detail-button{white-space:nowrap;font-size:13px;font-weight:400;padding:6px 12px;min-height:34px}

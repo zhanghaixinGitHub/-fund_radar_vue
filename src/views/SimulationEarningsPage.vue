@@ -270,7 +270,7 @@ onBeforeUnmount(() => { alive = false; ++generation; ++searchGeneration; ++detai
       </div>
       <form
         v-if="customDatesOpen"
-        class="earnings-dates"
+        class="filter-controls earnings-dates"
         @submit.prevent="applyDates"
       >
         <label>开始日期<input
@@ -453,7 +453,7 @@ onBeforeUnmount(() => { alive = false; ++generation; ++searchGeneration; ++detai
           class="earnings-table-wrap"
         >
           <table
-            class="earnings-table"
+            class="earnings-table market-table"
             data-table-align
             data-align-right="2 3"
             data-align-center="5"
@@ -529,7 +529,7 @@ onBeforeUnmount(() => { alive = false; ++generation; ++searchGeneration; ++detai
                 >
                   <button
                     type="button"
-                    class="earnings-detail-button"
+                    class="market-table-action"
                     aria-haspopup="dialog"
                     :aria-label="`查看 ${day.date} 的基金收益构成`"
                     @click="openDetails(day.date)"
@@ -568,7 +568,7 @@ onBeforeUnmount(() => { alive = false; ++generation; ++searchGeneration; ++detai
       @close="closeFundPicker"
     >
       <form
-        class="earnings-picker-search"
+        class="filter-controls earnings-picker-search"
         @submit.prevent="search()"
       >
         <label
@@ -835,10 +835,9 @@ onBeforeUnmount(() => { alive = false; ++generation; ++searchGeneration; ++detai
 .earnings-status-pending { color: #855710; background: #fcf5e8; }
 .earnings-pending { color: #855710 !important; }
 .earnings-table .earnings-action-heading, .earnings-table .earnings-row-action { text-align: right; }
-.earnings-detail-button { padding: 5px 9px; min-height: 32px; border: 1px solid #d7e6de; border-radius: 6px; color: #0f766e; background: #fff; font: inherit; font-size: 12px; white-space: nowrap; cursor: pointer; }
-.earnings-detail-button:hover, .earnings-fund-trigger:hover { border-color: #0f766e; background: #f5faf7; }
+.earnings-fund-trigger:hover { border-color: #0f766e; background: #f5faf7; }
 .earnings-pagination { padding: 0 24px; }
-.earnings-pagination :deep(.pagination) { margin: 0; padding: 16px 0; border: 0; background: transparent; }
+.earnings-pagination :deep(.pagination) { margin: 0; border: 0; background: transparent; }
 .earnings-curve { padding: 0 24px 18px; }
 .earnings-empty { margin: 0; padding: 32px 12px; color: #647b72; text-align: center; font-size: 14px; line-height: 1.8; }
 .earnings-footnote { margin: 18px 4px 10px; color: #647b72; font-size: 12px; line-height: 1.9; }

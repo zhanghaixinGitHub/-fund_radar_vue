@@ -257,7 +257,7 @@ onBeforeUnmount(() => { alive = false; generation++ })
         <summary>修改记录（{{ holdingRules.history.length }}）</summary>
         <div class="advice-table-wrap">
           <table
-            class="advice-table"
+            class="advice-table market-table market-table--compact"
             data-table-align
           >
             <thead>

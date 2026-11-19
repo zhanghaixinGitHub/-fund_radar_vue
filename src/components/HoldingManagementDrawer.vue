@@ -154,7 +154,7 @@ onBeforeUnmount(() => {
     </dl>
     <div class="quick-drawer-actions">
       <RouterLink
-        class="primary-link"
+        class="primary-link holding-action-button"
         :to="fullDetailTarget"
       >
         查看详情
@@ -169,7 +169,7 @@ onBeforeUnmount(() => {
       <div class="holding-drawer-actions">
         <button
           v-if="canWrite"
-          class="secondary-button holding-drawer-action"
+          class="secondary-button holding-action-button"
           type="button"
           :disabled="position.kind === 'recorded' && !!position.issue"
           @click="emit('trade', 'BUY')"
@@ -178,7 +178,7 @@ onBeforeUnmount(() => {
         </button>
         <button
           v-if="canWrite && (position.kind === 'recorded' || position.additionalPosition)"
-          class="secondary-button holding-drawer-action"
+          class="secondary-button holding-action-button"
           type="button"
           :disabled="position.kind === 'recorded' ? !!position.issue || Number(position.availableShares) <= 0 : !!position.additionalPosition?.issue || Number(position.additionalPosition?.availableShares) <= 0"
           @click="emit('trade', 'SELL')"
@@ -187,7 +187,7 @@ onBeforeUnmount(() => {
         </button>
         <button
           v-if="canPlan"
-          class="secondary-button holding-drawer-action"
+          class="secondary-button holding-action-button"
           type="button"
           @click="emit('trade', 'PLAN')"
         >
@@ -224,12 +224,10 @@ onBeforeUnmount(() => {
 .holding-drawer-notice { margin: 22px 0 0; color: var(--ui-muted); font-size: 14px; line-height: 1.8; }
 .holding-drawer-section { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--ui-line); }
 .holding-drawer-section h3 { margin: 0 0 12px; font-size: 16px; }
-.holding-drawer-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.holding-drawer-action { display: flex; align-items: center; justify-content: center; min-height: 40px; padding: 8px 12px; text-align: center; text-decoration: none; }
-.holding-drawer-action:hover:not(:disabled) { color: var(--ui-ink); background: #dde7d6; border-color: #a5b79e; }
+.holding-drawer-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .holding-management-drawer .holding-quick-metrics { row-gap: 12px; margin: 16px 0 12px; }
 .holding-quick-metrics dd { margin: 6px 0 0; }
-.holding-management-drawer .quick-drawer-actions { margin-top: 20px; }
+.holding-management-drawer .quick-drawer-actions { margin-top: 16px; }
 .holding-drawer-section summary { cursor: pointer; color: var(--ui-primary); }
 .holding-drawer-simulation { margin: 32px 0 0; padding: 15px; border-radius: 8px; background: var(--ui-canvas); color: var(--ui-muted); font-size: 12px; text-align: center; }
 .holding-management-drawer :deep(.decision-panel) { padding: 0; margin: 20px 0 0; border: 0; background: transparent; }
@@ -237,9 +235,5 @@ onBeforeUnmount(() => {
 .holding-management-drawer :deep(.decision-panel h2) { margin: 0 0 12px; font-size: 18px; }
 .holding-management-drawer :deep(.decision-panel .section-heading .primary-button) { width: 100%; margin-top: 8px; color: var(--ui-primary); background: #fff; border-color: #cbd8c9; }
 .holding-management-drawer :deep(.decision-panel .section-heading .primary-button:hover:not(:disabled)) { color: var(--ui-ink); background: #dde7d6; border-color: #a5b79e; }
-.holding-management-drawer :deep(.decision-panel > a) { display: inline-block; margin-top: 16px; color: var(--ui-primary); text-decoration: none; }
-@media (max-width: 720px) {
-  .holding-drawer-actions { gap: 10px; }
-  .holding-drawer-action { min-height: 44px; }
-}
+.holding-management-drawer :deep(.decision-panel > .holding-action-button) { margin-top: 16px; }
 </style>

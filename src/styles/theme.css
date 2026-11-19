@@ -136,10 +136,10 @@ html :is(button,.primary-button,.secondary-button,.primary-link,.secondary-link,
 /* Shared fund table: market and watchlist keep the same headers, rows and actions. */
 .fund-table-scroll{width:100%;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;border-radius:7px}
 .app-shell .fund-data-table{width:100%;min-width:900px;border-collapse:collapse;table-layout:fixed;margin:0;text-align:left;font-size:13px;background:#fff}
-.app-shell .fund-data-table thead th{padding:13px 10px;background:#f3f6f0;color:var(--ui-muted);font-size:12px;font-weight:500;border:0;white-space:nowrap}
-.app-shell .fund-data-table tbody :is(th,td){padding:17px 10px;border:0;border-bottom:1px solid #e4ebe0;background:#fff;vertical-align:middle;color:var(--ui-ink);font-size:13px;font-weight:400;line-height:1.6}
+.app-shell .fund-data-table thead th{padding:13px 10px;background:var(--market-table-header);color:var(--ui-muted);font-size:12px;font-weight:500;border:0;white-space:nowrap}
+.app-shell .fund-data-table tbody :is(th,td){padding:17px 10px;border:0;border-bottom:1px solid var(--market-table-divider);background:#fff;vertical-align:middle;color:var(--ui-ink);font-size:13px;font-weight:400;line-height:1.6}
 .app-shell .fund-data-table tbody tr:last-child :is(th,td){border-bottom:0}
-.app-shell .fund-data-table tbody tr:hover :is(th,td),.app-shell .fund-data-table tbody tr:focus-within :is(th,td){background:#f7f9f4}
+.app-shell .fund-data-table tbody tr:hover :is(th,td),.app-shell .fund-data-table tbody tr:focus-within :is(th,td){background:var(--market-table-highlight)}
 .fund-data-table tbody tr{cursor:pointer}
 .fund-data-table .fund-table-name{width:21%}
 .fund-data-table .fund-table-identity{min-width:0;max-width:none}

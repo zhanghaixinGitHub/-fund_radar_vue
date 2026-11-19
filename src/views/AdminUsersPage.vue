@@ -705,7 +705,7 @@ onMounted(() => {
         v-else
         class="admin-table-wrap"
       >
-        <table data-table-align data-align-right="4 5" data-align-center="7">
+        <table class="market-table" data-table-align data-align-right="4 5" data-align-center="7">
           <thead>
             <tr>
               <th>账户</th>
@@ -800,7 +800,7 @@ onMounted(() => {
       </div>
       <div>
         <form
-          class="admin-inline-form"
+          class="filter-controls admin-inline-form"
           @submit.prevent="searchUsers"
         >
           <label for="user-picker-keyword">姓名或手机号</label>
@@ -897,7 +897,7 @@ onMounted(() => {
         v-else
         class="admin-table-wrap"
       >
-        <table data-table-align data-align-right="3">
+        <table class="market-table market-table--compact" data-table-align data-align-right="3">
           <thead>
             <tr><th>时间</th><th>类型</th><th>积分变动</th><th>原因</th><th>操作人</th></tr>
           </thead>
@@ -909,7 +909,7 @@ onMounted(() => {
               <td>{{ formatTime(entry.createdAt) }}</td>
               <td>{{ creditLedgerTypeLabel(entry.entryType) }}</td>
               <td>{{ formatCreditDelta(entry.creditDelta) }}</td>
-              <td>{{ entry.reason }}</td>
+              <td class="credit-ledger-reason">{{ entry.reason }}</td>
               <td>{{ entry.actorDisplayName }}</td>
             </tr>
           </tbody>
@@ -963,14 +963,14 @@ onMounted(() => {
         v-else
         class="admin-table-wrap"
       >
-        <table data-table-align data-align-right="2 3 4 5 6 7 8">
+        <table class="market-table" data-table-align data-align-right="2 3 4 5 6 7 8">
           <thead><tr><th>基金</th><th>市值</th><th>持有收益</th><th>最近一期收益</th><th>累计收益</th><th>持有份额</th><th>可卖份额</th><th>冻结份额</th></tr></thead>
           <tbody>
             <tr
               v-for="position in simPortfolio?.positions"
               :key="position.fundCode"
             >
-              <td><strong>{{ position.fundName }}</strong><span>{{ position.fundCode }}</span></td>
+              <td class="market-table-fund-cell"><strong class="fund-table-title">{{ position.fundName }}</strong><span class="fund-table-code">{{ position.fundCode }}</span></td>
               <td>{{ simMoney(position.marketValue) }}</td>
               <td :class="simTone(position.holdingGain)">
                 {{ simMoney(position.holdingGain) }}<span>{{ simPercent(position.holdingGainRate) }}</span>

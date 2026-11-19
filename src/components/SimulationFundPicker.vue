@@ -72,7 +72,7 @@ onBeforeUnmount(() => { alive = false; dialog.value?.close() })
       </button>
     </div>
     <form
-      class="sim-picker-search"
+      class="filter-controls sim-picker-search"
       @submit.prevent="load(true)"
     >
       <label for="sim-search">代码或名称</label><div class="sim-actions">

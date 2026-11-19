@@ -159,7 +159,7 @@ onBeforeUnmount(clearSuccessMessage)
     </p>
 
     <form
-      class="search-panel"
+      class="filter-controls search-panel"
       @submit.prevent="search"
     >
       <label for="fee-fund-keyword">基金代码或名称</label>
@@ -217,7 +217,7 @@ onBeforeUnmount(clearSuccessMessage)
         class="admin-table-wrap"
         :aria-busy="loading"
       >
-        <table data-table-align data-align-right="4" data-align-center="9">
+        <table class="market-table" data-table-align data-align-right="4" data-align-center="9">
           <thead>
             <tr>
               <th>基金</th>

@@ -101,7 +101,7 @@ onBeforeUnmount(() => { ++sequence; globalThis.clearTimeout(timer) })
             v-if="reason.holdings.length"
             class="holdings-facts"
           >
-            <table data-table-align data-align-right="2 3">
+            <table class="market-table market-table--compact" data-table-align data-align-right="2 3">
               <caption>
                 行情：{{ reason.quoteDate ?? '日期见各行' }} · 持仓：{{ reason.reportDate ?? '日期见各行' }}（部分披露）
               </caption>

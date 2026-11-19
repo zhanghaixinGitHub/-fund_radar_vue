@@ -583,7 +583,7 @@ onBeforeUnmount(() => {
           </RouterLink>
         </header>
         <div class="admin-table-wrap">
-          <table data-table-align data-align-center="4">
+          <table class="market-table" data-table-align data-align-center="4">
             <thead><tr><th>任务</th><th>最近状态</th><th>上次整项完成</th><th>操作</th></tr></thead>
             <tbody>
               <tr>
@@ -597,7 +597,7 @@ onBeforeUnmount(() => {
                 <td>{{ loading || errorMessage ? '—' : spxSuccessAt ? formatTime(spxSuccessAt) : '最近一次无成功记录' }}</td>
                 <td>
                   <RouterLink
-                    class="secondary-link"
+                    class="market-table-action"
                     :to="sectionTarget('spxManual')"
                   >
                     查看详情 →
@@ -618,7 +618,7 @@ onBeforeUnmount(() => {
                 <td>{{ loading || errorMessage ? '—' : lastSuccessfulAt[task.jobType] ? formatTime(lastSuccessfulAt[task.jobType]) : '尚无整项完成记录' }}</td>
                 <td>
                   <RouterLink
-                    class="secondary-link"
+                    class="market-table-action"
                     :to="sectionTarget(task.key)"
                   >
                     查看详情 →

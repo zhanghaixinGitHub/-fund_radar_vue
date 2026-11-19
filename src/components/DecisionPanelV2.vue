@@ -334,9 +334,10 @@ onBeforeUnmount(() => { ++sequence; globalThis.clearInterval(clockTimer) })
     </PredictionHistoryDrawer>
     <RouterLink
       v-if="compact"
+      class="holding-action-button"
       :to="{ name: 'portfolio-advice', query: { fund: fundCode, from: route.fullPath } }"
     >
-      查看完整分析与历史 →
+      查看完整分析与历史
     </RouterLink>
   </section>
 </template>

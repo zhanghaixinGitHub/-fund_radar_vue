@@ -210,7 +210,7 @@ useManagerRefresh(() => load(true))
           tabindex="0"
           :aria-busy="loading"
         >
-          <table class="manager-table" data-table-align data-align-right="4" data-align-center="6">
+          <table class="manager-table market-table" data-table-align data-align-right="4" data-align-center="6">
             <thead>
               <tr>
                 <th scope="col">
@@ -242,7 +242,7 @@ useManagerRefresh(() => load(true))
                 <td>{{ manager.checkedAt ? managerDate(manager.checkedAt) : '待核对' }}</td>
                 <td>
                   <button
-                    class="secondary-button manager-detail-button"
+                    class="market-table-action"
                     type="button"
                     :aria-label="`查看${manager.managerName}的详情`"
                     @click="router.push({ name: 'fund-manager-detail', params: { managerId: manager.managerId }, query: { from: route.fullPath } })"

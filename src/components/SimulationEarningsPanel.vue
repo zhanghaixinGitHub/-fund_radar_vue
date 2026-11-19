@@ -79,7 +79,6 @@ onBeforeUnmount(() => {
 .earnings-panel-footer { flex-shrink: 0; max-height: 40dvh; overflow-y: auto; padding: 16px 24px; border-top: 1px solid #e5ece7; background: #fafcfb; }
 .earnings-panel :deep(.pagination) { margin: 0; padding: 0; border: 0; background: transparent; gap: 10px; font-size: 12px; }
 .earnings-panel :deep(.pagination-controls) { gap: 6px; }
-.earnings-panel :deep(.pagination button) { min-width: 52px; padding: 7px 9px; font-size: 12px; }
 .earnings-panel-drawer { width: min(640px, 100vw); height: 100dvh; max-height: 100dvh; margin: 0 0 0 auto; border-width: 0 0 0 1px; border-radius: 0; }
 .earnings-panel-drawer .earnings-panel-layout { height: 100%; max-height: 100dvh; }
 @media (max-width: 600px) {

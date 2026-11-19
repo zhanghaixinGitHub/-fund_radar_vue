@@ -1,0 +1,137 @@
+:root {
+  --button-body-height: 30px;
+  --button-filter-height: 38px;
+  --button-pagination-height: 26px;
+  --button-touch-height: 44px;
+  --button-radius: 8px;
+  --button-border: #bdcebb;
+  --button-hover: #edf4e9;
+}
+
+/* Navigation, icon controls and selectable data rows keep their own layout. */
+:is(button, a:is(.primary-link, .secondary-link, .text-button, .market-table-action, .holding-action-button), input:is([type="button"], [type="submit"], [type="reset"])):not(:where(
+  .navigation-backdrop, .account-trigger, .sidebar-toggle, [role="tab"],
+  .field-help-trigger, :has(> svg:only-child), .fund-filter-select button,
+  .forecast-card, .composition-bars button, .inbox-cell-button,
+  .sim-picker-list button, .earnings-picker-list button, .earnings-picker-all
+)) {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: var(--button-height, var(--button-body-height)) !important;
+  padding-block: var(--button-padding-block, 2px) !important;
+  padding-inline: var(--button-padding-inline, 12px) !important;
+  border: 1px solid var(--button-outline, var(--button-border)) !important;
+  border-radius: var(--button-corner, var(--button-radius)) !important;
+  background: var(--button-fill, #fff) !important;
+  color: var(--button-ink, var(--ui-primary, #38745d)) !important;
+  box-shadow: none;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+:where(button, a, input):is(:hover, [aria-pressed="true"]):not(:disabled, [aria-disabled="true"]) {
+  --button-fill: var(--button-hover);
+}
+
+:where(button, a, input):is(:disabled, [aria-disabled="true"]) {
+  --button-fill: #f5f7f3;
+  --button-ink: #647666;
+  --button-outline: #dce5d9;
+  cursor: not-allowed;
+}
+
+:is(button, a:is(.primary-link, .secondary-link, .text-button, .market-table-action, .holding-action-button)):focus-visible {
+  outline: 2px solid var(--ui-primary, #38745d);
+  outline-offset: 2px;
+}
+
+.app-shell :is(.fund-filter-toolbar, .filter-controls) :is(button, input:not([type="checkbox"], [type="radio"], [type="hidden"]), select):not(.fund-filter-select button) {
+  --button-height: var(--button-filter-height);
+  --button-outline: #c5d3c2;
+}
+
+.app-shell :is(.fund-filter-toolbar, .filter-controls) :is(input:not([type="checkbox"], [type="radio"], [type="hidden"]), select) {
+  box-sizing: border-box;
+  min-block-size: var(--button-height);
+  padding-block: 0;
+  border-radius: var(--button-radius);
+}
+
+.app-shell :is(.fund-filter-toolbar, .filter-controls) :is(input, select):not(:focus-visible) {
+  border-color: #c5d3c2;
+}
+
+.app-shell .fund-filter-toolbar .fund-filter-select:has(> :is(.market-rating-clear, .watchlist-held-clear)) select {
+  background-color: #f0f5ed;
+}
+
+.app-shell .pagination {
+  padding-block: 8px;
+}
+
+.app-shell .pagination :is(button, select, input) {
+  --button-height: var(--button-pagination-height);
+  --button-corner: 7px;
+  --button-outline: #b7c9b5;
+  --button-padding-block: 0px;
+  --button-padding-inline: 8px;
+  box-sizing: border-box;
+  border-radius: var(--button-corner);
+}
+
+.app-shell .pagination :is(select, input):not(:focus-visible) {
+  border-color: var(--button-outline);
+}
+
+.app-shell .pagination button:disabled {
+  --button-outline: #e5ebe1;
+}
+
+@media (max-width: 720px), (pointer: coarse) {
+  :root {
+    --button-body-height: var(--button-touch-height);
+    --button-filter-height: var(--button-touch-height);
+    --button-pagination-height: var(--button-touch-height);
+  }
+
+  .app-shell .pagination :is(select, input) {
+    min-block-size: var(--button-height);
+  }
+}
+
+@media (min-width: 721px) and (not (pointer: coarse)) {
+  .app-shell .fund-filter-toolbar :is(.fund-filter-search input, .fund-filter-select select),
+  .app-shell .fund-filter-toolbar > .secondary-button,
+  .app-shell .pagination :is(button, select, input) {
+    block-size: var(--button-height);
+    min-block-size: var(--button-height);
+    padding-block: 0;
+  }
+
+  .app-shell .fund-filter-toolbar > .fund-filter-submit {
+    inline-size: 68px;
+  }
+
+  .app-shell .fund-filter-toolbar > .fund-filter-reset {
+    inline-size: 66px;
+  }
+
+  .app-shell .pagination-controls > button {
+    min-inline-size: 0;
+    line-height: 1;
+  }
+
+  .app-shell .pagination .page-size-control select {
+    inline-size: 60px;
+    padding-inline: 8px;
+    line-height: normal;
+  }
+
+  .app-shell .pagination .page-jump-control input {
+    inline-size: 46px;
+    line-height: normal;
+  }
+}

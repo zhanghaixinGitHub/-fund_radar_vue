@@ -54,7 +54,7 @@ function selectFund(code?: string) {
     <p v-else-if="!visibleRows.length" class="state-message">{{ emptyMessage }}</p>
     <template v-else>
       <div class="reminder-table-scroll" tabindex="0" :aria-label="title">
-        <table class="reminder-table" :aria-labelledby="id">
+        <table class="reminder-table market-table" :aria-labelledby="id">
           <thead>
             <tr>
               <th scope="col">基金</th>
@@ -64,9 +64,9 @@ function selectFund(code?: string) {
           </thead>
           <tbody>
             <tr v-for="row in visibleRows" :key="row.fundCode">
-              <th scope="row">
-                <strong v-if="row.fundName">{{ row.fundName }}</strong>
-                <span>{{ row.fundCode }}</span>
+              <th scope="row" class="market-table-fund-cell">
+                <strong v-if="row.fundName" class="fund-table-title">{{ row.fundName }}</strong>
+                <span class="fund-table-code">{{ row.fundCode }}</span>
               </th>
               <td v-for="(value, index) in row.values" :key="columns[index]">{{ value }}</td>
               <td>

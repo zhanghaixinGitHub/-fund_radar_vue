@@ -89,7 +89,7 @@ const percent = (value: number | null | undefined) => value == null ? '尚无有
       <p v-if="coverage">
         已检查 {{ coverage.checkedCount }} 只。每只保留结果，暂不适用和缺数据的基金也列在这里。
       </p>
-      <form @submit.prevent="page = 1; load()">
+      <form class="filter-controls" @submit.prevent="page = 1; load()">
         <label for="d1-search">基金代码或名称</label><input
           id="d1-search"
           v-model="keyword"
@@ -98,16 +98,16 @@ const percent = (value: number | null | undefined) => value == null ? '尚无有
         </button>
       </form>
       <div class="table-wrap">
-        <table data-table-align>
+        <table class="market-table" data-table-align>
           <thead><tr><th>基金</th><th>基金类型</th><th>资料状态</th><th>最近净值</th></tr></thead><tbody>
             <tr
               v-for="fund in coverage?.items"
               :key="fund.fundCode"
             >
-              <td>
-                <RouterLink :to="{ name: 'watchlist-fund-detail', params: { fundCode: fund.fundCode }, query: { section: 'research' } }">
+              <td class="market-table-fund-cell">
+                <RouterLink class="fund-table-title" :to="{ name: 'watchlist-fund-detail', params: { fundCode: fund.fundCode }, query: { section: 'research' } }">
                   {{ fund.fundName }}
-                </RouterLink><small>{{ fund.fundCode }} · {{ fund.shareClass }}</small>
+                </RouterLink><small class="fund-table-code">{{ fund.fundCode }} · {{ fund.shareClass }}</small>
               </td>
               <td>
                 {{ ({ CN_EQUITY: '境内股票', CN_MIXED: '境内混合', CN_BOND: '境内债券' })[fund.groupId ?? ''] ?? '暂未适配' }}
@@ -131,7 +131,7 @@ const percent = (value: number | null | undefined) => value == null ? '尚无有
     </section>
     <section class="card">
       <h2>历史判断与实际结果</h2><p>核对单位净值的涨跌；分红不加回，不能当作持有收益。旧记录中的“下跌或持平”保留当时含义。</p>
-      <form @submit.prevent="filterHistory">
+      <form class="filter-controls" @submit.prevent="filterHistory">
         <label>基金代码 <input
           v-model="historyFund"
           maxlength="6"

@@ -152,7 +152,7 @@ watch(() => [props.fundCode, props.view, route.query.stock], () => {
           :key="table.name"
           class="material-table-wrap"
         >
-          <table class="material-table" data-table-align data-align-right="2 3" data-align-center="4">
+          <table class="material-table market-table" data-table-align data-align-right="2 3" data-align-center="4">
             <caption>{{ table.name }} · 占基金净资产比例<span v-if="table.notice"> · {{ table.notice }}</span></caption>
             <thead>
               <tr>
@@ -290,7 +290,7 @@ watch(() => [props.fundCode, props.view, route.query.stock], () => {
             v-if="company.history.length"
             class="material-table-wrap"
           >
-            <table class="material-table financial-table" data-table-align data-align-right="2 3 4 5 6 7">
+            <table class="material-table financial-table market-table market-table--compact" data-table-align data-align-right="2 3 4 5 6 7">
               <caption>最近已取得的财务期间 · 金额换算为亿元显示</caption>
               <thead><tr><th>报告期末</th><th>营业收入</th><th>收入同比</th><th>归母净利润</th><th>利润同比</th><th>经营现金净流量</th><th>总资产</th><th>公告日期</th></tr></thead>
               <tbody>

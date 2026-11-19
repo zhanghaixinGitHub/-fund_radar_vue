@@ -24,3 +24,5 @@ import './styles/portfolio-composition.css'
 import './styles/navigation.css'
 
 import './styles/table-alignment.css'
+import './styles/market-table.css'
+import './styles/control-density.css'

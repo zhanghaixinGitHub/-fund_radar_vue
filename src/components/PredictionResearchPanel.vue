@@ -374,7 +374,7 @@ async function readResearch(action?: 'cancel' | 'resume') {
           role="region"
           aria-label="一直持有与模型买卖的历史模拟对照"
         >
-          <table data-table-align data-align-right="2 3 4 5 6 7">
+          <table class="market-table market-table--compact" data-table-align data-align-right="2 3 4 5 6 7">
             <caption>相同基金、时间范围和模拟本金；收益已扣模拟交易费用。</caption>
             <thead>
               <tr>

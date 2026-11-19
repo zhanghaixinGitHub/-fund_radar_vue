@@ -27,7 +27,7 @@ watch(() => props.funds, () => { page.value = 1 })
       aria-label="经理任职基金，宽表可左右滚动"
       tabindex="0"
     >
-      <table class="manager-table" data-table-align data-align-right="4">
+      <table class="manager-table market-table" data-table-align data-align-right="4">
         <thead>
           <tr>
             <th scope="col">
@@ -46,11 +46,11 @@ watch(() => props.funds, () => { page.value = 1 })
             v-for="fund in visible"
             :key="fund.tenureVersionId"
           >
-            <td>
-              <RouterLink :to="managerFundTarget(managerId, fund, route.fullPath)">
+            <td class="market-table-fund-cell">
+              <RouterLink class="fund-table-title" :to="managerFundTarget(managerId, fund, route.fullPath)">
                 {{ fund.fundName }}
               </RouterLink>
-              <small>{{ fund.fundCode }}</small>
+              <small class="fund-table-code">{{ fund.fundCode }}</small>
             </td>
             <td>{{ fund.beginDate || '起始日期暂缺' }} 至 {{ fund.endDate || '今' }}</td>
             <td>{{ fund.teamStatus === 'CO_MANAGED' ? '含共同管理' : fund.teamStatus === 'SOLO' ? '独立管理' : '共管资料待核对' }}</td>
