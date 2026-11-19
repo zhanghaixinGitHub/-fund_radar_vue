@@ -23,8 +23,9 @@ const dependencies = {
   '@/stores/auth': url('export const useAuthStore=()=>({hasPermission:()=>true})'),
   '@/api/simulation': url(apiNames.map(name => `export const ${name}=(...args)=>globalThis.portfolioHarness.request('${name}',args)`).join('\n')),
   '@/api/multiPrediction': url("export const readLatestDecisions=(...args)=>globalThis.portfolioHarness.request('advice',args)"),
-  '@/utils/advice': url('export const rememberPortfolioScroll=()=>{}; export const takePortfolioScroll=()=>null'),
-  '@/utils/simulationEarnings': url('export const rememberEarningsScroll=()=>{}; export const takeEarningsScroll=()=>null'),
+  '@/utils/advice': url('export const portfolioReturnPath=value=>value; export const rememberPortfolioScroll=()=>{}; export const takePortfolioScroll=()=>null'),
+  '@/utils/simulationEarnings': url('export const earningsMoney=()=>""; export const rememberEarningsScroll=()=>{}; export const takeEarningsScroll=()=>null'),
+  '@/utils/fundPresentation': url('export const formatChangeRate=()=>""'),
   '@/utils/portfolioList': url('export const buildPortfolioList=o=>o.positions; export const sortPortfolioList=p=>p'),
   '@/utils/simulation': url('export const planFrequency=()=>""; export const simMoney=()=>""; export const simPercent=()=>""; export const simShares=()=>""; export const simTime=()=>""; export const simTone=()=>""'),
 }
@@ -37,24 +38,39 @@ const source = transpile(compileScript(descriptor, { id: 'portfolio-loading-test
   })
 const Page = (await import(url(source))).default
 const tick = async () => { for (let i = 0; i < 12; i++) { await Promise.resolve(); await nextTick() } }
-function mount(t, section = 'holdings') {
+function mount(t, section = 'holdings', fundCode) {
   const route = reactive({ query: { section }, path: '/portfolio', fullPath: '/portfolio' })
   const requests = {}
   const harness = {
     route, requests, router: { replace() {}, push() {} },
-    navigation: { section: computed(() => route.query.section), sectionLabel: computed(() => ''), sectionTarget: () => '' },
+    navigation: { section: computed(() => fundCode ? route.query.tab ?? 'position' : route.query.section), sectionLabel: computed(() => ''), sectionTarget: () => '' },
     location: { location: computed(() => ({ page: 1, size: 10, keyword: '' })), isCurrent: computed(() => true), navigate() {} },
     request(name, args) { return new Promise((resolve, reject) => (requests[name] ??= []).push({ args, resolve, reject })) },
   }
   globalThis.portfolioHarness = harness
   let state
   const app = createRenderer({ createComment: () => ({}), insert() {}, remove() {}, parentNode: () => null, nextSibling: () => null })
-    .createApp({ setup(props, context) { state = Page.setup(props, context); return () => null } })
+    .createApp({ setup(_props, context) { state = Page.setup({ fundCode }, context); return () => null } })
   app.mount({})
   t.after(() => { app.unmount(); delete globalThis.portfolioHarness })
   return { ...harness, state, unmount: () => app.unmount() }
 }
 const overview = () => ({ positions: [], marketValue: '123', job: null })
+
+test('详情的交易和定投固定读取当前基金，外层与查询参数不会改写范围', async t => {
+  const { requests, state, route } = mount(t, 'overview', '008888')
+  route.query.tab = 'orders'
+  route.query.fundCode = '000999'
+  await tick()
+  requests.getSimOverview[0].resolve({ ...overview(), positions: [{ fundCode: '008888' }] })
+  await tick()
+  assert.equal(requests.getSimOrders.at(-1).args[1], '008888')
+  route.query.tab = 'plans'
+  await tick()
+  requests.getSimPlans[0].resolve([{ fundCode: '000999' }, { fundCode: '008888' }])
+  await tick()
+  assert.deepEqual(state.filteredPlans.value.map(plan => plan.fundCode), ['008888'])
+})
 
 test('持仓先显示：计划和建议一直等待也不阻塞，持仓页不请求构成', async t => {
   const { requests, state } = mount(t)

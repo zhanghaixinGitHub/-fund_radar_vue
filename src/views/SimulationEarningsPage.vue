@@ -11,6 +11,7 @@ import type { SimEarnings, SimEarningsDetail, SimEarningsFund, SimPage } from '@
 import { earningsFailureMessage, earningsMoney, earningsReturnPath, earningsStatus } from '@/utils/simulationEarnings'
 import { shanghaiDate, simMoney, simTone } from '@/utils/simulation'
 
+const props = defineProps<{ fundCode?: string }>()
 const route = useRoute()
 const router = useRouter()
 const result = ref<SimEarnings | null>(null)
@@ -31,7 +32,7 @@ const ranges = [{ value: 'MONTH', label: '近一个月' }, { value: 'QUARTER', l
   { value: 'YEAR', label: '今年' }, { value: 'ALL', label: '全部' }, { value: 'CUSTOM', label: '自选日期' }]
 const range = computed(() => ranges.find(r => r.value === route.query.range)?.value ?? 'MONTH')
 const customDatesOpen = ref(range.value === 'CUSTOM')
-const code = computed(() => typeof route.query.fundCode === 'string' ? route.query.fundCode : '')
+const code = computed(() => props.fundCode ?? (typeof route.query.fundCode === 'string' ? route.query.fundCode : ''))
 const start = ref(String(route.query.startDate ?? shanghaiDate(-29)))
 const end = ref(String(route.query.endDate ?? shanghaiDate()))
 const pageSize = computed(() => normalizePageSize(route.query.size))
@@ -41,6 +42,33 @@ const page = computed(() => Math.max(1, Math.min(100000, Number(route.query.page
 const totalPages = computed(() => Math.max(1, Math.ceil((result.value?.days.totalCount ?? 0) / pageSize.value)))
 const returnTarget = computed(() => earningsReturnPath(route.query.from))
 const selectedDay = computed(() => result.value?.days.items.find(day => day.date === selectedDate.value))
+const chartDays = computed(() => result.value?.curve.filter(day => day.status !== 'NON_TRADING') ?? [])
+const gainThroughDate = computed(() => {
+  const data = result.value
+  if (!data || data.complete || data.knownGain == null) return null
+
+  // 总览没有单一基金的净值日，以最后一个全部基金收益齐全的日期为准。
+  const cutoffDate = data.fund
+    ? data.fund.navDate
+    : data.curve.findLast(day => day.status === 'COMPLETE')?.date
+  if (!cutoffDate || cutoffDate < data.startDate || cutoffDate >= data.endDate) return null
+
+  // 用整个区间判断，避免翻页改变收益金额或漏掉历史缺口。
+  const laterDays = data.curve.filter(day => day.date > cutoffDate)
+  if (laterDays.some(day => day.knownGain !== null)) return null
+
+  const pendingDays = laterDays.filter(day =>
+    day.status === 'NAV_PENDING' || day.status === 'PENDING')
+  if (!pendingDays.length || pendingDays.length !== data.incompleteDays) return null
+
+  const pendingStart = pendingDays[0]!.date
+  const pendingEnd = pendingDays[pendingDays.length - 1]!.date
+  return {
+    cutoffDate,
+    pendingDates: pendingStart === pendingEnd ? pendingStart : `${pendingStart} 至 ${pendingEnd}`,
+  }
+})
+const displayedGain = computed(() => result.value?.periodGain ?? result.value?.knownGain ?? null)
 let generation = 0
 let searchGeneration = 0
 let detailGeneration = 0
@@ -87,7 +115,8 @@ async function load() {
   } finally { if (alive && generation === current) loading.value = false }
 }
 function navigate(query: Record<string, string | undefined>) {
-  return router.push({ name: 'portfolio-earnings', query: { ...route.query, ...query } })
+  const target = props.fundCode ? { path: route.path } : { name: 'portfolio-earnings' }
+  return router.push({ ...target, query: { ...route.query, ...query } })
 }
 function chooseFund(value: string) {
   closeFundPicker(); keyword.value = ''
@@ -148,10 +177,14 @@ onBeforeUnmount(() => { alive = false; ++generation; ++searchGeneration; ++detai
 
 <template>
   <section
-    class="sim-page earnings-page"
-    aria-labelledby="earnings-title"
+    class="earnings-page"
+    :class="{ 'sim-page': !fundCode }"
+    aria-label="收益明细"
   >
-    <header class="sim-page-header">
+    <header
+      v-if="!fundCode"
+      class="sim-page-header"
+    >
       <div>
         <p class="eyebrow">
           我的持仓 · 模拟账户
@@ -174,7 +207,10 @@ onBeforeUnmount(() => { alive = false; ++generation; ++searchGeneration; ++detai
       :aria-busy="loading"
     >
       <div class="earnings-filters">
-        <div class="earnings-fund-filter">
+        <div
+          v-if="!fundCode"
+          class="earnings-fund-filter"
+        >
           <span class="earnings-label">查看基金</span>
           <button
             class="earnings-fund-trigger"
@@ -249,17 +285,19 @@ onBeforeUnmount(() => { alive = false; ++generation; ++searchGeneration; ++detai
         class="earnings-summary"
       >
         <div class="earnings-total">
-          <span class="earnings-label">所选期间收益 <small>元</small></span>
-          <strong :class="simTone(result.periodGain)">{{ earningsMoney(result.periodGain) }}</strong>
+          <span class="earnings-label">{{ !result.complete && !gainThroughDate && displayedGain !== null ? '所选期间收益（已知部分）' : '所选期间收益' }} <small>元</small></span>
+          <strong :class="simTone(displayedGain)">{{ earningsMoney(displayedGain) }}</strong>
           <p
-            v-if="!result.complete && result.incompleteDays"
+            v-if="gainThroughDate"
+            class="earnings-pending"
+          >
+            截至 {{ gainThroughDate.cutoffDate }}，{{ gainThroughDate.pendingDates }} 数据待更新
+          </p>
+          <p
+            v-else-if="!result.complete && result.incompleteDays"
             class="earnings-pending"
           >
             {{ result.incompleteDays }} 天数据未完整，合计待更新
-            <span
-              v-if="result.knownGain !== null"
-              class="earnings-known"
-            >已知部分 <b :class="simTone(result.knownGain)">{{ earningsMoney(result.knownGain) }}</b> 元</span>
           </p>
           <p
             v-else-if="result.complete"
@@ -283,12 +321,15 @@ onBeforeUnmount(() => { alive = false; ++generation; ++searchGeneration; ++detai
           </p>
           <template v-if="result.fund">
             <p class="sim-muted">
-              {{ result.fund.fundCode }} · {{ result.fund.closed ? '已清仓 · 保留历史收益' : '模拟持仓' }}
+              <template v-if="result.fund.navDate">
+                市值 {{ simMoney(result.fund.marketValue) }} 元
+              </template>
+              <template v-else>首笔交易尚待确认</template>{{ result.fund.reviewRequired ? ' · 当前估值待核对' : '' }}
             </p>
-            <p class="sim-muted">
-              {{ result.fund.navDate ? `市值 ${simMoney(result.fund.marketValue)} 元 · 截至 ${result.fund.navDate}` : '首笔交易尚待确认' }}{{ result.fund.reviewRequired ? ' · 当前估值待核对' : '' }}
-            </p>
-            <div class="earnings-related">
+            <div
+              v-if="!fundCode"
+              class="earnings-related"
+            >
               <RouterLink :to="{ name: 'portfolio-snapshot', query: { section: 'orders', fundCode: code } }">
                 交易记录
               </RouterLink>
@@ -301,7 +342,7 @@ onBeforeUnmount(() => { alive = false; ++generation; ++searchGeneration; ++detai
             v-else
             class="sim-muted"
           >
-            全部基金按日合计，包含已清仓基金的历史收益
+            {{ code ? '这只基金暂无可用的持仓收益记录' : '全部基金按日合计，包含已清仓基金的历史收益' }}
           </p>
           <p
             v-if="range === 'ALL'"
@@ -374,7 +415,7 @@ onBeforeUnmount(() => { alive = false; ++generation; ++searchGeneration; ++detai
         v-if="showCurve"
         class="earnings-curve"
       >
-        <SimulationPerformanceChart :points="result.curve" />
+        <SimulationPerformanceChart :points="chartDays" />
         <p class="sim-muted">
           累计收益包含所选区间之前的历史收益，不从区间开始日重新计算。
         </p>
@@ -384,13 +425,24 @@ onBeforeUnmount(() => { alive = false; ++generation; ++searchGeneration; ++detai
           v-if="!result.days.items.length"
           class="earnings-empty"
         >
-          所选期间暂无收益记录。可调整日期，首笔交易确认后将显示每日盈亏。
+          {{ result.curve.length && !chartDays.length ? '所选期间没有交易日。' : '所选期间暂无每日收益记录。' }}
         </p>
         <div
           v-else
           class="earnings-table-wrap"
         >
-          <table class="earnings-table" data-table-align data-align-right="2 3" data-align-center="5">
+          <table
+            class="earnings-table"
+            data-table-align
+            data-align-right="2 3"
+            data-align-center="5"
+          >
+            <colgroup>
+              <col class="earnings-date-column">
+              <col span="2" class="earnings-amount-column">
+              <col>
+              <col v-if="!code" class="earnings-action-column">
+            </colgroup>
             <thead>
               <tr>
                 <th scope="col">
@@ -431,22 +483,24 @@ onBeforeUnmount(() => { alive = false; ++generation; ++searchGeneration; ++detai
                 </th>
                 <td
                   class="number earnings-daily-amount"
-                  :class="simTone(day.dailyGain)"
+                  :class="simTone(day.dailyGain ?? day.knownGain)"
                 >
-                  {{ earningsMoney(day.dailyGain) }}
+                  {{ earningsMoney(day.dailyGain ?? day.knownGain) }}
                 </td>
                 <td
                   class="number"
-                  :class="simTone(day.cumulativeGain)"
+                  :class="simTone(day.cumulativeGain ?? day.knownCumulativeGain)"
                 >
-                  {{ earningsMoney(day.cumulativeGain) }}
+                  {{ earningsMoney(day.cumulativeGain ?? day.knownCumulativeGain) }}
                 </td>
                 <td>
                   <span
                     class="earnings-status"
                     :class="{ 'earnings-status-pending': !['COMPLETE', 'NON_TRADING', 'BASELINE'].includes(day.status) }"
-                  >{{ earningsStatus(day.status) }}</span>
-                  <small v-if="day.status === 'PARTIAL'">{{ day.updatedFunds }}/{{ day.expectedFunds }} 只完整<span v-if="day.knownGain !== null"> · 已知 {{ earningsMoney(day.knownGain) }}</span></small>
+                  >{{ day.status === 'COMPLETE' ? '全部更新' : day.knownGain != null || day.knownCumulativeGain != null ? '部分更新' : earningsStatus(day.status) }}</span>
+                  <small v-if="day.status !== 'COMPLETE' && (day.knownGain != null || day.knownCumulativeGain != null)">
+                    {{ day.updatedFunds }}/{{ day.expectedFunds }} 只当日收益已更新<span v-if="day.status === 'REVIEW'"> · 收益待核对</span>
+                  </small>
                 </td>
                 <td
                   v-if="!code"
@@ -683,7 +737,7 @@ onBeforeUnmount(() => { alive = false; ++generation; ++searchGeneration; ++detai
 .earnings-label { font-size: 12px; font-weight: 500; color: #647b72; }
 .earnings-overview, .earnings-records { background: #fff; border: 1px solid #dfe8e3; border-radius: 12px; }
 .earnings-overview { margin-bottom: 24px; }
-.earnings-filters { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 24px; padding: 18px 24px; border-bottom: 1px solid #edf1ee; }
+.earnings-filters { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 24px; padding: 12px 24px; border-bottom: 1px solid #edf1ee; }
 .earnings-fund-filter { display: flex; align-items: center; flex: 1 1 240px; min-width: 0; gap: 12px; }
 .earnings-fund-filter > .earnings-label, .earnings-fund-filter > .text-button { flex-shrink: 0; }
 .earnings-fund-trigger { display: flex; align-items: center; justify-content: space-between; gap: 20px; max-width: 340px; min-width: 140px; min-height: 38px; padding: 7px 12px; border: 1px solid #d7e3dd; border-radius: 7px; color: #203a34; background: #fff; font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
@@ -698,12 +752,10 @@ onBeforeUnmount(() => { alive = false; ++generation; ++searchGeneration; ++detai
 .earnings-dates input { min-height: 40px; }
 .earnings-date-divider { align-self: flex-end; padding-bottom: 10px; color: #647b72; font-size: 13px; }
 .earnings-dates > .error-message { flex-basis: 100%; margin: 0; }
-.earnings-summary { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; padding: 28px 28px 30px; }
+.earnings-summary { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; padding: 16px 28px; }
 .earnings-total .earnings-label small { margin-left: 5px; font-weight: 400; }
-.earnings-total > strong { display: block; margin: 8px 0; font-size: clamp(30px, 3vw, 40px); line-height: 1.3; letter-spacing: -1px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.earnings-total p { margin: 7px 0 0; font-size: 12px; line-height: 1.8; }
-.earnings-known { display: block; color: #647b72; }
-.earnings-known b { font-weight: 500; font-variant-numeric: tabular-nums; }
+.earnings-total > strong { display: block; margin: 4px 0; font-size: clamp(28px, 3vw, 36px); line-height: 1.2; letter-spacing: -1px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.earnings-total p { margin: 4px 0 0; font-size: 12px; line-height: 1.8; }
 .earnings-context { align-self: center; padding-left: 28px; border-left: 1px solid #e5ece7; }
 .earnings-context p { margin: 4px 0; }
 .earnings-context .earnings-period { margin: 7px 0; color: #203a34; font-size: 16px; font-weight: 500; font-variant-numeric: tabular-nums; }
@@ -717,7 +769,10 @@ onBeforeUnmount(() => { alive = false; ++generation; ++searchGeneration; ++detai
 .earnings-records-header h2 { margin: 0; font-size: 18px; }
 .earnings-records-header p { margin: 4px 0 0; font-size: 12px; }
 .earnings-table-wrap { overflow-x: auto; }
-.earnings-table { width: 100%; min-width: 650px; border-collapse: collapse; font-size: 14px; }
+.earnings-table { width: 100%; min-width: 650px; table-layout: fixed; border-collapse: collapse; font-size: 14px; }
+.earnings-date-column { width: 19%; }
+.earnings-amount-column { width: 23%; }
+.earnings-action-column { width: 120px; }
 .earnings-table th, .earnings-table td { padding: 16px 24px; border-bottom: 1px solid #edf1ee; text-align: left; }
 .earnings-table thead { background: #f7faf8; color: #647b72; font-size: 12px; }
 .earnings-table thead th { padding-top: 12px; padding-bottom: 12px; font-weight: 500; }
@@ -773,14 +828,15 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 }
 @media (max-width: 650px) {
   .earnings-page > .sim-page-header { display: flex; gap: 14px; }
-  .earnings-filters, .earnings-records-header { padding: 16px; }
+  .earnings-filters { padding: 12px 16px; }
+  .earnings-records-header { padding: 16px; }
   .earnings-fund-filter { flex-wrap: wrap; gap: 10px; }
   .earnings-fund-filter > .earnings-label { flex-basis: 100%; }
   .earnings-fund-trigger { flex: 1; min-width: 0; max-width: none; }
   .earnings-range { width: 100%; }
   .earnings-range button { flex: 1 0 auto; padding-right: 8px; padding-left: 8px; }
-  .earnings-summary { grid-template-columns: 1fr; padding: 22px 18px; gap: 22px; }
-  .earnings-context { padding: 18px 0 0; border-left: 0; border-top: 1px solid #e5ece7; }
+  .earnings-summary { grid-template-columns: 1fr; padding: 16px 18px; gap: 12px; }
+  .earnings-context { padding: 12px 0 0; border-left: 0; border-top: 1px solid #e5ece7; }
   .earnings-dates { padding: 16px; gap: 10px; }
   .earnings-dates label { flex: 1 1 125px; }
   .earnings-dates input { width: 100%; font-size: 16px; }

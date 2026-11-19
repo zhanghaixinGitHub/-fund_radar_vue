@@ -76,7 +76,8 @@ async function load() {
 }
 
 function navigate(section: string, code = '') {
-  void router.push({ path: route.path, query: { ...route.query, section, stock: code || undefined } })
+  const target = route.name === 'portfolio-fund-detail' ? { material: section } : { section }
+  void router.push({ path: route.path, query: { ...route.query, ...target, stock: code || undefined } })
 }
 watch(() => [props.fundCode, props.view, route.query.stock], () => {
   ++sequence

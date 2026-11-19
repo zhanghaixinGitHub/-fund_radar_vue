@@ -99,6 +99,12 @@ export const router = createRouter({
       component: () => import('@/views/PortfolioAdvicePage.vue'),
       meta: { title: '持仓分析', appArea: 'user', permissions: ['PORTFOLIO_SELF_READ'] },
     },
+    {
+      path: '/portfolio/:fundCode(\\d{6})',
+      name: 'portfolio-fund-detail',
+      component: () => import('@/views/PortfolioFundDetailPage.vue'),
+      meta: { title: '持仓详情', appArea: 'user', permissions: ['PORTFOLIO_SELF_READ'] },
+    },
     // 旧的单基金建议地址保留并转发到新地址，外部书签与历史消息中的链接不失效。
     {
       path: '/portfolio/:fundCode/advice',
@@ -175,7 +181,10 @@ router.beforeEach(async (to) => {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
   if (to.name === 'portfolio-advice' && to.query.section === 'rules') {
-    return { name: 'notifications', query: { section: 'rules', fund: to.query.fund } }
+    return { name: 'notifications', query: { section: 'holding-rules', fund: to.query.fund } }
+  }
+  if (to.name === 'notifications' && to.query.section === 'rules' && typeof to.query.fund === 'string' && /^\d{6}$/.test(to.query.fund)) {
+    return { name: 'notifications', query: { ...to.query, section: 'holding-rules' } }
   }
   if (to.meta.permissions?.some((permission) => !authStore.hasPermission(permission))) {
     return { name: 'not-authorized' }

@@ -239,7 +239,7 @@ onBeforeUnmount(() => { alive = false; generation++; positionsGeneration++; canc
         <RouterLink
           v-if="code && !fundInvalid"
           class="secondary-button"
-          :to="{ name: 'notifications', query: { section: 'rules', fund: code } }"
+          :to="{ name: 'notifications', query: { section: 'holding-rules', fund: code } }"
         >
           设置该基金提醒
         </RouterLink>

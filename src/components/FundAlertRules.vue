@@ -5,7 +5,8 @@ import { getAlertAvailability, getAlertRules, upsertAlertRule } from '@/api/aler
 import type { AlertAvailability, AlertRule } from '@/types/alert'
 import { alertAvailabilityNote, alertDescriptions } from '@/utils/alertPresentation'
 
-const props = defineProps<{ fundCode: string; followed: boolean }>()
+const props = defineProps<{ fundCode: string; followed: boolean; allowCreate?: boolean; readOnly?: boolean }>()
+const emit = defineEmits<{ saved: [rule: AlertRule]; 'busy-change': [busy: boolean] }>()
 const rules = ref<AlertRule[]>([])
 const availability = ref<AlertAvailability | null>(null)
 const loaded = ref(false)
@@ -15,6 +16,7 @@ const pending = ref(new Set<AlertRule['ruleType']>())
 const messages = ref<Partial<Record<AlertRule['ruleType'], string>>>({})
 const failed = ref(new Set<AlertRule['ruleType']>())
 let sequence = 0
+watch(() => pending.value.size > 0, busy => emit('busy-change', busy), { flush: 'sync' })
 
 /** 两类常规订阅直接展示；历史风险规则仅在实际存在时保留，不擅自新增阈值。 */
 const rows = computed(() => {
@@ -43,12 +45,12 @@ watch(() => [props.fundCode, props.followed], () => void load(), { immediate: tr
 
 /** 每类独立保存；服务端确认成功后才改变开关，失败时保留原状态。 */
 async function toggle(type: AlertRule['ruleType']) {
-  if (!loaded.value || !props.followed || pending.value.has(type)) return
+  if (!loaded.value || !props.followed || props.readOnly || pending.value.has(type)) return
   const rule = rules.value.find(item => item.ruleType === type)
   // 默认设置必须来自持久化记录，不能把尚未补齐的规则显示成已开启。
-  if (!rule) return
-  const threshold = type === 'RISK_LEVEL' ? Number(rule.threshold) : null
-  if (type === 'RISK_LEVEL' && (rule.threshold === null || threshold === null || !Number.isFinite(threshold) || threshold < 0 || threshold > 1)) {
+  if (!rule && (!props.allowCreate || type === 'RISK_LEVEL')) return
+  const threshold = type === 'RISK_LEVEL' ? Number(rule?.threshold) : null
+  if (type === 'RISK_LEVEL' && (rule?.threshold == null || threshold === null || !Number.isFinite(threshold) || threshold < 0 || threshold > 1)) {
     messages.value[type] = '原提醒条件尚未核对，当前设置保持不变。'
     failed.value.add(type)
     return
@@ -56,9 +58,10 @@ async function toggle(type: AlertRule['ruleType']) {
   const ticket = sequence
   pending.value.add(type); failed.value.delete(type); messages.value[type] = ''
   try {
-    const saved = await upsertAlertRule({ fundCode: props.fundCode, ruleType: type, enabled: !rule.enabled, threshold })
+    const saved = await upsertAlertRule({ fundCode: props.fundCode, ruleType: type, enabled: !rule?.enabled, threshold })
+    emit('saved', saved)
     if (ticket !== sequence) return
-    rules.value = rules.value.map(item => item.ruleType === type ? saved : item)
+    rules.value = [...rules.value.filter(item => item.ruleType !== type), saved]
     messages.value[type] = saved.enabled ? '已开启接收。' : '已关闭接收，不影响关注这只基金。'
   } catch {
     if (ticket !== sequence) return
@@ -73,11 +76,12 @@ onBeforeUnmount(() => sequence++)
 
 <template>
   <section class="analysis-section fund-alert-settings">
-    <h2>我的提醒</h2>
+    <h2 v-if="!allowCreate">提醒设置</h2>
     <p class="section-note">
-      关注后默认接收以下两类提醒，可分别关闭。收到的消息在<RouterLink to="/notifications">
-        站内提醒
-      </RouterLink>查看。
+      关注后默认开启以下两类提醒，可分别关闭。
+      <RouterLink :to="{ name: 'notifications', query: { section: 'messages', fund: fundCode } }">
+        查看这只基金的提醒
+      </RouterLink>
     </p>
     <p
       v-if="!followed"
@@ -126,7 +130,7 @@ onBeforeUnmount(() => sequence++)
             {{ alertAvailabilityNote(row.type, fundCode, availability) }}
           </p>
           <p
-            v-if="!row.rule"
+            v-if="!row.rule && !allowCreate"
             class="fund-alert-feedback"
             role="status"
           >
@@ -149,27 +153,27 @@ onBeforeUnmount(() => sequence++)
           </p>
         </div>
         <div
-          v-if="row.rule"
+          v-if="row.rule || allowCreate"
           class="fund-alert-controls"
         >
           <span
             class="fund-alert-state"
-            :class="{ 'is-enabled': row.rule.enabled }"
+            :class="{ 'is-enabled': row.rule?.enabled }"
           >
-            {{ row.rule.enabled ? '接收已开启' : '接收已关闭' }}
+            {{ row.rule?.enabled ? '接收已开启' : '接收已关闭' }}
           </span>
           <button
             class="secondary-button"
             type="button"
             role="switch"
-            :aria-checked="row.rule.enabled"
+            :aria-checked="row.rule?.enabled ?? false"
             :aria-labelledby="`alert-title-${row.type}`"
             :aria-describedby="`alert-description-${row.type}`"
             :aria-busy="pending.has(row.type)"
-            :disabled="pending.has(row.type)"
+            :disabled="readOnly || pending.has(row.type)"
             @click="toggle(row.type)"
           >
-            {{ pending.has(row.type) ? '保存中…' : row.rule.enabled ? '关闭提醒' : '开启提醒' }}
+            {{ pending.has(row.type) ? '保存中…' : row.rule?.enabled ? '关闭提醒' : '开启提醒' }}
           </button>
         </div>
       </li>

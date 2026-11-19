@@ -91,6 +91,7 @@ export interface SimEarningsFund {
 export interface SimEarningsDay {
   date: string; status: SimEarningsStatus; expectedFunds: number; updatedFunds: number
   dailyGain: DecimalValue | null; knownGain: DecimalValue | null; cumulativeGain: DecimalValue | null
+  knownCumulativeGain?: DecimalValue | null
 }
 export interface SimEarningsDetail {
   message?: string | null

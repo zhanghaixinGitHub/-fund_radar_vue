@@ -1,143 +1,130 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import HoldingReminderPanel from '@/components/HoldingReminderPanel.vue'
+import PredictionHistoryDrawer from '@/components/PredictionHistoryDrawer.vue'
+import ReminderSettingsTable from '@/components/ReminderSettingsTable.vue'
+import { fetchHoldingRules } from '@/api/advice'
 import { getSimOverview } from '@/api/simulation'
 import { useAuthStore } from '@/stores/auth'
+import type { HoldingRule, HoldingRulesView } from '@/types/advice'
 import type { SimPosition } from '@/types/simulation'
+import { rulePctText } from '@/utils/advice'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const positions = ref<SimPosition[]>([])
+const activeRules = ref(new Map<string, HoldingRule | null | 'unavailable'>())
 const loading = ref(true)
 const error = ref('')
+const editingCode = ref('')
+const saving = ref(false)
 let generation = 0
-let alive = true
 
-const fundCode = computed(() => {
-  const value = String(route.query.fund ?? '')
-  return /^\d{6}$/.test(value) ? value : ''
+const linkedCode = computed(() => {
+  const code = route.query.fund
+  return typeof code === 'string' && /^\d{6}$/.test(code) ? code : ''
 })
 const heldPositions = computed(() => positions.value.filter(item => Number(item.shares) > 0)
   .sort((left, right) => left.fundCode.localeCompare(right.fundCode)))
-const fundOptions = computed(() => {
-  const options = [...heldPositions.value]
-  if (fundCode.value && !options.some(item => item.fundCode === fundCode.value)) {
-    const previousPosition = positions.value.find(item => item.fundCode === fundCode.value)
-    options.push(previousPosition ?? { fundCode: fundCode.value, fundName: '基金' } as SimPosition)
-  }
-  return options
+const rows = computed(() => heldPositions.value.map(({ fundCode, fundName }) => {
+  const rule = activeRules.value.get(fundCode)
+  const pending = rule === undefined ? '读取中…' : '读取失败'
+  const values = rule === undefined || rule === 'unavailable'
+    ? [pending, pending, pending]
+    : [
+        threshold(rule?.takeProfitPct),
+        threshold(rule?.ruleParams?.downsideBasis === 'HOLDING_LOSS' ? rule.reduceDrawdownPct : null),
+        threshold(rule?.ruleParams?.downsideBasis !== 'HOLDING_LOSS' ? rule?.reduceDrawdownPct : null),
+      ]
+  return { fundCode, fundName, values }
+}))
+const editingName = computed(() => {
+  const fund = positions.value.find(item => item.fundCode === editingCode.value)
+  return fund ? fund.fundName + '（' + editingCode.value + '）' : '基金 ' + editingCode.value
 })
 const canWrite = computed(() => auth.hasPermission('SIM_PORTFOLIO_SELF_WRITE'))
 
-async function load(): Promise<void> {
+function threshold(value: string | number | null | undefined) {
+  return value == null ? '未设置' : rulePctText(value)
+}
+
+async function load() {
   const run = ++generation
   loading.value = true
   error.value = ''
   try {
     const overview = await getSimOverview()
-    if (!alive || run !== generation) return
+    if (run !== generation) return
     positions.value = overview.positions
+    activeRules.value.clear()
   } catch {
-    if (!alive || run !== generation) return
-    positions.value = []
-    error.value = '持仓基金暂时无法读取，请重试。'
+    if (run === generation) error.value = '持仓基金暂时无法读取。'
+    return
   } finally {
-    if (alive && run === generation) loading.value = false
+    if (run === generation) loading.value = false
   }
+
+  const codes = heldPositions.value.map(item => item.fundCode)
+  let index = 0
+  async function readRules() {
+    while (run === generation && index < codes.length) {
+      const code = codes[index++]!
+      let active: HoldingRule | null | 'unavailable'
+      try {
+        active = (await fetchHoldingRules(code)).active
+      } catch {
+        active = 'unavailable'
+      }
+      if (run === generation && !activeRules.value.has(code)) activeRules.value.set(code, active)
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(4, codes.length) }, readRules))
 }
 
-function selectFund(event: globalThis.Event): void {
-  const value = (event.target as globalThis.HTMLSelectElement).value
-  void router.replace({ query: { ...route.query, section: 'rules', fund: value || undefined } })
+function updateRow(view: HoldingRulesView) {
+  activeRules.value.set(view.fundCode, view.active)
 }
 
+function closeDrawer() {
+  editingCode.value = ''
+  if (linkedCode.value) void router.replace({ query: { ...route.query, fund: undefined } })
+}
+
+watch(linkedCode, code => { editingCode.value = code }, { immediate: true })
 void load()
-onBeforeUnmount(() => { alive = false; generation++ })
+onBeforeUnmount(() => { generation++ })
 </script>
 
 <template>
-  <section
-    class="notification-card holding-reminder-settings"
-    aria-labelledby="holding-reminder-title"
+  <ReminderSettingsTable
+    id="holding-reminder-title"
+    title="持仓提醒设置"
+    description="按基金设置止盈和下跌提醒，达到数值后只提示复核。"
+    :columns="['止盈提醒', '持仓亏损提醒', '高点回撤提醒']"
+    :rows="rows"
+    :loading="loading"
+    :error="error"
+    empty-message="当前没有持仓基金。"
+    @retry="load"
+    @settings="editingCode = $event"
   >
-    <div class="holding-reminder-heading">
-      <div>
-        <h2 id="holding-reminder-title">
-          持仓提醒
-        </h2>
-        <p class="sim-muted">
-          按基金设置止盈和下跌提醒，达到数值后只提示复核，不会自动交易。
-        </p>
-      </div>
-      <label for="holding-reminder-fund">持仓基金</label>
-      <select
-        id="holding-reminder-fund"
-        :value="fundCode"
-        :disabled="loading || !!error"
-        @change="selectFund"
-      >
-        <option value="">
-          请选择基金
-        </option>
-        <option
-          v-for="fund in fundOptions"
-          :key="fund.fundCode"
-          :value="fund.fundCode"
-        >
-          {{ fund.fundName }}（{{ fund.fundCode }}）
-        </option>
-      </select>
-    </div>
-    <p
-      v-if="loading"
-      class="state-message"
-      role="status"
+    <PredictionHistoryDrawer
+      v-if="editingCode && !loading && !error"
+      :title="editingName"
+      close-label="关闭持仓提醒设置"
+      :close-disabled="saving"
+      @close="closeDrawer"
     >
-      正在读取持仓基金…
-    </p>
-    <p
-      v-else-if="error"
-      class="state-message error-message"
-      role="alert"
-    >
-      {{ error }}
-      <button
-        class="secondary-button"
-        type="button"
-        @click="load"
-      >
-        重新读取
-      </button>
-    </p>
-    <div
-      v-else-if="!fundCode"
-      class="sim-empty"
-    >
-      <strong>请选择要设置提醒的基金</strong>
-      <p v-if="heldPositions.length">
-        选择后可查看和修改这只基金的提醒。
-      </p>
-      <p v-else>
-        当前没有正份额持仓，建立持仓后即可设置提醒。
-      </p>
-    </div>
-    <HoldingReminderPanel
-      v-else
-      :fund-code="fundCode"
-      :can-write="canWrite"
-    />
-  </section>
+      <HoldingReminderPanel
+        :key="editingCode"
+        :fund-code="editingCode"
+        :can-write="canWrite"
+        inline-editor
+        @busy-change="saving = $event"
+        @rules-change="updateRow"
+      />
+    </PredictionHistoryDrawer>
+  </ReminderSettingsTable>
 </template>
-
-<style scoped>
-.holding-reminder-heading { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(220px,320px); gap: 16px; align-items: center; padding-bottom: 20px; border-bottom: 1px solid var(--ui-line); }
-.holding-reminder-heading h2 { margin: 0 0 8px; }
-.holding-reminder-heading p { margin: 0; }
-.holding-reminder-heading label { font-weight: 700; }
-.holding-reminder-heading select { width: 100%; min-height: 40px; padding: 8px 12px; box-sizing: border-box; border: 1px solid var(--ui-line); border-radius: 8px; background: var(--ui-surface); color: var(--ui-ink); font: inherit; }
-.holding-reminder-settings .sim-empty { margin-top: 20px; }
-.holding-reminder-settings .error-message .secondary-button { margin-left: 12px; }
-@media(max-width: 800px) { .holding-reminder-heading { grid-template-columns: minmax(0,1fr); gap: 12px; } .holding-reminder-heading select { min-height: 44px; font-size: 16px; } }
-</style>

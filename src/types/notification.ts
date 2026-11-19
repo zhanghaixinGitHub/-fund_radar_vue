@@ -32,3 +32,27 @@ export interface NotificationPage {
   totalCount: number
   totalPages: number
 }
+
+export interface NotificationFeedItem {
+  id: string
+  fundCode: string | null
+  kind: string
+  category: string
+  revision: number | null
+  lifecycle: 'ACTIVE' | 'RESOLVED' | 'RETRACTED' | 'EXPIRED' | null
+  read: boolean
+  occurredAt: string
+  payload: NotificationPayload & {
+    title?: string
+    condition?: string
+    basisDate?: string
+    changeExplanation?: string
+    limitation?: string
+  }
+}
+
+export interface NotificationFeedPage {
+  items: NotificationFeedItem[]
+  page: number
+  totalCount: number
+}

@@ -32,7 +32,7 @@ const adminEntryPermissions: PermissionCode[] = [
 const hasAdminAccess = computed(() => adminEntryPermissions.some((permission) => can(permission)))
 const brandTarget = computed(() => (isAdminArea.value ? '/admin' : '/funds'))
 // 持仓分析页的基金在 query.fund 里，其他详情页在路径参数里；用于侧栏基金上下文。
-const fundContext = computed(() => String(route.params.fundCode ?? '') ||
+const fundContext = computed(() => route.name === 'portfolio-fund-detail' ? '' : String(route.params.fundCode ?? '') ||
   (route.name === 'portfolio-advice' ? String(route.query.fund ?? '') : ''))
 
 /** 菜单只反映已授予权限，接口本身仍由 Java 服务端校验。 */

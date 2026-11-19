@@ -44,7 +44,7 @@ async function mount(t, options = {}) {
   const key = `__holdingReminder${Math.random().toString(16).slice(2)}`
   globalThis[key] = {
     fetchRuleDraft: async () => options.draft ?? { status: 'AVAILABLE', tiers: [tier], historyDays: 500, windowCount: 400, statsCutoffDate: '2026-11-17' },
-    fetchHoldingRules: async () => ({ active: null, history: [] }),
+    fetchHoldingRules: async () => ({ active: options.active ?? null, history: [] }),
     getSimOverview: async () => ({ positions: [{ fundCode: '008888', shares: '10', issue: null }] }),
     confirmHoldingRule: async (fund, request) => {
       calls.confirm.push({ fund, request })
@@ -60,7 +60,7 @@ async function mount(t, options = {}) {
     vue,
     '@/api/advice': url(`export const {fetchRuleDraft,fetchHoldingRules,confirmHoldingRule,revokeHoldingRule,generateRuleDraft}=globalThis[${JSON.stringify(key)}]`),
     '@/api/simulation': url(`export const {getSimOverview}=globalThis[${JSON.stringify(key)}]`),
-    '@/components/PredictionHistoryDrawer.vue': url(`import {h} from '${vue}';export default {props:['title'],setup:(props,{slots,emit})=>()=>h('dialog',{open:true},[h('h2',{},props.title),slots.default?.(),h('button',{onClick:()=>emit('close')},'关闭')])}`),
+    '@/components/PredictionHistoryDrawer.vue': url(`import {h} from '${vue}';export default {props:['title'],setup:(props,{slots,emit})=>()=>h('dialog',{open:true},[h('h2',{},props.title),slots.default?.(),slots.footer?.(),h('button',{onClick:()=>emit('close')},'关闭')])}`),
     '@/utils/advice': url(stripTypeScriptTypes(read('../src/utils/advice.ts'))),
     '@/utils/simulation': url(stripTypeScriptTypes(read('../src/utils/simulation.ts'))),
   })) code = code.replaceAll(`from '${from}'`, `from '${to}'`).replaceAll(`from "${from}"`, `from '${to}'`)
@@ -72,53 +72,72 @@ async function mount(t, options = {}) {
   return {
     calls, root, text: () => textOf(root), nodes: () => nodes(root),
     set: async (id, value) => { nodes(root).find(node => node.props?.id === id).props['onUpdate:modelValue'](value); await settle() },
-    click: async label => { nodes(root).find(node => node.type === 'button' && textOf(node).includes(label)).props.onClick(); await settle() },
+    click: async label => { nodes(root).find(node => node.type === 'button' && (textOf(node).includes(label) || node.props?.['aria-label'] === label)).props.onClick(); await settle() },
     submit: async () => { nodes(root).find(node => node.type === 'form').props.onSubmit({ preventDefault() {} }); await settle() },
   }
 }
 
 test('系统参考只填入表单，用户核对后才保存自定义提醒', async t => {
   const view = await mount(t)
-  assert.match(view.text(), /我的提醒.*系统参考/)
-  await view.click('填入我的设置')
+  assert.match(view.text(), /止盈提醒.*持仓亏损提醒.*高点回撤提醒/)
+  assert.equal(view.nodes().some(node => node.type === 'input'), false)
+  await view.click('设置止盈提醒')
+  await view.click('填入参考值')
   assert.equal(view.calls.confirm.length, 0)
   assert.equal(view.nodes().find(node => node.props?.id === 'holding-profit-reminder').props.value, '9.8')
-  assert.match(view.text(), /基金净值从统计高点回落/)
   assert.match(view.text(), /尚未保存/)
   await view.set('holding-profit-reminder', '15')
-  await view.set('holding-downside-reminder', '8')
-  await view.set('holding-downside-basis', 'HOLDING_LOSS')
+  assert.equal(view.nodes().some(node => node.props?.id === 'holding-downside-reminder'), false)
+  assert.equal(view.nodes().some(node => node.props?.id === 'holding-downside-basis'), false)
   await view.submit()
   assert.deepEqual(view.calls.confirm, [{ fund: '008888', request: {
-    tier: 'CUSTOM', takeProfitPct: '0.1500', reduceDrawdownPct: '-0.0800', downsideBasis: 'HOLDING_LOSS',
+    tier: 'CUSTOM', takeProfitPct: '0.1500',
   } }])
   assert.match(view.text(), /提醒已保存.*不会自动交易/)
 })
 
 test('没有系统参考也能保存自己的设置，非法数值不提交', async t => {
   const view = await mount(t, { draft: { status: 'DATA_INSUFFICIENT', reason: '历史不足', tiers: [] } })
-  assert.match(view.text(), /仍可在上方填写并保存自己的提醒/)
-  await view.set('holding-profit-reminder', '0')
-  await view.set('holding-downside-reminder', '8')
+  await view.click('设置持仓亏损提醒')
+  assert.match(view.text(), /历史不足|持仓亏损请根据自己的持仓成本设定/)
+  assert.equal(view.nodes().some(node => node.props?.id === 'holding-profit-reminder'), false)
+  await view.set('holding-downside-reminder', '0')
   await view.submit()
   assert.equal(view.calls.confirm.length, 0)
-  assert.match(view.text(), /止盈提醒需大于/)
-  await view.set('holding-profit-reminder', '12')
+  assert.match(view.text(), /持仓亏损提醒需为/)
+  await view.set('holding-downside-reminder', '8')
   await view.submit()
   assert.equal(view.calls.confirm.length, 1)
-  assert.equal(view.calls.confirm[0].request.downsideBasis, 'HOLDING_LOSS')
+  assert.deepEqual(view.calls.confirm[0].request, {
+    tier: 'CUSTOM', reduceDrawdownPct: '-0.0800', downsideBasis: 'HOLDING_LOSS',
+  })
 })
 
 
-test('建议原因通过右侧抽屉打开，关闭后不保存也不展开卡片', async t => {
+test('切换下跌口径时清空旧数值，填入参考只改变高点回撤', async t => {
+  const view = await mount(t, { active: { ruleId: 'r1', takeProfitPct: '0.1500',
+    reduceDrawdownPct: '-0.0800', ruleParams: { downsideBasis: 'HOLDING_LOSS' } } })
+  assert.equal(view.nodes().some(node => node.type === 'dialog'), false)
+  await view.click('设置高点回撤提醒')
+  assert.match(view.text(), /保存后，下跌提醒将改为按高点回撤计算/)
+  assert.match(view.text(), /历史触发 12 次/)
+  assert.equal(view.nodes().find(node => node.props?.id === 'holding-downside-reminder').props.value, '')
+  assert.equal(view.nodes().some(node => node.props?.id === 'holding-profit-reminder'), false)
+  await view.click('填入参考值')
+  assert.equal(view.calls.confirm.length, 0)
+  await view.submit()
+  assert.deepEqual(view.calls.confirm, [{ fund: '008888', request: {
+    tier: 'CUSTOM', reduceDrawdownPct: '-0.1040', downsideBasis: 'DRAWDOWN',
+  } }])
+  assert.equal(view.nodes().some(node => node.type === 'dialog'), false)
+})
+
+test('取消抽屉会丢弃尚未保存的输入', async t => {
   const view = await mount(t)
-  assert.equal(view.nodes().some(node => node.type === 'dialog'), false)
-  await view.click('查看建议原因')
-  const drawer = view.nodes().find(node => node.type === 'dialog')
-  assert.equal(drawer.props.open, true)
-  assert.match(view.text(), /适中参考 · 建议原因.*高点回撤参考.*历史触发 12 次.*止盈参考.*历史触发 8 次/)
+  await view.click('设置止盈提醒')
+  await view.set('holding-profit-reminder', '12')
+  await view.click('取消')
   assert.equal(view.calls.confirm.length, 0)
-  await view.click('关闭')
-  assert.equal(view.nodes().some(node => node.type === 'dialog'), false)
-  assert.equal(view.calls.confirm.length, 0)
+  await view.click('设置止盈提醒')
+  assert.equal(view.nodes().find(node => node.props?.id === 'holding-profit-reminder').props.value, '')
 })

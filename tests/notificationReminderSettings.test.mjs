@@ -16,7 +16,7 @@ const vue = pathToFileURL(createRequire(import.meta.url).resolve('vue')).href
 const settle = async () => { for (let i = 0; i < 12; i++) { await Promise.resolve(); await nextTick() } }
 const renderer = createRenderer({
   createElement: type => ({ type, children: [], props: {}, text: '',
-    addEventListener() {}, removeEventListener() {}, getRootNode() { return { activeElement: null } },
+    addEventListener() {}, removeEventListener() {}, focus() {}, getRootNode() { return { activeElement: null } },
     get options() { return this.children.filter(node => node.type === 'option') },
     get value() { return this.props.value }, set value(value) { this.props.value = value } }),
   createText: text => ({ text }), createComment: () => ({ text: '' }),
@@ -39,70 +39,147 @@ const positions = [
   { fundCode: '000001', fundName: '甲基金', shares: '10' },
 ]
 
-async function mount(t, options = {}) {
-  const route = reactive({ query: { section: 'rules', ...options.query } })
-  const calls = { replace: [], overview: 0 }
-  const router = { replace: async target => { calls.replace.push(target); route.query = { ...target.query } } }
-  const key = `__notificationReminder${Math.random().toString(16).slice(2)}`
+function componentUrl(path, imports = {}) {
+  const { descriptor } = parse(read(path))
+  const script = compileScript(descriptor, { id: path, inlineTemplate: true })
+  let code = ts.transpileModule(script.content, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText
+  for (const [from, to] of Object.entries({ vue, ...imports })) {
+    code = code.replaceAll(`from '${from}'`, `from '${to}'`).replaceAll(`from "${from}"`, `from '${to}'`)
+  }
+  return url(code)
+}
+
+const drawer = url(`import {h} from '${vue}';
+export default {props:['title'],emits:['close'],setup:(props,{emit,slots})=>()=>h('dialog',{},[
+  h('h2',props.title),h('button',{onClick:()=>emit('close')},'关闭抽屉'),...slots.default()
+])}`)
+const pagination = url(`import {h} from '${vue}';
+export default {props:['page','pageSize','total'],emits:['change'],setup:(props,{emit})=>
+  ()=>h('button',{disabled:props.page*props.pageSize>=props.total,onClick:()=>emit('change',props.page+1,props.pageSize)},'第 '+props.page+' 页')
+}`)
+const reminderTable = componentUrl('../src/components/ReminderSettingsTable.vue', {
+  '@/components/ReminderFundSearch.vue': componentUrl('../src/components/ReminderFundSearch.vue'),
+  '@/components/ListPagination.vue': pagination,
+})
+const shared = {
+  '@/components/ReminderSettingsTable.vue': reminderTable,
+  '@/components/PredictionHistoryDrawer.vue': drawer,
+  '@/stores/auth': url('export const useAuthStore=()=>({hasPermission:()=>true})'),
+}
+function render(t, component) {
+  const root = { children: [] }
+  const app = renderer.createApp({ setup: () => () => h(component) })
+  t.after(() => app.unmount())
+  app.mount(root)
+  return {
+    text: () => textOf(root),
+    rows: () => nodes(root).filter(node => node.type === 'tr').slice(1),
+    find: selector => nodes(root).find(selector),
+    click: label => nodes(root).find(node => node.type === 'button' && textOf(node) === label).props.onClick(),
+  }
+}
+
+async function holding(t, query = {}, failFirst = false) {
+  const route = reactive({ query: { section: 'holding-rules', ...query } })
+  const key = '__reminderTest' + Math.random()
+  let calls = 0
   globalThis[key] = {
-    route, router,
+    route,
+    router: { replace: async target => { route.query = target.query } },
     getSimOverview: async () => {
-      calls.overview++
-      if (options.failFirst && calls.overview === 1) throw new Error('unavailable')
+      if (++calls === 1 && failFirst) throw new Error('unavailable')
       return { positions }
     },
   }
-  const { descriptor } = parse(read('../src/components/HoldingReminderSettings.vue'))
-  const script = compileScript(descriptor, { id: key, inlineTemplate: true })
-  let code = ts.transpileModule(script.content, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText
-  for (const [from, to] of Object.entries({
-    vue,
+  t.after(() => { delete globalThis[key] })
+  const component = (await import(componentUrl('../src/components/HoldingReminderSettings.vue', {
+    ...shared,
     'vue-router': url(`export const useRoute=()=>globalThis[${JSON.stringify(key)}].route;export const useRouter=()=>globalThis[${JSON.stringify(key)}].router`),
     '@/api/simulation': url(`export const {getSimOverview}=globalThis[${JSON.stringify(key)}]`),
-    '@/stores/auth': url('export const useAuthStore=()=>({hasPermission:permission=>permission==="SIM_PORTFOLIO_SELF_WRITE"})'),
-    '@/components/HoldingReminderPanel.vue': url(`import {h} from '${vue}';export default {props:['fundCode','canWrite'],setup:props=>()=>h('p',{},'提醒表单 '+props.fundCode+' 可写 '+props.canWrite)}`),
-  })) code = code.replaceAll(`from '${from}'`, `from '${to}'`).replaceAll(`from "${from}"`, `from '${to}'`)
-  const component = (await import(url(code))).default
-  const root = { children: [] }
-  const app = renderer.createApp({ setup: () => () => h(component) })
-  t.after(() => { app.unmount(); delete globalThis[key] })
-  app.mount(root)
+    '@/api/advice': url(`export const fetchHoldingRules=async code=>({active:code==='000001'?{takeProfitPct:'0.10',reduceDrawdownPct:'-0.05',ruleParams:{downsideBasis:'HOLDING_LOSS'}}:null})`),
+    '@/utils/advice': url('export const rulePctText=value=>Number(value)*100+"%"'),
+    '@/components/HoldingReminderPanel.vue': url(`import {h} from '${vue}';
+      export default {props:['fundCode','canWrite'],emits:['rules-change'],setup:(props,{emit})=>()=>h('div',{},[
+        h('p','提醒表单 '+props.fundCode+' 可写 '+props.canWrite),
+        h('button',{onClick:()=>emit('rules-change',{fundCode:props.fundCode,active:{takeProfitPct:'0.20'}})},'保存提醒')
+      ])}`),
+  }))).default
+  const view = render(t, component)
   await settle()
-  return { route, calls, root, text: () => textOf(root), nodes: () => nodes(root) }
+  return { ...view, route }
 }
 
-test('按代码列出正份额持仓，带入基金并保留写权限', async t => {
-  const view = await mount(t, { query: { fund: '000002', from: 'holding' } })
-  assert.match(view.text(), /提醒表单 000002 可写 true/)
-  const options = view.nodes().filter(node => node.type === 'option').map(node => textOf(node).trim())
-  assert.deepEqual(options, ['请选择基金', '甲基金（000001）', '乙基金（000002）'])
-  const select = view.nodes().find(node => node.props?.id === 'holding-reminder-fund')
-  await select.props.onChange({ target: { value: '000001' } })
+test('默认显示全部正份额持仓，更新已筛选基金的提醒且保留搜索', async t => {
+  const view = await holding(t)
+  assert.deepEqual(view.rows().map(textOf), ['甲基金00000110%-5%未设置设置', '乙基金000002未设置未设置未设置设置'])
+  const search = view.find(node => node.props?.id === 'holding-reminder-title-fund')
+  search.props.onFocus()
+  search.props['onUpdate:modelValue']('乙')
   await settle()
-  assert.equal(view.route.query.fund, '000001')
-  assert.equal(view.route.query.section, 'rules')
+  view.click('乙基金（000002）')
+  await settle()
+  view.click('设置')
+  await settle()
+  view.click('保存提醒')
+  view.click('关闭抽屉')
+  await settle()
+  assert.equal(search.value, '乙基金（000002）')
+  assert.deepEqual(view.rows().map(textOf), ['乙基金00000220%未设置未设置设置'])
+})
+
+test('旧的已清仓基金地址仍打开抽屉，关闭后回到持仓列表', async t => {
+  const view = await holding(t, { fund: '000099', from: 'holding' })
+  assert.match(view.text(), /已清仓基金（000099）/)
+  assert.match(view.text(), /提醒表单 000099/)
+  assert.equal(view.rows().length, 2)
+  view.click('关闭抽屉')
+  await settle()
+  assert.equal(view.route.query.fund, undefined)
   assert.equal(view.route.query.from, 'holding')
-  assert.match(view.text(), /提醒表单 000001/)
+  assert.doesNotMatch(view.text(), /提醒表单/)
 })
 
-test('直接打开设置不自动选基金，旧的已清仓基金地址仍可查看', async t => {
-  const empty = await mount(t)
-  assert.match(empty.text(), /请选择要设置提醒的基金/)
-  assert.doesNotMatch(empty.text(), /提醒表单/)
-  const previous = await mount(t, { query: { fund: '000099' } })
-  assert.match(previous.text(), /已清仓基金（000099）/)
-  assert.match(previous.text(), /提醒表单 000099/)
-})
-
-test('持仓读取失败可重试，不显示空持仓或提醒表单', async t => {
-  const view = await mount(t, { failFirst: true })
+test('持仓读取失败时可重试', async t => {
+  const view = await holding(t, {}, true)
   assert.match(view.text(), /持仓基金暂时无法读取/)
-  assert.doesNotMatch(view.text(), /当前没有正份额持仓|提醒表单/)
-  const retry = view.nodes().find(node => node.type === 'button' && textOf(node).includes('重新读取'))
-  await retry.props.onClick()
+  view.click('重试')
   await settle()
-  assert.equal(view.calls.overview, 2)
-  assert.match(view.text(), /请选择要设置提醒的基金/)
+  assert.equal(view.rows().length, 2)
+})
+
+test('关注列表包含没有规则的基金，可开启提醒并保留页码', async t => {
+  const alertsApi = url(`const rules=[{fundCode:'000001',ruleType:'EVENT',enabled:true}];
+    export const getAlertRules=async()=>rules.slice();
+    export const getAlertAvailability=async()=>null;
+    export const upsertAlertRule=async rule=>{rules.push(rule);return rule}`)
+  const alertPanel = componentUrl('../src/components/FundAlertRules.vue', {
+    'vue-router': url(`export const RouterLink={render:()=>null}`),
+    '@/api/alerts': alertsApi,
+    '@/utils/alertPresentation': url(`export const alertDescriptions={EVENT:{title:'事项'},SIGNAL_CHANGE:{title:'走势'}};
+      export const alertAvailabilityNote=()=>''`),
+  })
+  const component = (await import(componentUrl('../src/components/FollowedReminderSettings.vue', {
+    ...shared,
+    '@/components/FundAlertRules.vue': alertPanel,
+    '@/api/alerts': alertsApi,
+    '@/api/watchlist': url(`export const getWatchlist=async ({page})=>({page,totalPages:2,items:
+      page===1 ? Array.from({length:10},(_,i)=>({fundCode:String(i+1).padStart(6,'0'),fundName:'基金'+(i+1)})) :
+      [{fundCode:'000011',fundName:'末页基金'}]})`),
+  }))).default
+  const view = render(t, component)
+  await settle()
+  assert.match(textOf(view.rows()[0]), /已开启已关闭/)
+  view.click('第 1 页')
+  await settle()
+  assert.deepEqual(view.rows().map(textOf), ['末页基金000011已关闭已关闭设置'])
+  view.click('设置')
+  await settle()
+  view.click('开启提醒')
+  await settle()
+  view.click('关闭抽屉')
+  await settle()
+  assert.deepEqual(view.rows().map(textOf), ['末页基金000011已开启已关闭设置'])
+  assert.match(view.text(), /第 2 页/)
 })
 
 test('旧持仓提醒地址转到站内提醒并保留基金', async () => {
@@ -115,7 +192,7 @@ test('旧持仓提醒地址转到站内提醒并保留基金', async () => {
     name: 'portfolio-advice', fullPath: '/portfolio/advice?section=rules&fund=002112',
     query: { section: 'rules', fund: '002112' }, meta: {},
   })
-  assert.deepEqual(target, { name: 'notifications', query: { section: 'rules', fund: '002112' } })
+  assert.deepEqual(target, { name: 'notifications', query: { section: 'holding-rules', fund: '002112' } })
   const latest = await globalThis.__reminderNavigationGuard({
     name: 'portfolio-advice', fullPath: '/portfolio/advice?fund=002112',
     query: { fund: '002112' }, meta: {},

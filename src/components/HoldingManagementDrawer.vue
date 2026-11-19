@@ -1,12 +1,18 @@
 <script setup lang="ts">
-import { simMoney } from '@/utils/simulation'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { readScrollMemory, saveScrollMemory, workspaceScrollKey } from '@/utils/workspaceScroll'
 import { useRoute } from 'vue-router'
 import DecisionPanelV2 from '@/components/DecisionPanelV2.vue'
+import { getFundDetail } from '@/api/funds'
+import { usePortfolioRequest } from '@/composables/usePortfolioRequest'
+import { useAuthStore } from '@/stores/auth'
+import type { FundDetail } from '@/types/fund'
 import type { DecisionReport } from '@/types/multiPrediction'
 import type { SimPlan } from '@/types/simulation'
 import type { PortfolioListItem } from '@/utils/portfolioList'
+import { formatChangeRate, fundTypeLabel } from '@/utils/fundPresentation'
+import { simMoney, simTone } from '@/utils/simulation'
+import { earningsMoney } from '@/utils/simulationEarnings'
 
 const props = defineProps<{
   position: PortfolioListItem
@@ -20,28 +26,36 @@ const emit = defineEmits<{
   trade: [mode: 'BUY' | 'SELL' | 'PLAN']
 }>()
 const route = useRoute()
+const auth = useAuthStore()
+const fundRequest = usePortfolioRequest<FundDetail | null>(
+  () => getFundDetail(props.position.fundCode), null, '基金资料暂时无法读取。',
+)
+const { data: fund } = fundRequest
 const scrollKey = `holding:${workspaceScrollKey(route.fullPath)}:${props.position.fundCode}`
 const dialog = ref<globalThis.HTMLDialogElement | null>(null)
 const titleId = computed(() => `holding-drawer-title-${props.position.fundCode}`)
 const planLabels = { ACTIVE: '执行中', PAUSED: '已暂停', ENDED: '已结束' }
 const subtitle = computed(() => {
   const position = props.position
-  if (position.kind === 'recorded') return `${position.fundCode} · ${position.navDate ? `净值 ${position.navDate} / ${simMoney(position.unitNav)}` : '等待首笔交易确认'}`
-  if (position.kind === 'confirmed') return `${position.fundCode}${position.dataAsOfDate ? ` · 截至 ${position.dataAsOfDate}` : ''}`
-  return position.fundCode
+  return [position.fundCode, fund.value ? fundTypeLabel(fund.value.fundType) : '',
+    position.kind === 'confirmed' && position.dataAsOfDate ? `持仓截至 ${position.dataAsOfDate}` : ''].filter(Boolean).join(' · ')
+})
+const fundNav = computed(() => {
+  const position = props.position
+  if (fund.value?.unitNav != null) return { value: fund.value.unitNav, date: fund.value.navAnnDate || fund.value.asOfDate }
+  if (position.kind === 'recorded' && position.unitNav != null) return { value: position.unitNav, date: position.navDate }
+  return null
 })
 const statusLabel = computed(() => {
   if (props.plan) return `定投${planLabels[props.plan.status]}`
   const position = props.position
   return position.kind === 'recorded' && Number(position.shares) === 0 && (Number(position.totalBuy) > 0 || position.estimatedShares) ? '已清仓' : ''
 })
-const earningsTarget = computed(() => ({
-  name: 'portfolio-earnings',
-  query: { fundCode: props.position.fundCode, from: route.fullPath },
+const fullDetailTarget = computed(() => ({
+  name: 'portfolio-fund-detail',
+  params: { fundCode: props.position.fundCode },
+  query: { from: route.fullPath },
 }))
-const ordersTarget = computed(() => ({ path: route.path, query: { section: 'orders', fundCode: props.position.fundCode, from: route.fullPath } }))
-const fullDetailTarget = computed(() => ({ path: `/watchlist/${props.position.fundCode}`, query: { from: route.fullPath } }))
-const showEarnings = computed(() => props.position.kind === 'recorded' || (props.position.kind === 'confirmed' && !!props.position.additionalPosition))
 const buyLabel = computed(() => props.position.kind === 'recorded' && Number(props.position.shares) <= 0 ? '买入' : '加仓')
 
 function outside(event: globalThis.MouseEvent) {
@@ -51,6 +65,7 @@ function outside(event: globalThis.MouseEvent) {
 }
 onMounted(async () => {
   dialog.value?.showModal()
+  if (auth.hasPermission('FUND_READ')) void fundRequest.load()
   await nextTick()
   if (dialog.value) dialog.value.scrollTop = readScrollMemory(scrollKey)
 })
@@ -69,11 +84,11 @@ onBeforeUnmount(() => {
     @cancel.prevent="emit('close')"
   >
     <header class="quick-drawer-header">
-      <span>持仓管理</span>
+      <span>快速查看</span>
       <button
         type="button"
         class="secondary-button"
-        aria-label="关闭持仓管理"
+        aria-label="关闭快速查看"
         @click="emit('close')"
       >
         关闭
@@ -87,6 +102,12 @@ onBeforeUnmount(() => {
     </h2>
     <p class="quick-drawer-caption">
       {{ subtitle }}
+    </p>
+    <p
+      v-if="fundNav"
+      class="quick-drawer-caption"
+    >
+      单位净值 {{ simMoney(fundNav.value) }} · {{ fundNav.date || '日期暂缺' }}
     </p>
     <span
       v-if="statusLabel"
@@ -113,6 +134,32 @@ onBeforeUnmount(() => {
       {{ position.issue }} 当前显示上次有效估值。
     </p>
 
+    <dl class="quick-drawer-metrics holding-quick-metrics">
+      <div><dt>持有金额（元）</dt><dd>{{ simMoney(position.marketValue) }}</dd></div>
+      <div>
+        <dt>昨日收益（元）</dt><dd :class="simTone(position.kind !== 'unrecorded' ? position.yesterdayGain : null)">
+          {{ earningsMoney(position.kind !== 'unrecorded' ? position.yesterdayGain : null) }}
+        </dd>
+      </div>
+      <div>
+        <dt>持有收益（元）</dt><dd :class="simTone(position.holdingGain)">
+          {{ earningsMoney(position.holdingGain) }}
+        </dd>
+      </div>
+      <div>
+        <dt>持有收益率</dt><dd :class="simTone(position.holdingGain)">
+          {{ formatChangeRate(position.kind !== 'unrecorded' ? position.holdingGainRate : null) }}
+        </dd>
+      </div>
+    </dl>
+    <div class="quick-drawer-actions">
+      <RouterLink
+        class="primary-link"
+        :to="fullDetailTarget"
+      >
+        查看详情
+      </RouterLink>
+    </div>
     <section
       v-if="position.kind !== 'unrecorded'"
       class="holding-drawer-section"
@@ -146,42 +193,20 @@ onBeforeUnmount(() => {
         >
           {{ plan ? '管理定投' : '设置定投' }}
         </button>
-        <RouterLink
-          v-if="position.kind === 'recorded'"
-          class="secondary-button holding-drawer-action"
-          :to="ordersTarget"
-        >
-          交易记录
-        </RouterLink>
       </div>
     </section>
 
-    <section
+    <details
+      v-if="position.kind === 'recorded'"
       class="holding-drawer-section"
-      :aria-label="position.kind === 'unrecorded' ? '基金资料' : '收益与分析'"
     >
-      <h3>{{ position.kind === 'unrecorded' ? '基金资料' : '收益与分析' }}</h3>
-      <RouterLink
-        v-if="showEarnings"
-        class="holding-drawer-link"
-        :to="earningsTarget"
-      >
-        查看收益明细 <span aria-hidden="true">›</span>
-      </RouterLink>
-      <RouterLink
-        v-if="position.kind !== 'recorded'"
-        class="holding-drawer-link"
-        :to="fullDetailTarget"
-      >
-        查看完整基金资料 <span aria-hidden="true">›</span>
-      </RouterLink>
+      <summary>持仓分析</summary>
       <DecisionPanelV2
-        v-if="position.kind === 'recorded'"
         :fund-code="position.fundCode"
         :initial-report="initialReport"
         compact
       />
-    </section>
+    </details>
     <p
       v-if="position.kind !== 'unrecorded'"
       class="holding-drawer-simulation"
@@ -192,15 +217,20 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.holding-management-drawer .holding-drawer-title { margin: 0 0 10px; font-size: 20px; line-height: 1.5; overflow-wrap: anywhere; }
-.holding-drawer-badge { margin-top: 16px; }
+.holding-management-drawer .quick-drawer-header { margin-bottom: 20px; }
+.holding-management-drawer .holding-drawer-title { margin: 0 0 8px; font-size: 20px; line-height: 1.5; overflow-wrap: anywhere; }
+.holding-management-drawer .quick-drawer-caption { margin: 0 0 8px; }
+.holding-drawer-badge { margin-top: 12px; }
 .holding-drawer-notice { margin: 22px 0 0; color: var(--ui-muted); font-size: 14px; line-height: 1.8; }
-.holding-drawer-section { margin-top: 26px; padding-top: 24px; border-top: 1px solid var(--ui-line); }
-.holding-drawer-section h3 { margin: 0 0 16px; font-size: 16px; }
+.holding-drawer-section { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--ui-line); }
+.holding-drawer-section h3 { margin: 0 0 12px; font-size: 16px; }
 .holding-drawer-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .holding-drawer-action { display: flex; align-items: center; justify-content: center; min-height: 40px; padding: 8px 12px; text-align: center; text-decoration: none; }
 .holding-drawer-action:hover:not(:disabled) { color: var(--ui-ink); background: #dde7d6; border-color: #a5b79e; }
-.holding-drawer-link { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--ui-line); color: var(--ui-primary); font-size: 14px; text-decoration: none; }
+.holding-management-drawer .holding-quick-metrics { row-gap: 12px; margin: 16px 0 12px; }
+.holding-quick-metrics dd { margin: 6px 0 0; }
+.holding-management-drawer .quick-drawer-actions { margin-top: 20px; }
+.holding-drawer-section summary { cursor: pointer; color: var(--ui-primary); }
 .holding-drawer-simulation { margin: 32px 0 0; padding: 15px; border-radius: 8px; background: var(--ui-canvas); color: var(--ui-muted); font-size: 12px; text-align: center; }
 .holding-management-drawer :deep(.decision-panel) { padding: 0; margin: 20px 0 0; border: 0; background: transparent; }
 .holding-management-drawer :deep(.decision-panel .section-heading) { display: block; }

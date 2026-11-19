@@ -28,6 +28,7 @@ import { fundStatusLabel, fundTypeLabel, netValueStatusLabel, formatChangeRate, 
 import { buildFundManagerProfiles, buildFundManagerTimeline, formatManagerTenureReturn, matchManagerPeriodReturn } from '@/utils/fundManagerTimeline'
 
 /** 市场与关注共用公共资料；关注入口仍通过原接口验证本人关注关系。 */
+const props = defineProps<{ embedded?: boolean }>()
 const route = useRoute()
 const router = useRouter()
 const watchContext = computed(() => route.name === 'watchlist-fund-detail')
@@ -38,7 +39,8 @@ let loadSequence = 0
 let navSequence = 0
 let shareSequence = 0
 let shareNavSequence = 0
-const { section, sectionLabel, returnTarget } = usePageNavigation()
+const { section: pageSection, sectionLabel, holdingMaterialSection, returnTarget } = usePageNavigation()
+const section = computed(() => props.embedded ? holdingMaterialSection.value : pageSection.value)
 const detail = ref<WatchlistFundDetail | null>(null)
 const loading = ref(false)
 const errorMessage = ref('')
@@ -286,10 +288,12 @@ watch(section, (selectedSection) => {
 
 <template>
   <section
-    class="market-page watchlist-detail-page"
+    class="watchlist-detail-page"
+    :class="{ 'market-page': !embedded }"
     :aria-label="`${basic?.fundName || fundCode} · ${sectionLabel}`"
   >
     <RouterLink
+      v-if="!embedded"
       class="back-link"
       :to="returnTarget ?? (watchContext ? '/watchlist' : '/funds')"
     >
@@ -311,11 +315,19 @@ watch(section, (selectedSection) => {
     </p>
     <template v-else-if="basic && detail">
       <!-- 基金概览只在基础资料页展示，其他子页直接呈现对应内容。 -->
-      <h1 id="watchlist-fund-detail-title">
+      <h1
+        v-if="!embedded"
+        id="watchlist-fund-detail-title"
+      >
         {{ basic.fundName }}
       </h1>
-      <p class="lead">
-        {{ basic.fundCode }} · {{ fundTypeLabel(basic.fundType) }} · {{ fundStatusLabel(basic.status) }}
+      <p
+        v-if="!embedded || section === 'basic'"
+        class="lead"
+      >
+        <template v-if="!embedded">
+          {{ basic.fundCode }} ·
+        </template>{{ fundTypeLabel(basic.fundType) }} · {{ fundStatusLabel(basic.status) }}
       </p>
       <template v-if="section === 'basic'">
         <div class="fund-detail-topline">

@@ -8,11 +8,16 @@ export function managerReturnPath(value: unknown, fallback = '/fund-managers'): 
   try {
     const url = new URL(value, 'https://fund-radar.invalid')
     if (url.origin !== 'https://fund-radar.invalid'
-      || (!MANAGER_PATH.test(url.pathname) && !/^\/(funds|watchlist)(\/\d{6})?$/.test(url.pathname))) return fallback
+      || (!MANAGER_PATH.test(url.pathname) && !/^\/(funds|watchlist)(\/\d{6})?$/.test(url.pathname)
+        && !/^\/portfolio\/\d{6}$/.test(url.pathname))) return fallback
     const parameters = new URLSearchParams()
     for (const key of ['keyword', 'company', 'fundType', 'state', 'page', 'pageSize', 'size', 'type', 'rating', 'section', 'from']) {
       const item = url.searchParams.get(key)
       if (item && item.length <= (key === 'from' ? 2000 : 128)) parameters.set(key, item)
+    }
+    if (/^\/portfolio\/\d{6}$/.test(url.pathname)) {
+      parameters.set('tab', 'materials')
+      parameters.set('material', 'manager')
     }
     return `${url.pathname}${parameters.size ? `?${parameters}` : ''}`
   } catch { return fallback }

@@ -50,7 +50,12 @@ async function mount(t, position, { canWrite = true, canPlan = true } = {}) {
     vue: vueUrl,
     '@/utils/workspaceScroll': url(stripTypeScriptTypes(read('../src/utils/workspaceScroll.ts'))),
     '@/utils/simulation': url(stripTypeScriptTypes(read('../src/utils/simulation.ts'))),
-    'vue-router': url("export const useRoute = () => ({ path: '/portfolio', fullPath: '/portfolio?section=holdings' })"),
+    '@/utils/simulationEarnings': url(stripTypeScriptTypes(read('../src/utils/simulationEarnings.ts'))),
+    '@/utils/fundPresentation': url('export const fundTypeLabel = value => value; export const formatChangeRate = value => value'),
+    '@/api/funds': url('export const getFundDetail = () => Promise.resolve(null)'),
+    '@/stores/auth': url('export const useAuthStore = () => ({ hasPermission: () => false })'),
+    '@/composables/usePortfolioRequest': url('export const usePortfolioRequest = () => ({ data: { value: null } })'),
+    'vue-router': url("export const useRoute = () => ({ fullPath: '/portfolio?section=holdings&holding=008888' })"),
     '@/components/DecisionPanelV2.vue': url(`import { h } from '${vueUrl}'; export default { props: ['fundCode'], setup: props => () => h('div', { class: 'decision-stub' }, '综合建议 ' + props.fundCode) }`),
   })) code = code.replaceAll(`from '${from}'`, `from '${to}'`).replaceAll(`from "${from}"`, `from '${to}'`)
   code = code.replace('dialog.value?.showModal();', `globalThis[${JSON.stringify(key)}] = dialog.value; dialog.value?.showModal();`)
@@ -75,32 +80,32 @@ async function mount(t, position, { canWrite = true, canPlan = true } = {}) {
   }
 }
 
-test('已有持仓的交易、收益和综合建议集中在抽屉，操作只发出原模式', async t => {
+test('快速查看展示持仓摘要和详情入口，交易操作继续发出原模式', async t => {
   const view = await mount(t, recorded)
-  assert.match(view.text(), /持仓操作.*收益与分析.*综合建议 008888/)
+  assert.match(view.text(), /持有金额（元）.*昨日收益（元）.*持有收益（元）.*持有收益率.*查看详情.*持仓操作.*持仓分析.*综合建议 008888/)
   assert.equal(view.dialog().open, true)
   for (const label of ['加仓', '卖出', '设置定投']) {
     const button = view.buttons().find(node => textOf(node).trim() === label)
     await button.props.onClick()
   }
   assert.deepEqual(view.trades, ['BUY', 'SELL', 'PLAN'])
-  assert.equal(view.links().length, 2)
+  assert.equal(view.links().length, 1)
 })
 
 test('异常净值和权限限制继续禁止对应操作', async t => {
   const limited = await mount(t, { ...recorded, issue: '净值待核验' }, { canWrite: false, canPlan: false })
   assert.deepEqual(limited.buttons().map(node => textOf(node).trim()), ['关闭'])
-  assert.match(limited.text(), /净值待核验.*查看收益明细/)
+  assert.match(limited.text(), /净值待核验.*查看详情/)
   const disabled = await mount(t, { ...recorded, issue: '净值待核验' })
   assert.equal(disabled.buttons().find(node => textOf(node).trim() === '加仓').props.disabled, true)
   assert.equal(disabled.buttons().find(node => textOf(node).trim() === '卖出').props.disabled, true)
   assert.equal(disabled.trades.length, 0)
 })
 
-test('未建档基金只保留完整资料入口，不显示交易或建议', async t => {
+test('未建档基金仍可进详情，抽屉不显示交易或建议', async t => {
   const view = await mount(t, { kind: 'unrecorded', fundCode: '000001', fundName: '仅确认持有', marketValue: null, holdingGain: null, cumulativeGain: null }, { canWrite: true, canPlan: true })
   assert.deepEqual(view.buttons().map(node => textOf(node).trim()), ['关闭'])
-  assert.match(view.text(), /暂无模拟持仓数据.*基金资料.*查看完整基金资料/)
+  assert.match(view.text(), /暂无模拟持仓数据.*查看详情/)
   assert.doesNotMatch(view.text(), /持仓操作|综合建议 000001|查看收益明细/)
   assert.equal(view.links().length, 1)
 })
@@ -118,11 +123,14 @@ test('关闭按钮、Esc和框外点击关闭，框内点击不误关', async t 
   assert.equal(view.closes(), 3)
 })
 
-test('收益和交易跳转携带原列表，导航点击不抢先清除抽屉状态', async t => {
+test('查看详情固定当前基金，并携带原列表和抽屉状态', async t => {
   const view = await mount(t, recorded)
-  for (const link of view.links()) {
-    assert.equal(link.props.to.query.from, '/portfolio?section=holdings')
-    assert.equal(link.props.onClick, undefined)
-  }
+  const [link] = view.links()
+  assert.deepEqual(link.props.to, {
+    name: 'portfolio-fund-detail',
+    params: { fundCode: '008888' },
+    query: { from: '/portfolio?section=holdings&holding=008888' },
+  })
+  assert.equal(link.props.onClick, undefined)
   assert.equal(view.closes(), 0)
 })

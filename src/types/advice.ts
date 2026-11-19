@@ -59,7 +59,7 @@ export interface RuleDraftView {
   navBasis: string | null; stats: Record<string, unknown> | null; tiers: RuleDraftTier[]; assumption: string | null
 }
 export interface HoldingRule {
-  ruleId: string; fundCode: string; tier: RuleTier; takeProfitPct: DecimalValue; reduceDrawdownPct: DecimalValue
+  ruleId: string; fundCode: string; tier: RuleTier; takeProfitPct: DecimalValue | null; reduceDrawdownPct: DecimalValue | null
   ruleParams: Record<string, unknown> | null; sourceDraftId: string | null; ruleVersion: string
   status: 'ACTIVE' | 'REVOKED'; confirmedAt: string; supersededAt: string | null
 }

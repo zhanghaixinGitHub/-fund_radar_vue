@@ -33,15 +33,16 @@ const compiled = transpile(compileScript(descriptor, { id: 'earnings-page-test' 
   }).replaceAll('import.meta.env.DEV', 'false')
 const { default: Page } = await import(moduleUrl(compiled))
 
-function mount(query = {}) {
-  const route = reactive({ query, fullPath: '/portfolio/earnings' })
+function mount(query = {}, fundCode) {
+  const path = fundCode ? `/portfolio/${fundCode}` : '/portfolio/earnings'
+  const route = reactive({ query, path, fullPath: path })
   const pushes = []
   const requests = { summary: [], funds: [], details: [] }
   const request = kind => (...args) => new Promise((resolve, reject) => requests[kind].push({ args, resolve, reject }))
   const router = { async push(location) {
     pushes.push(location)
     route.query = Object.fromEntries(Object.entries(location.query).filter(([, value]) => value !== undefined))
-    route.fullPath = `/portfolio/earnings?${new URLSearchParams(route.query)}`
+    route.fullPath = `${path}?${new URLSearchParams(route.query)}`
     await nextTick()
   } }
   globalThis.earningsPageHarness = { route, router, api: {
@@ -51,8 +52,8 @@ function mount(query = {}) {
   const renderer = createRenderer({
     createComment: () => ({}), insert() {}, remove() {}, parentNode: () => null, nextSibling: () => null,
   })
-  const app = renderer.createApp({ setup(props, context) {
-    state = Page.setup(props, context)
+  const app = renderer.createApp({ setup(_props, context) {
+    state = Page.setup({ fundCode }, context)
     return () => null
   } })
   app.mount({})
@@ -67,6 +68,41 @@ const summary = () => ({
   ] }, curve: [],
 })
 const tick = async () => { await Promise.resolve(); await nextTick() }
+
+for (const fundCode of [undefined, '016008']) {
+  test(`${fundCode ? '基金详情' : '总览'}仅有末尾待更新时显示截至日期，有历史缺口时保留部分收益提示`, async t => {
+    const { state, requests, unmount } = mount({}, fundCode)
+    t.after(unmount)
+    const data = summary()
+    data.fund = fundCode ? { fundCode, navDate: '2026-11-09' } : null
+    data.knownGain = '-39.18'
+    data.curve = [
+      { date: '2026-11-09', status: 'COMPLETE', knownGain: '-39.18' },
+      { date: '2026-11-10', status: 'NAV_PENDING', knownGain: null },
+    ]
+    requests.summary[0].resolve(data)
+    await tick()
+    assert.equal(state.displayedGain.value, '-39.18')
+    assert.equal(state.gainThroughDate.value.cutoffDate, '2026-11-09')
+    assert.equal(state.gainThroughDate.value.pendingDates, '2026-11-10')
+
+    state.result.value.curve.unshift({ date: '2026-11-08', status: 'MISSING', knownGain: null })
+    state.result.value.incompleteDays = 2
+    assert.equal(state.gainThroughDate.value, null)
+    assert.equal(state.displayedGain.value, '-39.18')
+  })
+}
+
+test('详情中的日期切换保留详情地址与锁定的基金', async t => {
+  const { state, requests, pushes, unmount } = mount({ tab: 'earnings', fundCode: '000999' }, '001021')
+  t.after(unmount)
+  assert.equal(requests.summary[0].args[0].get('fundCode'), '001021')
+  state.changeRange('QUARTER')
+  await tick()
+  assert.equal(pushes[0].path, '/portfolio/001021')
+  assert.equal(pushes[0].query.tab, 'earnings')
+  assert.equal(requests.summary[1].args[0].get('fundCode'), '001021')
+})
 
 test('自选日期先编辑再查询，错误留在日期栏，保留基金和返回条件', async t => {
   const harness = mount({ fundCode: '001021', page: '3', size: '20', from: '/portfolio?section=holdings' })

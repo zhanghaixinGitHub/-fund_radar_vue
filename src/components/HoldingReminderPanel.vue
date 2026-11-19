@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, defineComponent, h, onBeforeUnmount, ref, useId, watch } from 'vue'
 import PredictionHistoryDrawer from '@/components/PredictionHistoryDrawer.vue'
 import {
   confirmHoldingRule, fetchHoldingRules, fetchRuleDraft, generateRuleDraft, revokeHoldingRule,
@@ -10,16 +10,32 @@ import type { SimPosition } from '@/types/simulation'
 import { rulePctText, ruleStatsUpdated, ruleStatusLabel, ruleTierLabel, ruleTriggerText } from '@/utils/advice'
 import { simTime } from '@/utils/simulation'
 
-const props = defineProps<{ fundCode: string; canWrite: boolean }>()
+const props = defineProps<{ fundCode: string; canWrite: boolean; inlineEditor?: boolean }>()
+const emit = defineEmits<{ 'rules-change': [view: HoldingRulesView]; 'busy-change': [busy: boolean] }>()
+const InlineReminderEditor = defineComponent({
+  props: { title: String },
+  setup(editor, { slots }) {
+    return () => h('section', { 'aria-label': editor.title }, [
+      slots.default?.(),
+      h('div', { class: 'inline-reminder-actions' }, slots.footer?.()),
+    ])
+  },
+})
 type DownsideBasis = 'HOLDING_LOSS' | 'DRAWDOWN'
 
 const draft = ref<RuleDraftView | null>(null)
-const reasonTier = ref<RuleDraftTier | null>(null)
+const reminderItems = [
+  { key: 'PROFIT', label: '止盈提醒', detail: '按持仓收益率计算' },
+  { key: 'HOLDING_LOSS', label: '持仓亏损提醒', detail: '按相对持仓成本的亏损计算' },
+  { key: 'DRAWDOWN', label: '高点回撤提醒', detail: '按基金净值从统计高点回落的幅度计算' },
+] as const
+type ReminderItem = typeof reminderItems[number]
+const editing = ref<ReminderItem | null>(null)
+const formId = useId()
 const holdingRules = ref<HoldingRulesView | null>(null)
 const position = ref<SimPosition | null>(null)
 const profitPercent = ref('')
 const downsidePercent = ref('')
-const downsideBasis = ref<DownsideBasis>('HOLDING_LOSS')
 const loading = ref(true)
 const saving = ref(false)
 const refreshing = ref(false)
@@ -42,9 +58,36 @@ const blockReason = computed(() => {
   return ''
 })
 const canSave = computed(() => !blockReason.value)
-const downsideText = computed(() => downsideBasis.value === 'HOLDING_LOSS'
-  ? '按持仓收益率计算，相对买入成本；与基金从高点回撤不同。'
-  : '按基金净值从统计高点回落的幅度计算；不等于你的持仓亏损。')
+const busy = computed(() => saving.value || refreshing.value || revoking.value)
+watch(busy, value => emit('busy-change', value), { flush: 'sync' })
+const existingBasis = computed(() => activeRule.value?.reduceDrawdownPct != null ? basisOf(activeRule.value) : null)
+const switchingBasis = computed(() => editing.value && editing.value.key !== 'PROFIT'
+  && existingBasis.value && existingBasis.value !== editing.value.key)
+
+function currentValue(item: ReminderItem) {
+  const rule = activeRule.value
+  if (!rule) return null
+  if (item.key === 'PROFIT') return rule.takeProfitPct
+  return basisOf(rule) === item.key ? rule.reduceDrawdownPct : null
+}
+
+function openEditor(item: ReminderItem) {
+  fillFromActive()
+  editing.value = item
+  message.value = ''
+  error.value = ''
+  if (item.key !== 'PROFIT') {
+    if (existingBasis.value !== item.key) downsidePercent.value = ''
+  }
+}
+
+function closeEditor() {
+  if (busy.value) return
+  editing.value = null
+  revokeArmed.value = false
+  error.value = ''
+  message.value = ''
+}
 
 function basisOf(rule: HoldingRule): DownsideBasis {
   return rule.ruleParams?.downsideBasis === 'HOLDING_LOSS' ? 'HOLDING_LOSS' : 'DRAWDOWN'
@@ -58,21 +101,19 @@ function fillFromActive() {
   const rule = activeRule.value
   profitPercent.value = percentInput(rule?.takeProfitPct)
   downsidePercent.value = percentInput(rule?.reduceDrawdownPct)
-  downsideBasis.value = rule ? basisOf(rule) : 'HOLDING_LOSS'
   formError.value = ''
 }
 function applyReference(tier: RuleDraftTier) {
-  if (!canSave.value) return
-  profitPercent.value = percentInput(tier.takeProfitPct)
-  downsidePercent.value = percentInput(tier.reduceDrawdownPct)
-  downsideBasis.value = 'DRAWDOWN'
+  if (!canSave.value || busy.value || !editing.value) return
+  if (editing.value.key === 'PROFIT') profitPercent.value = percentInput(tier.takeProfitPct)
+  if (editing.value.key === 'DRAWDOWN') downsidePercent.value = percentInput(tier.reduceDrawdownPct)
   formError.value = ''
   message.value = '系统参考已填入，尚未保存；请按自己的需要调整后点击“保存提醒”。'
 }
 async function load() {
   const run = ++generation
   loading.value = true; error.value = ''; message.value = ''; formError.value = ''
-  draft.value = null; reasonTier.value = null; holdingRules.value = null; position.value = null; revokeArmed.value = false
+  draft.value = null; editing.value = null; holdingRules.value = null; position.value = null; revokeArmed.value = false
   if (!props.fundCode) { loading.value = false; return }
   try {
     const [draftResult, rulesResult, overview] = await Promise.all([
@@ -81,6 +122,7 @@ async function load() {
     if (!alive || run !== generation) return
     draft.value = draftResult
     holdingRules.value = rulesResult
+    emit('rules-change', rulesResult)
     position.value = overview.positions.find(item => item.fundCode === props.fundCode) ?? null
     fillFromActive()
   } catch (reason) {
@@ -91,27 +133,27 @@ async function load() {
 }
 async function save() {
   formError.value = ''; message.value = ''
-  const profit = Number(profitPercent.value)
-  const downside = Number(downsidePercent.value)
-  if (!Number.isFinite(profit) || profit <= 0 || profit > 1000) {
-    formError.value = '止盈提醒需大于 0%，且不超过 1000%。'; return
+  const item = editing.value
+  if (!item || busy.value || !canSave.value) return
+  const isProfit = item.key === 'PROFIT'
+  const percent = Number(isProfit ? profitPercent.value : downsidePercent.value)
+  const max = isProfit ? 1000 : 100
+  if (!Number.isFinite(percent) || percent < 0.01 || percent > max) {
+    formError.value = `${item.label}需为 0.01% 到 ${max}%。`
+    return
   }
-  if (!Number.isFinite(downside) || downside <= 0 || downside > 100) {
-    formError.value = '下跌提醒需大于 0%，且不超过 100%。'; return
-  }
-  if (saving.value || !canSave.value) return
   saving.value = true; error.value = ''
   const fund = props.fundCode
   try {
-    const result = await confirmHoldingRule(fund, {
-      tier: 'CUSTOM',
-      takeProfitPct: (profit / 100).toFixed(4),
-      reduceDrawdownPct: (-downside / 100).toFixed(4),
-      downsideBasis: downsideBasis.value,
-    })
+    const result = await confirmHoldingRule(fund, item.key === 'PROFIT'
+      ? { tier: 'CUSTOM', takeProfitPct: (percent / 100).toFixed(4) }
+      : { tier: 'CUSTOM', reduceDrawdownPct: (-percent / 100).toFixed(4), downsideBasis: item.key })
     if (!alive || fund !== props.fundCode) return
     holdingRules.value = result
+    emit('rules-change', result)
     fillFromActive()
+    editing.value = null
+    revokeArmed.value = false
     message.value = '提醒已保存。达到数值后只提示复核，不会自动交易。'
   } catch (reason) {
     if (alive && fund === props.fundCode) error.value = reason instanceof Error ? reason.message : '提醒保存失败，请稍后重试。'
@@ -119,21 +161,23 @@ async function save() {
 }
 async function revoke() {
   if (!revokeArmed.value) { revokeArmed.value = true; return }
-  if (revoking.value) return
+  if (busy.value || !props.canWrite) return
   revoking.value = true; error.value = ''; message.value = ''
   const fund = props.fundCode
   try {
     const result = await revokeHoldingRule(fund)
     if (!alive || fund !== props.fundCode) return
     holdingRules.value = result
+    emit('rules-change', result)
     revokeArmed.value = false
+    editing.value = null
     message.value = '提醒已关闭，修改记录仍然保留。'
   } catch (reason) {
     if (alive && fund === props.fundCode) error.value = reason instanceof Error ? reason.message : '关闭结果暂时无法确认，请刷新查看。'
   } finally { if (alive) revoking.value = false }
 }
 async function refreshReference() {
-  if (refreshing.value) return
+  if (busy.value || !props.canWrite) return
   refreshing.value = true; error.value = ''; message.value = ''
   const fund = props.fundCode
   try {
@@ -156,7 +200,7 @@ onBeforeUnmount(() => { alive = false; generation++ })
     :aria-busy="loading || saving || refreshing"
   >
     <p
-      v-if="error"
+      v-if="error && !editing"
       class="error-message"
       role="alert"
     >
@@ -171,7 +215,7 @@ onBeforeUnmount(() => { alive = false; generation++ })
       </button>
     </p>
     <p
-      v-if="message"
+      v-if="message && !editing"
       class="sim-success"
       role="status"
     >
@@ -184,190 +228,26 @@ onBeforeUnmount(() => { alive = false; generation++ })
     >
       正在读取提醒设置…
     </p>
-    <template v-else-if="draft && holdingRules">
-      <section
-        class="sim-detail-panel reminder-settings"
-        aria-labelledby="reminder-settings-title"
-      >
-        <h2 id="reminder-settings-title">
-          我的提醒
-        </h2>
-        <p class="sim-muted">
-          数值由你填写并保存。达到后只提示复核，不会自动卖出或下单。
-        </p>
-        <p
-          v-if="activeRule"
-          class="current-reminder"
-        >
-          当前生效：止盈 {{ rulePctText(activeRule.takeProfitPct) }}；
-          {{ basisOf(activeRule) === 'HOLDING_LOSS' ? '持仓亏损' : '高点回撤' }} {{ rulePctText(activeRule.reduceDrawdownPct) }}。
-          <span v-if="statsUpdated">系统参考已有更新，但不会替换你的设置。</span>
-        </p>
-        <p
-          v-if="blockReason"
-          class="notice-banner"
-          role="status"
-        >
-          {{ blockReason }}
-        </p>
-        <form @submit.prevent="save">
-          <div class="reminder-form-grid">
-            <label for="holding-profit-reminder">
-              止盈提醒（持仓收益率）
-              <span class="reminder-input"><input
-                id="holding-profit-reminder"
-                v-model="profitPercent"
-                type="number"
-                inputmode="decimal"
-                min="0.01"
-                max="1000"
-                step="0.01"
-                required
-                :disabled="!canSave || saving"
-                placeholder="例如 15"
-              ><span>%</span></span>
-            </label>
-            <label for="holding-downside-basis">
-              下跌提醒口径
-              <select
-                id="holding-downside-basis"
-                v-model="downsideBasis"
-                :disabled="!canSave || saving"
-              >
-                <option value="HOLDING_LOSS">按持仓亏损（相对成本）</option>
-                <option value="DRAWDOWN">按高点回撤（基金净值）</option>
-              </select>
-            </label>
-            <label for="holding-downside-reminder">
-              下跌提醒点
-              <span class="reminder-input"><input
-                id="holding-downside-reminder"
-                v-model="downsidePercent"
-                type="number"
-                inputmode="decimal"
-                min="0.01"
-                max="100"
-                step="0.01"
-                required
-                :disabled="!canSave || saving"
-                placeholder="例如 8"
-              ><span>%</span></span>
-            </label>
-          </div>
-          <p class="sim-muted">
-            {{ downsideText }}
-          </p>
-          <p
-            v-if="formError"
-            class="error-message"
-            role="alert"
-          >
-            {{ formError }}
-          </p>
-          <div
-            v-if="canWrite"
-            class="sim-actions"
-          >
+    <template v-else-if="draft && holdingRules && !(inlineEditor && editing)">
+      <section aria-label="提醒设置">
+        <ul class="reminder-list">
+          <li v-for="item in reminderItems" :key="item.key">
+            <div>
+              <strong>{{ item.label }}</strong>
+              <small>{{ item.detail }}</small>
+            </div>
+            <span>{{ currentValue(item) == null ? '未设置' : rulePctText(currentValue(item)) }}</span>
             <button
-              class="primary-button"
-              type="submit"
-              :disabled="!canSave || saving"
-            >
-              {{ saving ? '正在保存…' : '保存提醒' }}
-            </button>
-            <button
-              v-if="activeRule"
               class="secondary-button"
               type="button"
-              :disabled="revoking"
-              @click="revoke"
+              aria-haspopup="dialog"
+              :aria-label="`${canSave ? (currentValue(item) == null ? '设置' : '修改') : '查看'}${item.label}`"
+              @click="openEditor(item)"
             >
-              {{ revokeArmed ? '确认关闭当前提醒？' : '关闭提醒' }}
+              {{ canSave ? (currentValue(item) == null ? '设置' : '修改') : '查看' }}
             </button>
-            <button
-              v-if="revokeArmed"
-              class="secondary-button"
-              type="button"
-              :disabled="revoking"
-              @click="revokeArmed = false"
-            >
-              取消
-            </button>
-          </div>
-        </form>
-      </section>
-
-      <section
-        class="sim-detail-panel reminder-reference"
-        aria-labelledby="reminder-reference-title"
-      >
-        <h2 id="reminder-reference-title">
-          系统参考
-        </h2>
-        <p class="sim-muted">
-          参考值根据历史净值统计得出，只供你调整设置时使用，不会自动生效。
-        </p>
-        <template v-if="draftAvailable">
-          <p class="sim-muted">
-            依据 {{ draft.historyDays ?? '—' }} 个交易日、{{ draft.windowCount ?? '—' }} 个滚动窗口；统计截至 {{ draft.statsCutoffDate ?? '未知' }}。
-          </p>
-          <p
-            v-if="draft.assumption"
-            class="sim-muted"
-          >
-            {{ draft.assumption }}
-          </p>
-          <div class="rule-tier-grid">
-            <article
-              v-for="tier in draft.tiers"
-              :key="tier.tier"
-              class="rule-tier-card"
-            >
-              <h3>{{ ruleTierLabel(tier.tier) }}参考</h3>
-              <dl>
-                <div><dt>止盈</dt><dd>{{ rulePctText(tier.takeProfitPct) }}</dd></div>
-                <div><dt>高点回撤</dt><dd>{{ rulePctText(tier.reduceDrawdownPct) }}</dd></div>
-              </dl>
-              <button
-                class="reason-link"
-                type="button"
-                aria-haspopup="dialog"
-                @click="reasonTier = tier"
-              >
-                查看建议原因
-              </button>
-              <button
-                class="secondary-button"
-                type="button"
-                :disabled="!canSave"
-                @click="applyReference(tier)"
-              >
-                填入我的设置
-              </button>
-            </article>
-          </div>
-        </template>
-        <template v-else>
-          <p class="notice-banner">
-            {{ draft.status === 'NOT_APPLICABLE' ? '该类别暂不适用此类参考。' : '历史数据不足，暂不提供参考值。' }}{{ draft.reason || '未提供具体原因。' }}
-          </p>
-          <p class="sim-muted">
-            没有系统参考时，仍可在上方填写并保存自己的提醒。
-          </p>
-        </template>
-        <div
-          v-if="canWrite"
-          class="sim-actions"
-        >
-          <button
-            class="secondary-button"
-            type="button"
-            :disabled="refreshing"
-            @click="refreshReference"
-          >
-            {{ refreshing ? '正在检查统计…' : '更新系统参考' }}
-          </button>
-        </div>
+          </li>
+        </ul>
       </section>
 
       <details
@@ -408,49 +288,106 @@ onBeforeUnmount(() => { alive = false; generation++ })
         </div>
       </details>
     </template>
-    <PredictionHistoryDrawer
-      v-if="reasonTier"
-      :title="`${ruleTierLabel(reasonTier.tier)}参考 · 建议原因`"
-      @close="reasonTier = null"
+    <component
+      v-if="editing && draft"
+      :is="inlineEditor ? InlineReminderEditor : PredictionHistoryDrawer"
+      :title="editing.label"
+      close-label="关闭提醒设置"
+      @close="closeEditor"
     >
-      <p>这些历史统计只解释参考值的由来，不代表未来一定按同样方式表现。</p>
-      <section aria-labelledby="reminder-drawdown-reason">
-        <h3 id="reminder-drawdown-reason">
-          高点回撤参考：{{ rulePctText(reasonTier.reduceDrawdownPct) }}
-        </h3>
-        <p>{{ ruleTriggerText(reasonTier.reduceTrigger) }}</p>
+      <form :id="formId" class="reminder-editor" novalidate @submit.prevent="save">
+        <p class="sim-muted">基金 {{ fundCode }} · {{ editing.detail }}</p>
+        <p v-if="blockReason" class="notice-banner" role="status">{{ blockReason }}</p>
+        <p v-if="switchingBasis" class="notice-banner">
+          保存后，下跌提醒将改为按{{ editing.key === 'DRAWDOWN' ? '高点回撤' : '持仓亏损' }}计算。
+        </p>
+        <label v-if="editing.key === 'PROFIT'" for="holding-profit-reminder">
+          止盈提醒
+          <span class="reminder-input">
+            <input id="holding-profit-reminder" v-model="profitPercent" type="number" inputmode="decimal" min="0.01" max="1000" step="0.01" required :disabled="!canSave || busy" placeholder="例如 15">
+            <span>%</span>
+          </span>
+        </label>
+        <label v-else for="holding-downside-reminder">
+          {{ editing.label }}
+          <span class="reminder-input">
+            <input id="holding-downside-reminder" v-model="downsidePercent" type="number" inputmode="decimal" min="0.01" max="100" step="0.01" required :disabled="!canSave || busy" placeholder="例如 8">
+            <span>%</span>
+          </span>
+        </label>
+        <p v-if="formError || error" class="error-message" role="alert">{{ formError || error }}</p>
+        <p v-if="message" class="sim-success" role="status">{{ message }}</p>
+      </form>
+      <section class="editor-reference" aria-label="系统参考">
+        <h3>系统参考</h3>
+        <p v-if="editing.key === 'HOLDING_LOSS'" class="sim-muted">
+          系统参考按基金净值的高点回撤计算。持仓亏损请根据自己的持仓成本设定。
+        </p>
+        <template v-else-if="draftAvailable">
+          <p class="sim-muted">
+            统计截至 {{ draft.statsCutoffDate ?? '未知' }}，基于 {{ draft.historyDays ?? '—' }} 个交易日、{{ draft.windowCount ?? '—' }} 个统计区间。
+            {{ statsUpdated ? '参考值已更新。' : '' }}填入后由你确认保存。
+          </p>
+          <p v-if="draft.assumption" class="sim-muted">
+            参考值按历史净值计算，未把分红加回净值。因此，分红前后的净值变化可能与实际收益不同。
+          </p>
+          <div v-for="tier in draft.tiers" :key="tier.tier" class="reference-row">
+            <details open>
+              <summary>{{ ruleTierLabel(tier.tier) }} {{ rulePctText(editing.key === 'PROFIT' ? tier.takeProfitPct : tier.reduceDrawdownPct) }}</summary>
+              <p>{{ ruleTriggerText(editing.key === 'PROFIT' ? tier.takeProfitTrigger : tier.reduceTrigger) }}</p>
+            </details>
+            <button v-if="canSave" class="secondary-button" type="button" :disabled="busy" @click="applyReference(tier)">填入参考值</button>
+          </div>
+        </template>
+        <p v-else class="sim-muted">{{ draft.reason || (draft.status === 'NOT_APPLICABLE' ? '该基金暂不适用系统参考。' : '历史数据不足，暂不提供参考值。') }}</p>
+        <button
+          v-if="canWrite && editing.key !== 'HOLDING_LOSS'"
+          class="secondary-button"
+          type="button"
+          :disabled="busy"
+          @click="refreshReference"
+        >
+          {{ refreshing ? '正在检查…' : '更新系统参考' }}
+        </button>
       </section>
-      <section aria-labelledby="reminder-profit-reason">
-        <h3 id="reminder-profit-reason">
-          止盈参考：{{ rulePctText(reasonTier.takeProfitPct) }}
-        </h3>
-        <p>{{ ruleTriggerText(reasonTier.takeProfitTrigger) }}</p>
-      </section>
-      <p>统计截至 {{ draft?.statsCutoffDate ?? '未知' }}。系统参考不会自动生效，最终数值由你填写并保存。</p>
-    </PredictionHistoryDrawer>
+      <div v-if="canWrite && activeRule" class="editor-reference">
+        <p v-if="revokeArmed">确认关闭这只基金的止盈和下跌提醒？</p>
+        <button class="secondary-button" type="button" :disabled="busy" @click="revoke">
+          {{ revokeArmed ? '确认关闭全部提醒' : '关闭全部提醒' }}
+        </button>
+        <button v-if="revokeArmed" class="text-button" type="button" :disabled="busy" @click="revokeArmed = false">取消关闭</button>
+      </div>
+      <template #footer>
+        <button class="secondary-button" type="button" :disabled="busy" @click="closeEditor">取消</button>
+        <button v-if="canSave" class="primary-button" type="submit" :form="formId" :disabled="busy">
+          {{ saving ? '正在保存…' : '保存提醒' }}
+        </button>
+      </template>
+    </component>
   </div>
 </template>
 
 <style scoped>
-.reminder-settings, .reminder-reference { margin-bottom: 24px; }
-.current-reminder { line-height: 1.7; }
-.reminder-form-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; margin: 20px 0 12px; }
-.reminder-form-grid label { display: grid; gap: 8px; color: var(--ui-ink); font-weight: 500; }
-.reminder-form-grid :is(input,select) { width: 100%; min-height: 40px; box-sizing: border-box; }
+.reminder-list { list-style: none; padding: 0; margin: 0; }
+.reminder-list li { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--ui-line); }
+.reminder-list small { display: block; color: var(--ui-muted); margin-top: 4px; }
+.reminder-list li > span { font-variant-numeric: tabular-nums; }
+.reminder-editor { display: grid; gap: 12px; padding-top: 16px; }
+.reminder-panel :deep(.inline-reminder-actions) { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+.reminder-editor p { margin: 0; }
+.reminder-editor label { display: grid; justify-items: start; gap: 6px; }
 .reminder-input { display: flex; align-items: center; gap: 8px; }
-.reminder-input input { min-width: 0; }
-.reminder-input > span { flex: none; }
-.rule-tier-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; margin: 16px 0; }
-.rule-tier-card { padding: 16px; background: var(--ui-surface); border: 1px solid var(--ui-line); border-radius: var(--ui-radius); display: flex; flex-direction: column; gap: 12px; }
-.rule-tier-card h3 { margin: 0; }
-.rule-tier-card dl { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin: 0; }
-.rule-tier-card dt { color: var(--ui-muted); font-size: 13px; }
-.rule-tier-card dd { margin: 6px 0 0; font-size: 18px; font-variant-numeric: tabular-nums; }
-.reason-link { min-height: 36px; padding: 0; border: 0; background: transparent; color: var(--ui-primary); cursor: pointer; font: inherit; text-align: left; }
-.reminder-history summary { cursor: pointer; min-height: 36px; }
-.rule-tier-card .secondary-button { margin-top: auto; }
+.reminder-input input, .reminder-editor select { box-sizing: border-box; min-height: 44px; padding: 8px 12px; border: 1px solid var(--ui-line); border-radius: 7px; color: var(--ui-ink); background: var(--ui-surface); font: inherit; }
+.reminder-input input { width: 128px; }
+.editor-reference { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--ui-line); }
+.editor-reference h3 { margin-top: 0; }
+.reference-row { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding: 8px 0; }
+.reference-row details, .reminder-history summary { cursor: pointer; }
 .reminder-history { margin-top: 16px; }
 .reminder-history > summary { margin-bottom: 16px; }
-@media(max-width: 800px) { .reminder-form-grid, .rule-tier-grid { grid-template-columns: 1fr; } }
-@media(max-width: 580px) { .reminder-form-grid :is(input,select) { min-height: 44px; font-size: 16px; } }
+@media (max-width: 540px) {
+  .reminder-list li { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; }
+  .reminder-list li > button { grid-column: 2; grid-row: 1 / span 2; min-height: 44px; }
+  .reminder-input input, .reminder-editor select { font-size: 16px; }
+}
 </style>
