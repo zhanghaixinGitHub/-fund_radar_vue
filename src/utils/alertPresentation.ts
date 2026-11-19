@@ -17,12 +17,11 @@ export const alertDescriptions: Record<AlertRule['ruleType'], { title: string; d
 }
 
 /** 未收到能力状态时按未知展示，不能由接收开关推定消息能够发送。 */
-export function alertAvailabilityNote(type: AlertRule['ruleType'], fundCode: string, value: AlertAvailability | null): string {
+export function alertAvailabilityNote(type: AlertRule['ruleType'], _fundCode: string, value: AlertAvailability | null): string {
   if (!value) return '暂时无法确认这类提醒是否可用，接收设置仍会保留。'
   if (type === 'EVENT') {
-    if (!value.eventFundCodes.includes(fundCode)) return '这只基金的公告提醒暂未开放，接收设置会保留。'
     if (!value.eventAvailable) return '公告提醒暂时无法发送，接收设置会保留。'
-    return '仅提醒已核实的近 30 天公告，暂不覆盖所有事项。'
+    return '仅提醒近 30 天内已发布且核实的公告。'
   }
   if (type === 'SIGNAL_CHANGE' && !value.signalChangeAvailable) return '这类提醒暂未开放，接收设置会保留。'
   if (type === 'RISK_LEVEL' && !value.riskLevelAvailable) return '这类提醒暂时无法发送，接收设置会保留。'

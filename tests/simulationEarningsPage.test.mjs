@@ -153,7 +153,7 @@ test('当天面板保持主表，关闭后丢弃迟到响应，再打开不会�
   assert.equal(state.selectedDay.value.dailyGain, '0')
   assert.equal(state.details.value.items[0].fundCode, 'new')
   assert.equal(state.detailError.value, '')
-  assert.deepEqual(requests.details[2].args, ['2026-11-09', 2, 20])
+  assert.deepEqual(requests.details[2].args, ['2026-11-09', 2, 20, 'MARKET_VALUE_DESC'])
 })
 
 test('基金查询关闭后不回填，选择基金保留日期条件并回到第一页', async t => {

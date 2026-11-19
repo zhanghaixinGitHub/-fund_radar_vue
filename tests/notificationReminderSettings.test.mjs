@@ -200,3 +200,87 @@ test('旧持仓提醒地址转到站内提醒并保留基金', async () => {
   assert.equal(latest, true)
   delete globalThis.__reminderNavigationGuard
 })
+
+test('同一基金的不同提醒合成一行，点单元格查看详情', async t => {
+  const section = reactive({ value: 'messages' })
+  const route = reactive({ name: 'notifications', query: { section: 'messages' } })
+  const key = '__notificationFeedTest'
+  const samples = {
+    thresholds: { title: '持仓收益达到止盈条件', kind: 'TAKE_PROFIT', path: '/portfolio/006730?section=reminders' },
+    events: { title: '基金公告', kind: 'FUND_PUBLICATION', path: '/funds/006730?section=documents' },
+    signals: { title: '走势判断变化', kind: 'SIGNAL_CHANGE', path: '/funds/006730' },
+  }
+  const readCategories = new Set()
+  const mockItem = category => ({
+    id: category, category, kind: samples[category].kind, fundCode: '006730',
+    revision: 1, lifecycle: 'ACTIVE', read: readCategories.has(category), occurredAt: '2026-11-19T06:00:00Z',
+    payload: { title: samples[category].title, explanation: '达到测试条件' },
+  })
+  globalThis[key] = {
+    section,
+    route,
+    markReviewNoticeRead: async (id, revision) => { readCategories.add(id); return { revision, read: true } },
+    getNotificationMatrix: async category => ({
+      totalCount: 1, page: 1,
+      cells: (category === 'messages' ? Object.keys(samples) : [category])
+        .map(key => ({ latest: mockItem(key), unreadCount: readCategories.has(key) ? 0 : 1, messageCount: 1 })),
+    }),
+    getNotificationFeed: async category => ({ totalCount: 1, page: 1, items: [mockItem(category)] }),
+  }
+  t.after(() => { delete globalThis[key] })
+  const router = url(`import { h } from '${vue}';
+    export const useRoute=()=>globalThis.${key}.route;export const useRouter=()=>({push:async()=>{}});
+    export const RouterLink={props:['to'],setup:(props,{slots})=>()=>h('a',{href:props.to},slots.default())}`)
+  const panel = componentUrl('../src/components/ReviewNoticePanel.vue', {
+    'vue-router': router,
+    '@/api/http': url(`export const get=async()=>({items:[]});export const post=globalThis.${key}.markReviewRead`),
+    '@/components/ListPagination.vue': pagination,
+    '@/utils/direction1d': url('export const direction1dTime=value=>value'),
+    '@/utils/pagination': url('export const readFixedPage=async(fetch,page)=>fetch(page)'),
+  })
+  const component = (await import(componentUrl('../src/views/NotificationsPage.vue', {
+    ...shared,
+    'vue-router': router,
+    '@/components/ListPagination.vue': pagination,
+    '@/components/ReviewNoticePanel.vue': panel,
+    '@/components/PredictionHistoryDrawer.vue': drawer,
+    '@/components/HoldingReminderSettings.vue': url('export default {}'),
+    '@/components/FollowedReminderSettings.vue': url('export default {}'),
+    '@/api/http': url('export class ApiRequestError extends Error {}'),
+    '@/api/funds': url("export const getFundDetail=async code=>({fundCode:code,fundName:'测试基金'});export const getFunds=async()=>({items:[]})"),
+    '@/api/notifications': url(`export const {getNotificationFeed,getNotificationMatrix,markReviewNoticeRead}=globalThis.${key};export const markNotificationRead=async()=>{}`),
+    '@/composables/usePageNavigation': url(`export const usePageNavigation=()=>({section:globalThis.${key}.section,sectionLabel:'站内提醒'})`),
+    '@/utils/fundPresentation': url('export const riskLevelLabel=value=>value;export const signalDirectionLabel=value=>value'),
+  }))).default
+  const rendered = render(t, component)
+  await settle()
+  assert.equal(rendered.rows().length, 1)
+  assert.ok(rendered.text().includes('测试基金006730'))
+  assert.equal(rendered.rows()[0] && nodes(rendered.rows()[0]).filter(node => node.props?.['aria-label'] === '有未读提醒').length, 1)
+  assert.equal(rendered.text().includes('条未读'), false)
+  rendered.click('查看详情')
+  await settle()
+  assert.ok(rendered.text().includes('达到测试条件'))
+  assert.equal(rendered.find(node => node.props?.id === 'inbox-detail-category'), undefined)
+  assert.ok(rendered.find(node => node.props?.title === '测试基金' && textOf(node) === '测试基金'))
+  rendered.click('关闭抽屉')
+  await settle()
+  for (const sample of Object.values(samples)) {
+    assert.equal(rendered.text().includes('达到测试条件'), false)
+    const trigger = rendered.find(node => node.type === 'button' && node.props['aria-label']?.includes(sample.title))
+    assert.ok(trigger)
+    trigger.props.onClick()
+    await settle()
+    assert.ok(rendered.text().includes('达到测试条件'))
+    assert.ok(rendered.find(node => node.type === 'a' && node.props.href === sample.path))
+    rendered.click('关闭抽屉')
+    await settle()
+  }
+  assert.equal(readCategories.size, 3)
+  assert.equal(rendered.text().includes('标记已读'), false)
+  assert.equal(nodes(rendered.rows()[0]).filter(node => node.props?.['aria-label'] === '有未读提醒').length, 0)
+  route.query.section = 'events'
+  await settle()
+  assert.ok(rendered.text().includes(samples.events.title))
+  assert.equal(rendered.text().includes(samples.signals.title), false)
+})

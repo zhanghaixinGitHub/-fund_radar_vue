@@ -73,11 +73,8 @@ const pageSections: Record<string, PageSection[]> = {
     { key: 'funding', label: '本人资金安排' },
   ],
   notifications: [
-    { key: 'messages', label: '全部消息', group: '提醒消息' },
-    { key: 'thresholds', label: '止盈与下跌提醒' },
-    { key: 'events', label: '基金事件提醒' },
-    { key: 'signals', label: '走势与风险提醒' },
-    { key: 'holding-checks', label: '持仓检查' },
+    { key: 'messages', label: '今日提醒', group: '提醒消息' },
+    { key: 'history', label: '历史提醒' },
     { key: 'rules', label: '关注提醒设置', group: '提醒设置' },
     { key: 'holding-rules', label: '持仓提醒设置' },
   ],
@@ -226,7 +223,10 @@ export function usePageNavigation() {
     } else {
       query.section = key
       if (routeName.value === 'notifications'
-        && (['rules', 'holding-rules'].includes(key) || section.value === 'holding-rules')) delete query.fund
+        && (['rules', 'holding-rules', 'history'].includes(key) || ['holding-rules', 'history'].includes(section.value))) {
+        delete query.fund
+        if (key === 'history' || section.value === 'history') delete query.fromInbox
+      }
       if (routeName.value === 'portfolio-snapshot' && key !== 'holdings') delete query.holding
       if (key !== 'rating') delete query.ratingRef
       if (!['company', 'documents'].includes(key)) delete query.stock

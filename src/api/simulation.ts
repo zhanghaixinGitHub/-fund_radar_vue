@@ -1,7 +1,7 @@
 import { get, post, put } from '@/api/http'
 import type {
   SimComposition, SimDaily, SimEarnings, SimEarningsFund, SimEarningsDetail, SimFeeRuleRow, SimLedger, SimOrder, SimOrderRequest, SimOverview, SimPage, SimPeriod,
-  SimPlan, SimPlanRequest, SimPreview, SimRecurringRunResult,
+  SimEarningsDetailSort, SimPlan, SimPlanRequest, SimPreview, SimRecurringRunResult,
 } from '@/types/simulation'
 
 const base = '/api/v1/sim-portfolios/current'
@@ -18,8 +18,8 @@ export const getSimEarnings = (params: URLSearchParams) => get<SimEarnings>(`${b
 export const getSimEarningsFunds = (keyword = '', page = 1, pageSize = 20) => get<SimPage<SimEarningsFund>>(
   `${base}/earnings/funds?${new URLSearchParams({ keyword, page: String(page), pageSize: String(pageSize) })}`,
 )
-export const getSimEarningsDetails = (date: string, page = 1, pageSize = 20) => get<SimPage<SimEarningsDetail>>(
-  `${base}/earnings/days/${encodeURIComponent(date)}?${query(page, undefined, pageSize)}`,
+export const getSimEarningsDetails = (date: string, page = 1, pageSize = 20, sort?: SimEarningsDetailSort) => get<SimPage<SimEarningsDetail>>(
+  `${base}/earnings/days/${encodeURIComponent(date)}?${query(page, undefined, pageSize)}${sort ? `&sort=${sort}` : ''}`,
 )
 export const getSimPreview = (code: string) => get<SimPreview>(`${base}/preview/${codePath(code)}`)
 export const placeSimOrder = (request: SimOrderRequest) => post<SimOrder>(`${base}/orders`, request)

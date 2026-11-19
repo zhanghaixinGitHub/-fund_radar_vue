@@ -93,7 +93,9 @@ export interface SimEarningsDay {
   dailyGain: DecimalValue | null; knownGain: DecimalValue | null; cumulativeGain: DecimalValue | null
   knownCumulativeGain?: DecimalValue | null
 }
+export type SimEarningsDetailSort = 'MARKET_VALUE_DESC' | 'MARKET_VALUE_ASC' | 'DAILY_GAIN_DESC' | 'DAILY_GAIN_ASC'
 export interface SimEarningsDetail {
+  marketValue?: DecimalValue | null
   message?: string | null
   fundCode: string; fundName: string; status: SimEarningsStatus
   dailyGain: DecimalValue | null; cumulativeGain: DecimalValue | null

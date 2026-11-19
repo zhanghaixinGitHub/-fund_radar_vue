@@ -56,3 +56,15 @@ export interface NotificationFeedPage {
   page: number
   totalCount: number
 }
+
+export interface NotificationFeedCell {
+  latest: NotificationFeedItem
+  unreadCount: number
+  messageCount: number
+}
+
+export interface NotificationMatrixPage {
+  cells: NotificationFeedCell[]
+  page: number
+  totalCount: number
+}

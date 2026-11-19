@@ -7,7 +7,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getSimEarnings, getSimEarningsDetails, getSimEarningsFunds } from '@/api/simulation'
 import { ApiRequestError } from '@/api/http'
-import type { SimEarnings, SimEarningsDetail, SimEarningsFund, SimPage } from '@/types/simulation'
+import type { SimEarnings, SimEarningsDay, SimEarningsDetail, SimEarningsDetailSort, SimEarningsFund, SimPage } from '@/types/simulation'
 import { earningsFailureMessage, earningsMoney, earningsReturnPath, earningsStatus } from '@/utils/simulationEarnings'
 import { shanghaiDate, simMoney, simTone } from '@/utils/simulation'
 
@@ -38,10 +38,26 @@ const end = ref(String(route.query.endDate ?? shanghaiDate()))
 const pageSize = computed(() => normalizePageSize(route.query.size))
 const searchPageSize = ref(10)
 const detailPageSize = ref(10)
+const detailSortField = ref<'MARKET_VALUE' | 'DAILY_GAIN'>('MARKET_VALUE')
+const detailSortAscending = ref(false)
+const detailSort = computed<SimEarningsDetailSort>(
+  () => `${detailSortField.value}_${detailSortAscending.value ? 'ASC' : 'DESC'}`,
+)
 const page = computed(() => Math.max(1, Math.min(100000, Number(route.query.page) || 1)))
 const totalPages = computed(() => Math.max(1, Math.ceil((result.value?.days.totalCount ?? 0) / pageSize.value)))
 const returnTarget = computed(() => earningsReturnPath(route.query.from))
 const selectedDay = computed(() => result.value?.days.items.find(day => day.date === selectedDate.value))
+const dayGain = (day: SimEarningsDay) => day.dailyGain ?? day.knownGain
+const cumulativeDayGain = (day: SimEarningsDay) => day.cumulativeGain ?? day.knownCumulativeGain
+const dayHasPartialUpdate = (day: SimEarningsDay) =>
+  day.status !== 'COMPLETE' && (day.knownGain != null || day.knownCumulativeGain != null)
+function dayUpdateLabel(day: SimEarningsDay) {
+  if (day.status === 'COMPLETE') return '全部更新'
+  return dayHasPartialUpdate(day) ? '部分更新' : earningsStatus(day.status)
+}
+function dayUpdateCount(day: SimEarningsDay) {
+  return `${day.updatedFunds}/${day.expectedFunds} 只当日收益已更新${day.status === 'REVIEW' ? ' · 收益待核对' : ''}`
+}
 const chartDays = computed(() => result.value?.curve.filter(day => day.status !== 'NON_TRADING') ?? [])
 const gainThroughDate = computed(() => {
   const data = result.value
@@ -153,12 +169,17 @@ function applyDates() {
   dateError.value = ''
   void navigate({ range: 'CUSTOM', startDate: start.value, endDate: end.value, page: undefined })
 }
+function toggleDetailSortDirection() {
+  detailSortAscending.value = !detailSortAscending.value
+  void openDetails(selectedDate.value)
+}
+
 /** 当天构成使用独立面板与分页；关闭或切换时丢弃未完成的响应。 */
 async function openDetails(date: string, pageNumber = 1) {
   const current = ++detailGeneration
   selectedDate.value = date; details.value = null; detailLoading.value = true; detailError.value = ''
   try {
-    const data = await getSimEarningsDetails(date, pageNumber, detailPageSize.value)
+    const data = await getSimEarningsDetails(date, pageNumber, detailPageSize.value, detailSort.value)
     if (alive && current === detailGeneration) details.value = data
   } catch (reason) {
     diagnoseRequest('day-details', reason)
@@ -483,23 +504,23 @@ onBeforeUnmount(() => { alive = false; ++generation; ++searchGeneration; ++detai
                 </th>
                 <td
                   class="number earnings-daily-amount"
-                  :class="simTone(day.dailyGain ?? day.knownGain)"
+                  :class="simTone(dayGain(day))"
                 >
-                  {{ earningsMoney(day.dailyGain ?? day.knownGain) }}
+                  {{ earningsMoney(dayGain(day)) }}
                 </td>
                 <td
                   class="number"
-                  :class="simTone(day.cumulativeGain ?? day.knownCumulativeGain)"
+                  :class="simTone(cumulativeDayGain(day))"
                 >
-                  {{ earningsMoney(day.cumulativeGain ?? day.knownCumulativeGain) }}
+                  {{ earningsMoney(cumulativeDayGain(day)) }}
                 </td>
                 <td>
                   <span
                     class="earnings-status"
                     :class="{ 'earnings-status-pending': !['COMPLETE', 'NON_TRADING', 'BASELINE'].includes(day.status) }"
-                  >{{ day.status === 'COMPLETE' ? '全部更新' : day.knownGain != null || day.knownCumulativeGain != null ? '部分更新' : earningsStatus(day.status) }}</span>
-                  <small v-if="day.status !== 'COMPLETE' && (day.knownGain != null || day.knownCumulativeGain != null)">
-                    {{ day.updatedFunds }}/{{ day.expectedFunds }} 只当日收益已更新<span v-if="day.status === 'REVIEW'"> · 收益待核对</span>
+                  >{{ dayUpdateLabel(day) }}</span>
+                  <small v-if="dayHasPartialUpdate(day)">
+                    {{ dayUpdateCount(day) }}
                   </small>
                 </td>
                 <td
@@ -649,17 +670,48 @@ onBeforeUnmount(() => { alive = false; ++generation; ++searchGeneration; ++detai
         v-if="selectedDay"
         class="earnings-day-summary"
       >
-        <span class="earnings-label">当日收益</span>
-        <strong :class="simTone(selectedDay.dailyGain)">{{ earningsMoney(selectedDay.dailyGain) }}</strong>
-        <p class="sim-muted">
-          {{ earningsStatus(selectedDay.status) }}<span v-if="selectedDay.status === 'PARTIAL'"> · {{ selectedDay.updatedFunds }}/{{ selectedDay.expectedFunds }} 只基金完整</span>
-        </p>
-        <p
-          v-if="selectedDay.status === 'PARTIAL' && selectedDay.knownGain !== null"
-          class="earnings-pending"
-        >
-          已知部分 {{ earningsMoney(selectedDay.knownGain) }} 元，完整合计待更新
-        </p>
+        <div class="earnings-day-metric">
+          <span class="earnings-label">当日收益</span>
+          <strong :class="simTone(dayGain(selectedDay))">{{ earningsMoney(dayGain(selectedDay)) }}</strong>
+        </div>
+        <div class="earnings-day-metric">
+          <span class="earnings-label">截至当日累计</span>
+          <strong :class="simTone(cumulativeDayGain(selectedDay))">{{ earningsMoney(cumulativeDayGain(selectedDay)) }}</strong>
+        </div>
+        <div class="earnings-day-update">
+          <span
+            class="earnings-status"
+            :class="{ 'earnings-status-pending': !['COMPLETE', 'NON_TRADING', 'BASELINE'].includes(selectedDay.status) }"
+          >{{ dayUpdateLabel(selectedDay) }}</span>
+          <small v-if="dayHasPartialUpdate(selectedDay)">{{ dayUpdateCount(selectedDay) }}</small>
+        </div>
+      </div>
+      <div class="earnings-detail-heading">
+        <h3>基金贡献</h3>
+        <div class="earnings-detail-controls">
+          <span v-if="details">共 {{ details.totalCount }} 只基金</span>
+          <div class="earnings-detail-sort">
+            <label>
+              排序方式
+              <select v-model="detailSortField" @change="openDetails(selectedDate)">
+                <option value="MARKET_VALUE">持仓金额</option>
+                <option value="DAILY_GAIN">当日收益</option>
+              </select>
+            </label>
+            <button
+              type="button"
+              class="earnings-detail-direction"
+              :aria-label="detailSortAscending ? '当前从低到高，切换为从高到低' : '当前从高到低，切换为从低到高'"
+              :title="detailSortAscending ? '切换为从高到低' : '切换为从低到高'"
+              @click="toggleDetailSortDirection"
+            >
+              <svg width="14" height="16" viewBox="0 0 14 16" fill="none" aria-hidden="true">
+                <path :class="{ 'is-active': detailSortAscending }" d="M3 6L7 2L11 6" />
+                <path :class="{ 'is-active': !detailSortAscending }" d="M3 10L7 14L11 10" />
+              </svg>
+            </button>
+          </div>
+        </div>
       </div>
       <p
         v-if="detailLoading"
@@ -682,9 +734,6 @@ onBeforeUnmount(() => { alive = false; ++generation; ++searchGeneration; ++detai
         </button>
       </p>
       <template v-if="details">
-        <div class="earnings-detail-heading">
-          <h3>基金贡献</h3><span>共 {{ details.totalCount }} 只基金</span>
-        </div>
         <p
           v-if="!details.items.length"
           class="earnings-empty"
@@ -704,6 +753,7 @@ onBeforeUnmount(() => { alive = false; ++generation; ++searchGeneration; ++detai
                 {{ fund.fundName }}
               </RouterLink>
               <small>{{ fund.fundCode }}</small>
+              <small class="earnings-contribution-position">持仓金额 {{ simMoney(fund.marketValue) }}</small>
               <small v-if="fund.message">{{ fund.message }}</small>
             </div>
             <div class="earnings-contribution-value">
@@ -806,12 +856,29 @@ onBeforeUnmount(() => { alive = false; ++generation; ++searchGeneration; ++detai
 .earnings-picker-list b { font-weight: 500; overflow-wrap: anywhere; }
 .earnings-picker-list small { display: block; margin-top: 5px; color: #647b72; font-size: 12px; }
 .earnings-picker-action { flex-shrink: 0; color: #0f766e; font-size: 12px; }
-.earnings-day-summary { margin-bottom: 24px; padding: 20px; border: 1px solid #dfe8e3; border-radius: 9px; background: #f7faf8; }
-.earnings-day-summary > strong { display: block; margin: 8px 0; font-size: 32px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.earnings-day-summary p { margin: 6px 0 0; font-size: 12px; line-height: 1.8; }
-.earnings-detail-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px; padding-bottom: 10px; border-bottom: 1px solid #e5ece7; }
+.earnings-day-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; margin-bottom: 16px; padding: 10px 14px; border: 1px solid var(--ui-line); border-radius: 9px; background: var(--ui-canvas); }
+.earnings-day-metric { display: grid; gap: 2px; }
+.earnings-day-metric strong { font-size: 18px; font-weight: 600; line-height: 1.35; font-variant-numeric: tabular-nums; }
+.earnings-day-update { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.earnings-day-update small { color: var(--ui-muted); font-size: 12px; }
+.earnings-detail-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; padding-bottom: 10px; border-bottom: 1px solid var(--ui-line); }
 .earnings-detail-heading h3 { margin: 0; font-size: 14px; font-weight: 600; }
-.earnings-detail-heading > span { color: #647b72; font-size: 12px; }
+.earnings-detail-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; margin-left: auto; }
+.earnings-detail-controls > span { color: var(--ui-muted); font-size: 12px; }
+.earnings-detail-sort, .earnings-detail-sort label { display: flex; align-items: center; gap: 6px; }
+.earnings-detail-sort label { color: var(--ui-muted); font-size: 12px; white-space: nowrap; }
+.earnings-detail-sort select, .earnings-detail-direction { min-height: 38px; border: 1px solid var(--ui-line); border-radius: 7px; background: var(--ui-surface); color: var(--ui-ink); }
+.earnings-detail-sort select { padding: 4px 8px; font: inherit; font-size: 13px; }
+.earnings-detail-direction { display: grid; width: 38px; padding: 0; place-items: center; cursor: pointer; }
+.earnings-detail-direction:hover { background: var(--ui-canvas); }
+.earnings-detail-direction path { stroke: var(--ui-muted); stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; opacity: .5; }
+.earnings-detail-direction path.is-active { stroke: var(--ui-primary); stroke-width: 2; opacity: 1; }
+@media (max-width: 720px) {
+  .earnings-detail-sort select, .earnings-detail-direction { min-height: 44px; }
+  .earnings-detail-sort select { font-size: 16px; }
+  .earnings-detail-direction { width: 44px; }
+}
+.earnings-contribution-position { font-variant-numeric: tabular-nums; }
 .earnings-contributions li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(90px, auto); align-items: center; gap: 20px; padding: 18px 0; }
 .earnings-contribution-fund a { color: #203a34; text-decoration: none; font-size: 14px; font-weight: 500; line-height: 1.6; overflow-wrap: anywhere; }
 .earnings-contribution-fund a:hover, .earnings-related a:hover { color: #0f766e; text-decoration: underline; }
