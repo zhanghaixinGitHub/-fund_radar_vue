@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ListPagination from '@/components/ListPagination.vue'
+import PredictionHistoryDrawer from '@/components/PredictionHistoryDrawer.vue'
 import { readFixedPage } from '@/utils/pagination'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { get, post, ApiRequestError } from '@/api/http'
@@ -21,6 +22,7 @@ const loading = ref(false)
 const saving = ref(false)
 const error = ref('')
 const message = ref('')
+const historyOpen = ref(false)
 const form = ref({ purpose: '', useDate: '', requiredAmount: '', willingLossPct: '', affordableLossAmount: '', reviewIntervalDays: '' })
 const canWrite = computed(() => auth.hasPermission('ALERT_RULE_SELF_WRITE'))
 let sequence = 0
@@ -54,8 +56,10 @@ async function submit(revoke = false) {
   const selected = scope.value
   const raw = form.value
   const input: Input | null = revoke ? null : { purpose: raw.purpose.trim() || null, useDate: raw.useDate || null,
-    requiredAmount: raw.requiredAmount || null, willingLossPct: raw.willingLossPct || null,
-    affordableLossAmount: raw.affordableLossAmount || null, reviewIntervalDays: raw.reviewIntervalDays ? Number(raw.reviewIntervalDays) : null }
+    requiredAmount: raw.requiredAmount === '' ? null : String(raw.requiredAmount),
+    willingLossPct: raw.willingLossPct === '' ? null : String(raw.willingLossPct),
+    affordableLossAmount: raw.affordableLossAmount === '' ? null : String(raw.affordableLossAmount),
+    reviewIntervalDays: raw.reviewIntervalDays === '' ? null : Number(raw.reviewIntervalDays) }
   const content = JSON.stringify({ scope: selected, revoke, input, revision: result.value.current?.revision ?? 0 })
   if (pending?.content !== content) pending = { content, requestId: createUUID() }
   saving.value = true; error.value = ''; message.value = ''
@@ -124,102 +128,164 @@ onBeforeUnmount(() => { sequence++ })
       </p>
       <form
         v-if="canWrite"
+        id="account-funding-form"
         @submit.prevent="submit(false)"
       >
         <fieldset :disabled="saving || loading">
           <legend>用款计划</legend>
-          <label>资金用途 <input
+          <label>资金用途 <span class="clearable-input"><input
             v-model="form.purpose"
             maxlength="160"
             placeholder="可以留空"
-          ></label>
-          <label>预计用款日期 <input
+          ><button
+            v-if="form.purpose !== ''"
+            type="button"
+            class="input-clear"
+            aria-label="清空资金用途"
+            title="清空"
+            @click="form.purpose = ''"
+          >×</button></span></label>
+          <label>预计用款日期 <span class="clearable-input"><input
             v-model="form.useDate"
             type="date"
             min="1900-01-01"
             max="2200-12-31"
-          ></label>
-          <label>预计需要金额（人民币元）<input
+          ><button
+            v-if="form.useDate !== ''"
+            type="button"
+            class="input-clear"
+            aria-label="清空预计用款日期"
+            title="清空"
+            @click="form.useDate = ''"
+          >×</button></span></label>
+          <label>预计需要金额（人民币元）<span class="clearable-input"><input
             v-model="form.requiredAmount"
             type="number"
             min="0"
             step="0.01"
             placeholder="未知请留空"
-          ><small class="settings-muted">没有预计用款时请填写0；留空表示尚未确定。</small></label>
+          ><button
+            v-if="form.requiredAmount !== ''"
+            type="button"
+            class="input-clear"
+            aria-label="清空预计需要金额"
+            title="清空"
+            @click="form.requiredAmount = ''"
+          >×</button></span><small class="settings-muted">没有预计用款时请填写0；留空表示尚未确定。</small></label>
         </fieldset>
         <fieldset :disabled="saving || loading">
           <legend>损失承受能力</legend>
           <p class="fieldset-help">
             愿意接受的比例与现实能承担的金额，请分别填写。建议会与当前账户持有亏损及剩余成本核对，不等于历史回撤或未来损失保证。
           </p>
-          <label>心理上愿意接受的损失比例（%）<input
+          <label>心理上愿意接受的损失比例（%）<span class="clearable-input"><input
             v-model="form.willingLossPct"
             type="number"
             min="0"
             max="100"
             step="0.01"
             placeholder="未知请留空"
-          ></label>
-          <label>现实资金可承担的损失金额（人民币元）<input
+          ><button
+            v-if="form.willingLossPct !== ''"
+            type="button"
+            class="input-clear"
+            aria-label="清空愿意接受的损失比例"
+            title="清空"
+            @click="form.willingLossPct = ''"
+          >×</button></span></label>
+          <label>现实资金可承担的损失金额（人民币元）<span class="clearable-input"><input
             v-model="form.affordableLossAmount"
             type="number"
             min="0"
             step="0.01"
             placeholder="未知请留空"
-          ></label>
+          ><button
+            v-if="form.affordableLossAmount !== ''"
+            type="button"
+            class="input-clear"
+            aria-label="清空可承担的损失金额"
+            title="清空"
+            @click="form.affordableLossAmount = ''"
+          >×</button></span></label>
         </fieldset>
         <fieldset :disabled="saving || loading">
           <legend>复查安排</legend>
-          <label>定期复查间隔（天）<input
+          <label>定期复查间隔（天）<span class="clearable-input"><input
             v-model="form.reviewIntervalDays"
             type="number"
             min="1"
             max="365"
             step="1"
             placeholder="未确定请留空"
-          ></label>
-        </fieldset>
-        <div class="actions">
-          <button
-            type="submit"
-            :disabled="saving || loading"
-          >
-            {{ saving ? '处理中…' : '确认保存' }}
-          </button><button
-            v-if="result.current?.status === 'ACTIVE'"
+          ><button
+            v-if="form.reviewIntervalDays !== ''"
             type="button"
-            :disabled="saving || loading"
-            @click="submit(true)"
-          >
-            撤销当前安排
-          </button>
-        </div>
+            class="input-clear"
+            aria-label="清空定期复查间隔"
+            title="清空"
+            @click="form.reviewIntervalDays = ''"
+          >×</button></span></label>
+        </fieldset>
       </form>
-      <details class="history">
-        <summary>查看确认历史</summary>
-        <p v-if="!result.history.length">
-          尚无确认记录。
-        </p>
-        <article
-          v-for="item in result.history"
-          :key="item.preferenceId"
+      <div class="actions">
+        <button
+          v-if="canWrite"
+          type="submit"
+          form="account-funding-form"
+          :disabled="saving || loading"
         >
-          <h3>{{ direction1dTime(item.confirmedAt) }} · {{ item.status === 'ACTIVE' ? '本人确认' : '本人撤销' }}</h3>
-          <template v-if="item.input">
-            <p>用途：{{ item.input.purpose ?? '未知' }}；用款日期：{{ item.input.useDate ?? '未知' }}；需要金额：{{ item.input.requiredAmount == null ? '未知' : `${item.input.requiredAmount} 元` }}。</p>
-            <p>愿意接受损失：{{ item.input.willingLossPct == null ? '未知' : `${item.input.willingLossPct}%` }}；现实可承担损失：{{ item.input.affordableLossAmount == null ? '未知' : `${item.input.affordableLossAmount} 元` }}；复查间隔：{{ item.input.reviewIntervalDays == null ? '未知' : `${item.input.reviewIntervalDays} 天` }}。</p>
-          </template>
-        </article>
-        <ListPagination
-          v-if="result.current"
-          :page="page"
-          :page-size="pageSize"
-          :total="result.current?.revision ?? 0"
-          :loading="loading || saving"
-          label="资金安排历史分页"
-          @change="(value, size) => { pageSize = size; page = value; load(false) }" 
-        />
-      </details>
+          {{ saving ? '处理中…' : '确认保存' }}
+        </button><button
+          v-if="canWrite && result.current?.status === 'ACTIVE'"
+          type="button"
+          :disabled="saving || loading"
+          @click="submit(true)"
+        >
+          撤销当前安排
+        </button>
+        <button
+          type="button"
+          class="secondary-button"
+          aria-haspopup="dialog"
+          @click="historyOpen = true"
+        >
+          查看确认历史
+        </button>
+      </div>
+      <PredictionHistoryDrawer
+        v-if="historyOpen"
+        class="funding-history-drawer"
+        title="资金安排确认历史"
+        close-label="关闭确认历史"
+        @close="historyOpen = false"
+      >
+        <div class="history">
+          <p v-if="!result.history.length">
+            尚无确认记录。
+          </p>
+          <article
+            v-for="item in result.history"
+            :key="item.preferenceId"
+          >
+            <h3>{{ direction1dTime(item.confirmedAt) }} · {{ item.status === 'ACTIVE' ? '本人确认' : '本人撤销' }}</h3>
+            <template v-if="item.input">
+              <p>用途：{{ item.input.purpose ?? '未知' }}；用款日期：{{ item.input.useDate ?? '未知' }}；需要金额：{{ item.input.requiredAmount == null ? '未知' : `${item.input.requiredAmount} 元` }}。</p>
+              <p>愿意接受损失：{{ item.input.willingLossPct == null ? '未知' : `${item.input.willingLossPct}%` }}；现实可承担损失：{{ item.input.affordableLossAmount == null ? '未知' : `${item.input.affordableLossAmount} 元` }}；复查间隔：{{ item.input.reviewIntervalDays == null ? '未知' : `${item.input.reviewIntervalDays} 天` }}。</p>
+            </template>
+          </article>
+          <div class="history-pagination">
+            <ListPagination
+              v-if="result.current"
+              :page="page"
+              :page-size="pageSize"
+              :total="result.current?.revision ?? 0"
+              :loading="loading || saving"
+              label="资金安排历史分页"
+              @change="(value, size) => { pageSize = size; page = value; load(false) }"
+            />
+          </div>
+        </div>
+      </PredictionHistoryDrawer>
     </template>
   </section>
 </template>
@@ -233,11 +299,21 @@ fieldset { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px
 legend { padding:0; margin-bottom:16px; font-size:18px; font-weight:600; }
 fieldset label { display:flex; flex-direction:column; gap:8px; line-height:1.6; min-width:0; }
 fieldset label input { width:100%; }
+.clearable-input { display:flex; align-items:stretch; gap:8px; }
+.clearable-input input { flex:1; min-width:0; }
+.input-clear { flex:0 0 40px; width:40px; min-height:40px; padding:0; border:1px solid var(--ui-line); border-radius:8px; background:var(--ui-surface); color:var(--ui-primary); font-size:22px; line-height:1; cursor:pointer; }
+.input-clear:hover:not(:disabled) { background:var(--ui-canvas); }
 .fieldset-help { grid-column:1/-1; color:var(--ui-muted); margin:0; }
 .actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:24px; padding-top:20px; border-top:1px solid var(--ui-line); }
-.history { margin-top:32px; border-top:1px solid var(--ui-line); padding-top:20px; }
-.history summary { cursor:pointer; font-weight:600; }
 .history article { border-bottom:1px solid var(--ui-line); padding:16px 0; overflow-wrap:anywhere; }
+.history article:last-of-type { border-bottom:0; }
 .history h3 { font-size:14px; margin:0 0 8px; }
+.account-settings :deep(.funding-history-drawer) { width:min(800px,100vw); }
+.history-pagination { overflow-x:auto; }
+.history-pagination :deep(.pagination) { flex-wrap:nowrap; min-width:max-content; gap:12px; }
+.history-pagination :deep(.pagination-summary),
+.history-pagination :deep(.pagination-controls) { flex-shrink:0; }
+.history-pagination :deep(.pagination-controls) { flex-wrap:nowrap; gap:6px; }
+.history-pagination :deep(.pagination button) { min-width:0; white-space:nowrap; }
 @media(max-width:650px) { fieldset { grid-template-columns:1fr; } }
 </style>
