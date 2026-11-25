@@ -39,13 +39,17 @@ const snapshot = code => ({ fundCode: code, marketAsOf: '2026-11-11', adoptedAt:
     primaryReason: '盈利改善。', counterReason: '订单较弱。', conditions: [], limitations: [], awaitingReason: null },
 ] })
 
-async function mount(t, readResult, updateResult, target = '2026-11-12') {
-  const calls = { read: [], update: [] }
+async function mount(t, readResult, target = '2026-11-12') {
+  const calls = []
   const key = `__reviewPanel${Math.random().toString(16).slice(2)}`
   globalThis[key] = {
-    async getDirection1dCurrent() { return { window: { targetNavDate: target, nextWindowOpenAt: '2099-01-01T15:00:00+08:00' } } },
-    async readPredictionReview(code) { calls.read.push(code); return readResult(code) },
-    async requestPredictionReview(code) { calls.update.push(code); return updateResult?.(code) },
+    async readCurrentForecast(code) {
+      calls.push(code)
+      return { fundCode: code, review: await readResult(code), window: {
+        baseNavDate: target && '2026-11-11', targetNavDate: target, nextWindowOpenAt: '2099-01-01T00:00:00+08:00',
+        periods: [{ horizonId: 'T5_V1', endDate: '2026-11-23' }],
+      } }
+    },
   }
   const { descriptor } = parse(read('../src/components/MultiPredictionPanel.vue'))
   const script = compileScript(descriptor, { id: key, inlineTemplate: true })
@@ -54,10 +58,8 @@ async function mount(t, readResult, updateResult, target = '2026-11-12') {
   for (const [from, to] of Object.entries({
     vue: pathToFileURL(createRequire(import.meta.url).resolve('vue')).href,
     '@/components/PredictionHistoryDrawer.vue': url(`import { h } from '${pathToFileURL(createRequire(import.meta.url).resolve('vue')).href}'; export default { props: ['title'], emits: ['close'], setup(props, { slots, emit }) { return () => h('dialog', { open: true }, [h('h2', props.title), h('button', { onClick: () => emit('close') }, '关闭'), slots.default?.()]) } }`),
-    '@/api/direction1d': url(`export const { getDirection1dCurrent } = globalThis[${JSON.stringify(key)}]`),
-    '@/api/predictionReview': url(`export const { readPredictionReview, requestPredictionReview } = globalThis[${JSON.stringify(key)}]`),
+    '@/api/predictionReview': url(`export const { readCurrentForecast } = globalThis[${JSON.stringify(key)}]`),
     '@/utils/predictionReview': utility,
-    '@/stores/auth': url('export const useAuthStore = () => ({ hasPermission: () => true })'),
   })) code = code.replaceAll(`from '${from}'`, `from '${to}'`).replaceAll(`from "${from}"`, `from '${to}'`)
   const component = (await import(url(code))).default
   const fund = ref('006730')
@@ -71,24 +73,23 @@ async function mount(t, readResult, updateResult, target = '2026-11-12') {
 
 test('真实四卡显示本期预测和半年待核日期，点击周期仅切换依据', async t => {
   const view = await mount(t, code => snapshot(code))
-  assert.equal(view.buttons().length, 5)
-  assert.match(view.text(), /一日预测.*偏下跌.*2026-11-12 至 2026-11-12/)
-  assert.match(view.text(), /偏上涨.*终点待核.*名义到期 2027-05-11/)
-  await view.buttons()[4].props.onClick()
+  assert.equal(view.buttons().length, 4)
+  assert.match(view.text(), /一日预测.*偏下跌.*目标日 2026-11-12/)
+  assert.match(view.text(), /偏上涨.*到期估值日待确认.*名义到期 2027-05-11/)
+  await view.buttons()[3].props.onClick()
   await settle()
   assert.match(view.text(), /主要依据.*盈利改善.*相反因素如何取舍.*订单较弱/)
-  assert.deepEqual(view.calls.read, ['006730'])
-  assert.deepEqual(view.calls.update, [])
+  assert.deepEqual(view.calls, ['006730'])
 })
 
 test('null与读取失败分开，均不调用旧预测补卡', async t => {
   const empty = await mount(t, () => null)
-  assert.match(empty.text(), /预测未生成/)
+  assert.match(empty.text(), /待发布/)
   assert.doesNotMatch(empty.text(), /暂时无法读取/)
   const failed = await mount(t, () => { throw new Error('backend failure') })
   assert.match(failed.text(), /分析暂时无法读取/)
   assert.doesNotMatch(failed.text(), /backend failure|当时弱偏/)
-  assert.deepEqual(failed.calls.update, [])
+  assert.deepEqual(failed.calls, ['006730'])
 })
 
 test('暂不判断在卡片保留原因，并在依据区解释取舍', async t => {
@@ -100,23 +101,22 @@ test('暂不判断在卡片保留原因，并在依据区解释取舍', async t 
   })
   assert.match(view.text(), /五日预测.*暂不判断.*主要经营支撑和订单压力仍难分主次/)
   assert.match(view.text(), /已审阅 · 暂无方向/)
-  assert.match(view.text(), /上次分析/)
-  await view.buttons()[2].props.onClick()
+  assert.match(view.text(), /分析于/)
+  await view.buttons()[1].props.onClick()
   await settle()
   assert.match(view.text(), /暂不判断：主要经营支撑和订单压力仍难分主次/)
   assert.match(view.text(), /已完成这次审阅.*重新评估/)
   assert.match(view.text(), /出现哪些变化后重新判断/)
 })
 
-test('更新等待新净值时显示本期日期和等待说明，不宣称新分析完成', async t => {
-  const view = await mount(t, code => snapshot(code), () => ({ status: 'WAITING_FOR_NAV', summary: '正在等待新的真实净值。', requestedAt: '' }))
+test('没有本期结果时显示已确认的日期，抽屉也只说明本期状态', async t => {
+  const view = await mount(t, () => null, '2026-11-17')
   await view.buttons()[0].props.onClick()
   await settle()
-  assert.deepEqual(view.calls.update, ['006730'])
-  assert.deepEqual(view.calls.read, ['006730', '006730'])
-  assert.match(view.text(), /正在等待本期所需的真实净值.*当前新分析尚未完成/)
-  assert.match(view.text(), /2026-11-12 至 2026-11-12/)
-  assert.doesNotMatch(view.text(), /2026-11-13|更新完成/)
+  assert.deepEqual(view.calls, ['006730'])
+  assert.match(view.text(), /五日预测.*起始日 2026-11-17 · 到期日 2026-11-23/)
+  assert.match(view.text(), /从 2026-11-17 起算的预测待发布/)
+  assert.doesNotMatch(view.text(), /等待.*净值|偏下跌|偏上涨/)
 })
 
 test('半年暂不判断显示已审阅，不声称已有条件方向', async t => {
@@ -125,7 +125,7 @@ test('半年暂不判断显示已审阅，不声称已有条件方向', async t 
     value.periods[1] = { ...value.periods[1], decision: 'ABSTAIN', summary: '主要路径仍有分歧。', awaitingReason: '转换权益与现金路径相互抵消。' }
     return value
   })
-  await view.buttons()[4].props.onClick()
+  await view.buttons()[3].props.onClick()
   await settle()
   assert.match(view.text(), /半年分析 · 终点待核/)
   assert.match(view.text(), /已审阅 · 暂无方向/)
@@ -141,38 +141,38 @@ test('真实组件切换基金时，晚到的旧响应不会盖掉新基金', as
   await settle()
   finishOld(snapshot('006730'))
   await settle()
-  await view.buttons()[1].props.onClick()
+  await view.buttons()[0].props.onClick()
   await settle()
   assert.match(view.text(), /007832一日旧判断/)
   assert.doesNotMatch(view.text(), /006730一日旧判断/)
 })
 
 
-test('收盘切到17日，旧一期四周期及依据不作为当前结果展示', async t => {
+test('零点切到17日，旧一期四周期及依据不作为当前结果展示', async t => {
   const view = await mount(t, code => {
     const value = snapshot(code)
     value.periods.push({ ...value.periods[0], horizonId: 'T5_V1', kind: 'DATED_ANALYSIS', endDate: '2026-11-20', summary: '旧五日依据' })
     return value
-  }, undefined, '2026-11-17')
-  assert.match(view.text(), /一日预测.*预测未生成.*目标日 2026-11-17/)
-  assert.match(view.text(), /五日预测.*预测未生成.*起始日 2026-11-17/)
-  assert.doesNotMatch(view.text(), /偏下跌|偏上涨|一日旧判断|2026-11-12 至/)
-  await view.buttons()[1].props.onClick()
+  }, '2026-11-17')
+  assert.match(view.text(), /一日预测.*待发布.*目标日 2026-11-17/)
+  assert.match(view.text(), /五日预测.*待发布.*起始日 2026-11-17/)
+  assert.doesNotMatch(view.text(), /偏下跌|偏上涨|一日旧判断|2026-11-12/)
+  await view.buttons()[0].props.onClick()
   await settle()
-  assert.match(view.text(), /2026-11-17这一期的预测未生成/)
+  assert.match(view.text(), /从 2026-11-17 起算的预测待发布/)
 })
 
 
 test('依据默认收起，点击打开抽屉，关闭后撤销选中状态', async t => {
   const view = await mount(t, code => snapshot(code))
   assert.doesNotMatch(view.text(), /主要依据|回吐压力略占优势/)
-  assert.equal(view.buttons()[1].props['aria-expanded'], false)
-  await view.buttons()[1].props.onClick()
+  assert.equal(view.buttons()[0].props['aria-expanded'], false)
+  await view.buttons()[0].props.onClick()
   await settle()
-  assert.equal(view.buttons()[1].props['aria-expanded'], true)
+  assert.equal(view.buttons()[0].props['aria-expanded'], true)
   assert.match(view.text(), /一日预测 · 判断依据.*主要依据.*回吐压力略占优势/)
   await view.buttons().find(button => textOf(button) === '关闭').props.onClick()
   await settle()
   assert.doesNotMatch(view.text(), /主要依据|回吐压力略占优势/)
-  assert.equal(view.buttons()[1].props['aria-expanded'], false)
+  assert.equal(view.buttons()[0].props['aria-expanded'], false)
 })

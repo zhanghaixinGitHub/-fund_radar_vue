@@ -1,10 +1,10 @@
-import type { PredictionReview, PredictionReviewPeriod, ReviewHorizon } from '../types/predictionReview'
+import type { ForecastPeriodDates, PredictionReview, PredictionReviewPeriod, ReviewHorizon } from '../types/predictionReview'
 
 export const reviewHorizons: { id: ReviewHorizon; title: string; duration: string }[] = [
   { id: 'T1', title: '一日预测', duration: '一个估值日' },
-  { id: 'T5_V1', title: '五日预测', duration: '约一周' },
-  { id: 'T20_V1', title: '二十日预测', duration: '约一个月' },
-  { id: 'M6_V1', title: '半年展望', duration: '约六个月' },
+  { id: 'T5_V1', title: '五日预测', duration: '五个估值日' },
+  { id: 'T20_V1', title: '二十日预测', duration: '二十个估值日' },
+  { id: 'M6_V1', title: '半年展望', duration: '六个自然月' },
 ]
 
 /** 缺周期保留为空，不使用其他规则的记录补齐。 */
@@ -33,12 +33,17 @@ export function reviewDirection(period?: PredictionReviewPeriod): string {
   if (period.decision === 'ABSTAIN') return '暂不判断'
   return { UP: '偏上涨', DOWN: '偏下跌', FLAT: '持平' }[period.decision]
 }
-/** 名义到期日不替代已核实的结束估值日。 */
+export function forecastDateText(id: ReviewHorizon, start: string, dates?: ForecastPeriodDates): string {
+  if (id === 'T1') return `目标日 ${start}`
+  const prefix = `起始日 ${start}`
+  const end = dates?.endDate
+  const nominal = dates?.nominalEndDate
+  if (end && dates?.endDateBasis !== 'CALENDAR_MONTH') return `${prefix} · 到期日 ${end}`
+  return `${prefix} · 到期估值日待确认${nominal ? `（名义到期 ${nominal}）` : ''}`
+}
 export function reviewDateRange(period?: PredictionReviewPeriod): string {
   if (!period) return '尚无可用分析'
-  const start = period.startDate ?? '开始日期待核'
-  if (period.endDate) return `${start} 至 ${period.endDate}`
-  return `${start} 至终点待核${period.nominalEndDate ? ` · 名义到期 ${period.nominalEndDate}` : ''}`
+  return period.startDate ? forecastDateText(period.horizonId, period.startDate, period) : '起始估值日待确认'
 }
 /** 区间开始后补读的分析保留真实时间，不能展示成开始前已作出的预测。 */
 export function isSupplementaryReview(period?: PredictionReviewPeriod): boolean {

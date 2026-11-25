@@ -1,10 +1,12 @@
 import { get, post } from './http'
-import type { PredictionReview, PredictionReviewRequest, PredictionReviewHistoryPage } from '@/types/predictionReview'
+import type { CurrentForecast, PredictionReviewRequest, PredictionReviewHistoryPage } from '@/types/predictionReview'
 import { assertPredictionReview } from '@/utils/predictionReview'
 
-export async function readPredictionReview(code: string): Promise<PredictionReview | null> {
-  const value = await get<PredictionReview | null>(`/api/v1/watchlist/${encodeURIComponent(code)}/predictions/review-v2`)
-  assertPredictionReview(value, code)
+export async function readCurrentForecast(code: string): Promise<CurrentForecast> {
+  const value = await get<CurrentForecast>(`/api/v1/watchlist/${encodeURIComponent(code)}/predictions/review-v2/current-window`)
+  if (value.fundCode !== code || !Array.isArray(value.window?.periods)
+    || !Number.isFinite(Date.parse(value.window.nextWindowOpenAt))) throw new Error('预测日期暂时无法核对。')
+  assertPredictionReview(value.review, code)
   return value
 }
 export const requestPredictionReview = (code: string) => post<PredictionReviewRequest>(

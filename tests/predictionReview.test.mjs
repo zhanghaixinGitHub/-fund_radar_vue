@@ -22,16 +22,18 @@ test('已结束的一日保留原日期，标题和方向明确为复盘，不�
   const old = period()
   assert.equal(reviewTitle('T1', old), '一日复盘')
   assert.equal(reviewDirection(old), '偏上涨')
-  assert.equal(reviewDateRange(old), '2026-11-12 至 2026-11-12')
+  assert.equal(reviewDateRange(old), '目标日 2026-11-12')
   assert.deepEqual([old.startDate, old.endDate], ['2026-11-12', '2026-11-12'])
 })
 
 test('半年方向用直白名称，名义到期日不会成为已确认终点', () => {
   const half = period({ horizonId: 'M6_V1', kind: 'CONDITIONAL_OUTLOOK', endDate: null, nominalEndDate: '2027-05-11' })
   assert.equal(reviewDirection(half), '偏上涨')
-  assert.match(reviewDateRange(half), /终点待核/)
+  assert.match(reviewDateRange(half), /到期估值日待确认/)
   assert.match(reviewDateRange(half), /名义到期 2027-05-11/)
   assert.doesNotMatch(reviewDateRange(half), /至 2027-05-11/)
+  assert.equal(reviewDateRange({ ...half, kind: 'DATED_ANALYSIS', endDate: '2027-05-11', endDateBasis: 'CALENDAR_MONTH' }),
+    reviewDateRange(half))
 })
 
 test('暂不判断不能兜底为看跌，没有结果也不冒充已有预测', () => {

@@ -1,27 +1,25 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import PredictionHistoryDrawer from '@/components/PredictionHistoryDrawer.vue'
-import { getDirection1dCurrent } from '@/api/direction1d'
-import type { Direction1dWindow } from '@/types/direction1d'
-import { readPredictionReview } from '@/api/predictionReview'
-import type { PredictionReview, ReviewHorizon } from '@/types/predictionReview'
-import { createReviewRequestGuard, isSupplementaryReview, reviewDateRange, reviewDirection, reviewHorizons, reviewTitle } from '@/utils/predictionReview'
+import { readCurrentForecast } from '@/api/predictionReview'
+import type { CurrentForecast, ReviewHorizon } from '@/types/predictionReview'
+import { createReviewRequestGuard, forecastDateText, isSupplementaryReview, reviewDateRange, reviewDirection, reviewHorizons, reviewTitle } from '@/utils/predictionReview'
 import '@/styles/prediction.css'
 
 const props = defineProps<{ fundCode: string }>()
-const current = ref<PredictionReview | null>(null)
+const forecast = ref<CurrentForecast | null>(null)
 const loading = ref(false)
 const error = ref('')
 const selectedPeriod = ref<ReviewHorizon>('T1')
 const evidenceOpen = ref(false)
 const guard = createReviewRequestGuard()
-const predictionWindow = ref<Direction1dWindow | null>(null)
 const windowExpired = ref(true)
 let windowTimer: ReturnType<typeof globalThis.setTimeout> | undefined
-const targetDate = computed(() => windowExpired.value ? null : predictionWindow.value?.targetNavDate ?? null)
+const current = computed(() => windowExpired.value ? null : forecast.value)
+const targetDate = computed(() => current.value?.window.targetNavDate)
 function scheduleWindowRefresh() {
   globalThis.clearTimeout(windowTimer)
-  const boundary = Date.parse(predictionWindow.value?.nextWindowOpenAt ?? '')
+  const boundary = Date.parse(forecast.value?.window.nextWindowOpenAt ?? '')
   windowExpired.value = !Number.isFinite(boundary) || boundary <= Date.now()
   if (!windowExpired.value) windowTimer = globalThis.setTimeout(() => {
     windowExpired.value = true
@@ -29,10 +27,11 @@ function scheduleWindowRefresh() {
   }, Math.min(boundary - Date.now(), 2_147_483_647))
 }
 const cards = computed(() => reviewHorizons.map(horizon => {
-  // 长周期即使尚未结束，也不能替代当前新一期。
-  const period = targetDate.value ? current.value?.periods.find(p => p.horizonId === horizon.id
+  const period = targetDate.value ? current.value?.review?.periods.find(p => p.horizonId === horizon.id
     && p.startDate === targetDate.value && p.kind !== 'RETROSPECTIVE') : undefined
-  return { ...horizon, title: reviewTitle(horizon.id, period), period }
+  const dates = current.value?.window.periods.find(p => p.horizonId === horizon.id)
+  return { ...horizon, title: reviewTitle(horizon.id, period), period, dateText: period ? reviewDateRange(period)
+    : targetDate.value ? forecastDateText(horizon.id, targetDate.value, dates) : '' }
 }))
 const selectedCard = computed(() => cards.value.find(card => card.id === selectedPeriod.value)!)
 const selected = computed(() => selectedCard.value.period)
@@ -48,10 +47,9 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    const [value, context] = await Promise.all([readPredictionReview(code), getDirection1dCurrent(code)])
+    const value = await readCurrentForecast(code)
     if (guard.current(token, props.fundCode)) {
-      current.value = value
-      predictionWindow.value = context.window
+      forecast.value = value
       scheduleWindowRefresh()
     }
   } catch {
@@ -63,9 +61,8 @@ async function load() {
 
 watch(() => props.fundCode, () => {
   globalThis.clearTimeout(windowTimer)
-  predictionWindow.value = null
   windowExpired.value = true
-  current.value = null
+  forecast.value = null
   selectedPeriod.value = 'T1'
   evidenceOpen.value = false
   void load()
@@ -83,7 +80,7 @@ onBeforeUnmount(() => { guard.invalidate(); globalThis.clearTimeout(windowTimer)
       <header class="forecast-heading">
         <div>
           <h2>接下来，可能涨还是跌？</h2>
-          <p>点击一个时间段，在右侧查看本期判断依据；往期结果请到预测历史查看。</p>
+          <p v-if="current?.window.baseNavDate">基准净值日 {{ current.window.baseNavDate }}</p>
         </div>
       </header>
       <p class="forecast-caution">
@@ -109,7 +106,7 @@ onBeforeUnmount(() => { guard.invalidate(); globalThis.clearTimeout(windowTimer)
           :class="{ 'is-selected': evidenceOpen && selectedPeriod === card.id }"
           aria-haspopup="dialog"
           :aria-expanded="evidenceOpen && selectedPeriod === card.id"
-          :aria-label="`查看${card.title}的依据`"
+          :aria-label="`${card.title}，${card.period ? reviewDirection(card.period) : '查看状态'}${card.dateText ? `，${card.dateText}` : ''}`"
           @click="selectedPeriod = card.id; evidenceOpen = true"
         >
           <span class="forecast-card-title">{{ card.title }}</span>
@@ -118,9 +115,9 @@ onBeforeUnmount(() => { guard.invalidate(); globalThis.clearTimeout(windowTimer)
             class="forecast-direction"
             :class="`tone-${card.period?.decision.toLowerCase() ?? 'neutral'}`"
           >
-            {{ card.period ? reviewDirection(card.period) : loading ? '正在读取…' : error ? '暂时无法读取' : targetDate ? '预测未生成' : '预测日期待确认' }}
+            {{ card.period ? reviewDirection(card.period) : loading ? '正在读取…' : error ? '暂时无法读取' : targetDate ? '待发布' : '预测日期待确认' }}
           </strong>
-          <span class="forecast-period">{{ card.period ? reviewDateRange(card.period) : targetDate ? `${card.id === 'T1' ? '目标日' : '起始日'} ${targetDate}` : '等待确认本期估值日' }}</span>
+          <span v-if="card.dateText" class="forecast-period">{{ card.dateText }}</span>
           <span
             v-if="card.period?.kind === 'RETROSPECTIVE'"
             class="forecast-card-status"
@@ -146,23 +143,16 @@ onBeforeUnmount(() => { guard.invalidate(); globalThis.clearTimeout(windowTimer)
           <span
             v-if="card.period?.decision === 'ABSTAIN'"
             class="forecast-data-date"
-          >上次分析 {{ time(card.period.analysisAt) }}</span>
+          >分析于 {{ time(card.period.analysisAt) }}</span>
           <span
-            v-if="card.period && current?.marketAsOf"
+            v-if="card.period?.sourceCutoff"
             class="forecast-data-date"
-          >行情截至 {{ current.marketAsOf }}</span>
-          <span class="forecast-card-action">{{ evidenceOpen && selectedPeriod === card.id ? '正在查看依据' : '点击查看依据' }}</span>
+          >资料截至 {{ time(card.period.sourceCutoff) }}</span>
+          <span class="forecast-card-action">{{ card.period ? '查看依据' : '查看状态' }}</span>
         </button>
       </div>
-      <p
-        v-if="!current && !loading && !error"
-        class="forecast-footnote"
-        role="status"
-      >
-        本基金本期预测尚未生成。
-      </p>
       <footer class="forecast-footnote">
-        日期按基金实际估值安排确认；终点未核实的半年只作条件展望。往期判断及复盘请到预测历史查看。
+        往期判断及复盘见「预测历史」。
       </footer>
     </section>
     <PredictionHistoryDrawer
@@ -246,7 +236,7 @@ onBeforeUnmount(() => { guard.invalidate(); globalThis.clearTimeout(windowTimer)
             </ul>
           </section>
           <p class="forecast-basis-meta">
-            判断区间：{{ reviewDateRange(selected) }}
+            {{ reviewDateRange(selected) }}
             <template v-if="selected.baseNavDate">
               · 基准净值日 {{ selected.baseNavDate }}
             </template>
@@ -257,7 +247,7 @@ onBeforeUnmount(() => { guard.invalidate(); globalThis.clearTimeout(windowTimer)
           v-else
           role="status"
         >
-          {{ loading ? '正在读取所选周期的依据…' : error ? '依据暂时无法读取，请稍后重试。' : targetDate ? `${targetDate}这一期的预测未生成，尚无可展示的判断依据。` : '本期预测日期尚未确认，暂不展示旧一期的判断依据。' }}
+          {{ loading ? '正在读取所选周期的依据…' : error ? '依据暂时无法读取，请稍后重试。' : targetDate ? `从 ${targetDate} 起算的预测待发布。` : '本期估值日待确认。' }}
         </p>
       </section>
     </PredictionHistoryDrawer>
